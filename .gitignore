@@ -1,0 +1,21 @@
+# Claude 내부 메모/플랜
+.claude/
+
+# 파이썬 캐시
+**/__pycache__/
+*.pyc
+*.pyo
+
+# 엑셀 임시 잠금 파일
+**/~$*
+
+# ── 기밀·라이선스 데이터 (실제 딜·민평·강의자료) — 절대 공개 금지 ──
+rcps_valuation/inputs/*.xlsx
+rcps_valuation/inputs/*.xls
+rcps_valuation/inputs/5803_csv/
+rcps_valuation/sample_minpyung.pdf
+*.pdf
+
+# 복호화/추출 임시 파일
+**/_dec.*
+**/_*_dump.txt

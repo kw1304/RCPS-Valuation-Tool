@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>웅계사의 RCPS 공정가치 평가 검증 툴</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F9FAFB;--bg2:#FFFFFF;--bg3:#F2F4F6;
+  --border:#E5E8EB;
+  --accent:#3182F6;--accent2:#1B64DA;
+  --green:#00C073;--red:#F04452;--amber:#FF9F00;--purple:#7C3AED;
+  --text:#191F28;--text2:#4E5968;--text3:#8B95A1;
+  --sans:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-size:14px;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── 헤더 */
+header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:1rem 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;flex-wrap:nowrap;gap:1rem;
+}
+.hd-title{min-width:0}
+.hd-title h1{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-0.04em}
+.hd-title h1 .ac{color:var(--accent);font-weight:800}
+.hd-title p{font-size:0.72rem;color:var(--text3);margin-top:0.2rem;font-weight:400;letter-spacing:-0.01em}
+.hd-right{display:flex;align-items:center;gap:0.85rem;flex-wrap:nowrap;flex-shrink:0}
+.header-tabs{display:flex;flex-wrap:nowrap;border:1.5px solid var(--border);border-radius:10px;overflow:hidden}
+.nav-tab{
+  padding:0.42rem 0.85rem;font-family:var(--sans);font-size:0.76rem;font-weight:600;
+  color:var(--text3);background:var(--bg2);border:none;cursor:pointer;white-space:nowrap;
+  transition:all 0.15s;letter-spacing:-0.01em;
+}
+.nav-tab+.nav-tab{border-left:1.5px solid var(--border)}
+.nav-tab.active{background:var(--accent);color:#fff}
+.nav-tab:not(.active):hover{background:var(--bg3);color:var(--text2)}
+.hd-badge{font-size:0.68rem;font-weight:600;padding:0.28rem 0.8rem;background:#EFF6FF;color:var(--accent);border-radius:100px;letter-spacing:-0.01em}
+
+/* ── 페이지 */
+.page{display:none;flex:1;overflow:hidden}
+.page.active{display:flex}
+
+/* ── 입력 패널 */
+.form-panel{width:350px;min-width:310px;background:var(--bg2);overflow-y:auto;border-right:1px solid var(--border);flex-shrink:0}
+.sec{padding:1rem 1.15rem;border-bottom:1px solid var(--border)}
+.sec-title{
+  font-size:0.75rem;font-weight:700;color:var(--text2);letter-spacing:-0.02em;
+  margin-bottom:0.85rem;display:flex;align-items:center;gap:0.5rem;
+}
+.sec-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;display:block;flex-shrink:0}
+.badge-req{font-size:0.62rem;font-weight:700;padding:0.15rem 0.55rem;background:#FEF3C7;color:#92400E;border-radius:100px}
+.badge-opt{font-size:0.62rem;font-weight:700;padding:0.15rem 0.55rem;background:#F0FDF4;color:#166534;border-radius:100px}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+.row1{display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:7px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:7px}
+.field label{display:block;font-size:0.7rem;font-weight:500;color:var(--text2);margin-bottom:0.28rem;letter-spacing:-0.01em}
+.field input,.field select{
+  width:100%;background:var(--bg3);border:1.5px solid transparent;
+  color:var(--text);padding:0.52rem 0.75rem;font-family:var(--sans);
+  font-size:0.8rem;font-weight:500;border-radius:9px;outline:none;
+  transition:border-color 0.15s,background 0.15s,box-shadow 0.15s;-webkit-appearance:none;
+}
+.field input:focus,.field select:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(49,130,246,.1)}
+.field select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B95A1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 0.75rem center;padding-right:2.2rem;cursor:pointer;
+}
+.field input.money{text-align:right;font-variant-numeric:tabular-nums}
+.field input.money:focus{text-align:left}
+.field input[readonly]{background:var(--bg3);color:var(--text2);font-weight:600;cursor:default;border-color:transparent}
+
+.toggle{display:flex;align-items:center;gap:0.5rem;margin-bottom:7px;cursor:pointer}
+.toggle label{font-size:0.78rem;font-weight:500;color:var(--text2);cursor:pointer;user-select:none;letter-spacing:-0.01em}
+input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.note{font-size:0.67rem;color:var(--text3);line-height:1.55;padding:0.5rem 0.7rem;background:var(--bg3);border-radius:8px;border-left:2.5px solid var(--border);margin-top:4px;letter-spacing:-0.01em}
+.hidden{display:none}
+
+.mini-table{width:100%;border-collapse:collapse;font-size:0.7rem;margin-top:6px}
+.mini-table th{background:var(--bg3);color:var(--text3);padding:5px 6px;text-align:center;font-size:0.62rem;font-weight:600;border-bottom:1px solid var(--border)}
+.mini-table td{padding:3px 4px;border-bottom:1px solid var(--border)}
+.mini-table td input{width:100%;border:none;outline:none;font-size:0.7rem;background:transparent;text-align:right;font-family:var(--sans)}
+.mini-table td:first-child input{text-align:center}
+.btn-add{font-size:0.7rem;color:var(--accent);background:none;border:1.5px dashed #BFDBFE;border-radius:8px;padding:5px 8px;cursor:pointer;margin-top:5px;width:100%;transition:background 0.15s;font-family:var(--sans);font-weight:600}
+.btn-add:hover{background:#EFF6FF}
+.btn-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:0 3px;font-size:13px}
+.btn-del:hover{color:var(--red)}
+
+.err-msg{font-size:0.7rem;color:var(--red);background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:0.55rem 0.8rem;margin:0 1.15rem 6px;display:none}
+.run-wrap{padding:0.9rem 1.15rem}
+.btn-run{
+  width:100%;padding:0.78rem;background:var(--accent);color:#fff;border:none;
+  border-radius:11px;font-family:var(--sans);font-size:0.88rem;font-weight:700;
+  cursor:pointer;letter-spacing:-0.02em;
+  transition:background 0.15s,transform 0.1s,box-shadow 0.15s;
+  box-shadow:0 2px 10px rgba(49,130,246,.28);
+}
+.btn-run:hover{background:var(--accent2);box-shadow:0 4px 18px rgba(49,130,246,.35)}
+.btn-run:active{transform:scale(.988)}
+.btn-run:disabled{background:var(--text3);box-shadow:none;cursor:not-allowed}
+
+/* ── 결과 패널 */
+.res-panel{flex:1;overflow-y:auto;padding:1.5rem;background:var(--bg);display:flex;flex-direction:column;gap:12px}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;text-align:center}
+.placeholder svg{opacity:.2}
+.placeholder p{font-size:0.88rem;color:var(--text3);letter-spacing:-0.01em}
+.placeholder small{font-size:0.72rem;color:var(--text3)}
+
+.toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.eval-meta{font-size:0.7rem;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.38rem 0.8rem;letter-spacing:-0.01em}
+.btn-dl{display:flex;align-items:center;gap:5px;padding:0.42rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em}
+.btn-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent)}
+
+/* 컴포넌트 카드 */
+.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:10px}
+.comp-card{border-radius:12px;padding:0.95rem 1.05rem;background:var(--bg3)}
+.comp-card.total{background:var(--accent);color:#fff;grid-column:1/-1;border-radius:12px}
+.comp-card .cn{font-size:0.62rem;font-weight:600;margin-bottom:4px;color:var(--text3);letter-spacing:-0.01em}
+.comp-card.total .cn{color:rgba(255,255,255,.75)}
+.comp-card .cv{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums}
+.comp-card.total .cv{font-size:1.3rem;color:#fff}
+.comp-card .cs{font-size:0.62rem;color:var(--text3);margin-top:3px}
+.comp-card.total .cs{color:rgba(255,255,255,.7)}
+.comp-card .cpct{font-size:0.7rem;font-weight:700;margin-top:4px;color:var(--text3)}
+
+/* 모델 비교 */
+.model-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:10px}
+.mcard{border-radius:12px;padding:0.8rem 0.95rem;background:var(--bg2);border:1px solid var(--border)}
+.mcard.tf{border-left:3px solid var(--accent)}
+.mcard.gs{border-left:3px solid var(--amber)}
+.mcard.mc{border-left:3px solid var(--purple)}
+.mcard .mn{font-size:0.62rem;font-weight:600;letter-spacing:-0.01em;margin-bottom:3px;color:var(--text3)}
+.mcard .mv{font-size:0.98rem;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.mcard .ms{font-size:0.62rem;color:var(--text3);margin-top:2px}
+.diff{display:inline-block;padding:2px 7px;border-radius:100px;font-size:0.62rem;font-weight:700;margin-top:3px}
+.diff.pos{background:#DCFCE7;color:#166534}
+.diff.neg{background:#FEF2F2;color:var(--red)}
+.diff.neu{background:var(--bg3);color:var(--text3)}
+.ci-bar{background:#F5F3FF;border-radius:6px;padding:3px 7px;margin-top:3px;font-size:0.62rem;color:var(--purple)}
+
+/* 결과 탭 */
+.tabs{background:var(--bg2);border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.06)}
+.tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg3);padding:0 4px}
+.tab-btn{padding:0.65rem 1rem;border:none;background:none;cursor:pointer;font-family:var(--sans);font-size:0.75rem;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s;letter-spacing:-0.01em}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--bg2);font-weight:600}
+.tab-content{display:none;padding:1.15rem}.tab-content.active{display:block}
+
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.info-box{background:var(--bg3);border-radius:11px;padding:0.95rem;border:1px solid var(--border)}
+.info-box h4{font-size:0.7rem;font-weight:700;color:var(--text2);margin-bottom:7px;letter-spacing:-0.02em}
+.info-box table{width:100%;font-size:0.72rem;border-collapse:collapse}
+.info-box td{padding:0.25rem 0}
+.info-box td:first-child{color:var(--text3);padding-right:10px;white-space:nowrap}
+.info-box td:last-child{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.chart-box{background:var(--bg3);border-radius:11px;padding:0.95rem;border:1px solid var(--border)}
+.chart-box.full{grid-column:1/-1}
+.chart-box h4{font-size:0.7rem;font-weight:600;color:var(--text2);margin-bottom:9px;letter-spacing:-0.02em}
+.chart-wrap{position:relative;height:185px}.chart-wrap.tall{height:245px}
+
+.dtable{width:100%;border-collapse:collapse;font-size:0.72rem}
+.dtable th{background:var(--bg3);color:var(--text3);padding:6px 8px;text-align:right;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;font-size:0.65rem}
+.dtable th:first-child{text-align:left}
+.dtable td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;color:var(--text2)}
+.dtable td:first-child{text-align:left;color:var(--text3)}
+.dtable tr:last-child td{border-bottom:none}
+.dtable tr:hover td{background:var(--bg)}
+.up{color:var(--green);font-weight:700}.dn{color:var(--red);font-weight:700}
+
+/* ══ DCF 페이지 ══ */
+#page-dcf{flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px}
+.dcf-assump{background:var(--bg2);border-radius:14px;border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.06);padding:1.2rem 1.5rem}
+.dcf-assump-hd{font-size:0.75rem;font-weight:700;color:var(--text2);letter-spacing:-0.02em;margin-bottom:0.95rem;display:flex;align-items:center;gap:0.5rem}
+.dcf-assump-hd::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;display:block;flex-shrink:0}
+.dcf-assump-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.dcf-assump-grid .field label{font-size:0.7rem}
+
+.dcf-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn-sm{padding:0.42rem 0.9rem;border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all 0.15s;letter-spacing:-0.01em}
+.btn-sm.add{background:#EFF6FF;color:var(--accent);border-color:#BFDBFE}
+.btn-sm.add:hover{background:#DBEAFE}
+.btn-sm.del{background:#FEF2F2;color:var(--red);border-color:#FECACA}
+.btn-sm.send{background:var(--green);color:#fff}
+.btn-sm.send:hover{background:#00A862}
+.dcf-sp-badge{font-size:0.78rem;color:var(--accent);font-weight:700;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:0.38rem 0.85rem;display:none;letter-spacing:-0.01em}
+
+.dcf-table-wrap{background:var(--bg2);border-radius:14px;border:1px solid var(--border);overflow:auto;max-height:56vh;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.06)}
+.dcf-proj{border-collapse:collapse;width:100%;font-size:0.76rem}
+.dcf-proj th{background:var(--bg3);color:var(--text3);padding:8px 10px;text-align:right;font-size:0.67rem;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:3;border-bottom:1px solid var(--border)}
+.dcf-proj th.lc{text-align:left;min-width:220px;position:sticky;left:0;z-index:4;background:var(--bg3)}
+.dcf-proj td.lc{position:sticky;left:0;z-index:2;white-space:nowrap;min-width:220px;padding:5px 10px;font-size:0.7rem;background:var(--bg2)}
+.dcf-proj td{padding:4px 8px;border-bottom:1px solid var(--border);text-align:right;min-width:120px;color:var(--text2)}
+.dcf-proj tr.sec-row td{background:var(--bg3);color:var(--text3);font-size:0.65rem;font-weight:700;letter-spacing:-0.01em;padding:6px 10px}
+.dcf-proj tr.sec-row td.lc{background:var(--bg3)}
+.dcf-proj tr.inp-row td{background:var(--bg2)}
+.dcf-proj tr.inp-row td.lc{background:#FAFAFA;color:var(--text);font-weight:600}
+.dcf-proj tr.inp-row:hover td{background:#F0F7FF}
+.dcf-proj tr.inp-row:hover td.lc{background:#E8F3FF}
+.dcf-proj tr.calc-row td{background:var(--bg3);color:var(--text2)}
+.dcf-proj tr.calc-row td.lc{color:var(--text3);font-weight:500;font-style:italic}
+.dcf-proj tr.fcff-row td{background:#EFF6FF;color:var(--accent);font-weight:700}
+.dcf-proj tr.fcff-row td.lc{background:#DBEAFE;color:var(--accent2);font-style:normal;font-weight:700}
+.dcf-proj tr.pv-row td{background:#F0FDF4;color:#166534;font-weight:700}
+.dcf-proj tr.pv-row td.lc{background:#DCFCE7;color:#166534;font-style:normal;font-weight:700}
+.dcf-proj td input[type=text]{width:100%;border:none;outline:none;font-size:0.76rem;background:transparent;font-family:var(--sans);text-align:right;color:var(--text);font-variant-numeric:tabular-nums;padding:0}
+.dcf-proj td input[type=text]:focus{background:#FFFBEB;border-radius:4px}
+.calc-cell{font-variant-numeric:tabular-nums}
+.calc-cell.neg{color:var(--red)}
+
+.dcf-sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:10px}
+.dcf-scard{border-radius:12px;padding:0.95rem 1.05rem;background:var(--bg3)}
+.dcf-scard.sp{background:var(--accent);color:#fff}
+.dcf-scard .sn{font-size:0.62rem;font-weight:600;margin-bottom:4px;color:var(--text3);letter-spacing:-0.01em}
+.dcf-scard.sp .sn{color:rgba(255,255,255,.75)}
+.dcf-scard .sv{font-size:1.05rem;font-weight:700;font-variant-numeric:tabular-nums}
+.dcf-scard.sp .sv{color:#fff;font-size:1.25rem}
+.dcf-scard .ss{font-size:0.62rem;color:var(--text3);margin-top:3px}
+.dcf-scard.sp .ss{color:rgba(255,255,255,.7)}
+.dcf-charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.dcf-det{background:var(--bg2);border-radius:14px;border:1px solid var(--border);padding:1.2rem;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.06)}
+.dcf-det h4{font-size:0.75rem;font-weight:700;color:var(--text2);letter-spacing:-0.02em;margin-bottom:0.95rem;display:flex;align-items:center;gap:0.5rem}
+.dcf-det h4::before{content:'';width:3px;height:13px;background:var(--green);border-radius:2px;display:block;flex-shrink:0}
+
+/* 부트스트래핑 */
+#page-boot{flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.2rem;gap:10px}
+.boot-dual{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.boot-sect{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.boot-sect-hd{background:#5B21B6;color:#fff;text-align:center;font-weight:800;padding:.5rem 1rem;font-size:.78rem;letter-spacing:.1em;flex-shrink:0}
+.boot-sect-body{display:flex;overflow-x:auto;overflow-y:auto;max-height:580px;align-items:flex-start}
+.boot-col{flex-shrink:0;border-right:1px solid #EDE9FE}
+.bst{border-collapse:collapse;font-size:.685rem}
+.bst th{background:#EDE9FE;color:#5B21B6;padding:4px 5px;text-align:center;border:1px solid #DDD6FE;white-space:nowrap;font-weight:700;font-size:.66rem;line-height:1.3}
+.bst td{padding:2px 5px;border:1px solid #F3F0FF;text-align:right;white-space:nowrap}
+.bst td.ct{text-align:center}
+.bst tbody tr:nth-child(even) td{background:#FDFCFF}
+.bst tbody tr.hi td{background:#DBEAFE!important;color:#1D4ED8;font-weight:700}
+.bst input.be{width:52px;border:none;background:transparent;text-align:right;font-size:.685rem;font-family:var(--sans);color:var(--text);padding:0;outline:none}
+.bst input.be:focus{outline:1px solid var(--accent);border-radius:3px;background:#fff}
+.boot-sect-ft{padding:.5rem .75rem;border-top:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.bft-in{width:48px;font-size:.72rem;padding:2px 4px;border:1px solid var(--border);border-radius:4px;text-align:right;font-family:var(--sans)}
+
+/* 로더 */
+.loader{display:none;position:fixed;inset:0;background:rgba(25,31,40,.55);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:14px;backdrop-filter:blur(3px)}
+.loader.show{display:flex}
+.spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.loader p{color:#fff;font-size:0.83rem;font-weight:600;letter-spacing:-0.02em}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title">
+    <h1><span class="ac">웅계사</span>의 RCPS(상환전환우선주) 공정가치 평가 검증 <span class="ac">툴</span></h1>
+    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다. 단순 확인 목적으로 사용을 권장합니다.</p>
+  </div>
+  <div class="hd-right">
+    <div class="header-tabs">
+      <button class="nav-tab" onclick="switchPage('contract',this)">계약서 요약</button>
+      <button class="nav-tab active" id="tab-rcps-btn" onclick="switchPage('rcps',this)">RCPS 공정가치 평가</button>
+      <button class="nav-tab" onclick="switchPage('dcf',this)">DCF 주가 산출</button>
+      <button class="nav-tab" onclick="switchPage('boot',this)">이자율 부트스트래핑</button>
+    </div>
+    <span class="hd-badge">K-IFRS 1109 · TF · GS · MC · DCF · Bootstrap</span>
+  </div>
+</header>
+
+<!-- ══════════════════════
+     계약서 요약 페이지
+══════════════════════ -->
+<div class="page" id="page-contract" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
+  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+    <div class="sec-title">상환전환우선주 계약서 요약 <span class="badge-opt">AI</span></div>
+    <div class="note" style="margin-bottom:10px">RCPS 신주인수계약서(PDF/Excel)를 업로드하면 AI가 발행조건·상장구조·세부약정을 요약하고, 평가툴 입력값을 자동으로 채웁니다.</div>
+    <div class="row2">
+      <div class="field"><label>계약서 파일 (.pdf / .xlsx)</label><input type="file" id="contract-file" accept=".pdf,.xlsx,.xls"></div>
+      <div class="field"><label>Anthropic API 키</label><input type="password" id="contract-apikey" placeholder="sk-ant-..." onchange="localStorage.setItem('anthropic_key',this.value)"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>모델</label>
+        <select id="contract-model">
+          <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6 (권장·빠름)</option>
+          <option value="claude-opus-4-7">Claude Opus 4.7 (정밀)</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex;align-items:flex-end;gap:8px">
+        <button class="btn-run" id="contract-btn" onclick="parseContract()" style="margin:0">▶ 요약 생성</button>
+        <span id="contract-status" style="font-size:.78rem;color:var(--text3)"></span>
+      </div>
+    </div>
+  </div>
+  <div id="contract-result" style="max-width:1100px;width:100%;margin:0 auto;display:none"></div>
+</div>
+
+<!-- ══════════════════════
+     RCPS 평가 페이지
+══════════════════════ -->
+<div class="page active" id="page-rcps">
+<aside class="form-panel">
+
+  <div class="sec">
+    <div class="sec-title">기본 발행 조건 <span class="badge-req">필수</span></div>
+    <div class="row2">
+      <div class="field"><label>발행일</label><input type="date" id="issue_date" value="2023-09-21"></div>
+      <div class="field"><label>만기일</label><input type="date" id="maturity_date" value="2028-09-21"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>발행금액 (원)</label><input type="text" id="face_value" class="money" value="114,299,975,108" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
+      <div class="field"><label>쿠폰 주기</label>
+        <select id="coupon_frequency">
+          <option value="none">없음 (만기일시)</option>
+          <option value="annual" selected>연간</option>
+          <option value="semi">반기</option>
+          <option value="quarterly">분기</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>우선주 주식수 (주)</label><input type="text" id="rcps_shares" class="money" value="3,811,778" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
+      <div class="field"><label>주당 발행금액 (원/주)</label><input type="text" id="issue_price_per_share" value="" readonly style="background:var(--bg2);color:var(--text2)"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>우선배당률 (%/년)</label><input type="number" id="coupon_rate" value="2.0" step="0.1"></div>
+      <div class="field"><label>배당수익률 (%)</label><input type="number" id="dividend_yield" value="0" step="0.1"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">전환 조건 <span class="badge-req">필수</span></div>
+    <div class="row2">
+      <div class="field"><label>전환가액 (원/주)</label><input type="text" id="conversion_price" class="money" value="29,986" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
+      <div class="field"><label>전환 시작일</label><input type="date" id="conversion_start" value="2025-01-21"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>전환비율 (주/우선주)</label><input type="text" id="conversion_ratio" value="" readonly style="background:var(--bg2);color:var(--text2)"></div>
+      <div class="field"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">풋옵션 <span class="badge-opt">선택</span></div>
+    <div class="toggle">
+      <input type="checkbox" id="has_put" onchange="togglePut()">
+      <label for="has_put">풋옵션 있음</label>
+    </div>
+    <div id="put-fields" class="hidden">
+      <div class="row2">
+        <div class="field"><label>행사 시작일</label><input type="date" id="put_start" value="2028-03-21"></div>
+        <div class="field"><label>행사가 방식</label>
+          <select id="put_price_mode" onchange="togglePutMode()">
+            <option value="irr" selected>IRR 누적 (make-whole)</option>
+            <option value="fixed">고정 행사가 (정액)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field" id="put-irr-field"><label>보장수익률 IRR (%)</label><input type="number" id="put_irr" value="7.5" step="0.1"></div>
+        <div class="field hidden" id="put-fixed-field"><label>고정 풋 행사가액 (원)</label><input type="text" class="money" id="put_fixed_price" value="0"></div>
+      </div>
+      <div class="note" id="put-mode-note">행사가 = 발행금액 × (1+IRR)^t − 기지급쿠폰 재투자가치 (발행일 기산, make-whole 방식)</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">콜옵션 <span class="badge-opt">선택</span></div>
+    <div class="toggle">
+      <input type="checkbox" id="has_call" onchange="toggleCall()">
+      <label for="has_call">콜옵션 있음</label>
+    </div>
+    <div id="call-fields" class="hidden">
+      <div class="row2">
+        <div class="field"><label>행사 시작일</label><input type="date" id="call_start" value=""></div>
+        <div class="field"><label>행사가 방식</label>
+          <select id="call_price_mode" onchange="toggleCallMode()">
+            <option value="irr" selected>IRR 누적</option>
+            <option value="fixed">고정 행사가 (정액)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field" id="call-irr-field"><label>수의상환 IRR (%)</label><input type="number" id="call_irr" value="0" step="0.1"></div>
+        <div class="field hidden" id="call-fixed-field"><label>고정 콜 행사가액 (원)</label><input type="text" class="money" id="call_fixed_price" value="0"></div>
+      </div>
+      <div class="note" id="call-mode-note">발행자 콜. 행사가 = 발행금액 × (1+IRR)^t (발행일 기산). 미입력 시 미적용</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">리픽싱 조건 <span class="badge-opt">선택</span></div>
+    <div class="toggle">
+      <input type="checkbox" id="refixing" onchange="toggleRefixing()">
+      <label for="refixing">하향 리픽싱 조항 있음</label>
+    </div>
+    <div id="refixing-fields" class="hidden">
+      <div class="row3">
+        <div class="field"><label>하한 (%)</label><input type="number" id="refixing_floor" value="70" step="1"></div>
+        <div class="field"><label>트리거 (%)</label><input type="number" id="refixing_trigger" value="90" step="1"></div>
+        <div class="field"><label>조정 주기</label>
+          <select id="refixing_frequency">
+            <option value="continuous">연속</option>
+            <option value="quarterly">분기</option>
+            <option value="semi-annual">반기</option>
+            <option value="annual">연간</option>
+          </select>
+        </div>
+      </div>
+      <div class="note">트리거 발동 조건: 주가 &lt; 전환가 × 트리거%<br>새 전환가 = max(최초전환가 × 하한%, 현재주가)</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">비상장 기업 <span class="badge-opt">선택</span></div>
+    <div class="toggle"><input type="checkbox" id="is_unlisted"><label for="is_unlisted">비상장 기업으로 평가</label></div>
+    <div class="note">주가(S₀)는 <strong>DCF 주가 산출</strong> 탭에서 계산 후<br>"RCPS 평가에 적용" 버튼으로 자동 입력하거나 직접 입력하세요.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">시장 데이터 <span class="badge-req">필수</span></div>
+    <div class="row2">
+      <div class="field"><label>평가기준일</label><input type="date" id="valuation_date" value="2024-12-31"></div>
+      <div class="field"><label>주가 (원)</label><input type="text" id="stock_price" class="money" value="25,522" onfocus="mFocus(this)" onblur="mBlur(this)" oninput="mInput(this)"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
+      <div class="field"><label>무위험이자율 (%)</label><input type="number" id="risk_free_rate" value="2.7" step="0.1"></div>
+    </div>
+    <div class="row1">
+      <div class="field">
+        <label>신용스프레드 (%)</label>
+        <input type="number" id="credit_spread" value="18.2" step="0.1">
+        <div class="note" style="margin-top:4px">채권 할인율 Kd = 무위험이자율 + 신용스프레드</div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>스텝 수 (노드)</label>
+        <select id="steps">
+          <option value="60">60 스텝</option>
+          <option value="120" selected>120 스텝</option>
+          <option value="240">240 스텝</option>
+          <option value="weekly">주간 (자동, T×52)</option>
+        </select>
+      </div>
+      <div class="field"><label>MC 경로 수</label>
+        <select id="mc_paths">
+          <option value="10000">10,000</option>
+          <option value="30000">30,000</option>
+          <option value="50000" selected>50,000</option>
+          <option value="100000">100,000</option>
+          <option value="200000">200,000</option>
+        </select>
+      </div>
+    </div>
+    <div class="note" style="margin-top:4px">※ 할인은 부트스트래핑 탭의 RF/RD 곡선에서 산출한 <b>선도이자율(연속스팟 선형보간 + 평탄외삽)</b>을 노드별로 항상 적용합니다.</div>
+  </div>
+
+  <div id="err-box" class="err-msg"></div>
+  <div class="run-wrap">
+    <button class="btn-run" id="run-btn" onclick="run()">▶ 공정가치 산출</button>
+  </div>
+</aside>
+
+<section class="res-panel" id="res-panel">
+  <div class="placeholder" id="placeholder">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <p>발행 조건을 입력하고 <strong>공정가치 산출</strong>을 눌러주세요.</p>
+    <small>기본값: 5803 샘플 — 발행 2023-09-21 / 만기 2028-09-21 / 전환가 29,986원</small>
+  </div>
+
+  <div id="result-wrap" style="display:none">
+    <div class="toolbar">
+      <div class="eval-meta" id="eval-info"></div>
+      <button class="btn-dl" onclick="dlExcel()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        감사조서 Excel
+      </button>
+    </div>
+    <div class="comp-grid" id="comp-grid"></div>
+    <div class="info-box" id="decomp-table" style="display:none;margin:10px 0"></div>
+    <div class="model-row" id="model-row"></div>
+    <div class="tabs">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="tabSwitch('params',this)">입력 요약</button>
+        <button class="tab-btn" onclick="tabSwitch('sensitivity',this)">민감도 분석</button>
+        <button class="tab-btn" onclick="tabSwitch('tree',this)">이항트리</button>
+      </div>
+      <div class="tab-content active" id="tab-params">
+        <div class="info-grid" id="info-grid"></div>
+        <div class="chart-row">
+          <div class="chart-box"><h4>공정가치 구성</h4><div class="chart-wrap"><canvas id="c-comp"></canvas></div></div>
+          <div class="chart-box"><h4>모델별 비교</h4><div class="chart-wrap"><canvas id="c-models"></canvas></div></div>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-sensitivity">
+        <div class="chart-row">
+          <div class="chart-box"><h4>변동성 민감도</h4><div class="chart-wrap"><canvas id="c-vol"></canvas></div></div>
+          <div class="chart-box"><h4>주가 민감도</h4><div class="chart-wrap"><canvas id="c-stk"></canvas></div></div>
+        </div>
+        <div class="chart-box full"><h4>신용스프레드 민감도</h4><div class="chart-wrap"><canvas id="c-spd"></canvas></div></div>
+      </div>
+      <div class="tab-content" id="tab-tree">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:.8rem;font-weight:600;color:var(--text2)">모델:</span>
+          <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" value="tf" checked onchange="renderTreeGrids()"> TF</label>
+          <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" value="gs" onchange="renderTreeGrids()"> GS</label>
+          <span style="font-size:.8rem;font-weight:600;color:var(--text2);margin-left:8px">단계:</span>
+          <span id="tree-steps-label" style="font-size:.8rem;font-weight:600;color:var(--accent)">평가 설정 따름</span>
+          <button onclick="loadTree()"
+                  style="font-size:.78rem;padding:3px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">
+            트리 생성 / 새로고침
+          </button>
+          <span style="font-size:.72rem;color:var(--text3)">노드 많으면 중간 생략, 끝노드까지 표시</span>
+          <span id="tree-status" style="font-size:.74rem;color:var(--text3)"></span>
+        </div>
+        <div id="tree-grids"></div>
+      </div>
+    </div>
+  </div>
+</section>
+</div><!-- /page-rcps -->
+
+
+<!-- ══════════════════════
+     DCF 주가 산출 페이지
+══════════════════════ -->
+<div class="page" id="page-dcf" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
+
+  <div class="dcf-assump">
+    <div class="dcf-assump-hd">밸류에이션 가정</div>
+    <div class="dcf-assump-grid">
+      <div class="field"><label>WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
+      <div class="field"><label>영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"><div class="note" style="margin-top:3px">WACC 미만 권장</div></div>
+      <div class="field"><label>기본 세율 (%)</label><input type="number" id="a_tax" value="25" step="0.5" oninput="dcfTaxFill()"></div>
+      <div class="field"><label>순차입금 (원)</label><input type="text" id="a_nd" class="money" value="2,000,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label>총발행주식수 (주)</label><input type="text" id="a_shares" class="money" value="1,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label>비영업자산 (원)</label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+    </div>
+  </div>
+
+  <div class="dcf-actions">
+    <button class="btn-sm add" onclick="dcfAddYear()">+ 연도 추가</button>
+    <button class="btn-sm del" onclick="dcfRemoveYear()">− 마지막 연도 제거</button>
+    <div style="flex:1"></div>
+    <div class="dcf-sp-badge" id="dcf-sp-badge"></div>
+    <button class="btn-sm send" id="btn-send" style="display:none" onclick="sendToRCPS()">→ RCPS 평가에 적용</button>
+  </div>
+
+  <div class="dcf-table-wrap">
+    <table class="dcf-proj" id="dcf-proj-table"></table>
+  </div>
+
+  <div id="dcf-result-wrap" style="display:none">
+    <div class="dcf-sum-grid" id="dcf-sum-grid"></div>
+    <div class="dcf-charts">
+      <div class="chart-box"><h4>EV 구성</h4><div class="chart-wrap"><canvas id="c-dcf-ev"></canvas></div></div>
+      <div class="chart-box"><h4>FCF 및 매출 추이</h4><div class="chart-wrap"><canvas id="c-dcf-fcf"></canvas></div></div>
+      <div class="chart-box"><h4>FCFF 현재가치 누적</h4><div class="chart-wrap"><canvas id="c-dcf-pv"></canvas></div></div>
+    </div>
+    <div class="dcf-det">
+      <h4>DCF 상세 내역</h4>
+      <table class="dtable" id="dcf-det-tbl"></table>
+    </div>
+  </div>
+
+</div><!-- /page-dcf -->
+
+
+<!-- ══════════════════════
+     이자율 부트스트래핑 페이지
+══════════════════════ -->
+<div class="page" id="page-boot" style="display:none">
+
+  <!-- 금리 자동 구성: ECOS 국고채(RF) + 이자율 파일(RD) -->
+  <div class="dcf-assump" style="flex-shrink:0">
+    <div class="dcf-assump-hd">금리 자동 구성 (ECOS 국고채 RF + 이자율 파일 RD)</div>
+    <style>#rate-auto-grid .field input,#rate-auto-grid .field select,#rate-auto-grid .field button{height:2.45rem;box-sizing:border-box;line-height:1.2}</style>
+    <div class="dcf-assump-grid" id="rate-auto-grid" style="grid-template-columns:1.6fr 1fr 0.9fr 1fr 1.3fr 1.3fr 1.3fr;align-items:end">
+      <div class="field"><label>한국은행 ECOS API 키</label>
+        <input type="text" id="ecos-key" placeholder="발급받은 키 입력 (ecos.bok.or.kr)"
+          oninput="localStorage.setItem('ecos_key',this.value)" style="font-size:0.72rem">
+      </div>
+      <div class="field"><label>조회 기준일</label>
+        <input type="date" id="rate-date" value="">
+      </div>
+      <div class="field"><label style="visibility:hidden">.</label>
+        <button class="btn-sm add" style="width:100%;white-space:nowrap" onclick="fetchEcos()">국고채↓ RF</button>
+      </div>
+      <div class="field"><label>회사채 신용등급</label>
+        <select id="kofia-grade" onchange="applyUploaded()">
+          <option>AAA</option><option>AA+</option><option>AA</option><option selected>AA-</option>
+          <option>A+</option><option>A</option><option>A-</option>
+          <option>BBB+</option><option>BBB</option><option>BBB-</option>
+          <option>BB+</option><option>BB</option><option>BB-</option>
+          <option>B+</option><option>B</option><option>B-</option>
+        </select>
+      </div>
+      <div class="field"><label>발행구분</label>
+        <select id="rd-issue" onchange="applyUploaded()">
+          <option value="사모무보증" selected>사모무보증</option>
+          <option value="공모무보증">공모무보증</option>
+        </select>
+      </div>
+      <div class="field"><label>이자율 파일 (Excel/CSV/PDF)</label>
+        <input type="file" id="minpyung-file" accept=".xlsx,.xls,.csv,.pdf" style="font-size:.7rem;width:100%">
+      </div>
+      <div class="field"><label style="visibility:hidden">.</label>
+        <button class="btn-sm" style="width:100%;white-space:nowrap;background:#EDE9FE;color:#5B21B6;border-color:#DDD6FE" onclick="uploadMinpyung()">이자율 파일 업로드 → RF/RD</button>
+      </div>
+    </div>
+    <div id="rate-fetch-msg" style="font-size:0.7rem;color:var(--text3);margin-top:6px;display:none"></div>
+  </div>
+
+  <!-- RF / RD 2-column 부트스트래핑 -->
+  <div class="boot-dual">
+
+    <!-- RF Section (반기, m=2) -->
+    <div class="boot-sect">
+      <div class="boot-sect-hd">BOOTSTRAPPING &mdash; RF</div>
+      <div class="boot-sect-body">
+        <div class="boot-col">
+          <table class="bst">
+            <thead><tr><th>NO</th><th>YEAR</th><th>RF-YTM</th></tr></thead>
+            <tbody id="brf-inp"></tbody>
+          </table>
+        </div>
+        <div class="boot-col">
+          <table class="bst">
+            <thead><tr><th>YEAR</th><th>HALF<br>YEAR</th><th>RF (H)</th><th>D-SPOT (H)</th><th>PV FACTOR</th></tr></thead>
+            <tbody id="brf-mid"></tbody>
+          </table>
+        </div>
+        <div class="boot-col" style="border-right:none">
+          <table class="bst">
+            <thead><tr><th>YEAR</th><th>D-SPOT (H)</th><th>D-SPOT (Y)</th><th>C-SPOT (Y)</th></tr></thead>
+            <tbody id="brf-out"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="boot-sect-ft">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn-sm add" onclick="bRfAdd()">+ 추가</button>
+          <button class="btn-sm del" onclick="bRfDel()">− 제거</button>
+          <span style="font-size:.7rem;color:var(--text3)">목표 T:</span>
+          <input class="bft-in" type="number" id="brf-tgt" value="3" step="0.5" min="0.1" oninput="bootRender()">
+          <span style="font-size:.7rem;color:var(--text3)">년</span>
+          <span id="brf-res" style="font-size:.72rem;font-weight:700;color:var(--accent)"></span>
+        </div>
+        <div style="margin-top:6px">
+          <button class="btn-sm send" onclick="bootApplyRf()">→ rf 적용</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RD Section (분기, m=4) -->
+    <div class="boot-sect">
+      <div class="boot-sect-hd">BOOTSTRAPPING &mdash; RD</div>
+      <div class="boot-sect-body">
+        <div class="boot-col">
+          <table class="bst">
+            <thead><tr><th>NO</th><th>YEAR</th><th>RD-YTM</th></tr></thead>
+            <tbody id="brd-inp"></tbody>
+          </table>
+        </div>
+        <div class="boot-col">
+          <table class="bst">
+            <thead><tr><th>YEAR</th><th>QUARTER</th><th>RD (Q)</th><th>D-SPOT (Q)</th><th>PV FACTOR</th></tr></thead>
+            <tbody id="brd-mid"></tbody>
+          </table>
+        </div>
+        <div class="boot-col" style="border-right:none">
+          <table class="bst">
+            <thead><tr><th>YEAR</th><th>D-SPOT (Q)</th><th>D-SPOT (Y)</th><th>C-SPOT (Y)</th></tr></thead>
+            <tbody id="brd-out"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="boot-sect-ft">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn-sm add" onclick="bRdAdd()">+ 추가</button>
+          <button class="btn-sm del" onclick="bRdDel()">− 제거</button>
+          <span style="font-size:.7rem;color:var(--text3)">목표 T:</span>
+          <input class="bft-in" type="number" id="brd-tgt" value="3" step="0.5" min="0.1" oninput="bootRender()">
+          <span style="font-size:.7rem;color:var(--text3)">년</span>
+          <span id="brd-res" style="font-size:.72rem;font-weight:700;color:#7C3AED"></span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="btn-sm send" style="background:#7C3AED;border-color:#7C3AED" onclick="bootApplyKd()">→ rf+spread 일괄 적용</button>
+          <button class="btn-sm send" style="background:var(--amber);border-color:var(--amber)" onclick="bootApplySpread()">→ 스프레드만 적용</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /boot-dual -->
+
+  <!-- 이자율 DATA 시트 -->
+  <div class="dcf-assump" style="flex-shrink:0;margin-top:10px" id="rate-data-panel">
+    <div class="dcf-assump-hd" style="display:flex;align-items:center;justify-content:space-between">
+      <span>이자율 DATA (평가 노드 · 선도이자율 · BM 양식)</span>
+      <span id="rate-data-stepinfo" style="font-weight:400;font-size:.72rem;color:var(--accent)">평가 단계 따름</span>
+    </div>
+    <div id="rate-data-caption" style="font-size:0.68rem;color:var(--text3);margin-bottom:8px;line-height:1.6"></div>
+    <div id="rate-data-wrap" style="max-height:520px;overflow:auto">
+      <table class="bst" id="rate-data-table" style="min-width:980px;width:100%">
+        <thead style="position:sticky;top:0;z-index:2"><tr>
+          <th>NODE</th>
+          <th>DATE</th>
+          <th>dT</th>
+          <th>누적 dT<br>(Years)</th>
+          <th>RF D-SPOT<br>(%/Y)</th>
+          <th>RF C-SPOT<br>(%/Y)</th>
+          <th>RF C-FWD<br>(%/Y)</th>
+          <th>RF C-DF</th>
+          <th>RD D-SPOT<br>(%/Y)</th>
+          <th>RD C-SPOT<br>(%/Y)</th>
+          <th>RD C-FWD<br>(%/Y)</th>
+          <th>RD C-DF</th>
+        </tr></thead>
+        <tbody id="rate-data-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /page-boot -->
+
+
+<div class="loader" id="loader"><div class="spinner"></div><p id="loader-msg">계산 중...</p></div>
+
+<script>
+const CH={};
+function dc(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+function showLoader(m){document.getElementById('loader-msg').textContent=m;document.getElementById('loader').classList.add('show');}
+function hideLoader(){document.getElementById('loader').classList.remove('show');}
+
+function fmtW(v){if(v==null||isNaN(v))return'—';return Math.round(v).toLocaleString('ko-KR')+'원';}
+function fmtWs(v){if(v==null)return'—';const a=Math.abs(v);if(a>=1e8)return(v/1e8).toFixed(1)+'억원';if(a>=1e4)return(v/1e4).toFixed(0)+'만원';return v.toLocaleString('ko-KR')+'원';}
+function fmtN(v){if(v==null)return'—';return Math.round(v).toLocaleString('ko-KR');}
+function fmtP(v,d=1){if(v==null||isNaN(v))return'—';return v.toFixed(d)+'%';}
+function pct(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
+
+function mInput(el){el.dataset.v=el.value.replace(/[^0-9.-]/g,'');}
+function mFocus(el){const v=el.dataset.v||el.value.replace(/[^0-9.-]/g,'');el.value=v;el.select();}
+function mBlur(el,cb){
+  const v=parseFloat(el.dataset.v||el.value.replace(/[^0-9.-]/g,''))||0;
+  el.dataset.v=v;el.value=Math.round(v).toLocaleString('ko-KR');
+  if(cb)cb();
+}
+function getMoney(id){const el=document.getElementById(id);if(!el)return 0;return parseFloat(el.dataset.v||el.value.replace(/[^0-9.-]/g,''))||0;}
+function setMoney(id,v){const el=document.getElementById(id);if(!el)return;el.dataset.v=v;el.value=Math.round(v).toLocaleString('ko-KR');}
+
+function switchPage(name,btn){
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+  btn.classList.add('active');
+  const pg=document.getElementById('page-'+name);
+  pg.classList.add('active');
+  pg.style.display='flex';
+  if(name==='dcf'||name==='boot'||name==='contract')pg.style.flexDirection='column';
+  if(name==='boot')bootRender();
+}
+
+/* ══ 계약서 요약 (AI) ══ */
+async function parseContract(){
+  const fileEl=document.getElementById('contract-file');
+  const statusEl=document.getElementById('contract-status');
+  const key=document.getElementById('contract-apikey').value.trim();
+  if(!fileEl.files||!fileEl.files[0]){statusEl.textContent='파일을 선택하세요.';return;}
+  if(!key){statusEl.textContent='API 키를 입력하세요.';return;}
+  const btn=document.getElementById('contract-btn');
+  btn.disabled=true;statusEl.textContent='추출·요약 중... (10~40초)';
+  try{
+    const fd=new FormData();
+    fd.append('file',fileEl.files[0]);
+    fd.append('api_key',key);
+    fd.append('model',document.getElementById('contract-model').value);
+    const res=await fetch('/api/contract/parse',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.status!=='ok'){statusEl.textContent='오류: '+(d.message||'알 수 없음');return;}
+    window._contractSummary=d.summary;
+    statusEl.textContent='완료';
+    renderContractSummary(d.summary);
+  }catch(e){statusEl.textContent='네트워크 오류: '+e.message;}
+  finally{btn.disabled=false;}
+}
+
+function _esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _fmtNum(v){const n=parseFloat(v);return isNaN(n)?_esc(v):n.toLocaleString('ko-KR');}
+
+function renderContractSummary(s){
+  const wrap=document.getElementById('contract-result');
+  wrap.style.display='block';
+  const s1=s.section1_발행조건||{};
+  const th='padding:6px 10px;background:var(--bg2);border:1px solid var(--border);text-align:left;font-weight:600;white-space:nowrap;vertical-align:top';
+  const td='padding:6px 10px;border:1px solid var(--border);vertical-align:top';
+  let h='';
+  // 섹션 1 (고정 — 발행조건)
+  const adj=(s1.전환가액조정||[]).map(x=>'· '+_esc(x)).join('<br>');
+  const row=(k,v)=>`<tr><th style="${th}">${k}</th><td style="${td}">${v}</td></tr>`;
+  h+=`<div class="sec"><div class="sec-title">1. 발행조건</div>
+    <table style="border-collapse:collapse;font-size:.8rem;width:100%">
+    ${row('종류',_esc(s1.종류))}
+    ${row('우선주의 종류',_esc(s1.우선주의_종류))}
+    ${row('우선주 의결권',_esc(s1.우선주_의결권))}
+    ${row('발행일',_esc(s1.발행일))}
+    ${row('우선주 주식수',_fmtNum(s1.주식수)+' 주')}
+    ${row('주당 발행금액',_fmtNum(s1.주당발행금액)+' 원')}
+    ${row('총 발행금액',_fmtNum(s1.총발행금액)+' 원')}
+    ${row('1주당 액면가액',_fmtNum(s1.액면가액)+' 원')}
+    ${row('존속기간',_esc(s1.존속기간))}
+    ${row('전환비율 및 종류',_esc(s1.전환비율)+(adj?'<br>'+adj:''))}
+    ${row('전환청구기간',_esc(s1.전환청구기간))}
+    ${row('상환청구기간',_esc(s1.상환청구기간))}
+    ${row('상환가액',_esc(s1.상환가액))}
+    ${row('우선배당률',_esc(s1.우선배당률))}
+    </table>
+    <button class="btn-run" style="margin-top:10px" onclick="fillValuationFromContract()">평가툴에 입력값 채우기 →</button>
+    <span id="contract-fill-status" style="font-size:.76rem;color:var(--accent);margin-left:8px"></span>
+  </div>`;
+  // 섹션 2+ (AI 자율 구성: analysis_sections)
+  const secs=s.analysis_sections||[];
+  secs.forEach((sec,i)=>{
+    h+=`<div class="sec"><div class="sec-title">${i+2}. ${_esc(sec.title||'분석')}</div>`;
+    if(sec.type==='table' && Array.isArray(sec.columns) && Array.isArray(sec.rows)){
+      h+=`<table style="border-collapse:collapse;font-size:.78rem;width:100%">
+        <tr>${sec.columns.map(c=>`<th style="${th}">${_esc(c)}</th>`).join('')}</tr>
+        ${sec.rows.map(r=>`<tr>${(Array.isArray(r)?r:[r]).map(c=>`<td style="${td}">${_esc(c)}</td>`).join('')}</tr>`).join('')}
+      </table>`;
+    }else if(sec.type==='list' && Array.isArray(sec.items)){
+      h+=`<div style="font-size:.8rem;line-height:1.7">${sec.items.map(x=>'· '+_esc(x)).join('<br>')}</div>`;
+    }else if(sec.body){
+      h+=`<div style="font-size:.82rem;line-height:1.6;white-space:pre-wrap">${_esc(sec.body)}</div>`;
+    }
+    if(sec.note){h+=`<div class="note" style="margin-top:6px">${_esc(sec.note)}</div>`;}
+    h+=`</div>`;
+  });
+  // 담보 (있으면)
+  if(s.담보제공자산){
+    h+=`<div class="sec"><div class="sec-title">${secs.length+2}. 담보제공자산</div>
+      <div style="font-size:.82rem">${_esc(s.담보제공자산)}</div></div>`;
+  }
+  h+=`<div class="note" style="margin-top:4px">※ 발행조건 외 분석 섹션은 AI가 계약 내용에 맞춰 자율 구성한 요약이며, 외부정보(지분율·MOU 등)는 부정확할 수 있습니다. 감사 전 원문 대조 필요.</div>`;
+  wrap.innerHTML=h;
+}
+
+function fillValuationFromContract(){
+  const s=window._contractSummary; if(!s)return;
+  const v=s.valuation_inputs||{};
+  const st=document.getElementById('contract-fill-status');
+  const setV=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null&&val!=='')el.value=val;};
+  const setM=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null&&val!==''){el.dataset.v=val;el.value=Math.round(parseFloat(val)).toLocaleString('ko-KR');}};
+  setV('issue_date',v.issue_date); setV('maturity_date',v.maturity_date);
+  setM('face_value',v.face_value); setM('rcps_shares',v.rcps_shares); setM('conversion_price',v.conversion_price);
+  setV('conversion_start',v.conversion_start);
+  if(v.coupon_rate!=null&&v.coupon_rate!=='') setV('coupon_rate',(parseFloat(v.coupon_rate)*100));
+  if(v.put_irr!=null&&v.put_irr!==''){
+    const hp=document.getElementById('has_put'); if(hp&&!hp.checked){hp.checked=true;togglePut();}
+    setV('put_irr',(parseFloat(v.put_irr)*100));
+    const pm=document.getElementById('put_price_mode'); if(pm){pm.value='irr';togglePutMode();}
+  }
+  recalcDerived();
+  if(st)st.textContent='평가툴 입력값을 채웠습니다. (RCPS 탭에서 확인)';
+}
+
+function recalcDerived(){
+  const face=getMoney('face_value');
+  const rcps=getMoney('rcps_shares');
+  const conv=getMoney('conversion_price');
+  const ipsEl=document.getElementById('issue_price_per_share');
+  const crEl=document.getElementById('conversion_ratio');
+  const ips=(rcps>0)?face/rcps:0;
+  if(ipsEl) ipsEl.value=rcps>0?Math.round(ips).toLocaleString('ko-KR'):'—';
+  if(crEl)  crEl.value=(conv>0&&rcps>0)?(ips/conv).toFixed(4):'—';
+}
+function togglePut(){document.getElementById('put-fields').classList.toggle('hidden',!document.getElementById('has_put').checked);}
+function toggleCall(){document.getElementById('call-fields').classList.toggle('hidden',!document.getElementById('has_call').checked);}
+function togglePutMode(){
+  const fixed=document.getElementById('put_price_mode').value==='fixed';
+  document.getElementById('put-irr-field').classList.toggle('hidden',fixed);
+  document.getElementById('put-fixed-field').classList.toggle('hidden',!fixed);
+  document.getElementById('put-mode-note').textContent=fixed
+    ?'행사가 = 입력한 고정 정액(전 기간 동일). 발행금액 스케일로 입력.'
+    :'행사가 = 발행금액 × (1+IRR)^t − 기지급쿠폰 재투자가치 (발행일 기산, make-whole 방식)';
+}
+function toggleCallMode(){
+  const fixed=document.getElementById('call_price_mode').value==='fixed';
+  document.getElementById('call-irr-field').classList.toggle('hidden',fixed);
+  document.getElementById('call-fixed-field').classList.toggle('hidden',!fixed);
+  document.getElementById('call-mode-note').textContent=fixed
+    ?'발행자 콜. 행사가 = 입력한 고정 정액(전 기간 동일). 발행금액 스케일로 입력.'
+    :'발행자 콜. 행사가 = 발행금액 × (1+IRR)^t (발행일 기산). 미입력 시 미적용';
+}
+function toggleRefixing(){document.getElementById('refixing-fields').classList.toggle('hidden',!document.getElementById('refixing').checked);}
+
+let lastReq=null;
+// 메인 단계 선택(60/120/240/주간)을 노드 수 N으로 해석. 평가·이항트리 시트 공용.
+function resolveSteps(params){
+  const sel=document.getElementById('steps')?.value;
+  if(sel==='weekly'){
+    const vd=new Date(params.valuation_date), md=new Date(params.maturity_date);
+    const T=Math.max((md-vd)/(365*24*3600*1000),0);
+    return Math.max(Math.round(T*52),1);
+  }
+  return parseInt(sel)||0;
+}
+function collectParams(){
+  const g=id=>document.getElementById(id)?.value;
+  const n=id=>parseFloat(g(id))||0;
+  const ref=document.getElementById('refixing').checked;
+  const put=document.getElementById('has_put').checked;
+  const call=document.getElementById('has_call').checked;
+  return{
+    issue_date:g('issue_date'),maturity_date:g('maturity_date'),
+    face_value:getMoney('face_value'),
+    coupon_rate:n('coupon_rate')/100,coupon_frequency:g('coupon_frequency'),
+    conversion_price:getMoney('conversion_price'),conversion_start:g('conversion_start'),
+    put_start:put?g('put_start'):null,put_irr:put?n('put_irr')/100:0,
+    put_price_mode:put?(g('put_price_mode')||'irr'):'irr',
+    put_fixed_price:(put&&g('put_price_mode')==='fixed')?getMoney('put_fixed_price'):0,
+    refixing:ref,
+    refixing_floor:ref?n('refixing_floor')/100:null,
+    refixing_trigger:ref?n('refixing_trigger')/100:null,
+    refixing_frequency:ref?g('refixing_frequency'):'continuous',
+    stock_price:getMoney('stock_price'),
+    volatility:n('volatility')/100,risk_free_rate:n('risk_free_rate')/100,
+    credit_spread:n('credit_spread')/100,dividend_yield:n('dividend_yield')/100,
+    valuation_date:g('valuation_date'),
+    is_unlisted:document.getElementById('is_unlisted').checked,
+    call_start:call?(g('call_start')||null):null,
+    call_irr:call?n('call_irr')/100:0,
+    call_price_mode:call?(g('call_price_mode')||'irr'):'irr',
+    call_fixed_price:(call&&g('call_price_mode')==='fixed')?getMoney('call_fixed_price'):0,
+  };
+}
+async function run(){
+  document.getElementById('err-box').style.display='none';
+  document.getElementById('run-btn').disabled=true;
+  showLoader('TF / GS 모형 평가 중... (약 10~20초)');
+  try{
+    const params=collectParams();
+    const steps=resolveSteps(params);
+    const mc_paths=parseInt(document.getElementById('mc_paths').value);
+    lastReq={params,steps,mc_paths};
+    // 부트스트랩 RF/RD 곡선이 있으면 항상 선도이자율 할인 적용
+    if(window.bootRfSpot&&window.bootRfSpot.length) lastReq.rf_spot=window.bootRfSpot;
+    if(window.bootRdSpot&&window.bootRdSpot.length) lastReq.rd_spot=window.bootRdSpot;
+    const res=await fetch('/api/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastReq)});
+    const d=await res.json();
+    if(d.status==='error')throw new Error(d.message);
+    renderRCPS(d);
+  }catch(e){
+    const b=document.getElementById('err-box');b.textContent='오류: '+e.message;b.style.display='block';
+  }finally{hideLoader();document.getElementById('run-btn').disabled=false;}
+}
+
+async function dlExcel(){
+  if(!lastReq)return;showLoader('감사조서 Excel 생성 중...');
+  try{
+    const res=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastReq)});
+    if(!res.ok)throw new Error('다운로드 실패');
+    const blob=await res.blob(),url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='RCPS_공정가치_감사조서.xlsx';a.click();URL.revokeObjectURL(url);
+  }catch(e){alert('오류: '+e.message);}finally{hideLoader();}
+}
+
+function renderRCPS(data){
+  document.getElementById('placeholder').style.display='none';
+  document.getElementById('result-wrap').style.display='block';
+  const r=data.result;
+  const tf=r.tf, gs=r.gs, mc=r.mc;
+  const tfFv=tf?.fair_value, gsFv=gs?.fair_value, mcFv=mc?.fair_value;
+  const bv=tf?.bond_value, pv=tf?.put_option_value, cv=tf?.conversion_value;
+
+  document.getElementById('comp-grid').innerHTML=`
+    <div class="comp-card"><div class="cn">① 순채권가치 (Bond)</div><div class="cv">${fmtW(bv)}</div><div class="cs">전환·풋 미반영 순채권 현재가치 (Kd 할인)</div><div class="cpct">${pct(bv,tfFv)}</div></div>
+    <div class="comp-card"><div class="cn">② 풋옵션가치 (Put)</div><div class="cv">${fmtW(pv)}</div><div class="cs">풋채권가치 − 순채권가치 = ${fmtW(tf?.put_bond_value)}</div><div class="cpct">${pct(pv,tfFv)}</div></div>
+    <div class="comp-card"><div class="cn">③ 전환권가치 (Call)</div><div class="cv">${fmtW(cv)}</div><div class="cs">총 공정가치 − 풋채권가치 (TF 2-component 기반)</div><div class="cpct">${pct(cv,tfFv)}</div></div>
+    <div class="comp-card total"><div class="cn">TF 공정가치 (Main 1) — Tsiveriotis-Fernandes &nbsp;|&nbsp; steps = ${tf?.steps||r.steps}</div><div class="cv">${fmtW(tfFv)}</div><div class="cs">① ${fmtW(bv)} + ② ${fmtW(pv)} + ③ ${fmtW(cv)}</div></div>`;
+
+  function diffBadge(v,base){
+    if(v==null||base==null)return'';
+    const d=((v-base)/base*100).toFixed(2);
+    const c=Math.abs(parseFloat(d))<0.5?'neu':parseFloat(d)>0?'pos':'neg';
+    return`<span class="diff ${c}">TF 대비 ${parseFloat(d)>0?'+':''}${d}%</span>`;
+  }
+
+  // ── TF vs GS 구성요소 분해 비교 (채권·풋옵션은 모형 무관 공통, 전환권만 상이) ──
+  const decompEl=document.getElementById('decomp-table');
+  if(decompEl){
+    if(gs&&!gs.error&&gs.conversion_value!=null){
+      const gbv=gs.bond_value, gpv=gs.put_option_value, gcv=gs.conversion_value;
+      const same=(a,b)=>(a!=null&&b!=null&&Math.abs(a-b)<1)?'<span style="color:var(--text3);font-size:.68rem">동일</span>':'';
+      decompEl.style.display='block';
+      decompEl.innerHTML=`
+        <h4 style="margin:0 0 6px;font-size:.82rem">구성요소 분해 — TF vs GS <span style="font-weight:400;color:var(--text3);font-size:.72rem">(채권·풋옵션은 모형 무관 공통값, 전환권만 상이)</span></h4>
+        <table class="dtable"><thead><tr><th>구성요소</th><th style="text-align:right">TF</th><th style="text-align:right">GS</th><th style="text-align:center">비고</th></tr></thead><tbody>
+          <tr><td>① 순채권가치 (Bond)</td><td style="text-align:right">${fmtW(bv)}</td><td style="text-align:right">${fmtW(gbv)}</td><td style="text-align:center">${same(bv,gbv)}</td></tr>
+          <tr><td>② 풋옵션가치 (Put)</td><td style="text-align:right">${fmtW(pv)}</td><td style="text-align:right">${fmtW(gpv)}</td><td style="text-align:center">${same(pv,gpv)}</td></tr>
+          <tr><td>③ 전환권가치 (Conversion)</td><td style="text-align:right">${fmtW(cv)}</td><td style="text-align:right">${fmtW(gcv)}</td><td style="text-align:center"><span style="color:var(--accent);font-size:.68rem">모형 상이</span></td></tr>
+          <tr style="font-weight:700;background:var(--bg2)"><td>공정가치 합계</td><td style="text-align:right">${fmtW(tfFv)}</td><td style="text-align:right">${fmtW(gsFv)}</td><td style="text-align:center">${diffBadge(gsFv,tfFv)}</td></tr>
+        </tbody></table>
+        <div style="font-size:.7rem;color:var(--text3);margin-top:4px">GS 전환권 = GS 공정가치 − 풋채권가치(채권+풋, 모형 무관) = ${fmtW(gsFv)} − ${fmtW(gs.put_bond_value)}</div>`;
+    }else{
+      decompEl.style.display='none';
+    }
+  }
+
+  document.getElementById('model-row').innerHTML=`
+    <div class="mcard tf"><div class="mn">Tsiveriotis-Fernandes (Main 1)</div><div class="mv">${tfFv?fmtW(tfFv):'—'}</div><div class="ms">${tf?.error||'2-component 분리 할인'}</div></div>
+    <div class="mcard gs"><div class="mn">Goldman Sachs (Main 2)</div><div class="mv">${gsFv?fmtW(gsFv):'—'}</div><div class="ms">${gs?.error||'블렌딩 할인율'}</div>${diffBadge(gsFv,tfFv)}</div>
+    <div class="mcard mc"><div class="mn">Monte Carlo LSM (참고)</div><div class="mv">${mcFv?fmtW(mcFv):'—'}</div>${mcFv?`<div class="ci-bar">95% CI&nbsp; ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}</div>`:''}${diffBadge(mcFv,tfFv)}</div>`;
+
+  const p=lastReq.params;
+  document.getElementById('info-grid').innerHTML=`
+    <div class="info-box"><h4>발행 조건</h4><table>
+      <tr><td>발행일</td><td>${p.issue_date}</td></tr><tr><td>만기일</td><td>${p.maturity_date}</td></tr>
+      <tr><td>발행금액</td><td>${fmtW(p.face_value)}</td></tr><tr><td>우선배당률</td><td>${fmtP(p.coupon_rate*100,2)}</td></tr>
+      <tr><td>전환가액</td><td>${fmtN(p.conversion_price)}원</td></tr><tr><td>전환 시작일</td><td>${p.conversion_start||'—'}</td></tr>
+      <tr><td>풋 시작일</td><td>${p.put_start||'—'}</td></tr><tr><td>보장수익률 IRR</td><td>${p.put_irr>0?fmtP(p.put_irr*100,2):'—'}</td></tr>
+    </table></div>
+    <div class="info-box"><h4>시장 데이터 (평가기준일)</h4><table>
+      <tr><td>평가기준일</td><td>${p.valuation_date}</td></tr><tr><td>주가 S₀</td><td>${fmtN(p.stock_price)}원</td></tr>
+      <tr><td>변동성 σ</td><td>${fmtP(p.volatility*100,2)}</td></tr><tr><td>무위험이자율 r</td><td>${fmtP(p.risk_free_rate*100,2)}</td></tr>
+      <tr><td>신용스프레드</td><td>${fmtP(p.credit_spread*100,2)}</td></tr>
+      <tr><td>채권할인율 Kd</td><td>${fmtP((p.risk_free_rate+p.credit_spread)*100,2)}</td></tr>
+      <tr><td>위험중립확률 p</td><td>${(r.risk_neutral_prob||0).toFixed(5)}</td></tr>
+      <tr><td>상승/하락계수 u/d</td><td>${(r.u||0).toFixed(5)} / ${(r.d||0).toFixed(5)}</td></tr>
+    </table></div>`;
+
+  dc('comp');
+  CH['comp']=new Chart(document.getElementById('c-comp').getContext('2d'),{type:'doughnut',
+    data:{labels:['순채권','풋옵션','전환권(콜)'],datasets:[{data:[bv,pv,cv],backgroundColor:['#3182F6','#00C073','#FF9F00'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Pretendard'},padding:10}},
+      tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtW(ctx.raw)} (${pct(ctx.raw,tfFv)})`}}}}});
+
+  const models=[{l:'TF',v:tfFv},{l:'GS',v:gsFv},{l:'MC',v:mcFv}].filter(x=>x.v);
+  dc('models');
+  CH['models']=new Chart(document.getElementById('c-models').getContext('2d'),{type:'bar',
+    data:{labels:models.map(m=>m.l),datasets:[{data:models.map(m=>m.v),backgroundColor:['#3182F6','#FF9F00','#7C3AED'],borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmtW(ctx.raw)}`}}},
+      scales:{y:{ticks:{callback:v=>fmtWs(v),font:{size:10}},grid:{color:'#F2F4F6'}},x:{grid:{display:false},ticks:{font:{size:11}}}}}});
+
+  if(data.result.sensitivity&&!data.result.sensitivity.error){
+    const s=data.result.sensitivity;
+    function drawS(k,d){
+      dc(k);
+      const col=d.map(x=>x.change_pct>=0?'rgba(0,192,115,.75)':'rgba(240,68,82,.75)');
+      CH[k]=new Chart(document.getElementById(`c-${k}`).getContext('2d'),{type:'bar',
+        data:{labels:d.map(x=>x.label),datasets:[{data:d.map(x=>x.change_pct),backgroundColor:col,borderRadius:4}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>` ${ctx.raw>0?'+':''}${ctx.raw}%  |  ${fmtWs(d[ctx.dataIndex].fair_value)}`}}},
+          scales:{y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#F2F4F6'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});}
+    drawS('vol',s.volatility);drawS('stk',s.stock_price);drawS('spd',s.credit_spread);
+  }
+
+  const tsLabel=r.term_structure_applied?' &nbsp;<span style="font-size:.68rem;font-weight:700;padding:.18rem .6rem;background:#EFF6FF;color:var(--accent);border-radius:100px;vertical-align:middle">term structure 적용</span>':'';
+  document.getElementById('eval-info').innerHTML=`평가기준일 ${lastReq.params.valuation_date}  ·  잔존 ${r.time_to_maturity?.toFixed(3)||'?'}년  ·  Steps ${r.steps}`+tsLabel;
+
+}
+
+function tabSwitch(name,btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name)?.classList.add('active');
+}
+
+/* ══ 이항트리 시트 뷰 ══ */
+async function loadTree(){
+  const statusEl = document.getElementById('tree-status');
+  let params;
+  try { params = collectParams(); } catch(e){ statusEl.textContent='파라미터 오류: '+e.message; return; }
+  const stepsN = resolveSteps(params);   // 평가 설정(메인 단계 선택)을 그대로 사용
+  const lbl=document.getElementById('tree-steps-label'); if(lbl) lbl.textContent=`${stepsN} 단계 (평가 설정)`;
+  statusEl.textContent = `불러오는 중... (${stepsN}단계)`;
+
+  // gs_params share counts (mirrors /api/evaluate logic)
+  const gsParams = {};
+  const csEl = document.getElementById('common_shares');
+  const rsEl = document.getElementById('rcps_shares');
+  if(csEl && csEl.value) gsParams.common_shares = csEl.value.replace(/,/g,'');
+  if(rsEl && rsEl.value) gsParams.rcps_shares   = rsEl.value.replace(/,/g,'');
+
+  const body = {params, steps: stepsN};
+  // 부트스트랩 곡선이 있으면 평가와 동일하게 선도이자율 할인 적용
+  if(window.bootRfSpot&&window.bootRfSpot.length) body.rf_spot=window.bootRfSpot;
+  if(window.bootRdSpot&&window.bootRdSpot.length) body.rd_spot=window.bootRdSpot;
+  if(Object.keys(gsParams).length) body.gs_params = gsParams;
+
+  try {
+    const r = await fetch('/api/tree', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if(d.status !== 'ok'){ statusEl.textContent = '오류: '+(d.message||'알 수 없음'); return; }
+    window._treeResp = d;
+    statusEl.textContent = '';
+    renderTreeGrids();
+  } catch(e) {
+    statusEl.textContent = '네트워크 오류: '+e.message;
+  }
+}
+
+function renderTreeGrids(){
+  const wrap = document.getElementById('tree-grids');
+  if(!window._treeResp){ wrap.innerHTML='<p style="color:var(--text3);font-size:.8rem;padding:12px">먼저 "트리 생성" 버튼을 누르세요.</p>'; return; }
+  const d = window._treeResp;
+  const modelKey = document.querySelector('input[name="tree-model"]:checked')?.value || 'tf';
+  const t = d[modelKey];
+  if(!t || t.error){ wrap.innerHTML='<p style="color:#c0392b;font-size:.8rem;padding:12px">'+(t&&t.error?t.error:'트리 데이터 없음')+'</p>'; return; }
+
+  const fv = modelKey==='tf' ? d.tf_fv : d.gs_fv;
+  const modelLabel = modelKey==='tf' ? 'Tsiveriotis-Fernandes' : 'Goldman Sachs';
+  const steps = t.steps;
+
+  let html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:8px">
+    <b>${modelLabel}</b> &nbsp;|&nbsp; 공정가치: <b>${fv!=null?Math.round(fv).toLocaleString('ko-KR')+'원':'—'}</b>
+    &nbsp;|&nbsp; 단계: ${steps} &nbsp;|&nbsp; u=${t.u} / d=${t.d}
+    &nbsp;|&nbsp; p=${Array.isArray(t.p)?'(커브모드)':t.p}
+  </div>`;
+
+  // Grid definitions per model
+  const tfGrids = [
+    {key:'stock',          label:'① 주가 트리'},
+    {key:'decision',       label:'의사결정'},
+    {key:'conv_intrinsic', label:'전환 내재가치'},
+    {key:'rcps_value',     label:'RCPS 가치'},
+    {key:'hold_value',     label:'보유가치(연속보유)'},
+    {key:'equity_comp',    label:'지분가치(실현)'},
+    {key:'bond_comp',      label:'채권가치(실현)'},
+    {key:'equity_hold',    label:'지분 보유가치'},
+    {key:'bond_hold',      label:'채권 보유가치'},
+  ];
+  const gsGrids = [
+    {key:'stock',          label:'① 주가 트리'},
+    {key:'decision',       label:'의사결정'},
+    {key:'conv_prob',      label:'전환확률'},
+    {key:'disc_factor',    label:'할인계수'},
+    {key:'conv_intrinsic', label:'전환 내재가치'},
+    {key:'rcps_value',     label:'RCPS 가치'},
+    {key:'hold_value',     label:'보유가치(연속보유)'},
+  ];
+  const grids = modelKey==='tf' ? tfGrids : gsGrids;
+
+  // 끝노드(steps)는 항상 표시. 노드 수가 많으면 앞·뒤만 보이고 중간은 생략(…).
+  function visIdx(n){
+    const MAXV=20, HEAD=10, TAIL=10;   // n+1 <= MAXV 면 전부 표시
+    if(n+1<=MAXV){ const a=[]; for(let i=0;i<=n;i++)a.push(i); return a; }
+    const a=[];
+    for(let i=0;i<HEAD;i++)a.push(i);
+    a.push('…');
+    for(let i=n-TAIL+1;i<=n;i++)a.push(i);   // 마지막 = steps (끝노드)
+    return a;
+  }
+  const idxList = visIdx(steps);
+  const elided = idxList.includes('…');
+  const thBase = 'padding:2px 6px;background:var(--bg2);border:1px solid var(--border);color:var(--text3)';
+  const tdEll  = 'padding:2px 6px;border:1px solid var(--border);text-align:center;color:var(--text3)';
+
+  for(const {key, label} of grids){
+    const g = t[key];
+    if(!g){ html += `<p style="font-size:.74rem;color:var(--text3)">${label}: 데이터 없음</p>`; continue; }
+    html += `<div style="margin-bottom:14px"><div style="font-size:.75rem;font-weight:600;color:var(--text2);margin-bottom:4px">${label}${elided?' <span style="font-weight:400;color:var(--text3)">(중간 노드 생략 · 끝노드까지 표시)</span>':''}</div>`;
+    html += '<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:.7rem;white-space:nowrap">';
+    // header row: step indices
+    html += `<tr><th style="${thBase}">j \\ i</th>`;
+    for(const i of idxList){
+      html += `<th style="${thBase}">${i==='…'?'⋯':i}</th>`;
+    }
+    html += '</tr>';
+    // rows: j = 0..steps (down moves); cell at (i,j) defined only when j<=i
+    for(const j of idxList){
+      if(j==='…'){
+        html += `<tr><th style="${thBase}">⋮</th>`;
+        for(const i of idxList){ html += `<td style="${tdEll}">⋯</td>`; }
+        html += '</tr>';
+        continue;
+      }
+      html += `<tr><th style="${thBase}">${j}</th>`;
+      for(const i of idxList){
+        if(i==='…'){ html += `<td style="${tdEll}">⋯</td>`; continue; }
+        if(j>i){
+          html += '<td style="padding:2px 6px;border:1px solid var(--border)"></td>';
+        } else {
+          const val = g[i][j];
+          let bg = '';
+          let display = '';
+          if(key==='decision'){
+            if(val==='전환') bg='background:#DCFCE7';
+            else if(val==='상환') bg='background:#FEF3C7';
+            else if(val==='보유') bg='background:#F2F4F6';
+            display = val||'';
+          } else if(typeof val==='number'){
+            display = val.toLocaleString('ko-KR',{maximumFractionDigits:2});
+          } else {
+            display = val!=null?String(val):'';
+          }
+          html += `<td style="padding:2px 6px;border:1px solid var(--border);text-align:right;${bg}">${display}</td>`;
+        }
+      }
+      html += '</tr>';
+    }
+    html += '</table></div></div>';
+  }
+
+  // ── 총액 요약 (1RCPS 기준 × RCPS 주식수) ──
+  const rsRaw = (document.getElementById('rcps_shares')?.value||'').replace(/,/g,'');
+  const rcpsShares = parseFloat(rsRaw);
+  if(fv!=null){
+    const perInst = Math.round(fv);
+    let totalLine = `1RCPS(증권) 공정가치: <b>${perInst.toLocaleString('ko-KR')}원</b>`;
+    if(!isNaN(rcpsShares) && rcpsShares>0){
+      const total = Math.round(fv*rcpsShares);
+      totalLine += ` &nbsp;×&nbsp; RCPS 주식수 ${rcpsShares.toLocaleString('ko-KR')} &nbsp;=&nbsp; <b>총액 ${total.toLocaleString('ko-KR')}원</b>`;
+    }else{
+      totalLine += ` <span style="color:var(--text3)">(RCPS 주식수 입력 시 총액 표시)</span>`;
+    }
+    html += `<div style="margin-top:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:.8rem;color:var(--text1)">${totalLine}</div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+/* ══ DCF 페이지 ══ */
+const DCF_ROWS=[
+  {id:'s1',type:'sec',label:'손익계산서 (Income Statement)'},
+  {id:'revenue',type:'inp',field:'revenue',label:'매출액 (원)',fmt:'money'},
+  {id:'rev_gr', type:'calc',label:'  └ 매출성장률 (YoY)',fmt:'pct_diff'},
+  {id:'ebit',   type:'inp',field:'ebit',label:'영업이익 EBIT (원)',fmt:'money'},
+  {id:'ebit_mg',type:'calc',label:'  └ EBIT 마진',fmt:'pct_val'},
+  {id:'s2',type:'sec',label:'세금 및 NOPAT'},
+  {id:'tax',    type:'inp',field:'tax',label:'세율 (%)',fmt:'pct_raw'},
+  {id:'nopat',  type:'calc',label:'NOPAT = EBIT × (1−t)',fmt:'money'},
+  {id:'s3',type:'sec',label:'현금흐름 조정 (Cash Flow Adjustments)'},
+  {id:'da',     type:'inp',field:'da',label:'(+) 감가상각비 D&A (원)',fmt:'money'},
+  {id:'capex',  type:'inp',field:'capex',label:'(−) 자본지출 CapEx (원)',fmt:'money'},
+  {id:'dnwc',   type:'inp',field:'dnwc',label:'(−) 운전자본 순증가 ΔNWC (원)',fmt:'money'},
+  {id:'s4',type:'sec',label:'잉여현금흐름 (FCFF = NOPAT + D&A − CapEx − ΔNWC)'},
+  {id:'fcff',   type:'fcff',label:'FCFF (원)',fmt:'money'},
+  {id:'disc',   type:'calc',label:'  └ 할인계수 (WACC)',fmt:'decimal'},
+  {id:'pvfcff', type:'pv',label:'  └ FCFF 현재가치 (원)',fmt:'money'},
+];
+
+let dcfYears=[
+  {revenue:5e9,ebit:5e8,tax:25,da:3e8,capex:4e8,dnwc:1e8},
+  {revenue:6e9,ebit:7e8,tax:25,da:3.5e8,capex:4.5e8,dnwc:1.2e8},
+  {revenue:7.5e9,ebit:1e9,tax:25,da:4e8,capex:5e8,dnwc:1.5e8},
+  {revenue:9e9,ebit:1.35e9,tax:25,da:4.5e8,capex:5.5e8,dnwc:1.8e8},
+  {revenue:1.05e10,ebit:1.7e9,tax:25,da:5e8,capex:6e8,dnwc:2e8},
+];
+
+function dcfTaxFill(){
+  const t=parseFloat(document.getElementById('a_tax').value)||25;
+  dcfYears.forEach(y=>y.tax=t);dcfRenderTable();
+}
+function dcfAddYear(){
+  const L=dcfYears[dcfYears.length-1];
+  dcfYears.push({revenue:Math.round(L.revenue*1.1),ebit:Math.round(L.ebit*1.1),tax:L.tax,da:Math.round(L.da*1.05),capex:Math.round(L.capex*1.05),dnwc:Math.round(L.dnwc*1.05)});
+  dcfRenderTable();
+}
+function dcfRemoveYear(){if(dcfYears.length<=2)return;dcfYears.pop();dcfRenderTable();}
+
+function dcfRenderTable(){
+  const n=dcfYears.length;
+  let html=`<thead><tr><th class="lc">항목</th>${dcfYears.map((_,i)=>`<th>${i+1}년차</th>`).join('')}</tr></thead><tbody>`;
+  DCF_ROWS.forEach(row=>{
+    if(row.type==='sec'){html+=`<tr class="sec-row"><td class="lc" colspan="${n+1}">${row.label}</td></tr>`;return;}
+    const isInp=row.type==='inp',isFcff=row.type==='fcff',isPv=row.type==='pv';
+    const trCls=isInp?'inp-row':isFcff?'fcff-row':isPv?'pv-row':'calc-row';
+    html+=`<tr class="${trCls}"><td class="lc">${row.label}</td>`;
+    dcfYears.forEach((y,i)=>{
+      if(isInp){
+        const v=y[row.field]??0;
+        const disp=row.fmt==='pct_raw'?v:Math.round(v).toLocaleString('ko-KR');
+        html+=`<td><input type="text" data-yr="${i}" data-field="${row.field}" data-fmt="${row.fmt}" value="${disp}" onfocus="dcfCellFocus(this)" onblur="dcfCellBlur(this)" oninput="dcfCellInput(this)"></td>`;
+      }else{html+=`<td class="calc-cell" id="dcfc-${row.id}-${i}">—</td>`;}
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody>`;
+  document.getElementById('dcf-proj-table').innerHTML=html;
+  dcfCalc();
+}
+
+function dcfCellFocus(el){const v=el.dataset.v||el.value.replace(/[^0-9.-]/g,'');el.value=v;el.select();}
+function dcfCellBlur(el){
+  const v=parseFloat(el.dataset.v||el.value.replace(/[^0-9.-]/g,''))||0;
+  el.dataset.v=v;
+  el.value=el.dataset.fmt==='pct_raw'?v:Math.round(v).toLocaleString('ko-KR');
+  dcfCalc();
+}
+function dcfCellInput(el){
+  el.dataset.v=el.value.replace(/[^0-9.-]/g,'');
+  dcfYears[parseInt(el.dataset.yr)][el.dataset.field]=parseFloat(el.dataset.v)||0;
+}
+
+function dcfCalc(){
+  const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||12)/100;
+  const g=(parseFloat(document.getElementById('a_g')?.value)||2)/100;
+  const nd=getMoney('a_nd'),shares=getMoney('a_shares')||1,nonop=getMoney('a_nonop');
+  const calc=dcfYears.map((y,i)=>{
+    const prev=i>0?dcfYears[i-1]:null;
+    const rev_gr=prev&&prev.revenue?((y.revenue-prev.revenue)/prev.revenue*100):null;
+    const ebit_mg=y.revenue?(y.ebit/y.revenue*100):null;
+    const nopat=y.ebit*(1-y.tax/100);
+    const fcff=nopat+y.da-y.capex-y.dnwc;
+    const disc=Math.pow(1/(1+wacc),i+1);
+    const pvfcff=fcff*disc;
+    return{rev_gr,ebit_mg,nopat,fcff,disc,pvfcff};
+  });
+  dcfYears.forEach((_,i)=>{
+    const c=calc[i];
+    function set(id,val,fmt){
+      const el=document.getElementById(`dcfc-${id}-${i}`);if(!el)return;
+      let txt='—',cls='calc-cell';
+      if(val!=null&&!isNaN(val)){
+        if(fmt==='money'){txt=Math.round(val).toLocaleString('ko-KR')+'원';if(val<0)cls='calc-cell neg';}
+        else if(fmt==='pct_diff'||fmt==='pct_val'){txt=fmtP(val);if(val<0)cls='calc-cell neg';}
+        else if(fmt==='decimal'){txt=val.toFixed(5);}
+      }
+      el.textContent=txt;el.className=cls;
+    }
+    set('rev_gr',c.rev_gr,'pct_diff');set('ebit_mg',c.ebit_mg,'pct_val');
+    set('nopat',c.nopat,'money');set('fcff',c.fcff,'money');
+    set('disc',c.disc,'decimal');set('pvfcff',c.pvfcff,'money');
+  });
+  if(wacc<=g){
+    document.getElementById('dcf-result-wrap').style.display='none';
+    document.getElementById('dcf-sp-badge').style.display='none';
+    document.getElementById('btn-send').style.display='none';
+    return;
+  }
+  const pvEx=calc.reduce((s,c)=>s+c.pvfcff,0);
+  const lastFCFF=calc[calc.length-1].fcff;
+  const tv=lastFCFF*(1+g)/(wacc-g);
+  const pvTV=tv/Math.pow(1+wacc,dcfYears.length);
+  const ev=pvEx+pvTV+nonop;
+  const equity=Math.max(ev-nd,0);
+  const sp=equity/shares;
+  document.getElementById('dcf-result-wrap').style.display='block';
+  document.getElementById('dcf-sum-grid').innerHTML=`
+    <div class="dcf-scard"><div class="sn">명시적 FCF 현재가치</div><div class="sv">${fmtW(pvEx)}</div><div class="ss">예측기간 ${dcfYears.length}년 FCFF PV 합계</div></div>
+    <div class="dcf-scard"><div class="sn">터미널 밸류 현재가치</div><div class="sv">${fmtW(pvTV)}</div><div class="ss">명목 TV ${fmtW(tv)} · TV/EV ${pct(pvTV,ev)}</div></div>
+    <div class="dcf-scard"><div class="sn">자기자본가치</div><div class="sv">${fmtW(equity)}</div><div class="ss">EV ${fmtW(ev)} − 순차입금 ${fmtW(nd)}</div></div>
+    <div class="dcf-scard sp"><div class="sn">주당 내재가치</div><div class="sv">${fmtN(sp)}원</div><div class="ss">자기자본 ÷ ${fmtN(shares)}주</div></div>`;
+  const badge=document.getElementById('dcf-sp-badge');
+  badge.textContent=`산출 주가: ${fmtN(sp)}원`;badge.style.display='block';
+  const sendBtn=document.getElementById('btn-send');
+  sendBtn.style.display='block';sendBtn.dataset.sp=Math.round(sp);
+  dc('dcf-ev');
+  CH['dcf-ev']=new Chart(document.getElementById('c-dcf-ev').getContext('2d'),{type:'doughnut',
+    data:{labels:['명시적 FCF PV','터미널 밸류 PV'],datasets:[{data:[pvEx,pvTV],backgroundColor:['#3182F6','#FF9F00'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8}},
+      tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtW(ctx.raw)} (${pct(ctx.raw,ev)})`}}}}});
+  dc('dcf-fcf');
+  CH['dcf-fcf']=new Chart(document.getElementById('c-dcf-fcf').getContext('2d'),{type:'bar',
+    data:{labels:dcfYears.map((_,i)=>`${i+1}년차`),datasets:[
+      {label:'매출액',data:dcfYears.map(y=>y.revenue),backgroundColor:'rgba(49,130,246,.18)',borderRadius:4,yAxisID:'yR'},
+      {label:'FCFF',data:calc.map(c=>c.fcff),backgroundColor:calc.map(c=>c.fcff>=0?'rgba(0,192,115,.75)':'rgba(240,68,82,.75)'),borderRadius:4,yAxisID:'y'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},
+      scales:{y:{ticks:{callback:v=>fmtWs(v),font:{size:10}},grid:{color:'#F2F4F6'}},
+        yR:{position:'right',ticks:{callback:v=>fmtWs(v),font:{size:10}},grid:{display:false}}}}});
+  dc('dcf-pv');
+  let cum=0;const cumPV=calc.map(c=>{cum+=c.pvfcff;return cum;});
+  CH['dcf-pv']=new Chart(document.getElementById('c-dcf-pv').getContext('2d'),{type:'bar',
+    data:{labels:dcfYears.map((_,i)=>`${i+1}년차`),datasets:[
+      {label:'FCFF PV',data:calc.map(c=>c.pvfcff),backgroundColor:'rgba(49,130,246,.6)',borderRadius:4,order:2},
+      {label:'누적 PV',data:cumPV,type:'line',borderColor:'#FF9F00',pointRadius:4,pointBackgroundColor:'#FF9F00',tension:.3,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},
+      scales:{y:{ticks:{callback:v=>fmtWs(v),font:{size:10}},grid:{color:'#F2F4F6'}}}}});
+  document.getElementById('dcf-det-tbl').innerHTML=`
+    <thead><tr><th style="text-align:left;width:260px">항목</th><th>금액</th></tr></thead>
+    <tbody>${[
+      ['명시적 FCF 현재가치 합계',fmtW(pvEx)],
+      ['터미널 밸류 (명목)',fmtW(tv)],
+      ['터미널 밸류 현재가치',fmtW(pvTV)],
+      ['비영업자산',fmtW(nonop)],
+      ['기업가치 (EV)',`<strong style="color:var(--text)">${fmtW(ev)}</strong>`],
+      ['(−) 순차입금',fmtW(nd)],
+      ['자기자본가치',`<strong style="color:var(--text)">${fmtW(equity)}</strong>`],
+      ['주당 내재가치',`<strong style="color:var(--accent);font-size:14px">${fmtN(sp)}원</strong>`],
+    ].map(([k,v])=>`<tr><td style="text-align:left">${k}</td><td>${v}</td></tr>`).join('')}</tbody>`;
+}
+
+function sendToRCPS(){
+  const sp=parseInt(document.getElementById('btn-send').dataset.sp||0);if(!sp)return;
+  setMoney('stock_price',sp);
+  document.getElementById('is_unlisted').checked=true;
+  switchPage('rcps',document.getElementById('tab-rcps-btn'));
+  const el=document.getElementById('stock_price');
+  el.style.transition='none';el.style.background='#DCFCE7';
+  setTimeout(()=>{el.style.transition='background 1.5s ease';el.style.background='';},80);
+}
+
+/* ══ ECOS / KOFIA 불러오기 ══ */
+function rateMsg(txt,ok){
+  const el=document.getElementById('rate-fetch-msg');
+  el.style.display='block';
+  el.style.color=ok?'var(--green)':'var(--red)';
+  el.textContent=txt;
+}
+
+/* 만기 그리드 */
+const BOOT_GRID=[0.25,0.5,0.75,1,1.5,2,2.5,3,4,5,7,10,15,20,30];
+
+async function fetchEcos(){
+  const key=document.getElementById('ecos-key').value.trim();
+  if(!key){rateMsg('ECOS API 키를 입력하세요.',false);return;}
+  const dateRaw=document.getElementById('rate-date').value.replace(/-/g,'')||'';
+  rateMsg('ECOS 조회 중…',true);
+  try{
+    const url=`/api/rates/ecos?key=${encodeURIComponent(key)}${dateRaw?'&date='+dateRaw:''}`;
+    const res=await fetch(url);
+    const d=await res.json();
+    if(d.status!=='ok')throw new Error(d.message);
+    // 국고채 sparse 데이터를 미세 그리드로 선형보간
+    const ktb=d.rates.filter(r=>r.category==='국고채').sort((a,b)=>a.maturity-b.maturity)
+      .map(r=>({t:r.maturity,y:r.yield_pct}));
+    if(!ktb.length){rateMsg('국고채 데이터가 없습니다.',false);return;}
+    bootRfRows=BOOT_GRID.map(t=>({t,y:Math.round(bInterpYtm(t,ktb)*1000)/1000}));
+    bootRender();
+    rateMsg(`국고채 ${ktb.length}개 로드 → ${BOOT_GRID.length}개 만기 보간 완료 (기준일: ${d.rates[0].date})`,true);
+  }catch(e){rateMsg('ECOS 오류: '+e.message,false);}
+}
+
+/* KIS-Net 민평표 파일 업로드 → RF/RD 곡선 */
+window.uploadedSeries=null;
+async function uploadMinpyung(){
+  const f=document.getElementById('minpyung-file').files[0];
+  if(!f){rateMsg('이자율 파일을 선택하세요.',false);return;}
+  rateMsg('이자율 파일 분석 중…',true);
+  try{
+    const fd=new FormData(); fd.append('file',f);
+    const res=await fetch('/api/rates/upload',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.status!=='ok')throw new Error(d.message);
+    window.uploadedSeries=d.series;
+    _populateGradesFromFile();   // 업로드 파일에 있는 등급/발행구분만 드롭다운에 표시
+    applyUploaded();
+  }catch(e){rateMsg('업로드 오류: '+e.message,false);}
+}
+const _GRADE_ORDER=['AAA','AA+','AA','AA-','A+','A','A-','BBB+','BBB','BBB-','BB+','BB','BB-','B+','B','B-','CCC','CC','C','D'];
+function _displayToFileGrade(g){
+  // 표시등급 → 파일 등급토큰 (평등급은 0 접미사: AA→AA0)
+  const flat={'AA':'AA0','A':'A0','BBB':'BBB0','BB':'BB0','B':'B0'};
+  return flat[g]||g;
+}
+function _fileGradeToDisplay(fg){
+  const m={'AA0':'AA','A0':'A','BBB0':'BBB','BB0':'BB','B0':'B'};
+  return m[fg]||fg;
+}
+// 회사채 시리즈 식별: 라벨이 '회사채'로 시작하거나 종류(category)가 '회사채'
+function _isCorpSeries(s){
+  const lab=(s.label||'').replace(/\s/g,'');
+  const cat=(s.category||'').replace(/\s/g,'');
+  return lab.startsWith('회사채') || cat==='회사채';
+}
+// 라벨에서 등급토큰 추출 ('회사채' 접두어 있으면 제거): '회사채B-'→'B-', 'B-'→'B-'
+function _seriesGradeToken(s){
+  return (s.label||'').replace(/\s/g,'').replace(/^회사채/,'');
+}
+function _populateGradesFromFile(){
+  const S=window.uploadedSeries; if(!S)return;
+  const corps=S.filter(_isCorpSeries);
+  if(!corps.length)return;  // 회사채 시리즈 없으면 기존 목록 유지
+  // 파일에 존재하는 등급/발행구분만 추출 (라벨 접두어 유무 무관)
+  let grades=[...new Set(corps.map(s=>_fileGradeToDisplay(_seriesGradeToken(s))))].filter(x=>x);
+  grades.sort((a,b)=>{const ia=_GRADE_ORDER.indexOf(a),ib=_GRADE_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
+  const subtypes=[...new Set(corps.map(s=>(s.subtype||'').replace(/\s/g,'')).filter(x=>x))];
+  const gSel=document.getElementById('kofia-grade');
+  if(gSel&&grades.length){
+    const cur=gSel.value;
+    gSel.innerHTML=grades.map(g=>`<option>${g}</option>`).join('');
+    gSel.value=grades.includes(cur)?cur:grades[0];
+  }
+  const iSel=document.getElementById('rd-issue');
+  if(iSel&&subtypes.length){
+    const curI=iSel.value;
+    iSel.innerHTML=subtypes.map(s=>`<option value="${s}">${s}</option>`).join('');
+    // 기본값: 사모무보증 우선, 없으면 첫 항목
+    iSel.value=subtypes.includes(curI)?curI:(subtypes.includes('사모무보증')?'사모무보증':subtypes[0]);
+  }
+}
+function applyUploaded(){
+  const S=window.uploadedSeries; if(!S){return;}
+  const grade=document.getElementById('kofia-grade').value;
+  const issue=document.getElementById('rd-issue').value;
+  // RF = 국고채
+  const rf=S.find(s=>s.label && s.label.replace(/\s/g,'')==='국고채');
+  if(rf){bootRfRows=rf.points.map(p=>({t:p.t,y:p.y})).sort((a,b)=>a.t-b.t);}
+  // RD = (등급토큰, 발행구분) 매칭 — 라벨 접두어 유무에 무관
+  const corps=S.filter(_isCorpSeries);
+  const gradeTok=_displayToFileGrade(grade);
+  const sameGrade=s=>_seriesGradeToken(s)===gradeTok;
+  let rd=corps.find(s=>sameGrade(s) && (s.subtype||'').replace(/\s/g,'')===issue);
+  let usedFallback=false;
+  if(!rd){ rd=corps.find(sameGrade); usedFallback=!!rd; }  // 구분 못 맞추면 등급만으로
+  if(rd){bootRdRows=rd.points.map(p=>({t:p.t,y:p.y})).sort((a,b)=>a.t-b.t);}
+  bootRender();
+  if(!rf && !rd){rateMsg('파일에서 국고채/해당 등급을 찾지 못했습니다.',false);return;}
+  const msgs=[]; if(rf)msgs.push('국고채 RF');
+  if(rd)msgs.push(`회사채${gradeTok}(${(rd.subtype||'').replace(/\s/g,'')||issue}) RD`);
+  else msgs.push(`⚠ 회사채${gradeTok}(${issue}) 미발견 — RD 곡선 미변경`);
+  rateMsg(msgs.join(' + ')+(usedFallback?' (구분 자동대체)':''),!!(rf||rd));
+}
+
+
+/* ══ 이자율 부트스트래핑 ══ */
+let bootRfRows=[
+  {t:0.25,y:2.860},{t:0.50,y:2.795},{t:0.75,y:2.705},{t:1,y:2.710},
+  {t:1.5,y:2.775},{t:2,y:2.767},{t:2.5,y:2.715},{t:3,y:2.597},
+  {t:4,y:2.820},{t:5,y:2.765},{t:7,y:2.990},{t:10,y:2.870},
+  {t:15,y:2.915},{t:20,y:2.875},{t:30,y:2.797},
+];
+let bootRdRows=[
+  {t:0.25,y:3.621},{t:0.50,y:3.614},{t:0.75,y:3.526},{t:1,y:3.461},
+  {t:1.5,y:3.461},{t:2,y:3.541},{t:2.5,y:3.595},{t:3,y:3.619},
+  {t:4,y:3.758},{t:5,y:3.860},{t:7,y:4.199},{t:10,y:5.006},
+  {t:15,y:5.658},{t:20,y:5.912},
+];
+
+/* log-linear DF interpolation */
+function bInterpDf(T,dfs){
+  const keys=Object.keys(dfs).map(Number).sort((a,b)=>a-b);
+  if(!keys.length)return Math.exp(-0.03*T);
+  // exact match
+  const exact=keys.find(k=>Math.abs(k-T)<1e-9);
+  if(exact!=null)return dfs[exact];
+  const lo=keys.filter(k=>k<T-1e-9).pop();
+  const hi=keys.filter(k=>k>T+1e-9).shift();
+  if(lo==null){const z=-Math.log(dfs[hi])/hi;return Math.exp(-z*T);}
+  if(hi==null){const z=-Math.log(dfs[lo])/lo;return Math.exp(-z*T);}
+  const zL=-Math.log(dfs[lo])/lo, zH=-Math.log(dfs[hi])/hi;
+  const w=(T-lo)/(hi-lo);
+  return Math.exp(-(zL+w*(zH-zL))*T);
+}
+
+/* linear YTM interpolation from input rows (y in %) */
+function bInterpYtm(T,rows){
+  if(!rows.length)return 0;
+  if(T<=rows[0].t)return rows[0].y;
+  if(T>=rows[rows.length-1].t)return rows[rows.length-1].y;
+  for(let i=0;i<rows.length-1;i++){
+    if(T<=rows[i+1].t+1e-9){
+      const w=(T-rows[i].t)/(rows[i+1].t-rows[i].t);
+      return rows[i].y+w*(rows[i+1].y-rows[i].y);
+    }
+  }
+  return rows[rows.length-1].y;
+}
+
+/* bootstrap: m=2(반기) or m=4(분기) */
+function bBootstrap(allRows,m){
+  const dt=1/m;
+  const rows=allRows.filter(r=>r.t>0&&r.y>0).sort((a,b)=>a.t-b.t);
+  if(!rows.length)return{midRows:[],outRows:[],dfs:{}};
+  const maxT=Math.min(rows[rows.length-1].t,20);
+  const dfs={};
+  const midRows=[];
+  let T=dt, step=1;
+  while(T<=maxT+1e-9){
+    const Tr=Math.round(T*1000)/1000;
+    const ytm=bInterpYtm(Tr,rows);
+    const c=ytm/100/m;
+    let sumPV=0;
+    let ti=dt;
+    while(ti<Tr-1e-9){
+      const tir=Math.round(ti*1000)/1000;
+      sumPV+=c*bInterpDf(tir,dfs);
+      ti=Math.round((ti+dt)*1000)/1000;
+    }
+    const df=(1-sumPV)/(1+c);
+    if(df>0&&df<2&&!isNaN(df)){
+      dfs[Tr]=df;
+      const zper=Math.pow(df,-1/step)-1;
+      midRows.push({T:Tr,step,ytm_per:ytm/m,zper:zper*100,df});
+    }
+    T=Math.round((T+dt)*1000)/1000;
+    step++;
+  }
+  // output: 0.25-year intervals
+  const outRows=[];
+  let oT=0.25;
+  while(oT<=maxT+1e-9){
+    const oTr=Math.round(oT*1000)/1000;
+    const df=bInterpDf(oTr,dfs);
+    if(df>0&&!isNaN(df)){
+      const n=oTr*m;
+      const zper=Math.pow(df,-1/n)-1;
+      const zann=Math.pow(1+zper,m)-1;
+      const zcont=m*Math.log(1+zper);
+      outRows.push({T:oTr,zper:zper*100,zann:zann*100,zcont:zcont*100});
+    }
+    oT=Math.round((oT+0.25)*1000)/1000;
+  }
+  return{midRows,outRows,dfs};
+}
+
+/* get C-SPOT(Y) % at target T with linear interpolation of output rows */
+function bGetCSpot(rows,m,tgt){
+  const{outRows}=bBootstrap(rows,m);
+  if(!outRows.length)return null;
+  const exact=outRows.find(r=>Math.abs(r.T-tgt)<1e-9);
+  if(exact)return exact.zcont;
+  const lo=outRows.filter(r=>r.T<tgt-1e-9).pop();
+  const hi=outRows.filter(r=>r.T>tgt+1e-9).shift();
+  if(!lo&&!hi)return null;
+  if(!lo)return hi.zcont;
+  if(!hi)return lo.zcont;
+  const w=(tgt-lo.T)/(hi.T-lo.T);
+  return lo.zcont+w*(hi.zcont-lo.zcont);
+}
+
+function bRenderSect(rows,m,inpId,midId,outId,tgtId,resId){
+  const{midRows,outRows}=bBootstrap(rows,m);
+  const tgt=parseFloat(document.getElementById(tgtId).value)||3;
+  const z=bGetCSpot(rows,m,tgt);
+  document.getElementById(resId).textContent=z!=null?`C-SPOT(${tgt}Y): ${z.toFixed(4)}%`:'—';
+
+  // ① input table
+  document.getElementById(inpId).innerHTML=rows.map((r,i)=>`<tr>
+    <td class="ct" style="color:var(--text3);font-size:.65rem">${i+1}</td>
+    <td class="ct"><input class="be" type="number" value="${r.t}" step="0.25" min="0.1"
+      onchange="bRowUp('${inpId}',${i},'t',this.value)"></td>
+    <td><input class="be" type="number" value="${r.y}" step="0.01"
+      onchange="bRowUp('${inpId}',${i},'y',this.value)"></td>
+  </tr>`).join('');
+
+  // ② mid table
+  document.getElementById(midId).innerHTML=midRows.map(r=>`<tr>
+    <td>${r.T.toFixed(2)}</td>
+    <td class="ct">${r.step}</td>
+    <td>${r.ytm_per.toFixed(3)}%</td>
+    <td>${r.zper.toFixed(3)}%</td>
+    <td>${r.df.toFixed(4)}</td>
+  </tr>`).join('');
+
+  // ③ output table (first row highlighted blue)
+  document.getElementById(outId).innerHTML=outRows.map((r,i)=>`<tr${i===0?' class="hi"':''}>
+    <td>${r.T.toFixed(2)}</td>
+    <td>${r.zper.toFixed(3)}%</td>
+    <td>${r.zann.toFixed(3)}%</td>
+    <td>${r.zcont.toFixed(3)}%</td>
+  </tr>`).join('');
+}
+
+function bRowUp(tbodyId,i,field,val){
+  const arr=tbodyId==='brf-inp'?bootRfRows:bootRdRows;
+  arr[i][field]=parseFloat(val)||0;
+  bootRender();
+}
+
+function _bootSpotCurve(rows,m){ const r=bBootstrap(rows,m).outRows||[]; return r.map(o=>[o.T, o.zcont/100]); }
+
+function renderRateData(){
+  try{
+    // ── read RCPS dates ──
+    const valStr=document.getElementById('valuation_date')?.value||'';
+    const matStr=document.getElementById('maturity_date')?.value||'';
+    const captionEl=document.getElementById('rate-data-caption');
+    const tbodyEl=document.getElementById('rate-data-tbody');
+    const stepInfoEl=document.getElementById('rate-data-stepinfo');
+    if(!tbodyEl)return;
+    if(!valStr||!matStr){
+      if(captionEl)captionEl.textContent='평가기준일·만기일을 먼저 입력하세요.';
+      tbodyEl.innerHTML='<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--text3)">평가기준일·만기일을 먼저 입력하세요.</td></tr>';
+      return;
+    }
+    const valDate=new Date(valStr+'T00:00:00');
+    const matDate=new Date(matStr+'T00:00:00');
+    if(isNaN(valDate)||isNaN(matDate)||matDate<=valDate){
+      if(captionEl)captionEl.textContent='날짜 형식 오류(만기 ≤ 평가기준일).';
+      tbodyEl.innerHTML='';return;
+    }
+    const rfSpot=window.bootRfSpot||[];
+    const rdSpot=window.bootRdSpot||[];
+    if(!rfSpot.length&&!rdSpot.length){
+      if(captionEl)captionEl.textContent='부트스트래핑 곡선이 아직 없습니다. 부트스트래핑 탭에서 금리를 입력하세요.';
+      tbodyEl.innerHTML='<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--text3)">부트스트래핑 곡선 없음</td></tr>';
+      return;
+    }
+
+    // ── 평가툴과 동일한 노드 구조: 평가기준일→만기 등간격, 선택 단계 수 ──
+    const valMs=valDate.getTime(), matMs=matDate.getTime();
+    const T=(matMs-valMs)/(1000*60*60*24)/365;      // 잔존연수 (백엔드 params.T 와 동일)
+    let N=resolveSteps({valuation_date:valStr,maturity_date:matStr});
+    if(!N||N<1) N=Math.max(Math.round(T*12),12);
+    const dt=T/N;
+
+    // ── 백엔드 _spot_to_step_forwards 와 동일: 연속스팟 선형보간 + 평탄외삽 ──
+    function csInterp(pts,t){           // 연속 연 스팟 (decimal)
+      if(!pts||!pts.length||t<=0)return 0;
+      const g=pts.slice().sort((a,b)=>a[0]-b[0]);
+      if(t<=g[0][0])return g[0][1];                   // 평탄외삽 (최단물 유지)
+      if(t>=g[g.length-1][0])return g[g.length-1][1]; // 평탄외삽 (최장물 유지)
+      for(let i=0;i<g.length-1;i++){
+        const[t0,z0]=g[i],[t1,z1]=g[i+1];
+        if(t<=t1+1e-12){const w=(t1>t0)?(t-t0)/(t1-t0):0;return z0+w*(z1-z0);}
+      }
+      return g[g.length-1][1];
+    }
+    function fmtDate(ms){
+      const d=new Date(ms);
+      const y=d.getFullYear();
+      const m=String(d.getMonth()+1).padStart(2,'0');
+      const dd=String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${dd}`;
+    }
+
+    // ── 노드별 연속스팟·할인계수 사전계산 ──
+    // node i (0..N): t_i = i·dt, DATE = 평가기준일 + i/N·(만기−평가기준일)
+    // C-SPOT_i = z(t_i); C-FWD_i(i≥1) = (z_i·t_i − z_{i−1}·t_{i−1})/dt = 백엔드 step forward
+    // C-DF_i = exp(−z_i·t_i)  (= Π exp(−f_k·dt), telescoping)
+    const p4=(v)=>(v*100).toFixed(4)+'%';
+    const p6=(v)=>v.toFixed(6);
+    let html='';
+    for(let i=0;i<=N;i++){
+      const t=i*dt;
+      const dateMs=valMs+(i/N)*(matMs-valMs);
+      const rfCs=csInterp(rfSpot,t), rdCs=csInterp(rdSpot,t);
+      const rfD=t<=0?0:Math.exp(rfCs)-1, rdD=t<=0?0:Math.exp(rdCs)-1;
+      let rfFwd, rdFwd;
+      if(i===0){ rfFwd=0; rdFwd=0; }
+      else{
+        const t1=(i-1)*dt;
+        const rfCs1=csInterp(rfSpot,t1), rdCs1=csInterp(rdSpot,t1);
+        rfFwd=(rfCs*t-rfCs1*t1)/dt;
+        rdFwd=(rdCs*t-rdCs1*t1)/dt;
+      }
+      const rfDF=Math.exp(-rfCs*t), rdDF=Math.exp(-rdCs*t);
+      html+=`<tr>
+        <td style="text-align:center">${i}</td>
+        <td style="text-align:center">${fmtDate(dateMs)}</td>
+        <td>${dt.toFixed(6)}</td>
+        <td>${t.toFixed(6)}</td>
+        <td style="color:var(--accent)">${p4(rfD)}</td>
+        <td>${p4(rfCs)}</td>
+        <td style="color:var(--accent2)">${p4(rfFwd)}</td>
+        <td>${p6(rfDF)}</td>
+        <td style="color:var(--purple)">${p4(rdD)}</td>
+        <td>${p4(rdCs)}</td>
+        <td style="color:#5B21B6">${p4(rdFwd)}</td>
+        <td>${p6(rdDF)}</td>
+      </tr>`;
+    }
+    tbodyEl.innerHTML=html;
+    if(stepInfoEl) stepInfoEl.textContent=`${N} 단계 (평가 설정) · dt=${dt.toFixed(5)}년`;
+
+    if(captionEl){
+      captionEl.innerHTML=`평가기준일 0시점, 만기까지 <strong>${N}</strong> 등간격 노드(평가툴 선택 단계와 동일). dt=${dt.toFixed(6)}년 · 잔존 ${T.toFixed(4)}년.
+        선형보간(연속스팟)+평탄외삽, C-FWD=(z₂t₂−z₁t₁)/dt, C-DF=exp(−z·t) — <strong>평가툴 할인 로직과 동일</strong>.
+        &nbsp;|&nbsp; 평가기준일 <strong>${valStr}</strong> &nbsp;·&nbsp; 만기일 <strong>${matStr}</strong>`;
+    }
+  }catch(e){
+    console.warn('renderRateData error',e);
+    try{document.getElementById('rate-data-caption').textContent='이자율 DATA 렌더링 오류: '+e.message;}catch(_){}
+  }
+}
+
+function bootRender(){
+  bRenderSect(bootRfRows,2,'brf-inp','brf-mid','brf-out','brf-tgt','brf-res');
+  bRenderSect(bootRdRows,4,'brd-inp','brd-mid','brd-out','brd-tgt','brd-res');
+  window.bootRfSpot=_bootSpotCurve(bootRfRows,2);
+  window.bootRdSpot=_bootSpotCurve(bootRdRows,4);
+  renderRateData();
+}
+
+function bRfAdd(){
+  const last=bootRfRows[bootRfRows.length-1];
+  bootRfRows.push({t:Math.round((last?last.t+0.5:1)*4)/4,y:last&&last.y?last.y:3});
+  bootRender();
+}
+function bRfDel(){if(bootRfRows.length>1){bootRfRows.pop();bootRender();}}
+function bRdAdd(){
+  const last=bootRdRows[bootRdRows.length-1];
+  bootRdRows.push({t:Math.round((last?last.t+0.5:1)*4)/4,y:last&&last.y?last.y:10});
+  bootRender();
+}
+function bRdDel(){if(bootRdRows.length>1){bootRdRows.pop();bootRender();}}
+
+function _flashField(id,color){
+  const el=document.getElementById(id);
+  el.style.transition='none';el.style.background=color;
+  setTimeout(()=>{el.style.transition='background 1.5s ease';el.style.background='';},80);
+}
+
+function bootApplyRf(){
+  const tgt=parseFloat(document.getElementById('brf-tgt').value)||3;
+  const z=bGetCSpot(bootRfRows,2,tgt);
+  if(z==null)return alert('RF 부트스트래핑 결과가 없습니다.');
+  document.getElementById('risk_free_rate').value=parseFloat(z.toFixed(4));
+  switchPage('rcps',document.getElementById('tab-rcps-btn'));
+  _flashField('risk_free_rate','#DCFCE7');
+}
+
+function bootApplyKd(){
+  const tgtRf=parseFloat(document.getElementById('brf-tgt').value)||3;
+  const tgtRd=parseFloat(document.getElementById('brd-tgt').value)||3;
+  const rf=bGetCSpot(bootRfRows,2,tgtRf)||0;
+  const kd=bGetCSpot(bootRdRows,4,tgtRd);
+  if(kd==null)return alert('RD 부트스트래핑 결과가 없습니다.');
+  const spread=Math.max(0,kd-rf);
+  document.getElementById('risk_free_rate').value=parseFloat(rf.toFixed(4));
+  document.getElementById('credit_spread').value=parseFloat(spread.toFixed(4));
+  switchPage('rcps',document.getElementById('tab-rcps-btn'));
+  _flashField('risk_free_rate','#DCFCE7');
+  _flashField('credit_spread','#FEF9C3');
+}
+
+function bootApplySpread(){
+  const tgt=parseFloat(document.getElementById('brd-tgt').value)||3;
+  const kd=bGetCSpot(bootRdRows,4,tgt);
+  if(kd==null)return alert('RD 부트스트래핑 결과가 없습니다.');
+  const rfCur=parseFloat(document.getElementById('risk_free_rate').value)||0;
+  const spread=Math.max(0,kd-rfCur);
+  document.getElementById('credit_spread').value=parseFloat(spread.toFixed(4));
+  switchPage('rcps',document.getElementById('tab-rcps-btn'));
+  _flashField('credit_spread','#FEF9C3');
+}
+
+// 초기화
+document.querySelectorAll('input.money').forEach(el=>{
+  el.dataset.v=el.value.replace(/[^0-9.-]/g,'');
+});
+recalcDerived();
+dcfRenderTable();
+// ECOS 키 복원
+const _savedKey=localStorage.getItem('ecos_key');
+if(_savedKey){const k=document.getElementById('ecos-key');if(k)k.value=_savedKey;}
+const _savedAnthropic=localStorage.getItem('anthropic_key');
+if(_savedAnthropic){const k=document.getElementById('contract-apikey');if(k)k.value=_savedAnthropic;}
+// 오늘 날짜 기본값
+const _today=new Date().toISOString().slice(0,10);
+const _rd=document.getElementById('rate-date');
+if(_rd)_rd.value=_today;
+// 날짜/단계 변경 시 이자율 DATA 시트 재렌더 (boot 탭 활성 시)
+['issue_date','valuation_date','maturity_date','steps'].forEach(function(id){
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('change',function(){
+    if(document.getElementById('page-boot').classList.contains('active'))renderRateData();
+  });
+});
+</script>
+</body>
+</html>
