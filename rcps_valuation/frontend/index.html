@@ -277,22 +277,38 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
 <div class="page" id="page-contract" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">상환전환우선주 계약서 요약 <span class="badge-opt">AI</span></div>
-    <div class="note" style="margin-bottom:10px">RCPS 신주인수계약서(PDF/Excel)를 업로드하면 AI가 발행조건·상장구조·세부약정을 요약하고, 평가툴 입력값을 자동으로 채웁니다.</div>
+    <div class="note" style="margin-bottom:10px">RCPS 신주인수계약서(PDF/Excel)를 업로드하면 AI가 발행조건·상장구조·세부약정을 요약하고, 평가툴 입력값을 자동으로 채웁니다. <b>스캔 이미지 PDF도 지원</b>(텍스트가 없으면 AI 비전이 직접 읽음 — 다소 느릴 수 있음).</div>
     <div class="row2">
       <div class="field"><label>계약서 파일 (.pdf / .xlsx)</label><input type="file" id="contract-file" accept=".pdf,.xlsx,.xls"></div>
-      <div class="field"><label>Anthropic API 키</label><input type="password" id="contract-apikey" placeholder="sk-ant-..." onchange="localStorage.setItem('anthropic_key',this.value)"></div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>모델</label>
-        <select id="contract-model">
-          <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6 (권장·빠름)</option>
-          <option value="claude-opus-4-7">Claude Opus 4.7 (정밀)</option>
+      <div class="field"><label>AI 제공자</label>
+        <select id="contract-provider" onchange="onProviderChange()">
+          <option value="gemini" selected>Google Gemini (무료)</option>
+          <option value="groq">Groq (무료·빠름)</option>
+          <option value="ollama">로컬 Ollama (무료·무제한·기밀)</option>
+          <option value="claude_cli">Claude CLI (내 Max 구독)</option>
+          <option value="anthropic">Anthropic Claude (유료 API)</option>
         </select>
       </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label id="contract-key-label">Gemini API 키 (무료)</label><input type="password" id="contract-apikey" placeholder="AIza..." onchange="saveContractKey()"></div>
+      <div class="field"><label>모델</label>
+        <select id="contract-model"></select>
+      </div>
+    </div>
+    <div class="row2">
       <div class="field" style="display:flex;align-items:flex-end;gap:8px">
         <button class="btn-run" id="contract-btn" onclick="parseContract()" style="margin:0">▶ 요약 생성</button>
         <span id="contract-status" style="font-size:.78rem;color:var(--text3)"></span>
       </div>
+      <div class="field"></div>
+    </div>
+    <div class="note" id="contract-key-help" style="margin-top:2px">무료 키 발급: <b>aistudio.google.com</b> → Get API key (카드 등록 불필요). ※ 계약서 본문이 Google 서버로 전송되니 기밀 여부 확인.</div>
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+      <div style="font-weight:600;font-size:.84rem;margin-bottom:4px">또는 — 내 Claude Code(Max 구독)로 무료 요약 🔗</div>
+      <div class="note" style="margin-bottom:6px">① Claude Code에 <b>"이 계약서 요약해서 contract_summary.json으로 저장해줘"</b> 라고 요청(PDF 경로/첨부) → ② 아래 버튼으로 불러오기. <b>API 키·비용 불필요</b>, 기밀은 내 Claude 안에서 처리.</div>
+      <button class="btn-run" onclick="loadContractFromFile()" style="margin:0">📂 Claude Code 요약 불러오기</button>
+      <span id="contract-load-status" style="font-size:.76rem;color:var(--accent);margin-left:8px"></span>
     </div>
   </div>
   <div id="contract-result" style="max-width:1100px;width:100%;margin:0 auto;display:none"></div>
@@ -329,6 +345,15 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
       <div class="field"><label>우선배당률 (%/년)</label><input type="number" id="coupon_rate" value="2.0" step="0.1"></div>
       <div class="field"><label>배당수익률 (%)</label><input type="number" id="dividend_yield" value="0" step="0.1"></div>
     </div>
+    <div class="row2">
+      <div class="field"><label>배당 누적성</label>
+        <select id="dividend_cumulative">
+          <option value="1" selected>누적적 (미지급분 이월·합산)</option>
+          <option value="0">비누적적 (미지급분 소멸)</option>
+        </select>
+      </div>
+      <div class="field"><label>첫 배당 지급 연차 (년)</label><input type="number" id="dividend_first_pay_year" value="0" step="1" min="0" title="배당가능이익 가정 시점. 0=첫 지급일부터 매기 지급. 예) 3 → 발행 3년차 첫 지급(누적이면 1~3년치 일괄)"></div>
+    </div>
   </div>
 
   <div class="sec">
@@ -354,14 +379,35 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
         <div class="field"><label>행사 시작일</label><input type="date" id="put_start" value="2028-03-21"></div>
         <div class="field"><label>행사가 방식</label>
           <select id="put_price_mode" onchange="togglePutMode()">
-            <option value="irr" selected>IRR 누적 (make-whole)</option>
-            <option value="fixed">고정 행사가 (정액)</option>
+            <optgroup label="IRR make-whole (쿠폰 차감)">
+              <option value="irr_y" selected>연복리 IRR</option>
+              <option value="irr_h">반기복리 IRR</option>
+              <option value="irr_q">분기복리 IRR</option>
+            </optgroup>
+            <optgroup label="복리 (쿠폰 차감 X)">
+              <option value="cp_y">연복리</option>
+              <option value="cp_h">반기복리</option>
+              <option value="cp_q">분기복리</option>
+            </optgroup>
+            <option value="sp">단리</option>
+            <option value="contract">계약 비율</option>
+            <option value="fixed">고정 정액</option>
           </select>
         </div>
       </div>
       <div class="row2">
-        <div class="field" id="put-irr-field"><label>보장수익률 IRR (%)</label><input type="number" id="put_irr" value="7.5" step="0.1"></div>
+        <div class="field" id="put-irr-field"><label id="put-rate-label">보장수익률 IRR (%)</label><input type="number" id="put_irr" value="7.5" step="0.1"></div>
+        <div class="field hidden" id="put-contract-field"><label>계약 행사가 비율 (×액면, 예 1.2)</label><input type="number" id="put_contract_ratio" value="0" step="0.01"></div>
         <div class="field hidden" id="put-fixed-field"><label>고정 풋 행사가액 (원)</label><input type="text" class="money" id="put_fixed_price" value="0"></div>
+      </div>
+      <div class="row2" id="put-netting-row">
+        <div class="field"><label>쿠폰 차감 기준</label>
+          <select id="put_coupon_netting">
+            <option value="accrual" selected>발생주의 (연 단위 매기 차감, 5803)</option>
+            <option value="actual">실제 지급분만 차감 (비누적 소멸분 제외)</option>
+          </select>
+        </div>
+        <div class="field"></div>
       </div>
       <div class="note" id="put-mode-note">행사가 = 발행금액 × (1+IRR)^t − 기지급쿠폰 재투자가치 (발행일 기산, make-whole 방식)</div>
     </div>
@@ -378,16 +424,37 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
         <div class="field"><label>행사 시작일</label><input type="date" id="call_start" value=""></div>
         <div class="field"><label>행사가 방식</label>
           <select id="call_price_mode" onchange="toggleCallMode()">
-            <option value="irr" selected>IRR 누적</option>
-            <option value="fixed">고정 행사가 (정액)</option>
+            <optgroup label="복리 (쿠폰 차감 X)">
+              <option value="cp_y" selected>연복리</option>
+              <option value="cp_h">반기복리</option>
+              <option value="cp_q">분기복리</option>
+            </optgroup>
+            <optgroup label="IRR make-whole (쿠폰 차감)">
+              <option value="irr_y">연복리 IRR</option>
+              <option value="irr_h">반기복리 IRR</option>
+              <option value="irr_q">분기복리 IRR</option>
+            </optgroup>
+            <option value="sp">단리</option>
+            <option value="contract">계약 비율</option>
+            <option value="fixed">고정 정액</option>
           </select>
         </div>
       </div>
       <div class="row2">
-        <div class="field" id="call-irr-field"><label>수의상환 IRR (%)</label><input type="number" id="call_irr" value="0" step="0.1"></div>
+        <div class="field" id="call-irr-field"><label id="call-rate-label">수의상환 이자율/IRR (%)</label><input type="number" id="call_irr" value="0" step="0.1"></div>
+        <div class="field hidden" id="call-contract-field"><label>계약 행사가 비율 (×액면)</label><input type="number" id="call_contract_ratio" value="0" step="0.01"></div>
         <div class="field hidden" id="call-fixed-field"><label>고정 콜 행사가액 (원)</label><input type="text" class="money" id="call_fixed_price" value="0"></div>
       </div>
-      <div class="note" id="call-mode-note">발행자 콜. 행사가 = 발행금액 × (1+IRR)^t (발행일 기산). 미입력 시 미적용</div>
+      <div class="row2 hidden" id="call-netting-row">
+        <div class="field"><label>쿠폰 차감 기준</label>
+          <select id="call_coupon_netting">
+            <option value="accrual" selected>발생주의 (연 단위 매기 차감)</option>
+            <option value="actual">실제 지급분만 차감</option>
+          </select>
+        </div>
+        <div class="field"></div>
+      </div>
+      <div class="note" id="call-mode-note">발행자 콜. 행사가 = 발행금액 × (1+r/m)^(m·t) (발행일 기산). 미입력 시 미적용</div>
     </div>
   </div>
 
@@ -411,6 +478,52 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
         </div>
       </div>
       <div class="note">트리거 발동 조건: 주가 &lt; 전환가 × 트리거%<br>새 전환가 = max(최초전환가 × 하한%, 현재주가)</div>
+      <div class="toggle" style="margin-top:8px">
+        <input type="checkbox" id="refixing_ratchet" checked>
+        <label for="refixing_ratchet">경로의존 래칫(lock-in) — <b>MC 전용 평가</b></label>
+      </div>
+      <div class="note" id="ratchet-note">래칫 ON: 전환가가 경로상 최저로 내려가 유지(진짜 동적 리픽싱). recombining 트리(TF/GS)는 구조적으로 과소반영하므로 <b>몬테카를로 전용</b>으로 평가합니다.<br>래칫 OFF: 매 시점 현재주가로만 재산정(메모리 없음, 트리 근사) — TF/GS도 사용.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">경로의존 옵션 <span class="badge-opt">선택 · MC 전용</span></div>
+    <div class="note" style="margin-bottom:8px">아래 옵션은 주가 경로 이력에 의존(배리어·평균)하므로 켜면 <b>몬테카를로(MC) 전용</b>으로 평가합니다. TF/GS 트리는 과소반영되어 참고용으로만 표시됩니다.</div>
+
+    <div class="toggle"><input type="checkbox" id="has_softcall" onchange="togglePD('softcall')"><label for="has_softcall">소프트콜 배리어 (발행자 콜) — 주가 ≥ 전환가×배리어 충족 시 콜 활성</label></div>
+    <div id="softcall-fields" class="hidden">
+      <div class="row3">
+        <div class="field"><label>배리어 (전환가 배수)</label><input type="number" id="call_soft_barrier" value="1.30" step="0.05"></div>
+        <div class="field"><label>관측창 (스텝, Parisian)</label><input type="number" id="call_soft_window" value="1" step="1"></div>
+        <div class="field"><label>충족 횟수</label><input type="number" id="call_soft_count" value="1" step="1"></div>
+      </div>
+      <div class="note">창=1·횟수=1 이면 단순 배리어. 예) 30/20 이면 30스텝 중 20회 상회 시 콜(Parisian). 콜 행사가는 위 콜옵션 설정(call_price_mode)을 사용.</div>
+    </div>
+
+    <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_mandconv" onchange="togglePD('mandconv')"><label for="has_mandconv">강제전환 Knock-out — 주가 ≥ 전환가×배리어 충족 시 보통주 강제전환</label></div>
+    <div id="mandconv-fields" class="hidden">
+      <div class="row3">
+        <div class="field"><label>배리어 (전환가 배수)</label><input type="number" id="mandatory_conv_barrier" value="2.00" step="0.10"></div>
+        <div class="field"><label>관측창 (스텝)</label><input type="number" id="mandatory_conv_window" value="1" step="1"></div>
+        <div class="field"><label>충족 횟수</label><input type="number" id="mandatory_conv_count" value="1" step="1"></div>
+      </div>
+      <div class="note">충족 경로는 채권·풋이 소멸하고 전환가치로 확정됩니다(KO).</div>
+    </div>
+
+    <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_putbarrier" onchange="togglePD('putbarrier')"><label for="has_putbarrier">배리어 풋 (down-and-in) — 주가가 하단배리어 터치한 경로에서만 풋 활성</label></div>
+    <div id="putbarrier-fields" class="hidden">
+      <div class="row2">
+        <div class="field"><label>하단 배리어 (최초주가 S₀ 배수)</label><input type="number" id="put_barrier" value="0.50" step="0.05"></div>
+      </div>
+      <div class="note">풋(보유자 상환청구)이 활성화되려면 풋 조건이 먼저 켜져 있어야 합니다. 주가가 S₀×배리어 이하를 한 번이라도 터치한 경로에서만 풋 행사 가능(knock-in).</div>
+    </div>
+
+    <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_vwap" onchange="togglePD('vwap')"><label for="has_vwap">VWAP 리픽싱 — 리픽싱 기준가를 직전 N스텝 평균으로 (리픽싱 조항 필요)</label></div>
+    <div id="vwap-fields" class="hidden">
+      <div class="row2">
+        <div class="field"><label>평균 구간 (스텝 수)</label><input type="number" id="refixing_vwap_window" value="20" step="1"></div>
+      </div>
+      <div class="note">리픽싱 트리거·새 전환가 산정 시 현재주가 대신 직전 N스텝 가중평균(VWAP)을 사용합니다. 위 "하향 리픽싱 조항"이 켜져 있어야 적용됩니다.</div>
     </div>
   </div>
 
@@ -426,16 +539,8 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
       <div class="field"><label>평가기준일</label><input type="date" id="valuation_date" value="2024-12-31"></div>
       <div class="field"><label>주가 (원)</label><input type="text" id="stock_price" class="money" value="25,522" onfocus="mFocus(this)" onblur="mBlur(this)" oninput="mInput(this)"></div>
     </div>
-    <div class="row2">
-      <div class="field"><label>변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
-      <div class="field"><label>무위험이자율 (%)</label><input type="number" id="risk_free_rate" value="2.7" step="0.1"></div>
-    </div>
     <div class="row1">
-      <div class="field">
-        <label>신용스프레드 (%)</label>
-        <input type="number" id="credit_spread" value="18.2" step="0.1">
-        <div class="note" style="margin-top:4px">채권 할인율 Kd = 무위험이자율 + 신용스프레드</div>
-      </div>
+      <div class="field"><label>변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
     </div>
     <div class="row2">
       <div class="field"><label>스텝 수 (노드)</label>
@@ -456,7 +561,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
         </select>
       </div>
     </div>
-    <div class="note" style="margin-top:4px">※ 할인은 부트스트래핑 탭의 RF/RD 곡선에서 산출한 <b>선도이자율(연속스팟 선형보간 + 평탄외삽)</b>을 노드별로 항상 적용합니다.</div>
+    <div class="note" style="margin-top:4px">※ 무위험이자율·신용스프레드는 <b>부트스트래핑 탭의 RF/RD 곡선에서 잔여만기 시점값으로 자동 도출</b>되며, 할인은 그 곡선의 선도이자율(연속스팟 선형보간+평탄외삽)을 노드별로 적용합니다.</div>
   </div>
 
   <div id="err-box" class="err-msg"></div>
@@ -647,13 +752,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <button class="btn-sm add" onclick="bRfAdd()">+ 추가</button>
           <button class="btn-sm del" onclick="bRfDel()">− 제거</button>
-          <span style="font-size:.7rem;color:var(--text3)">목표 T:</span>
-          <input class="bft-in" type="number" id="brf-tgt" value="3" step="0.5" min="0.1" oninput="bootRender()">
-          <span style="font-size:.7rem;color:var(--text3)">년</span>
-          <span id="brf-res" style="font-size:.72rem;font-weight:700;color:var(--accent)"></span>
-        </div>
-        <div style="margin-top:6px">
-          <button class="btn-sm send" onclick="bootApplyRf()">→ rf 적용</button>
+          <span id="brf-res" style="font-size:.72rem;font-weight:700;color:var(--accent);margin-left:6px"></span>
         </div>
       </div>
     </div>
@@ -685,14 +784,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <button class="btn-sm add" onclick="bRdAdd()">+ 추가</button>
           <button class="btn-sm del" onclick="bRdDel()">− 제거</button>
-          <span style="font-size:.7rem;color:var(--text3)">목표 T:</span>
-          <input class="bft-in" type="number" id="brd-tgt" value="3" step="0.5" min="0.1" oninput="bootRender()">
-          <span style="font-size:.7rem;color:var(--text3)">년</span>
-          <span id="brd-res" style="font-size:.72rem;font-weight:700;color:#7C3AED"></span>
-        </div>
-        <div style="display:flex;gap:6px;margin-top:6px">
-          <button class="btn-sm send" style="background:#7C3AED;border-color:#7C3AED" onclick="bootApplyKd()">→ rf+spread 일괄 적용</button>
-          <button class="btn-sm send" style="background:var(--amber);border-color:var(--amber)" onclick="bootApplySpread()">→ 스프레드만 적용</button>
+          <span id="brd-res" style="font-size:.72rem;font-weight:700;color:#7C3AED;margin-left:6px"></span>
         </div>
       </div>
     </div>
@@ -766,17 +858,67 @@ function switchPage(name,btn){
 }
 
 /* ══ 계약서 요약 (AI) ══ */
+const _CONTRACT_MODELS={
+  gemini:[['gemini-2.0-flash','Gemini 2.0 Flash (권장·무료)'],['gemini-1.5-flash','Gemini 1.5 Flash (안정·무료)'],['gemini-2.5-flash','Gemini 2.5 Flash (정밀)']],
+  groq:[['llama-3.3-70b-versatile','Llama 3.3 70B (권장·무료)'],['llama-3.1-8b-instant','Llama 3.1 8B (빠름·무료)']],
+  ollama:[['qwen2.5:7b','Qwen2.5 7B (한국어·권장, 16GB OK)'],['exaone3.5:7.8b','EXAONE 3.5 7.8B (LG 한국어특화)'],['llama3.1:8b','Llama 3.1 8B'],['qwen2.5:14b','Qwen2.5 14B (고품질, RAM 여유시)']],
+  claude_cli:[['sonnet','Claude Sonnet (권장)'],['opus','Claude Opus (정밀)'],['','기본(로그인 설정)']],
+  anthropic:[['claude-sonnet-4-6','Claude Sonnet 4.6 (권장)'],['claude-opus-4-7','Claude Opus 4.7 (정밀)']]
+};
+function _curProvider(){return document.getElementById('contract-provider').value;}
+function onProviderChange(){
+  const pv=_curProvider();
+  const sel=document.getElementById('contract-model');
+  sel.innerHTML=_CONTRACT_MODELS[pv].map((m,i)=>`<option value="${m[0]}"${i===0?' selected':''}>${m[1]}</option>`).join('');
+  const lbl=document.getElementById('contract-key-label');
+  const inp=document.getElementById('contract-apikey');
+  const help=document.getElementById('contract-key-help');
+  if(pv==='gemini'){
+    lbl.textContent='Gemini API 키 (무료)'; inp.placeholder='AIza...';
+    help.innerHTML='무료 키 발급: <b>aistudio.google.com</b> → Get API key (카드 등록 불필요). ※ 계약서 본문이 Google 서버로 전송되니 기밀 여부 확인.';
+  }else if(pv==='groq'){
+    lbl.textContent='Groq API 키 (무료)'; inp.placeholder='gsk_...';
+    help.innerHTML='무료 키 발급: <b>console.groq.com</b> → API Keys (카드 등록 불필요, Gemini와 별도 한도). 텍스트 전용이라 스캔 PDF는 로컬 OCR(Tesseract) 필요. ※ 본문이 Groq 서버로 전송됨.';
+  }else if(pv==='ollama'){
+    lbl.textContent='API 키 (불필요)'; inp.placeholder='로컬 실행 — 키 없이 사용';
+    help.innerHTML='설치: <b>ollama.com</b> → <code>ollama pull qwen2.5:7b</code> (16GB RAM OK, ~5GB). <b>무료·무제한·완전 기밀</b>(PC 밖 전송 없음). 텍스트 전용이라 스캔 PDF는 로컬 OCR 사용. CPU 추론은 다소 느림(수십초~수분).';
+  }else if(pv==='claude_cli'){
+    lbl.textContent='API 키 (불필요)'; inp.placeholder='Max 구독 로그인 사용 — 키 없이';
+    help.innerHTML='내 <b>Claude Code CLI</b>(Max 구독)로 요약. 사전 준비: 독립형 Claude Code 설치 + 로그인 + <code>claude</code> 가 PATH에 있어야 함(또는 서버 환경변수 <code>CLAUDE_CLI_CMD</code>에 경로 지정). 텍스트 전용(스캔은 로컬 OCR). ※ 본문은 Anthropic 서버로 전송됨(로컬 아님).';
+  }else{
+    lbl.textContent='Anthropic API 키 (유료)'; inp.placeholder='sk-ant-...';
+    help.innerHTML='키 발급: <b>console.anthropic.com</b> (결제수단 등록 필요). ※ 계약서 본문이 Anthropic 서버로 전송됨.';
+  }
+  inp.value=localStorage.getItem(pv+'_contract_key')||'';
+}
+function saveContractKey(){
+  localStorage.setItem(_curProvider()+'_contract_key',document.getElementById('contract-apikey').value);
+}
+async function loadContractFromFile(){
+  const st=document.getElementById('contract-load-status');
+  st.textContent='불러오는 중...';
+  try{
+    const res=await fetch('/api/contract/loadfile?_='+Date.now());
+    const d=await res.json();
+    if(d.status!=='ok'){st.textContent='오류: '+(d.message||'알 수 없음');return;}
+    window._contractSummary=d.summary;
+    st.textContent='불러옴 (Claude Code 요약) — 아래에서 확인 후 입력값 채우기';
+    renderContractSummary(d.summary);
+  }catch(e){st.textContent='네트워크 오류: '+e.message;}
+}
 async function parseContract(){
   const fileEl=document.getElementById('contract-file');
   const statusEl=document.getElementById('contract-status');
+  const provider=_curProvider();
   const key=document.getElementById('contract-apikey').value.trim();
   if(!fileEl.files||!fileEl.files[0]){statusEl.textContent='파일을 선택하세요.';return;}
-  if(!key){statusEl.textContent='API 키를 입력하세요.';return;}
+  if(!key&&provider!=='ollama'&&provider!=='claude_cli'){statusEl.textContent='API 키를 입력하세요.';return;}
   const btn=document.getElementById('contract-btn');
-  btn.disabled=true;statusEl.textContent='추출·요약 중... (10~40초)';
+  btn.disabled=true;statusEl.textContent=((provider==='ollama'||provider==='claude_cli')?'추론 중... (수십초~수분 소요)':'추출·요약 중... (10~40초)');
   try{
     const fd=new FormData();
     fd.append('file',fileEl.files[0]);
+    fd.append('provider',provider);
     fd.append('api_key',key);
     fd.append('model',document.getElementById('contract-model').value);
     const res=await fetch('/api/contract/parse',{method:'POST',body:fd});
@@ -861,10 +1003,23 @@ function fillValuationFromContract(){
   if(v.put_irr!=null&&v.put_irr!==''){
     const hp=document.getElementById('has_put'); if(hp&&!hp.checked){hp.checked=true;togglePut();}
     setV('put_irr',(parseFloat(v.put_irr)*100));
-    const pm=document.getElementById('put_price_mode'); if(pm){pm.value='irr';togglePutMode();}
+    const pm=document.getElementById('put_price_mode'); if(pm){pm.value='irr_y';togglePutMode();}
+  }
+  // ── 리픽싱(전환가액 조정) 자동 반영
+  const rfChk=document.getElementById('refixing');
+  const isRfx=(v.refixing===true||v.refixing==='true'||v.refixing===1);
+  if(rfChk){
+    if(isRfx&&!rfChk.checked){rfChk.checked=true;toggleRefixing();}
+    if(!isRfx&&rfChk.checked){rfChk.checked=false;toggleRefixing();}
+  }
+  if(isRfx){
+    // 계약 하한 그대로 반영 (동적 시가연동 리셋이라 액면가 하한도 death-spiral 없음)
+    if(v.refixing_floor!=null&&v.refixing_floor!=='') setV('refixing_floor',(parseFloat(v.refixing_floor)*100).toFixed(2));
+    if(v.refixing_trigger!=null&&v.refixing_trigger!=='') setV('refixing_trigger',(parseFloat(v.refixing_trigger)*100).toFixed(2));
+    if(v.refixing_frequency){const fq=document.getElementById('refixing_frequency'); if(fq)fq.value=v.refixing_frequency;}
   }
   recalcDerived();
-  if(st)st.textContent='평가툴 입력값을 채웠습니다. (RCPS 탭에서 확인)';
+  if(st)st.textContent='평가툴 입력값을 채웠습니다'+(isRfx?' (리픽싱 포함 — 트리거/주기 확인 권장)':'')+'. (RCPS 탭에서 확인)';
 }
 
 function recalcDerived(){
@@ -879,23 +1034,37 @@ function recalcDerived(){
 }
 function togglePut(){document.getElementById('put-fields').classList.toggle('hidden',!document.getElementById('has_put').checked);}
 function toggleCall(){document.getElementById('call-fields').classList.toggle('hidden',!document.getElementById('has_call').checked);}
+function _exNote(m,isCall){
+  const who=isCall?'발행자 콜':'풋'; const f={y:'연',h:'반기',q:'분기'};
+  if(m==='fixed')        return who+' 행사가 = 입력한 고정 정액(전 기간 동일). 발행금액 스케일.';
+  if(m==='contract')     return who+' 행사가 = 발행금액 × 계약 비율(전 기간 동일).';
+  if(m==='sp')           return who+' 행사가 = 발행금액 × (1 + r·t) — 단리(SP).';
+  if(m.startsWith('cp')) return who+' 행사가 = 발행금액 × (1 + r/m)^(m·t) — '+f[m.slice(-1)]+'복리, 쿠폰 차감 없음.';
+  if(m.startsWith('irr'))return who+' 행사가 = 발행금액 × (1 + r/m)^(m·t) − 기발생쿠폰 재투자가치 — '+f[m.slice(-1)]+'복리 IRR make-whole.';
+  return '';
+}
 function togglePutMode(){
-  const fixed=document.getElementById('put_price_mode').value==='fixed';
-  document.getElementById('put-irr-field').classList.toggle('hidden',fixed);
-  document.getElementById('put-fixed-field').classList.toggle('hidden',!fixed);
-  document.getElementById('put-mode-note').textContent=fixed
-    ?'행사가 = 입력한 고정 정액(전 기간 동일). 발행금액 스케일로 입력.'
-    :'행사가 = 발행금액 × (1+IRR)^t − 기지급쿠폰 재투자가치 (발행일 기산, make-whole 방식)';
+  const m=document.getElementById('put_price_mode').value;
+  const isFixed=m==='fixed', isContract=m==='contract', isIrr=m.startsWith('irr');
+  document.getElementById('put-irr-field').classList.toggle('hidden',isFixed||isContract);
+  document.getElementById('put-contract-field').classList.toggle('hidden',!isContract);
+  document.getElementById('put-fixed-field').classList.toggle('hidden',!isFixed);
+  document.getElementById('put-netting-row').classList.toggle('hidden',!isIrr);
+  document.getElementById('put-rate-label').textContent=isIrr?'보장수익률 IRR (%)':'행사가 이자율 (%)';
+  document.getElementById('put-mode-note').textContent=_exNote(m,false);
 }
 function toggleCallMode(){
-  const fixed=document.getElementById('call_price_mode').value==='fixed';
-  document.getElementById('call-irr-field').classList.toggle('hidden',fixed);
-  document.getElementById('call-fixed-field').classList.toggle('hidden',!fixed);
-  document.getElementById('call-mode-note').textContent=fixed
-    ?'발행자 콜. 행사가 = 입력한 고정 정액(전 기간 동일). 발행금액 스케일로 입력.'
-    :'발행자 콜. 행사가 = 발행금액 × (1+IRR)^t (발행일 기산). 미입력 시 미적용';
+  const m=document.getElementById('call_price_mode').value;
+  const isFixed=m==='fixed', isContract=m==='contract', isIrr=m.startsWith('irr');
+  document.getElementById('call-irr-field').classList.toggle('hidden',isFixed||isContract);
+  document.getElementById('call-contract-field').classList.toggle('hidden',!isContract);
+  document.getElementById('call-fixed-field').classList.toggle('hidden',!isFixed);
+  document.getElementById('call-netting-row').classList.toggle('hidden',!isIrr);
+  document.getElementById('call-rate-label').textContent=isIrr?'수의상환 IRR (%)':'수의상환 이자율 (%)';
+  document.getElementById('call-mode-note').textContent=_exNote(m,true);
 }
 function toggleRefixing(){document.getElementById('refixing-fields').classList.toggle('hidden',!document.getElementById('refixing').checked);}
+function togglePD(key){const map={softcall:'has_softcall',mandconv:'has_mandconv',putbarrier:'has_putbarrier',vwap:'has_vwap'};const f=document.getElementById(key+'-fields');if(f)f.classList.toggle('hidden',!document.getElementById(map[key]).checked);}
 
 let lastReq=null;
 // 메인 단계 선택(60/120/240/주간)을 노드 수 N으로 해석. 평가·이항트리 시트 공용.
@@ -908,33 +1077,59 @@ function resolveSteps(params){
   }
   return parseInt(sel)||0;
 }
+function _residualT(){
+  const v=document.getElementById('valuation_date')?.value, m=document.getElementById('maturity_date')?.value;
+  if(!v||!m)return 3;
+  const T=(new Date(m)-new Date(v))/(365*24*3600*1000);
+  return T>0?T:3;
+}
 function collectParams(){
   const g=id=>document.getElementById(id)?.value;
   const n=id=>parseFloat(g(id))||0;
   const ref=document.getElementById('refixing').checked;
   const put=document.getElementById('has_put').checked;
   const call=document.getElementById('has_call').checked;
+  // 무위험이자율·신용스프레드: 부트스트랩 곡선에서 잔여만기 시점 C-SPOT로 자동 도출
+  const _T=_residualT();
+  const _rfZ=bGetCSpot(bootRfRows,2,_T);   // % (연속 C-SPOT)
+  const _rdZ=bGetCSpot(bootRdRows,4,_T);   // %
+  const _rf=(_rfZ!=null?_rfZ/100:0);
+  const _spread=(_rfZ!=null&&_rdZ!=null?Math.max(0,(_rdZ-_rfZ)/100):0);
   return{
     issue_date:g('issue_date'),maturity_date:g('maturity_date'),
     face_value:getMoney('face_value'),
     coupon_rate:n('coupon_rate')/100,coupon_frequency:g('coupon_frequency'),
+    dividend_cumulative:(g('dividend_cumulative')!=='0'),dividend_first_pay_year:n('dividend_first_pay_year'),
     conversion_price:getMoney('conversion_price'),conversion_start:g('conversion_start'),
     put_start:put?g('put_start'):null,put_irr:put?n('put_irr')/100:0,
-    put_price_mode:put?(g('put_price_mode')||'irr'):'irr',
+    put_price_mode:put?(g('put_price_mode')||'irr_y'):'irr_y',
     put_fixed_price:(put&&g('put_price_mode')==='fixed')?getMoney('put_fixed_price'):0,
+    put_contract_ratio:(put&&g('put_price_mode')==='contract')?n('put_contract_ratio'):0,
+    put_coupon_netting:g('put_coupon_netting')||'accrual',
     refixing:ref,
     refixing_floor:ref?n('refixing_floor')/100:null,
     refixing_trigger:ref?n('refixing_trigger')/100:null,
     refixing_frequency:ref?g('refixing_frequency'):'continuous',
+    refixing_ratchet:ref?!!document.getElementById('refixing_ratchet')?.checked:false,
+    refixing_vwap_window:(ref&&document.getElementById('has_vwap')?.checked)?Math.max(1,Math.round(n('refixing_vwap_window'))):0,
+    call_soft_barrier:document.getElementById('has_softcall')?.checked?n('call_soft_barrier'):null,
+    call_soft_window:document.getElementById('has_softcall')?.checked?Math.max(1,Math.round(n('call_soft_window'))):1,
+    call_soft_count:document.getElementById('has_softcall')?.checked?Math.max(1,Math.round(n('call_soft_count'))):1,
+    mandatory_conv_barrier:document.getElementById('has_mandconv')?.checked?n('mandatory_conv_barrier'):null,
+    mandatory_conv_window:document.getElementById('has_mandconv')?.checked?Math.max(1,Math.round(n('mandatory_conv_window'))):1,
+    mandatory_conv_count:document.getElementById('has_mandconv')?.checked?Math.max(1,Math.round(n('mandatory_conv_count'))):1,
+    put_barrier:document.getElementById('has_putbarrier')?.checked?n('put_barrier'):null,
     stock_price:getMoney('stock_price'),
-    volatility:n('volatility')/100,risk_free_rate:n('risk_free_rate')/100,
-    credit_spread:n('credit_spread')/100,dividend_yield:n('dividend_yield')/100,
+    volatility:n('volatility')/100,risk_free_rate:_rf,
+    credit_spread:_spread,dividend_yield:n('dividend_yield')/100,
     valuation_date:g('valuation_date'),
     is_unlisted:document.getElementById('is_unlisted').checked,
     call_start:call?(g('call_start')||null):null,
     call_irr:call?n('call_irr')/100:0,
-    call_price_mode:call?(g('call_price_mode')||'irr'):'irr',
+    call_price_mode:call?(g('call_price_mode')||'cp_y'):'cp_y',
     call_fixed_price:(call&&g('call_price_mode')==='fixed')?getMoney('call_fixed_price'):0,
+    call_contract_ratio:(call&&g('call_price_mode')==='contract')?n('call_contract_ratio'):0,
+    call_coupon_netting:g('call_coupon_netting')||'accrual',
   };
 }
 async function run(){
@@ -976,12 +1171,6 @@ function renderRCPS(data){
   const tfFv=tf?.fair_value, gsFv=gs?.fair_value, mcFv=mc?.fair_value;
   const bv=tf?.bond_value, pv=tf?.put_option_value, cv=tf?.conversion_value;
 
-  document.getElementById('comp-grid').innerHTML=`
-    <div class="comp-card"><div class="cn">① 순채권가치 (Bond)</div><div class="cv">${fmtW(bv)}</div><div class="cs">전환·풋 미반영 순채권 현재가치 (Kd 할인)</div><div class="cpct">${pct(bv,tfFv)}</div></div>
-    <div class="comp-card"><div class="cn">② 풋옵션가치 (Put)</div><div class="cv">${fmtW(pv)}</div><div class="cs">풋채권가치 − 순채권가치 = ${fmtW(tf?.put_bond_value)}</div><div class="cpct">${pct(pv,tfFv)}</div></div>
-    <div class="comp-card"><div class="cn">③ 전환권가치 (Call)</div><div class="cv">${fmtW(cv)}</div><div class="cs">총 공정가치 − 풋채권가치 (TF 2-component 기반)</div><div class="cpct">${pct(cv,tfFv)}</div></div>
-    <div class="comp-card total"><div class="cn">TF 공정가치 (Main 1) — Tsiveriotis-Fernandes &nbsp;|&nbsp; steps = ${tf?.steps||r.steps}</div><div class="cv">${fmtW(tfFv)}</div><div class="cs">① ${fmtW(bv)} + ② ${fmtW(pv)} + ③ ${fmtW(cv)}</div></div>`;
-
   function diffBadge(v,base){
     if(v==null||base==null)return'';
     const d=((v-base)/base*100).toFixed(2);
@@ -989,10 +1178,29 @@ function renderRCPS(data){
     return`<span class="diff ${c}">TF 대비 ${parseFloat(d)>0?'+':''}${d}%</span>`;
   }
 
+  const mcBanner=r.mc_only?`<div style="grid-column:1/-1;background:#FFF4E5;border:1px solid #FFB84D;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:.8rem;line-height:1.5;color:#8A4B00"><b>⚠ 경로의존 → MC 전용 평가</b><br>${r.mc_only_reason||''}</div>`:'';
+
+  if(r.mc_only){
+    // 경로의존: MC를 메인으로, 구성요소도 MC E/B 성분으로
+    const mbp=mc?.bond_put_value, mcv=mc?.conversion_value;
+    document.getElementById('comp-grid').innerHTML=mcBanner+`
+      <div class="comp-card"><div class="cn">① 채권+풋+상환 성분 (B)</div><div class="cv">${fmtW(mbp)}</div><div class="cs">MC 2-component 채권측 성분</div><div class="cpct">${pct(mbp,mcFv)}</div></div>
+      <div class="comp-card"><div class="cn">② 전환(지분) 성분 (E)</div><div class="cv">${fmtW(mcv)}</div><div class="cs">MC 2-component 지분측 성분 (래칫 리픽싱 반영)</div><div class="cpct">${pct(mcv,mcFv)}</div></div>
+      <div class="comp-card total"><div class="cn">MC 공정가치 (Main) — Monte Carlo LSM &nbsp;|&nbsp; paths = ${mc?.n_paths||'—'}</div><div class="cv">${fmtW(mcFv)}</div><div class="cs">① ${fmtW(mbp)} + ② ${fmtW(mcv)} ${mc?.ci_lower!=null?`&nbsp;|&nbsp; 95% CI ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}`:''}</div></div>`;
+  }else{
+    document.getElementById('comp-grid').innerHTML=`
+      <div class="comp-card"><div class="cn">① 순채권가치 (Bond)</div><div class="cv">${fmtW(bv)}</div><div class="cs">전환·풋 미반영 순채권 현재가치 (Kd 할인)</div><div class="cpct">${pct(bv,tfFv)}</div></div>
+      <div class="comp-card"><div class="cn">② 풋옵션가치 (Put)</div><div class="cv">${fmtW(pv)}</div><div class="cs">풋채권가치 − 순채권가치 = ${fmtW(tf?.put_bond_value)}</div><div class="cpct">${pct(pv,tfFv)}</div></div>
+      <div class="comp-card"><div class="cn">③ 전환권가치 (Call)</div><div class="cv">${fmtW(cv)}</div><div class="cs">총 공정가치 − 풋채권가치 (TF 2-component 기반)</div><div class="cpct">${pct(cv,tfFv)}</div></div>
+      <div class="comp-card total"><div class="cn">TF 공정가치 (Main 1) — Tsiveriotis-Fernandes &nbsp;|&nbsp; steps = ${tf?.steps||r.steps}</div><div class="cv">${fmtW(tfFv)}</div><div class="cs">① ${fmtW(bv)} + ② ${fmtW(pv)} + ③ ${fmtW(cv)}</div></div>`;
+  }
+
   // ── TF vs GS 구성요소 분해 비교 (채권·풋옵션은 모형 무관 공통, 전환권만 상이) ──
   const decompEl=document.getElementById('decomp-table');
   if(decompEl){
-    if(gs&&!gs.error&&gs.conversion_value!=null){
+    if(r.mc_only){
+      decompEl.style.display='none';
+    }else if(gs&&!gs.error&&gs.conversion_value!=null){
       const gbv=gs.bond_value, gpv=gs.put_option_value, gcv=gs.conversion_value;
       const same=(a,b)=>(a!=null&&b!=null&&Math.abs(a-b)<1)?'<span style="color:var(--text3);font-size:.68rem">동일</span>':'';
       decompEl.style.display='block';
@@ -1010,10 +1218,18 @@ function renderRCPS(data){
     }
   }
 
-  document.getElementById('model-row').innerHTML=`
-    <div class="mcard tf"><div class="mn">Tsiveriotis-Fernandes (Main 1)</div><div class="mv">${tfFv?fmtW(tfFv):'—'}</div><div class="ms">${tf?.error||'2-component 분리 할인'}</div></div>
-    <div class="mcard gs"><div class="mn">Goldman Sachs (Main 2)</div><div class="mv">${gsFv?fmtW(gsFv):'—'}</div><div class="ms">${gs?.error||'블렌딩 할인율'}</div>${diffBadge(gsFv,tfFv)}</div>
-    <div class="mcard mc"><div class="mn">Monte Carlo LSM (참고)</div><div class="mv">${mcFv?fmtW(mcFv):'—'}</div>${mcFv?`<div class="ci-bar">95% CI&nbsp; ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}</div>`:''}${diffBadge(mcFv,tfFv)}</div>`;
+  if(r.mc_only){
+    const tfDiff=(v)=>(v!=null&&mcFv)?`<span class="diff neg">MC 대비 ${((v-mcFv)/mcFv*100).toFixed(2)}%</span>`:'';
+    document.getElementById('model-row').innerHTML=`
+      <div class="mcard mc"><div class="mn">Monte Carlo LSM (Main)</div><div class="mv">${mcFv?fmtW(mcFv):'—'}</div>${mcFv?`<div class="ci-bar">95% CI&nbsp; ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}</div>`:''}</div>
+      <div class="mcard tf" style="opacity:.55"><div class="mn">Tsiveriotis-Fernandes (경로의존 미반영·참고)</div><div class="mv">${tfFv?fmtW(tfFv):'—'}</div><div class="ms">래칫 미반영 → 과소</div>${tfDiff(tfFv)}</div>
+      <div class="mcard gs" style="opacity:.55"><div class="mn">Goldman Sachs (경로의존 미반영·참고)</div><div class="mv">${gsFv?fmtW(gsFv):'—'}</div><div class="ms">래칫 미반영 → 과소</div>${tfDiff(gsFv)}</div>`;
+  }else{
+    document.getElementById('model-row').innerHTML=`
+      <div class="mcard tf"><div class="mn">Tsiveriotis-Fernandes (Main 1)</div><div class="mv">${tfFv?fmtW(tfFv):'—'}</div><div class="ms">${tf?.error||'2-component 분리 할인'}</div></div>
+      <div class="mcard gs"><div class="mn">Goldman Sachs (Main 2)</div><div class="mv">${gsFv?fmtW(gsFv):'—'}</div><div class="ms">${gs?.error||'블렌딩 할인율'}</div>${diffBadge(gsFv,tfFv)}</div>
+      <div class="mcard mc"><div class="mn">Monte Carlo LSM (참고)</div><div class="mv">${mcFv?fmtW(mcFv):'—'}</div>${mcFv?`<div class="ci-bar">95% CI&nbsp; ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}</div>`:''}${diffBadge(mcFv,tfFv)}</div>`;
+  }
 
   const p=lastReq.params;
   document.getElementById('info-grid').innerHTML=`
@@ -1033,8 +1249,11 @@ function renderRCPS(data){
     </table></div>`;
 
   dc('comp');
+  const compLabels=r.mc_only?['채권+풋+상환(B)','전환 성분(E)']:['순채권','풋옵션','전환권(콜)'];
+  const compData=r.mc_only?[mc?.bond_put_value,mc?.conversion_value]:[bv,pv,cv];
+  const compColors=r.mc_only?['#3182F6','#FF9F00']:['#3182F6','#00C073','#FF9F00'];
   CH['comp']=new Chart(document.getElementById('c-comp').getContext('2d'),{type:'doughnut',
-    data:{labels:['순채권','풋옵션','전환권(콜)'],datasets:[{data:[bv,pv,cv],backgroundColor:['#3182F6','#00C073','#FF9F00'],borderWidth:2,borderColor:'#fff'}]},
+    data:{labels:compLabels,datasets:[{data:compData,backgroundColor:compColors,borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Pretendard'},padding:10}},
       tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtW(ctx.raw)} (${pct(ctx.raw,tfFv)})`}}}}});
 
@@ -1116,14 +1335,23 @@ function renderTreeGrids(){
   const t = d[modelKey];
   if(!t || t.error){ wrap.innerHTML='<p style="color:#c0392b;font-size:.8rem;padding:12px">'+(t&&t.error?t.error:'트리 데이터 없음')+'</p>'; return; }
 
-  const fv = modelKey==='tf' ? d.tf_fv : d.gs_fv;
+  const fv = modelKey==='tf' ? d.tf_fv : d.gs_fv;   // 총액(전체 발행분) 기준
   const modelLabel = modelKey==='tf' ? 'Tsiveriotis-Fernandes' : 'Goldman Sachs';
   const steps = t.steps;
 
+  // ── 1주 기준 변환: 가치 그리드를 RCPS 주식수로 나눠 표시 (주가/확률/할인계수는 제외)
+  const rsRaw=(document.getElementById('rcps_shares')?.value||'').replace(/,/g,'');
+  const rcpsShares=parseFloat(rsRaw);
+  const perShare=(!isNaN(rcpsShares)&&rcpsShares>0);
+  const divisor=perShare?rcpsShares:1;
+  const VALUE_KEYS=new Set(['conv_intrinsic','rcps_value','hold_value','equity_comp','bond_comp','equity_hold','bond_hold']);
+
+  const fvPerShare = (fv!=null&&perShare)?fv/rcpsShares:fv;
   let html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:8px">
-    <b>${modelLabel}</b> &nbsp;|&nbsp; 공정가치: <b>${fv!=null?Math.round(fv).toLocaleString('ko-KR')+'원':'—'}</b>
+    <b>${modelLabel}</b> &nbsp;|&nbsp; 1주(1RCPS) 공정가치: <b>${fvPerShare!=null?Math.round(fvPerShare).toLocaleString('ko-KR')+'원':'—'}</b>
     &nbsp;|&nbsp; 단계: ${steps} &nbsp;|&nbsp; u=${t.u} / d=${t.d}
     &nbsp;|&nbsp; p=${Array.isArray(t.p)?'(커브모드)':t.p}
+    <span style="color:var(--text3)">&nbsp;|&nbsp; ${perShare?'모든 가치 그리드 = 1주 기준':'주식수 미입력 → 총액 기준'}</span>
   </div>`;
 
   // Grid definitions per model
@@ -1198,7 +1426,8 @@ function renderTreeGrids(){
             else if(val==='보유') bg='background:#F2F4F6';
             display = val||'';
           } else if(typeof val==='number'){
-            display = val.toLocaleString('ko-KR',{maximumFractionDigits:2});
+            const shown = VALUE_KEYS.has(key) ? val/divisor : val;   // 가치 그리드만 1주 기준
+            display = shown.toLocaleString('ko-KR',{maximumFractionDigits:2});
           } else {
             display = val!=null?String(val):'';
           }
@@ -1210,17 +1439,17 @@ function renderTreeGrids(){
     html += '</table></div></div>';
   }
 
-  // ── 총액 요약 (1RCPS 기준 × RCPS 주식수) ──
-  const rsRaw = (document.getElementById('rcps_shares')?.value||'').replace(/,/g,'');
-  const rcpsShares = parseFloat(rsRaw);
+  // ── 요약: 1RCPS(1주) 공정가치 = fv ÷ 주식수,  총액 = fv ──
   if(fv!=null){
-    const perInst = Math.round(fv);
-    let totalLine = `1RCPS(증권) 공정가치: <b>${perInst.toLocaleString('ko-KR')}원</b>`;
-    if(!isNaN(rcpsShares) && rcpsShares>0){
-      const total = Math.round(fv*rcpsShares);
-      totalLine += ` &nbsp;×&nbsp; RCPS 주식수 ${rcpsShares.toLocaleString('ko-KR')} &nbsp;=&nbsp; <b>총액 ${total.toLocaleString('ko-KR')}원</b>`;
+    let totalLine;
+    if(perShare){
+      const perInst = Math.round(fv/rcpsShares);
+      const total = Math.round(fv);
+      totalLine = `1RCPS(1주) 공정가치: <b>${perInst.toLocaleString('ko-KR')}원</b>`
+        + ` &nbsp;×&nbsp; RCPS 주식수 ${rcpsShares.toLocaleString('ko-KR')} &nbsp;=&nbsp; <b>총액 ${total.toLocaleString('ko-KR')}원</b>`;
     }else{
-      totalLine += ` <span style="color:var(--text3)">(RCPS 주식수 입력 시 총액 표시)</span>`;
+      totalLine = `총액 공정가치: <b>${Math.round(fv).toLocaleString('ko-KR')}원</b>`
+        + ` <span style="color:var(--text3)">(RCPS 주식수 입력 시 1주 기준 표시)</span>`;
     }
     html += `<div style="margin-top:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:.8rem;color:var(--text1)">${totalLine}</div>`;
   }
@@ -1622,9 +1851,9 @@ function bGetCSpot(rows,m,tgt){
 
 function bRenderSect(rows,m,inpId,midId,outId,tgtId,resId){
   const{midRows,outRows}=bBootstrap(rows,m);
-  const tgt=parseFloat(document.getElementById(tgtId).value)||3;
+  const tgt=_residualT();   // 목표 T = 항상 잔여만기(평가기준일→만기)
   const z=bGetCSpot(rows,m,tgt);
-  document.getElementById(resId).textContent=z!=null?`C-SPOT(${tgt}Y): ${z.toFixed(4)}%`:'—';
+  document.getElementById(resId).textContent=z!=null?`잔여만기 ${tgt.toFixed(2)}Y C-SPOT: ${z.toFixed(4)}%`:'—';
 
   // ① input table
   document.getElementById(inpId).innerHTML=rows.map((r,i)=>`<tr>
@@ -1793,40 +2022,6 @@ function _flashField(id,color){
   setTimeout(()=>{el.style.transition='background 1.5s ease';el.style.background='';},80);
 }
 
-function bootApplyRf(){
-  const tgt=parseFloat(document.getElementById('brf-tgt').value)||3;
-  const z=bGetCSpot(bootRfRows,2,tgt);
-  if(z==null)return alert('RF 부트스트래핑 결과가 없습니다.');
-  document.getElementById('risk_free_rate').value=parseFloat(z.toFixed(4));
-  switchPage('rcps',document.getElementById('tab-rcps-btn'));
-  _flashField('risk_free_rate','#DCFCE7');
-}
-
-function bootApplyKd(){
-  const tgtRf=parseFloat(document.getElementById('brf-tgt').value)||3;
-  const tgtRd=parseFloat(document.getElementById('brd-tgt').value)||3;
-  const rf=bGetCSpot(bootRfRows,2,tgtRf)||0;
-  const kd=bGetCSpot(bootRdRows,4,tgtRd);
-  if(kd==null)return alert('RD 부트스트래핑 결과가 없습니다.');
-  const spread=Math.max(0,kd-rf);
-  document.getElementById('risk_free_rate').value=parseFloat(rf.toFixed(4));
-  document.getElementById('credit_spread').value=parseFloat(spread.toFixed(4));
-  switchPage('rcps',document.getElementById('tab-rcps-btn'));
-  _flashField('risk_free_rate','#DCFCE7');
-  _flashField('credit_spread','#FEF9C3');
-}
-
-function bootApplySpread(){
-  const tgt=parseFloat(document.getElementById('brd-tgt').value)||3;
-  const kd=bGetCSpot(bootRdRows,4,tgt);
-  if(kd==null)return alert('RD 부트스트래핑 결과가 없습니다.');
-  const rfCur=parseFloat(document.getElementById('risk_free_rate').value)||0;
-  const spread=Math.max(0,kd-rfCur);
-  document.getElementById('credit_spread').value=parseFloat(spread.toFixed(4));
-  switchPage('rcps',document.getElementById('tab-rcps-btn'));
-  _flashField('credit_spread','#FEF9C3');
-}
-
 // 초기화
 document.querySelectorAll('input.money').forEach(el=>{
   el.dataset.v=el.value.replace(/[^0-9.-]/g,'');
@@ -1836,8 +2031,10 @@ dcfRenderTable();
 // ECOS 키 복원
 const _savedKey=localStorage.getItem('ecos_key');
 if(_savedKey){const k=document.getElementById('ecos-key');if(k)k.value=_savedKey;}
-const _savedAnthropic=localStorage.getItem('anthropic_key');
-if(_savedAnthropic){const k=document.getElementById('contract-apikey');if(k)k.value=_savedAnthropic;}
+// 계약서 AI 제공자/모델/키 초기화 (기본 Gemini 무료). 구 anthropic_key 마이그레이션.
+const _oldAnthropic=localStorage.getItem('anthropic_key');
+if(_oldAnthropic&&!localStorage.getItem('anthropic_contract_key')){localStorage.setItem('anthropic_contract_key',_oldAnthropic);}
+if(document.getElementById('contract-provider'))onProviderChange();
 // 오늘 날짜 기본값
 const _today=new Date().toISOString().slice(0,10);
 const _rd=document.getElementById('rate-date');
@@ -1846,7 +2043,7 @@ if(_rd)_rd.value=_today;
 ['issue_date','valuation_date','maturity_date','steps'].forEach(function(id){
   const el=document.getElementById(id);
   if(el)el.addEventListener('change',function(){
-    if(document.getElementById('page-boot').classList.contains('active'))renderRateData();
+    if(document.getElementById('page-boot').classList.contains('active')){bootRender();renderRateData();}
   });
 });
 </script>

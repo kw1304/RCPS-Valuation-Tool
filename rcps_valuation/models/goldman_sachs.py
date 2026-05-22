@@ -117,13 +117,14 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     def _S(i, j):
         return S0 * (u ** (i - j)) * (d_fac ** j)
 
-    # ── 리픽싱 비율 (희석경로 전용)
+    # ── 리픽싱 비율 (희석경로 전용): 동적 시가연동 — 새 전환가 = max(K_floor, 시가)
+    #    (비희석 _eff_K 와 일관. trigger==floor 이면 K/K_floor 와 동일)
     def _ratio(i, j):
         S = _S(i, j)
         if params.refixing and params.is_refixing_date(i, steps):
             trigger_price = K * (params.refixing_trigger if params.refixing_trigger else 1.0)
             if S <= trigger_price:
-                return K / K_floor
+                return K / max(K_floor, S)
         return 1.0
 
     # ── 희석주가
@@ -264,10 +265,11 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     # 레퍼런스에서 bond_discrete=True 이므로 항상 discrete Kd 사용
     # (GS 모형 정의상 본 pass 는 항상 discrete Kd 사용)
     def _dfac(child_i, j, period_idx):
+        # 5803 방식: 금리를 블렌딩한 뒤 연속할인 exp(-(cp·rf+(1-cp)·Kd)·dt)
+        # (DF 블렌딩이 아니라 RATE 블렌딩 — Jensen 차이로 결과가 달라짐)
         c = cp[child_i][j]
-        rf_p = _rf(period_idx)
-        kd_p = _kd(period_idx)
-        return c * np.exp(-rf_p * dt) + (1.0 - c) * (1.0 / ((1.0 + kd_p) ** dt))
+        dr = c * _rf(period_idx) + (1.0 - c) * _kd(period_idx)
+        return float(np.exp(-dr * dt))
 
     # ── 트리 수집용 그리드 초기화 (collect_tree=True 일 때만)
     if collect_tree:
@@ -283,8 +285,10 @@ def gs_rcps(params: RCPSParams, steps: int = None,
         _g_dec = [[_dec_map.get(dec[i][j], '') for j in range(i+1)]
                   for i in range(steps+1)]
 
-    # 만기 페이오프
-    V = [max(_conv_val(steps, j), mat_redeem) for j in range(steps + 1)]
+    # 만기 페이오프: max(원금상환, 전환) + 만기쿠폰 (5803: 쿠폰은 max 밖에서 가산)
+    _mat_principal = max(face, put_mat)
+    _coup_mat = coupon_cf.get(steps, 0)
+    V = [max(_conv_val(steps, j), _mat_principal) + _coup_mat for j in range(steps + 1)]
 
     if collect_tree:
         for j in range(steps + 1):
@@ -322,7 +326,8 @@ def gs_rcps(params: RCPSParams, steps: int = None,
                 intr = max(ei, rd_i)
             else:
                 intr = ei
-            Vn[j] = max(intr, cont_hold)
+            # 5803: value = max(MAT,PUT,CON,TIME) + INT (쿠폰은 결정 무관 현 노드 가산)
+            Vn[j] = max(intr, cont_hold) + coupon_cf.get(i, 0)
 
             if collect_tree:
                 S = _S(i, j)
@@ -341,29 +346,6 @@ def gs_rcps(params: RCPSParams, steps: int = None,
         V = Vn
 
     fair_value = float(V[0])
-
-    # ── 중간 쿠폰(우선배당) PV: Kd 할인 + 전환 시 소멸 (TF 와 정합) ──
-    # 본체 전환가치는 블렌딩 할인 그대로 두고, 쿠폰만 별도로 신용조정 Kd 로 할인하되
-    # PASS1 의사결정(dec)이 '전환(c)'인 노드에서는 이후 쿠폰을 받지 못하므로 0 처리.
-    # (만기 쿠폰은 mat_redeem 에 이미 포함 → 중간 쿠폰만)
-    C = [0.0] * (steps + 1)
-    for i in range(steps - 1, -1, -1):
-        coup = coupon_cf.get(i, 0)
-        kd_i = _kd(i)
-        disc_d = (1.0 / ((1.0 + kd_i) ** dt)) if bond_discrete else float(np.exp(-kd_i * dt))
-        if rf_curve:
-            p_i = _p(i + 1)
-        else:
-            p_i = p_flat
-        q_i = 1.0 - p_i
-        Cn = [0.0] * (i + 1)
-        for j in range(i + 1):
-            if dec[i][j] == 'c':          # 전환 → 이후 쿠폰 소멸
-                Cn[j] = 0.0
-            else:                          # 보유/상환 → 현 쿠폰 + 미래 쿠폰(Kd 할인)
-                Cn[j] = coup + disc_d * (p_i * C[j] + q_i * C[j + 1])
-        C = Cn
-    fair_value += C[0]
 
     # 희석주가 (루트 노드)
     diluted_s0 = float(_diluted(0, 0)) if use_dil else None

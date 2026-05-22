@@ -87,41 +87,51 @@ def _coupon_schedule(params: RCPSParams, steps: int, dt: float) -> dict:
     """
     각 스텝에서 지급되는 우선배당(쿠폰) 금액 → {step: amount}.
 
-    누적적(cumulative) 우선주 기준: 배당은 **발행일부터** interval 간격으로 누적되며,
-    발행~만기 전체 기간의 배당이 모두 지급 대상이다.
-    평가일 이전에 도래한 배당(미지급 누적분)은 평가일 이후 **첫 지급일에 합산**한다.
-    (5803 레퍼런스 동일 — 평가일 기준이 아니라 발행일 기준 전체 배당 반영)
+    배당은 발행일부터 interval 간격으로 적립(accrual)된다. 실제 '지급'은
+    dividend_first_pay_year(발행 후 연수) 이후의 적립일에 발생한다고 본다
+    (배당가능이익 가정 시점). first_pay_year=0 이면 첫 적립일(=interval)부터 매기 지급.
+
+    누적성(dividend_cumulative):
+      • 누적적(True): 지급일 이전에 쌓인 미지급분을 다음 지급일에 **단리 합산**.
+        5803 재현 — 첫 지급일에 그동안 누적된 N년치가 일괄 지급(N×).
+      • 비누적적(False): 지급일이 아닌 기간의 배당은 **영구 소멸**(이월 없음).
+        지급 대상 기간만 1×씩 지급.
+
+    평가일(tiv) 처리: 트리에는 평가일 **이후** 현금흐름만 싣는다.
+      • 누적적: 평가일 이전 지급분(미지급 가정)은 평가일 이후 첫 지급일에 합산.
+      • 비누적적: 평가일 이전 지급분은 이미 정산(또는 소멸)된 것으로 보고 제외.
     """
     cf = {}
-    rate = params.coupon_rate
-    freq = params.coupon_frequency
-    if rate <= 0 or freq == "none":
+    if params.coupon_rate <= 0 or params.coupon_frequency == "none":
         return cf
 
-    interval = {"annual": 1.0, "semi": 0.5, "quarterly": 0.25}.get(freq)
-    if not interval:
-        return cf
-
-    per = params.face_value * rate * interval     # 1회 배당액
+    cumulative = getattr(params, "dividend_cumulative", True)
     tiv = params.t_issue_to_val                    # 발행→평가 경과연수
-    T = steps * dt                                 # 평가→만기 잔존연수
-    n = int(round((tiv + T) / interval))           # 발행~만기 총 배당 횟수
+    eps = 1e-9
 
-    accrued = 0.0
-    first_paid = False
-    for k in range(1, n + 1):
-        t_from_val = k * interval - tiv            # 발행+k·interval 시점의 평가일 기준 연수
-        if t_from_val <= 1e-9:
-            accrued += per                         # 평가일 이전 도래 → 누적(미지급)
+    # ── PASS 1: 발행일 기준 지급 스트림 (deal_params 단일 소스 공유)
+    payments = params.dividend_payments_from_issue()
+    if not payments:
+        return cf
+
+    # ── PASS 2: 평가일 기준 트리 스텝 매핑
+    carry = 0.0          # 평가일 이전 지급분(누적) → 첫 post-val 지급일로 이월
+    first_post_paid = False
+    for t_issue, amt in payments:
+        t_val = t_issue - tiv
+        if t_val <= eps:                            # 평가일 이전 지급일
+            if cumulative:
+                carry += amt                        # 미지급 가정 → 이월
+            # 비누적: 이미 정산/소멸 → 제외
             continue
-        step = min(max(int(round(t_from_val / dt)), 1), steps)
-        cf[step] = cf.get(step, 0.0) + per + (accrued if not first_paid else 0.0)
-        accrued = 0.0
-        first_paid = True
+        step = min(max(int(round(t_val / dt)), 1), steps)
+        cf[step] = cf.get(step, 0.0) + amt + (carry if not first_post_paid else 0.0)
+        carry = 0.0
+        first_post_paid = True
 
-    # 모든 배당일이 평가일 이전이었던 경우(누적분만 남음) → 만기에 일괄 지급
-    if accrued > 0:
-        cf[steps] = cf.get(steps, 0.0) + accrued
+    # 모든 지급일이 평가일 이전이었던 경우(누적 이월분만 남음) → 만기에 일괄
+    if carry > eps:
+        cf[steps] = cf.get(steps, 0.0) + carry
 
     return cf
 
@@ -140,7 +150,7 @@ def _bond_only(face, params: RCPSParams, disc, p, steps, dt, coupon_cf) -> float
     disc/p 는 스칼라 또는 per-step 배열."""
     t_mat = steps * dt
     redeem = params.put_exercise_price(t_mat) if params.has_put else face
-    V = np.full(steps + 1, max(face, redeem))
+    V = np.full(steps + 1, float(max(face, redeem)))
 
     # 만기 쿠폰
     if steps in coupon_cf:
@@ -163,7 +173,7 @@ def _puttable_bond(face, params: RCPSParams, disc, p, steps, dt, coupon_cf,
     t_mat = steps * dt
     put_mat = params.put_exercise_price(t_mat) if params.has_put else face
 
-    V = np.full(steps + 1, max(face, put_mat))
+    V = np.full(steps + 1, float(max(face, put_mat)))
     if steps in coupon_cf:
         V += coupon_cf[steps]
 
@@ -189,7 +199,7 @@ def _crr_full(face, params: RCPSParams, Kd, steps, dt, coupon_cf,
     """표준 CRR: 단일 Kd 할인, max(보유, 전환, 풋)"""
     disc = np.exp(-Kd * dt)
     t_mat = steps * dt
-    put_mat = params.put_exercise_price(t_mat) if params.put_irr > 0 else face
+    put_mat = params.put_exercise_price(t_mat) if params.has_put else face
     mat_redeem = max(face, put_mat) + coupon_cf.get(steps, 0)
 
     V = np.zeros(steps + 1)
@@ -207,7 +217,7 @@ def _crr_full(face, params: RCPSParams, Kd, steps, dt, coupon_cf,
             K_eff = _eff_K(S, K, K_floor, params, i, steps)
             conv_val = (face / K_eff) * S if K_eff > 0 else 0
             node_val = V_new[j]
-            if i >= put_step and params.put_irr > 0:
+            if i >= put_step and params.has_put:
                 node_val = max(node_val, params.put_exercise_price(t_node))
             if i >= conv_step:
                 node_val = max(node_val, conv_val)
@@ -230,7 +240,7 @@ def _full_rcps_tf(face, params: RCPSParams, r_f, Kd, q, steps, dt,
 
     # 만기 페이오프
     t_mat = steps * dt
-    put_mat = params.put_exercise_price(t_mat)
+    put_mat = params.put_exercise_price(t_mat) if params.has_put else face
     mat_coupon = coupon_cf.get(steps, 0)
 
     E = np.zeros(steps + 1)
@@ -265,7 +275,7 @@ def _full_rcps_tf(face, params: RCPSParams, r_f, Kd, q, steps, dt,
             V_hold = E_hold + B_hold
 
             # 풋 행사 가능 구간
-            if i >= put_step and params.put_irr > 0:
+            if i >= put_step and params.has_put:
                 put_ex = params.put_exercise_price(t_node)
                 if put_ex > V_hold:
                     E_new[j] = 0.0

@@ -19,3 +19,6 @@ rcps_valuation/sample_minpyung.pdf
 # 복호화/추출 임시 파일
 **/_dec.*
 **/_*_dump.txt
+
+# Claude Code 계약서 요약 (기밀)
+rcps_valuation/contract_summary.json

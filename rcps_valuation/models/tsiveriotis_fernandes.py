@@ -86,12 +86,13 @@ def tf_rcps(params: RCPSParams, steps: int = None,
 
     # Helper closures
     def _ratio(i, j):
-        """리픽싱 비율: 희석경로 전용"""
+        """리픽싱 비율: 희석경로 전용. 동적 시가연동 — 새 전환가 = max(K_floor, 시가)
+        (비희석 _eff_K 와 일관). trigger==floor 이면 K/K_floor 와 동일."""
         S = S0 * (u ** (i - j)) * (d_fac ** j)
         if params.refixing and params.is_refixing_date(i, steps):
             trigger_price = K * (params.refixing_trigger if params.refixing_trigger else 1.0)
             if S <= trigger_price:
-                return K / K_floor
+                return K / max(K_floor, S)
         return 1.0
 
     def _diluted(i, j):

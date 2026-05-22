@@ -1,6 +1,11 @@
 """
 Golden-reference test: GS 노드희석_구분할인 모형
-Expected fair_value = 10,758.6849  → rounds to 10759
+fair_value = 10722 (금리블렌딩 기준)
+
+※ 2026-05 정정: GS 블렌딩 할인을 5803 원본 엑셀 수식과 일치하도록 수정함.
+   5803 GS 수식: TIME = Σ child·p·EXP(-(cp·rf+(1-cp)·Kd)·dt)  — 금리(rate) 블렌딩 후 연속할인.
+   (이전 구현은 할인계수(DF) 블렌딩 → 5803과 ~4bn 괴리. 5803 풀딜 검증으로 rate-blend 확정.)
+   이 변경으로 본 골든값이 10759(구 DF블렌딩) → 10722(rate블렌딩)로 갱신됨.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -63,13 +68,13 @@ def test_golden_reference():
         bond_discrete=True,
     )
     fv = result["fair_value"]
-    print(f"[golden] fair_value = {fv}  (expected 10759, reference exact 10758.6849)")
+    print(f"[golden] fair_value = {fv}  (expected 10722, rate-blend 기준)")
     print(f"  dilution_applied      = {result['dilution_applied']}")
     print(f"  diluted_stock_price_0 = {result['diluted_stock_price_0']}")
     print(f"  conv_prob_0           = {result['conv_prob_0']}")
     print(f"  model                 = {result['model']}")
-    assert abs(fv - 10759) <= 1, (
-        f"Golden-reference FAILED: fair_value={fv}, expected 10759 (tol ±1)"
+    assert abs(fv - 10722) <= 1, (
+        f"Golden-reference FAILED: fair_value={fv}, expected 10722 (tol ±1)"
     )
     print("[golden] PASSED")
 
