@@ -1230,6 +1230,326 @@ def contract_loadfile():
     return jsonify({"status": "ok", "summary": summary})
 
 
+# ══════════════════════════════════════════════════════════════════
+#  변동성 평가 — 유사상장기업 바스켓 역사적 변동성 (FinanceDataReader)
+# ══════════════════════════════════════════════════════════════════
+_STOCK_LISTING = None   # KRX + 해외(NASDAQ/NYSE/AMEX) 종목목록 캐시 (프로세스 1회 로드)
+
+
+def _stock_listing():
+    """상장종목 마스터 캐시 로드 — KRX(코드·시총) + 미국 거래소(티커·종목명).
+
+    KRX는 Code/Name/Market/Marcap, 미국은 Symbol/Name 제공(시총 없음→None).
+    개별 거래소 조회 실패는 건너뛰어 일부만으로도 동작하게 한다.
+    """
+    global _STOCK_LISTING
+    if _STOCK_LISTING is None:
+        import FinanceDataReader as fdr  # lazy import — 변동성 요청에만 비용
+        rows, seen = [], set()
+        # 1) KRX
+        try:
+            for r in fdr.StockListing('KRX').to_dict('records'):
+                code = str(r.get('Code') or '').strip()
+                if not code or code in seen:
+                    continue
+                seen.add(code)
+                rows.append({"code": code, "name": str(r.get('Name') or '').strip(),
+                             "market": str(r.get('Market') or '').strip(),
+                             "marcap": r.get('Marcap')})
+        except Exception:
+            pass
+        # 2) 미국 거래소
+        for mk in ('NASDAQ', 'NYSE', 'AMEX'):
+            try:
+                for r in fdr.StockListing(mk).to_dict('records'):
+                    sym = str(r.get('Symbol') or r.get('Code') or '').strip()
+                    if not sym or sym in seen:
+                        continue
+                    seen.add(sym)
+                    rows.append({"code": sym, "name": str(r.get('Name') or '').strip(),
+                                 "market": mk, "marcap": r.get('Marcap')})
+            except Exception:
+                pass
+        _STOCK_LISTING = rows
+    return _STOCK_LISTING
+
+
+def _yahoo_search(q, want=8):
+    """Yahoo Finance 검색으로 회사명→티커 해석(전 세계 거래소). 실패 시 빈 리스트.
+
+    유럽 등 FDR 종목목록에 없는 종목을 회사명으로 찾기 위함. EQUITY만 반환.
+    """
+    try:
+        url = ("https://query1.finance.yahoo.com/v1/finance/search?q="
+               + urllib.parse.quote(q) + f"&quotesCount={want}&newsCount=0")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            d = json.load(r)
+        # 거래데이터가 빈약한 보조상장(Cboe Europe DXE, IOB, OTC 등)은 뒤로 — 본상장 우선
+        SECONDARY = {"XD", "IL", "PNK", "OTC", "DXE", "IOB"}
+        res = []
+        for x in d.get("quotes", []):
+            if x.get("quoteType") != "EQUITY":
+                continue
+            sym = str(x.get("symbol") or "").strip()
+            if not sym:
+                continue
+            suffix = sym.rsplit(".", 1)[1].upper() if "." in sym else ""
+            exch = str(x.get("exchange") or "").upper()
+            secondary = suffix in SECONDARY or exch in SECONDARY
+            res.append({"code": sym,
+                        "name": str(x.get("shortname") or x.get("longname") or sym).strip(),
+                        "market": str(x.get("exchDisp") or x.get("exchange") or "").strip(),
+                        "marcap": None, "_secondary": secondary})
+        res.sort(key=lambda r: r.pop("_secondary"))   # 본상장(False) 먼저
+        return res[:want]
+    except Exception:
+        return []
+
+
+@app.route("/api/volatility/search", methods=["GET"])
+def volatility_search():
+    """종목명/코드(티커) 자동완성. KRX+미국 로컬 목록 우선, 부족하면 Yahoo로 전 세계 보강."""
+    q = (request.args.get('q') or '').strip()
+    if not q:
+        return jsonify({"status": "ok", "results": []})
+    try:
+        listing = _stock_listing()
+    except Exception as e:
+        return jsonify({"status": "error",
+                        "message": f"종목목록 조회 실패: {str(e)[:150]}"}), 200
+    ql = q.lower()
+    out, seen = [], set()
+    for r in listing:
+        if ql in r["name"].lower() or ql in r["code"].lower():
+            out.append(r); seen.add(r["code"])
+            if len(out) >= 30:
+                break
+    # 로컬(KRX+미국)에 충분히 없으면 Yahoo 검색으로 전 세계 티커 보강(유럽 등)
+    if len(out) < 5 and len(q) >= 2:
+        for r in _yahoo_search(q):
+            if r["code"] not in seen:
+                out.append(r); seen.add(r["code"])
+    return jsonify({"status": "ok", "results": out})
+
+
+import threading
+_BS_LOCK = threading.Lock()   # baostock 전역 세션 보호(동시요청 대비)
+
+
+def _to_baostock(code):
+    """중국 본토 A주 코드 → baostock 심볼(sh./sz.). A주가 아니면 None."""
+    c = (code or "").strip()
+    if c.lower().startswith(("sh.", "sz.")):
+        return c.lower()
+    u = c.upper()
+    if u.endswith(".SS"):
+        return "sh." + c[:-3]
+    if u.endswith(".SZ"):
+        return "sz." + c[:-3]
+    return None
+
+
+def _fetch_china_ashare(bs_symbol, start, end):
+    """baostock로 A주 일별 종가·거래량 조회(전복권). (dates, closes, volumes) 반환."""
+    import baostock as bs
+    with _BS_LOCK:
+        lg = bs.login()
+        try:
+            if lg.error_code != '0':
+                raise ValueError(f"baostock 로그인 실패: {lg.error_msg}")
+            rs = bs.query_history_k_data_plus(
+                bs_symbol, "date,close,volume",
+                start_date=(start or "2015-01-01"), end_date=(end or ""),
+                frequency="d", adjustflag="2")   # 2=전복권(qfq)
+            if rs.error_code != '0':
+                raise ValueError(f"baostock 조회 실패: {rs.error_msg}")
+            dates, closes, vols = [], [], []
+            while rs.next():
+                d, c, v = rs.get_row_data()
+                if c in (None, ''):
+                    continue
+                dates.append(d); closes.append(float(c))
+                vols.append(float(v) if v not in (None, '') else None)
+            return dates, closes, vols
+        finally:
+            bs.logout()
+
+
+def _fetch_price_series(code, start, end):
+    """코드 → (dates, closes, volumes). 중국 본토 A주는 baostock, 그 외 FDR(Yahoo)."""
+    bsym = _to_baostock(code)
+    if bsym:
+        return _fetch_china_ashare(bsym, start, end)
+    import FinanceDataReader as fdr
+    df = fdr.DataReader(code, start, end)
+    if df is None or df.empty or 'Close' not in df.columns:
+        raise ValueError("조회 결과가 비어 있습니다.")
+    closes = [float(x) for x in df['Close'].tolist()]
+    vols = [float(x) for x in df['Volume'].tolist()] if 'Volume' in df.columns else None
+    dates = [d.strftime('%Y-%m-%d') for d in df.index]
+    return dates, closes, vols
+
+
+@app.route("/api/stock_price", methods=["GET"])
+def stock_price_on_date():
+    """평가대상이 상장사인 경우, 평가기준일(이하 마지막 거래일) 종가 조회 → S₀ 자동입력용."""
+    code = (request.args.get('ticker') or '').strip()
+    date = (request.args.get('date') or '').strip()
+    if not code or not date:
+        return jsonify({"status": "error", "message": "종목코드와 평가기준일이 필요합니다."}), 200
+    try:
+        d = _d(date)
+    except Exception:
+        return jsonify({"status": "error", "message": "날짜 형식 오류(YYYY-MM-DD)."}), 200
+    start = (d - timedelta(days=14)).isoformat()
+    end = (d + timedelta(days=1)).isoformat()   # 기준일 포함되도록 +1
+    try:
+        dates, closes, _ = _fetch_price_series(code, start, end)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"조회 실패: {str(e)[:150]}"}), 200
+    pick = None
+    for dt, c in zip(dates, closes):
+        if dt <= date:
+            pick = (dt, c)
+    if not pick:
+        return jsonify({"status": "error",
+                        "message": "기준일 이전 거래 데이터가 없습니다(상장 전이거나 휴장)."}), 200
+    return jsonify({"status": "ok", "ticker": code, "date": pick[0], "close": pick[1]})
+
+
+@app.route("/api/volatility", methods=["POST"])
+def volatility_eval():
+    """유사기업 바스켓 역사적 변동성 산출.
+
+    body: {tickers:[code...], start, end, trading_days, method, log}
+    각 종목을 FDR로 조회 → 종목별 σ·시총 → 집계 σ. 조회 실패 종목은 스킵.
+    원자료(날짜·종가)도 함께 반환(감리 재현성·CSV 내보내기용).
+    """
+    from models.volatility import basket_volatility
+    data = request.get_json(force=True) or {}
+    tickers = [str(t).strip() for t in (data.get("tickers") or []) if str(t).strip()]
+    if not tickers:
+        return jsonify({"status": "error", "message": "종목이 비어 있습니다."}), 200
+    start = data.get("start") or None
+    end = data.get("end") or None
+    trading_days = int(data.get("trading_days") or 252)
+    method = data.get("method") or "median"
+    log = data.get("log", True)
+
+    try:
+        import FinanceDataReader as fdr
+    except Exception as e:
+        return jsonify({"status": "error",
+                        "message": f"FinanceDataReader 미설치: {str(e)[:120]}"}), 200
+
+    # 종목명·시총 매핑(가능하면)
+    name_cap = {}
+    try:
+        for r in _stock_listing():
+            name_cap[r["code"]] = (r["name"], r["marcap"])
+    except Exception:
+        pass
+
+    series, raw = {}, {}
+    for code in tickers:
+        try:
+            dates, closes, vols = _fetch_price_series(code, start, end)  # A주=baostock, 그 외=FDR
+            if len(closes) < 2:
+                raise ValueError("조회 결과가 비어 있습니다.")
+            nm, cap = name_cap.get(code, (code, None))
+            series[code] = {"name": nm, "dates": dates, "closes": closes,
+                            "volumes": vols, "cap": cap}
+            raw[code] = {"name": nm, "dates": dates, "closes": closes}
+        except Exception as e:
+            series[code] = {"name": name_cap.get(code, (code, None))[0],
+                            "closes": [], "error": str(e)[:150]}
+
+    try:
+        result = basket_volatility(series, trading_days=trading_days,
+                                   log=bool(log), method=method)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)[:200]}), 200
+
+    # 전 종목 실패 → 종목별 사유를 함께 안내(어떤 티커가 왜 실패했는지)
+    if result["sigma"] is None:
+        reasons = "; ".join(
+            f"{p['ticker']}: {p.get('error', '실패')}" for p in result["per_ticker"]
+        )[:300]
+        return jsonify({
+            "status": "error",
+            "message": f"유효한 변동성을 산출하지 못했습니다. 종목별 사유 → {reasons}",
+            "per_ticker": result["per_ticker"],
+        }), 200
+
+    return jsonify({
+        "status": "ok",
+        "sigma": result["sigma"],
+        "sigma_pct": round(result["sigma"] * 100, 2),
+        "method": method,
+        "trading_days": trading_days,
+        "start": start, "end": end,
+        "per_ticker": result["per_ticker"],
+        "failed": result["failed"],
+        "raw": raw,
+    })
+
+
+@app.route("/api/volatility/upload", methods=["POST"])
+def volatility_upload():
+    """CSV 업로드로 변동성 산출(자동조회 fallback·재현성용).
+
+    CSV 형식: 1열=날짜, 2열~=종목별 종가(헤더=종목명). 결측은 빈칸.
+    """
+    from models.volatility import basket_volatility
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "파일이 없습니다."}), 400
+    raw = request.files['file'].read()
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = raw.decode('cp949', errors='replace')
+    rows = list(csv.reader(io.StringIO(text)))
+    if len(rows) < 3:
+        return jsonify({"status": "error", "message": "데이터 행이 부족합니다."}), 200
+
+    header = rows[0]
+    cols = header[1:]  # 종목명들
+    series = {name.strip() or f"col{i}": {"name": name.strip() or f"col{i}",
+                                          "dates": [], "closes": []}
+              for i, name in enumerate(cols)}
+    keys = list(series.keys())
+    trading_days = int(request.form.get("trading_days") or 252)
+    method = request.form.get("method") or "median"
+
+    for r in rows[1:]:
+        if not r or not r[0].strip():
+            continue
+        d = r[0].strip()
+        for j, key in enumerate(keys):
+            cell = r[j + 1].strip() if j + 1 < len(r) else ""
+            if cell == "":
+                continue
+            try:
+                series[key]["closes"].append(float(cell.replace(",", "")))
+                series[key]["dates"].append(d)
+            except ValueError:
+                continue
+
+    try:
+        result = basket_volatility(series, trading_days=trading_days, method=method)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)[:200]}), 200
+
+    return jsonify({
+        "status": "ok",
+        "sigma": result["sigma"],
+        "sigma_pct": round(result["sigma"] * 100, 2),
+        "method": method, "trading_days": trading_days,
+        "per_ticker": result["per_ticker"], "failed": result["failed"],
+    })
+
+
 if __name__ == "__main__":
     print("RCPS 평가툴 서버 시작: http://localhost:5000")
     app.run(debug=True, port=5000, host="0.0.0.0")

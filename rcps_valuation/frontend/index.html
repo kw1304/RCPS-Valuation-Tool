@@ -59,6 +59,7 @@ header{
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
 .row1{display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:7px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:7px}
+.field-row .field{display:flex;flex-direction:column;justify-content:flex-end}
 .field label{display:block;font-size:0.7rem;font-weight:500;color:var(--text2);margin-bottom:0.28rem;letter-spacing:-0.01em}
 .field input,.field select{
   width:100%;background:var(--bg3);border:1.5px solid transparent;
@@ -80,6 +81,15 @@ header{
 input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
 .note{font-size:0.67rem;color:var(--text3);line-height:1.55;padding:0.5rem 0.7rem;background:var(--bg3);border-radius:8px;border-left:2.5px solid var(--border);margin-top:4px;letter-spacing:-0.01em}
 .hidden{display:none}
+.ref-dep{border-left:2px dashed var(--border);padding-left:10px;margin-top:6px}
+.ref-dep-off{opacity:.4;pointer-events:none}
+.ref-dep-off input,.ref-dep-off label{cursor:not-allowed}
+details.note-fold{margin-top:4px}
+details.note-fold>summary{cursor:pointer;list-style:none;user-select:none;font-size:0.67rem;color:var(--accent);padding:2px 0;letter-spacing:-0.01em}
+details.note-fold>summary::-webkit-details-marker{display:none}
+details.note-fold>summary::before{content:"▸ 설명"}
+details.note-fold[open]>summary::before{content:"▾ 설명"}
+details.note-fold .note{margin-top:4px}
 
 .mini-table{width:100%;border-collapse:collapse;font-size:0.7rem;margin-top:6px}
 .mini-table th{background:var(--bg3);color:var(--text3);padding:5px 6px;text-align:center;font-size:0.62rem;font-weight:600;border-bottom:1px solid var(--border)}
@@ -265,6 +275,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
       <button class="nav-tab" onclick="switchPage('contract',this)">계약서 요약</button>
       <button class="nav-tab active" id="tab-rcps-btn" onclick="switchPage('rcps',this)">RCPS 공정가치 평가</button>
       <button class="nav-tab" onclick="switchPage('dcf',this)">DCF 주가 산출</button>
+      <button class="nav-tab" onclick="switchPage('vol',this)">변동성 평가</button>
       <button class="nav-tab" onclick="switchPage('boot',this)">이자율 부트스트래핑</button>
     </div>
     <span class="hd-badge">K-IFRS 1109 · TF · GS · MC · DCF · Bootstrap</span>
@@ -282,16 +293,12 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
       <div class="field"><label>계약서 파일 (.pdf / .xlsx)</label><input type="file" id="contract-file" accept=".pdf,.xlsx,.xls"></div>
       <div class="field"><label>AI 제공자</label>
         <select id="contract-provider" onchange="onProviderChange()">
-          <option value="gemini" selected>Google Gemini (무료)</option>
-          <option value="groq">Groq (무료·빠름)</option>
-          <option value="ollama">로컬 Ollama (무료·무제한·기밀)</option>
-          <option value="claude_cli">Claude CLI (내 Max 구독)</option>
-          <option value="anthropic">Anthropic Claude (유료 API)</option>
+          <option value="claude_cli" selected>Claude CLI (내 Claude 구독)</option>
         </select>
       </div>
     </div>
     <div class="row2">
-      <div class="field"><label id="contract-key-label">Gemini API 키 (무료)</label><input type="password" id="contract-apikey" placeholder="AIza..." onchange="saveContractKey()"></div>
+      <div class="field"><label id="contract-key-label">API 키 (불필요)</label><input type="password" id="contract-apikey" placeholder="Claude 구독 로그인 사용 — 키 없이" onchange="saveContractKey()"></div>
       <div class="field"><label>모델</label>
         <select id="contract-model"></select>
       </div>
@@ -303,9 +310,9 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
       </div>
       <div class="field"></div>
     </div>
-    <div class="note" id="contract-key-help" style="margin-top:2px">무료 키 발급: <b>aistudio.google.com</b> → Get API key (카드 등록 불필요). ※ 계약서 본문이 Google 서버로 전송되니 기밀 여부 확인.</div>
+    <div class="note" id="contract-key-help" style="margin-top:2px">내 <b>Claude Code CLI</b>(Claude 구독)로 요약. 사전 준비: 독립형 Claude Code 설치 + 로그인 + <code>claude</code> 가 PATH에 있어야 함(또는 서버 환경변수 <code>CLAUDE_CLI_CMD</code>에 경로 지정). 텍스트 전용(스캔은 로컬 OCR). ※ 본문은 Anthropic 서버로 전송됨(로컬 아님).</div>
     <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
-      <div style="font-weight:600;font-size:.84rem;margin-bottom:4px">또는 — 내 Claude Code(Max 구독)로 무료 요약 🔗</div>
+      <div style="font-weight:600;font-size:.84rem;margin-bottom:4px">또는 — 내 Claude Code 구독으로 무료 요약 🔗</div>
       <div class="note" style="margin-bottom:6px">① Claude Code에 <b>"이 계약서 요약해서 contract_summary.json으로 저장해줘"</b> 라고 요청(PDF 경로/첨부) → ② 아래 버튼으로 불러오기. <b>API 키·비용 불필요</b>, 기밀은 내 Claude 안에서 처리.</div>
       <button class="btn-run" onclick="loadContractFromFile()" style="margin:0">📂 Claude Code 요약 불러오기</button>
       <span id="contract-load-status" style="font-size:.76rem;color:var(--accent);margin-left:8px"></span>
@@ -477,12 +484,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
           </select>
         </div>
       </div>
-      <div class="note">트리거 발동 조건: 주가 &lt; 전환가 × 트리거%<br>새 전환가 = max(최초전환가 × 하한%, 현재주가)</div>
-      <div class="toggle" style="margin-top:8px">
-        <input type="checkbox" id="refixing_ratchet" checked>
-        <label for="refixing_ratchet">경로의존 래칫(lock-in) — <b>MC 전용 평가</b></label>
-      </div>
-      <div class="note" id="ratchet-note">래칫 ON: 전환가가 경로상 최저로 내려가 유지(진짜 동적 리픽싱). recombining 트리(TF/GS)는 구조적으로 과소반영하므로 <b>몬테카를로 전용</b>으로 평가합니다.<br>래칫 OFF: 매 시점 현재주가로만 재산정(메모리 없음, 트리 근사) — TF/GS도 사용.</div>
+      <div class="note">트리거 발동 조건: 주가 &lt; 전환가 × 트리거%<br>새 전환가 = max(최초전환가 × 하한%, 현재주가)<br>※ 래칫(lock-in)·VWAP 기준가 등 <b>리픽싱 방식 옵션은 아래 "경로의존 옵션"</b>에 있습니다.</div>
     </div>
   </div>
 
@@ -490,47 +492,62 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
     <div class="sec-title">경로의존 옵션 <span class="badge-opt">선택 · MC 전용</span></div>
     <div class="note" style="margin-bottom:8px">아래 옵션은 주가 경로 이력에 의존(배리어·평균)하므로 켜면 <b>몬테카를로(MC) 전용</b>으로 평가합니다. TF/GS 트리는 과소반영되어 참고용으로만 표시됩니다.</div>
 
-    <div class="toggle"><input type="checkbox" id="has_softcall" onchange="togglePD('softcall')"><label for="has_softcall">소프트콜 배리어 (발행자 콜) — 주가 ≥ 전환가×배리어 충족 시 콜 활성</label></div>
-    <div id="softcall-fields" class="hidden">
-      <div class="row3">
-        <div class="field"><label>배리어 (전환가 배수)</label><input type="number" id="call_soft_barrier" value="1.30" step="0.05"></div>
-        <div class="field"><label>관측창 (스텝, Parisian)</label><input type="number" id="call_soft_window" value="1" step="1"></div>
-        <div class="field"><label>충족 횟수</label><input type="number" id="call_soft_count" value="1" step="1"></div>
-      </div>
-      <div class="note">창=1·횟수=1 이면 단순 배리어. 예) 30/20 이면 30스텝 중 20회 상회 시 콜(Parisian). 콜 행사가는 위 콜옵션 설정(call_price_mode)을 사용.</div>
-    </div>
-
-    <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_mandconv" onchange="togglePD('mandconv')"><label for="has_mandconv">강제전환 Knock-out — 주가 ≥ 전환가×배리어 충족 시 보통주 강제전환</label></div>
+    <!-- 강제전환: 콜·풋 의존 없음(전환 기능) → 맨 위 -->
+    <div class="toggle"><input type="checkbox" id="has_mandconv" onchange="togglePD('mandconv')"><label for="has_mandconv">강제전환 Knock-out</label></div>
     <div id="mandconv-fields" class="hidden">
       <div class="row3">
         <div class="field"><label>배리어 (전환가 배수)</label><input type="number" id="mandatory_conv_barrier" value="2.00" step="0.10"></div>
         <div class="field"><label>관측창 (스텝)</label><input type="number" id="mandatory_conv_window" value="1" step="1"></div>
         <div class="field"><label>충족 횟수</label><input type="number" id="mandatory_conv_count" value="1" step="1"></div>
       </div>
-      <div class="note">충족 경로는 채권·풋이 소멸하고 전환가치로 확정됩니다(KO).</div>
+      <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 보통주로 강제전환(Knock-out). 충족 경로는 채권·풋이 소멸하고 전환가치로 확정됩니다.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 강제전환(<b>Parisian 배리어</b>) — 일시적 급등으로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).</div></details>
     </div>
 
-    <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_putbarrier" onchange="togglePD('putbarrier')"><label for="has_putbarrier">배리어 풋 (down-and-in) — 주가가 하단배리어 터치한 경로에서만 풋 활성</label></div>
-    <div id="putbarrier-fields" class="hidden">
-      <div class="row2">
-        <div class="field"><label>하단 배리어 (최초주가 S₀ 배수)</label><input type="number" id="put_barrier" value="0.50" step="0.05"></div>
+    <!-- 소프트콜: 발행자 콜 → 콜옵션 필요 -->
+    <div id="softcall-dep-group" class="ref-dep" style="margin-top:8px">
+      <div class="note" style="font-weight:600">↓ 발행자 콜 — <b>"콜옵션"</b>이 켜져 있어야 사용 가능</div>
+      <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_softcall" onchange="togglePD('softcall')"><label for="has_softcall">소프트콜 배리어 (발행자 콜)</label></div>
+      <div id="softcall-fields" class="hidden">
+        <div class="row3 field-row">
+          <div class="field"><label>배리어 (×전환가)</label><input type="number" id="call_soft_barrier" value="1.30" step="0.05"></div>
+          <div class="field"><label>관측창 (스텝)</label><input type="number" id="call_soft_window" value="1" step="1"></div>
+          <div class="field"><label>충족 횟수</label><input type="number" id="call_soft_count" value="1" step="1"></div>
+        </div>
+        <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 발행자 콜 활성.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 콜(<b>Parisian 배리어</b>) — 일시적 급등 스파이크로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).<br>콜 행사가는 위 콜옵션 설정(call_price_mode)을 사용.</div></details>
       </div>
-      <div class="note">풋(보유자 상환청구)이 활성화되려면 풋 조건이 먼저 켜져 있어야 합니다. 주가가 S₀×배리어 이하를 한 번이라도 터치한 경로에서만 풋 행사 가능(knock-in).</div>
     </div>
 
-    <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_vwap" onchange="togglePD('vwap')"><label for="has_vwap">VWAP 리픽싱 — 리픽싱 기준가를 직전 N스텝 평균으로 (리픽싱 조항 필요)</label></div>
-    <div id="vwap-fields" class="hidden">
-      <div class="row2">
-        <div class="field"><label>평균 구간 (스텝 수)</label><input type="number" id="refixing_vwap_window" value="20" step="1"></div>
+    <!-- 배리어 풋: 보유자 풋 → 풋옵션 필요 -->
+    <div id="putbarrier-dep-group" class="ref-dep" style="margin-top:8px">
+      <div class="note" style="font-weight:600">↓ 보유자 풋 — <b>"풋옵션"</b>이 켜져 있어야 사용 가능</div>
+      <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_putbarrier" onchange="togglePD('putbarrier')"><label for="has_putbarrier">배리어 풋 (down-and-in)</label></div>
+      <div id="putbarrier-fields" class="hidden">
+        <div class="row2">
+          <div class="field"><label>하단 배리어 (최초주가 S₀ 배수)</label><input type="number" id="put_barrier" value="0.50" step="0.05"></div>
+        </div>
+        <details class="note-fold"><summary></summary><div class="note">주가가 S₀×배리어 이하를 한 번이라도 터치한 경로에서만 풋 행사 가능(knock-in).</div></details>
       </div>
-      <div class="note">리픽싱 트리거·새 전환가 산정 시 현재주가 대신 직전 N스텝 가중평균(VWAP)을 사용합니다. 위 "하향 리픽싱 조항"이 켜져 있어야 적용됩니다.</div>
+    </div>
+
+    <div id="refixing-dependent-group" class="ref-dep">
+      <div class="note" style="margin-top:8px;font-weight:600">↓ 리픽싱 <b>방식</b> 옵션 — "하향 리픽싱 조항"이 켜져 있어야 사용 가능</div>
+      <div class="toggle" style="margin-top:8px"><input type="checkbox" id="refixing_ratchet"><label for="refixing_ratchet">경로의존 래칫(lock-in)</label></div>
+      <details class="note-fold"><summary></summary><div class="note" id="ratchet-note">래칫 ON: 전환가가 경로상 최저로 내려가 유지(진짜 동적 리픽싱). recombining 트리(TF/GS)는 구조적으로 과소반영하므로 <b>몬테카를로 전용</b>으로 평가합니다.<br>래칫 OFF: 매 시점 현재주가로만 재산정(메모리 없음, 트리 근사) — TF/GS도 사용.</div></details>
+
+      <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_vwap" onchange="togglePD('vwap')"><label for="has_vwap">VWAP 리픽싱</label></div>
+      <div id="vwap-fields" class="hidden">
+        <div class="row2">
+          <div class="field"><label>평균 구간 (스텝 수)</label><input type="number" id="refixing_vwap_window" value="20" step="1"></div>
+        </div>
+        <details class="note-fold"><summary></summary><div class="note">리픽싱 트리거·새 전환가 산정 시 현재주가 대신 직전 N스텝 가중평균(VWAP)을 사용합니다.</div></details>
+      </div>
     </div>
   </div>
 
   <div class="sec">
     <div class="sec-title">비상장 기업 <span class="badge-opt">선택</span></div>
     <div class="toggle"><input type="checkbox" id="is_unlisted"><label for="is_unlisted">비상장 기업으로 평가</label></div>
-    <div class="note">주가(S₀)는 <strong>DCF 주가 산출</strong> 탭에서 계산 후<br>"RCPS 평가에 적용" 버튼으로 자동 입력하거나 직접 입력하세요.</div>
+    <div class="note">비상장사: 주가(S₀)는 <strong>DCF 주가 산출</strong> 탭에서 계산 후 "RCPS 평가에 적용"으로 입력하거나 직접 입력.<br>상장사: 아래 <strong>시장 데이터</strong>에서 종목코드 입력 후 <strong>"평가기준일 종가 조회 → S₀"</strong>로 자동 반영.</div>
   </div>
 
   <div class="sec">
@@ -539,11 +556,18 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
       <div class="field"><label>평가기준일</label><input type="date" id="valuation_date" value="2024-12-31"></div>
       <div class="field"><label>주가 (원)</label><input type="text" id="stock_price" class="money" value="25,522" onfocus="mFocus(this)" onblur="mBlur(this)" oninput="mInput(this)"></div>
     </div>
+    <div class="row2 field-row">
+      <div class="field" style="position:relative"><label>상장기업 종목명/코드/티커 (선택)</label><input type="text" id="self_ticker" placeholder="예: 삼성전자 · 005930 · AAPL · 600519.SS" autocomplete="off"
+        oninput="selfSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();selfAddFirst();}">
+        <div id="self-search-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:20;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.12)"></div></div>
+      <div class="field"><button class="btn-run" onclick="fetchSelfPrice()" style="width:100%;padding:0.5rem">평가기준일 종가 조회 → S₀</button></div>
+    </div>
+    <div class="note" id="self-price-msg" style="display:none;margin-top:4px"></div>
     <div class="row1">
       <div class="field"><label>변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>스텝 수 (노드)</label>
+      <div class="field"><label>스텝 수 (시간단계)</label>
         <select id="steps">
           <option value="60">60 스텝</option>
           <option value="120" selected>120 스텝</option>
@@ -561,7 +585,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
         </select>
       </div>
     </div>
-    <div class="note" style="margin-top:4px">※ 무위험이자율·신용스프레드는 <b>부트스트래핑 탭의 RF/RD 곡선에서 잔여만기 시점값으로 자동 도출</b>되며, 할인은 그 곡선의 선도이자율(연속스팟 선형보간+평탄외삽)을 노드별로 적용합니다.</div>
+    <div class="note" style="margin-top:4px">※ <b>스텝 수</b>는 평가기준일~만기까지 시간축을 몇 칸으로 쪼갤지(=MC 스텝·트리 시간단계)이며, <b>1스텝 ≈ 만기기간 ÷ 스텝수</b> 입니다. 경로의존 옵션의 <b>관측창·충족 횟수도 이 스텝과 같은 단위</b>로 셉니다.<br>※ 무위험이자율·신용스프레드는 <b>부트스트래핑 탭의 RF/RD 곡선에서 잔여만기 시점값으로 자동 도출</b>되며, 할인은 그 곡선의 선도이자율(연속스팟 선형보간+평탄외삽)을 스텝별로 적용합니다.</div>
   </div>
 
   <div id="err-box" class="err-msg"></div>
@@ -675,6 +699,92 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
   </div>
 
 </div><!-- /page-dcf -->
+
+
+<!-- ══════════════════════
+     변동성 평가 페이지 (유사상장기업 바스켓 · 역사적 변동성)
+══════════════════════ -->
+<div class="page" id="page-vol" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
+
+  <div class="sec">
+    <div class="sec-title">변동성 평가 <span class="badge-opt">유사기업 · 역사적</span></div>
+    <div class="note">비상장 발행사의 변동성(σ)은 <b>유사상장기업의 역사적 변동성</b>으로 추정합니다. 산정기간은 <b>잔여만기 매칭</b>이 K-IFRS 감리 기본값입니다. 산출 후 <b>"RCPS 평가에 적용"</b>으로 변동성 입력칸에 반영됩니다.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">산정 조건</div>
+    <div class="row3">
+      <div class="field"><label>시작일</label><input type="date" id="vol_start"></div>
+      <div class="field"><label>종료일</label><input type="date" id="vol_end"></div>
+      <div class="field"><label>산정기간 프리셋</label>
+        <select id="vol_preset" onchange="volApplyPreset()">
+          <option value="match">잔여만기 매칭</option>
+          <option value="1">최근 1년</option>
+          <option value="2">최근 2년</option>
+          <option value="custom">직접 입력</option>
+        </select>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>연 거래일 수</label><input type="number" id="vol_tradingdays" value="252" step="1"></div>
+      <div class="field"><label>집계 방식</label>
+        <select id="vol_method">
+          <option value="median">중앙값 (권장)</option>
+          <option value="mean">단순평균</option>
+          <option value="cap_weighted">시총가중</option>
+        </select>
+      </div>
+      <div class="field"><label>데이터 소스</label>
+        <select id="vol_source" onchange="volToggleSource()">
+          <option value="auto">자동조회 (KRX+해외)</option>
+          <option value="csv">CSV 업로드</option>
+        </select>
+      </div>
+    </div>
+    <details class="note-fold"><summary></summary><div class="note">역사적 변동성 = 일별 <b>로그수익률</b>의 표준편차 × √(연 거래일 수). 거래정지(거래량 0)·결측·비양수 가격은 자동 제외됩니다. <b>잔여만기 매칭</b>: RCPS 입력의 평가기준일~만기일 길이만큼 과거 구간을 사용.</div></details>
+  </div>
+
+  <!-- 자동조회: 유사기업 미니테이블 -->
+  <div class="sec" id="vol-auto-box">
+    <div class="sec-title">유사상장기업</div>
+    <div style="position:relative;display:flex;gap:8px;margin-bottom:8px">
+      <input type="text" id="vol_search" placeholder="종목명 또는 티커 입력 후 Enter (예: 코스맥스, Intercos, AAPL)" autocomplete="off"
+             oninput="volSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();volAddFirst();}"
+             style="flex:1;padding:0.5rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:0.78rem;font-family:var(--sans)">
+      <div id="vol-search-drop" style="display:none;position:absolute;top:2.5rem;left:0;right:0;z-index:20;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.12)"></div>
+    </div>
+    <div class="note" style="margin-bottom:8px"><b>종목명</b>으로 검색됩니다 — 국내·미국은 물론 <b>유럽·일본 등 해외도 회사명으로</b> 찾습니다(예: Intercos → ICOS.MI 자동 표시). 못 찾으면 <b>Yahoo 티커</b>로 직접 입력하세요.
+      <details class="note-fold" style="margin-top:4px"><summary></summary><div class="note">해외 이름 검색은 Yahoo Finance 기준이라 동명·복수상장이 섞일 수 있으니 거래소(예: MIL=밀라노, PAR=파리)를 확인하고 고르세요. 직접 입력 시 거래소별 접미사 — 밀라노 <code>.MI</code> · 런던 <code>.L</code> · 파리 <code>.PA</code> · 프랑크푸르트 <code>.DE</code> · 도쿄 <code>.T</code> · 홍콩 <code>.HK</code> · 상하이/선전 <code>.SS</code>/<code>.SZ</code>.<br><b>중국 본토 A주</b>(상하이 <code>.SS</code>/선전 <code>.SZ</code>)는 이름 검색에 안 나오니 <b>코드로 직접 입력</b>하세요 — 예: 마오타이 <code>600519.SS</code>, BYD A주 <code>002594.SZ</code>. (전복권 종가 기준)</div></details>
+    </div>
+    <table class="mini-table" id="vol-basket">
+      <thead><tr><th>종목</th><th>코드</th><th>σ (연율)</th><th>관측치</th><th>제외</th><th></th></tr></thead>
+      <tbody id="vol-basket-body"></tbody>
+    </table>
+    <div class="note" id="vol-basket-empty" style="margin-top:6px">위 검색창에서 유사상장기업을 추가하세요.</div>
+    <button class="btn-run" id="vol-run" onclick="volRun()" style="margin-top:10px">변동성 조회·산출</button>
+  </div>
+
+  <!-- CSV 업로드 -->
+  <div class="sec" id="vol-csv-box" style="display:none">
+    <div class="sec-title">CSV 업로드</div>
+    <div class="note">형식: 1열=날짜, 2열~=종목별 종가(헤더=종목명). 자동조회한 원자료를 내보내 그대로 다시 올리면 동일 결과가 재현됩니다.</div>
+    <input type="file" id="vol_csv_file" accept=".csv" style="margin-top:8px">
+    <button class="btn-run" onclick="volRunCsv()" style="margin-top:10px">CSV로 변동성 산출</button>
+  </div>
+
+  <div id="vol-msg" class="note" style="display:none"></div>
+
+  <!-- 결과 -->
+  <div class="sec" id="vol-result" style="display:none">
+    <div class="sec-title">산출 결과</div>
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <div>집계 변동성 σ = <span id="vol-sigma" style="font-size:1.6rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums">—</span></div>
+      <button class="btn-run" id="vol-apply" onclick="volApplyToRcps()" style="padding:0.45rem 0.9rem">RCPS 평가에 적용</button>
+      <button class="btn-run" id="vol-export" onclick="volExportCsv()" style="padding:0.45rem 0.9rem;background:var(--text3)">원자료 CSV 내보내기</button>
+    </div>
+    <div class="note" id="vol-meta" style="margin-top:8px"></div>
+  </div>
+</div><!-- /page-vol -->
 
 
 <!-- ══════════════════════
@@ -853,17 +963,14 @@ function switchPage(name,btn){
   const pg=document.getElementById('page-'+name);
   pg.classList.add('active');
   pg.style.display='flex';
-  if(name==='dcf'||name==='boot'||name==='contract')pg.style.flexDirection='column';
+  if(name==='dcf'||name==='boot'||name==='contract'||name==='vol')pg.style.flexDirection='column';
   if(name==='boot')bootRender();
+  if(name==='vol')volInitDates();
 }
 
 /* ══ 계약서 요약 (AI) ══ */
 const _CONTRACT_MODELS={
-  gemini:[['gemini-2.0-flash','Gemini 2.0 Flash (권장·무료)'],['gemini-1.5-flash','Gemini 1.5 Flash (안정·무료)'],['gemini-2.5-flash','Gemini 2.5 Flash (정밀)']],
-  groq:[['llama-3.3-70b-versatile','Llama 3.3 70B (권장·무료)'],['llama-3.1-8b-instant','Llama 3.1 8B (빠름·무료)']],
-  ollama:[['qwen2.5:7b','Qwen2.5 7B (한국어·권장, 16GB OK)'],['exaone3.5:7.8b','EXAONE 3.5 7.8B (LG 한국어특화)'],['llama3.1:8b','Llama 3.1 8B'],['qwen2.5:14b','Qwen2.5 14B (고품질, RAM 여유시)']],
-  claude_cli:[['sonnet','Claude Sonnet (권장)'],['opus','Claude Opus (정밀)'],['','기본(로그인 설정)']],
-  anthropic:[['claude-sonnet-4-6','Claude Sonnet 4.6 (권장)'],['claude-opus-4-7','Claude Opus 4.7 (정밀)']]
+  claude_cli:[['sonnet','Claude Sonnet (권장)'],['opus','Claude Opus (정밀)'],['','기본(로그인 설정)']]
 };
 function _curProvider(){return document.getElementById('contract-provider').value;}
 function onProviderChange(){
@@ -873,22 +980,8 @@ function onProviderChange(){
   const lbl=document.getElementById('contract-key-label');
   const inp=document.getElementById('contract-apikey');
   const help=document.getElementById('contract-key-help');
-  if(pv==='gemini'){
-    lbl.textContent='Gemini API 키 (무료)'; inp.placeholder='AIza...';
-    help.innerHTML='무료 키 발급: <b>aistudio.google.com</b> → Get API key (카드 등록 불필요). ※ 계약서 본문이 Google 서버로 전송되니 기밀 여부 확인.';
-  }else if(pv==='groq'){
-    lbl.textContent='Groq API 키 (무료)'; inp.placeholder='gsk_...';
-    help.innerHTML='무료 키 발급: <b>console.groq.com</b> → API Keys (카드 등록 불필요, Gemini와 별도 한도). 텍스트 전용이라 스캔 PDF는 로컬 OCR(Tesseract) 필요. ※ 본문이 Groq 서버로 전송됨.';
-  }else if(pv==='ollama'){
-    lbl.textContent='API 키 (불필요)'; inp.placeholder='로컬 실행 — 키 없이 사용';
-    help.innerHTML='설치: <b>ollama.com</b> → <code>ollama pull qwen2.5:7b</code> (16GB RAM OK, ~5GB). <b>무료·무제한·완전 기밀</b>(PC 밖 전송 없음). 텍스트 전용이라 스캔 PDF는 로컬 OCR 사용. CPU 추론은 다소 느림(수십초~수분).';
-  }else if(pv==='claude_cli'){
-    lbl.textContent='API 키 (불필요)'; inp.placeholder='Max 구독 로그인 사용 — 키 없이';
-    help.innerHTML='내 <b>Claude Code CLI</b>(Max 구독)로 요약. 사전 준비: 독립형 Claude Code 설치 + 로그인 + <code>claude</code> 가 PATH에 있어야 함(또는 서버 환경변수 <code>CLAUDE_CLI_CMD</code>에 경로 지정). 텍스트 전용(스캔은 로컬 OCR). ※ 본문은 Anthropic 서버로 전송됨(로컬 아님).';
-  }else{
-    lbl.textContent='Anthropic API 키 (유료)'; inp.placeholder='sk-ant-...';
-    help.innerHTML='키 발급: <b>console.anthropic.com</b> (결제수단 등록 필요). ※ 계약서 본문이 Anthropic 서버로 전송됨.';
-  }
+  lbl.textContent='API 키 (불필요)'; inp.placeholder='Claude 구독 로그인 사용 — 키 없이';
+  help.innerHTML='내 <b>Claude Code CLI</b>(Claude 구독)로 요약. 사전 준비: 독립형 Claude Code 설치 + 로그인 + <code>claude</code> 가 PATH에 있어야 함(또는 서버 환경변수 <code>CLAUDE_CLI_CMD</code>에 경로 지정). 텍스트 전용(스캔은 로컬 OCR). ※ 본문은 Anthropic 서버로 전송됨(로컬 아님).';
   inp.value=localStorage.getItem(pv+'_contract_key')||'';
 }
 function saveContractKey(){
@@ -1032,8 +1125,21 @@ function recalcDerived(){
   if(ipsEl) ipsEl.value=rcps>0?Math.round(ips).toLocaleString('ko-KR'):'—';
   if(crEl)  crEl.value=(conv>0&&rcps>0)?(ips/conv).toFixed(4):'—';
 }
-function togglePut(){document.getElementById('put-fields').classList.toggle('hidden',!document.getElementById('has_put').checked);}
-function toggleCall(){document.getElementById('call-fields').classList.toggle('hidden',!document.getElementById('has_call').checked);}
+function togglePut(){document.getElementById('put-fields').classList.toggle('hidden',!document.getElementById('has_put').checked);syncPDDeps();}
+function toggleCall(){document.getElementById('call-fields').classList.toggle('hidden',!document.getElementById('has_call').checked);syncPDDeps();}
+// 경로의존: 소프트콜=발행자 콜(콜옵션 필요), 배리어 풋=보유자 풋(풋옵션 필요). 강제전환은 전환 기능이라 의존 없음.
+function syncPDDeps(){
+  _pdDep('has_softcall','softcall',!!document.getElementById('has_call')?.checked);
+  _pdDep('has_putbarrier','putbarrier',!!document.getElementById('has_put')?.checked);
+}
+function _pdDep(id,key,on){
+  const cb=document.getElementById(id); if(!cb)return;
+  cb.disabled=!on;
+  const grp=document.getElementById(key+'-dep-group');   // 그룹 전체 흐림(리픽싱 의존 그룹과 동일)
+  if(grp)grp.classList.toggle('ref-dep-off',!on);
+  if(!on && cb.checked){cb.checked=false;togglePD(key);}
+}
+document.addEventListener('DOMContentLoaded',syncPDDeps);
 function _exNote(m,isCall){
   const who=isCall?'발행자 콜':'풋'; const f={y:'연',h:'반기',q:'분기'};
   if(m==='fixed')        return who+' 행사가 = 입력한 고정 정액(전 기간 동일). 발행금액 스케일.';
@@ -1063,7 +1169,24 @@ function toggleCallMode(){
   document.getElementById('call-rate-label').textContent=isIrr?'수의상환 IRR (%)':'수의상환 이자율 (%)';
   document.getElementById('call-mode-note').textContent=_exNote(m,true);
 }
-function toggleRefixing(){document.getElementById('refixing-fields').classList.toggle('hidden',!document.getElementById('refixing').checked);}
+function toggleRefixing(){
+  const on=document.getElementById('refixing').checked;
+  document.getElementById('refixing-fields').classList.toggle('hidden',!on);
+  syncRefixingDependents();
+}
+// 리픽싱 방식 옵션(래칫·VWAP)은 "하향 리픽싱 조항"이 켜져 있을 때만 선택 가능
+function syncRefixingDependents(){
+  const on=document.getElementById('refixing').checked;
+  const grp=document.getElementById('refixing-dependent-group');
+  if(grp) grp.classList.toggle('ref-dep-off',!on);
+  const rt=document.getElementById('refixing_ratchet'); if(rt) rt.disabled=!on;
+  const vw=document.getElementById('has_vwap');
+  if(vw){
+    vw.disabled=!on;
+    if(!on && vw.checked){ vw.checked=false; togglePD('vwap'); }
+  }
+}
+document.addEventListener('DOMContentLoaded',syncRefixingDependents);
 function togglePD(key){const map={softcall:'has_softcall',mandconv:'has_mandconv',putbarrier:'has_putbarrier',vwap:'has_vwap'};const f=document.getElementById(key+'-fields');if(f)f.classList.toggle('hidden',!document.getElementById(map[key]).checked);}
 
 let lastReq=null;
@@ -1630,6 +1753,230 @@ function sendToRCPS(){
   setTimeout(()=>{el.style.transition='background 1.5s ease';el.style.background='';},80);
 }
 
+/* ══ 상장 평가대상 자기주가 자동조회 (평가기준일 종가 → S₀) ══ */
+let _selfSearchTimer=null;
+function selfSearch(){
+  clearTimeout(_selfSearchTimer);
+  const q=document.getElementById('self_ticker').value.trim();
+  const drop=document.getElementById('self-search-drop');
+  if(q.length<1){drop.style.display='none';return;}
+  _selfSearchTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
+      const j=await r.json();
+      if(document.getElementById('self_ticker').value.trim()!==q){drop.style.display='none';return;}
+      if(j.status!=='ok'||!j.results.length){drop.style.display='none';return;}
+      drop.innerHTML=j.results.map(x=>`<div onclick="selfPick('${x.code}','${(x.name||'').replace(/'/g,'')}')" style="padding:7px 10px;cursor:pointer;font-size:0.76rem;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''"><b>${x.name}</b> <span style="color:var(--text3)">${x.code} · ${x.market}</span></div>`).join('');
+      drop.style.display='block';
+    }catch(e){drop.style.display='none';}
+  },250);
+}
+function selfPick(code,name){
+  document.getElementById('self_ticker').value=code;
+  document.getElementById('self-search-drop').style.display='none';
+  fetchSelfPrice();   // 선택 즉시 평가기준일 종가 조회
+}
+async function selfAddFirst(){
+  const q=document.getElementById('self_ticker').value.trim();
+  if(!q)return;
+  const drop=document.getElementById('self-search-drop');
+  const first=(drop.style.display!=='none')?drop.querySelector('div'):null;
+  if(first){first.click();return;}
+  // 명확한 코드/티커(6자리·.접미사·sh./sz.)는 바로 조회, 그 외(이름)는 검색 후 첫 결과
+  if(/^\d{6}$/.test(q) || /\.[A-Za-z]{1,3}$/.test(q) || /^(sh|sz)\./i.test(q)){fetchSelfPrice();return;}
+  try{
+    const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
+    const j=await r.json();
+    if(j.status==='ok'&&j.results.length){selfPick(j.results[0].code,j.results[0].name);return;}
+  }catch(e){}
+  fetchSelfPrice();
+}
+async function fetchSelfPrice(){
+  const code=document.getElementById('self_ticker').value.trim();
+  const date=document.getElementById('valuation_date').value;
+  const msg=document.getElementById('self-price-msg');
+  const show=(c,h)=>{msg.style.display='block';msg.style.color=c;msg.innerHTML=h;};
+  if(!code){show('var(--red)','종목코드/티커를 입력하세요.');return;}
+  if(!date){show('var(--red)','평가기준일을 먼저 입력하세요.');return;}
+  show('var(--text3)','조회 중…');
+  try{
+    const r=await fetch('/api/stock_price?ticker='+encodeURIComponent(code)+'&date='+encodeURIComponent(date));
+    const j=await r.json();
+    if(j.status!=='ok'){show('var(--red)','오류: '+j.message);return;}
+    setMoney('stock_price',Math.round(j.close));
+    const el=document.getElementById('stock_price');
+    el.style.transition='none';el.style.background='#DCFCE7';
+    setTimeout(()=>{el.style.transition='background 1.5s ease';el.style.background='';},80);
+    const note=(j.date!==date)?` (기준일 ≤ ${date}의 마지막 거래일)`:'';
+    show('var(--green)',`${j.ticker} <b>${j.date}</b> 종가 <b>${Math.round(j.close).toLocaleString('ko-KR')}</b> 반영${note}`);
+  }catch(e){show('var(--red)','요청 실패: '+e.message);}
+}
+
+/* ══ 변동성 평가 (유사기업 바스켓 · 역사적) ══ */
+window.volBasket=[];        // [{code,name}]
+window.volLastRaw=null;     // 자동조회 원자료 {code:{name,dates,closes}}
+window.volLastSigmaPct=null;
+let _volSearchTimer=null;
+
+function volMsg(txt,ok){
+  const el=document.getElementById('vol-msg');
+  el.style.display='block';
+  el.style.color=ok?'var(--green)':'var(--red)';
+  el.innerHTML=txt;
+}
+function volInitDates(){volApplyPreset();}
+function volApplyPreset(){
+  const p=document.getElementById('vol_preset').value;
+  const sEl=document.getElementById('vol_start'), eEl=document.getElementById('vol_end');
+  if(p==='custom')return;
+  const vd=document.getElementById('valuation_date').value;
+  const end=vd?new Date(vd):new Date();
+  eEl.value=end.toISOString().slice(0,10);
+  let start=new Date(end);
+  if(p==='match'){
+    const md=document.getElementById('maturity_date').value, idt=document.getElementById('issue_date').value;
+    // 잔여만기 = 만기 − 평가기준일. 그 길이만큼 과거로.
+    const yrs=(md&&vd)?Math.max((new Date(md)-new Date(vd))/(365.25*864e5),0.25):2;
+    start.setFullYear(start.getFullYear()-Math.floor(yrs));
+    start.setMonth(start.getMonth()-Math.round((yrs%1)*12));
+  }else{
+    start.setFullYear(start.getFullYear()-parseInt(p));
+  }
+  sEl.value=start.toISOString().slice(0,10);
+}
+function volToggleSource(){
+  const csv=document.getElementById('vol_source').value==='csv';
+  document.getElementById('vol-auto-box').style.display=csv?'none':'';
+  document.getElementById('vol-csv-box').style.display=csv?'':'none';
+}
+function volSearch(){
+  clearTimeout(_volSearchTimer);
+  const q=document.getElementById('vol_search').value.trim();
+  const drop=document.getElementById('vol-search-drop');
+  if(q.length<1){drop.style.display='none';return;}
+  _volSearchTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
+      const j=await r.json();
+      // 응답 도착 시 입력값이 바뀌었으면(추가/삭제 등) 잔상 드롭다운 표시 방지
+      if(document.getElementById('vol_search').value.trim()!==q){drop.style.display='none';return;}
+      if(j.status!=='ok'||!j.results.length){drop.style.display='none';return;}
+      drop.innerHTML=j.results.map(x=>`<div onclick="volAddTicker('${x.code}','${(x.name||'').replace(/'/g,'')}')" style="padding:7px 10px;cursor:pointer;font-size:0.76rem;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''"><b>${x.name}</b> <span style="color:var(--text3)">${x.code} · ${x.market}</span></div>`).join('');
+      drop.style.display='block';
+    }catch(e){drop.style.display='none';}
+  },250);
+}
+async function volAddFirst(){
+  const q=document.getElementById('vol_search').value.trim();
+  if(!q)return;
+  if(/^\d{6}$/.test(q)){volAddTicker(q,q);return;}
+  const drop=document.getElementById('vol-search-drop');
+  // 드롭다운이 실제로 보일 때만 첫 항목 사용(숨김 상태엔 이전 검색 잔여항목이 남아 오클릭됨)
+  const first=(drop.style.display!=='none')?drop.querySelector('div'):null;
+  if(first){first.click();return;}
+  // 드롭다운이 아직 안 떴으면(엔터를 빨리 누른 경우) 직접 조회해 첫 결과 추가
+  try{
+    const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
+    const j=await r.json();
+    if(j.status==='ok'&&j.results.length){volAddTicker(j.results[0].code,j.results[0].name);}
+    else if(/^[A-Za-z][A-Za-z0-9.\-]{0,11}$/.test(q)){const t=q.toUpperCase();volAddTicker(t,t);}  // 목록에 없어도 영문 티커(예 AAPL, ICOS.MI)는 직접 조회 시도
+    else{volMsg("'"+q+"' 은(는) 국내·미국 목록에 없습니다. 해외 종목은 <b>Yahoo 티커</b>로 입력하세요 — 예: 밀라노 <b>ICOS.MI</b>, 파리 <b>OR.PA</b>, 도쿄 <b>7203.T</b>. (정확한 티커는 Yahoo Finance에서 확인)",false);}
+  }catch(e){volMsg('검색 실패: '+e.message,false);}
+}
+function volAddTicker(code,name){
+  if(!window.volBasket.some(x=>x.code===code))window.volBasket.push({code,name:name||code});
+  document.getElementById('vol_search').value='';
+  document.getElementById('vol-search-drop').style.display='none';
+  volRenderBasket();
+}
+function volRemove(code){window.volBasket=window.volBasket.filter(x=>x.code!==code);volRenderBasket();}
+function volRenderBasket(per){
+  const body=document.getElementById('vol-basket-body');
+  const byCode={};(per||[]).forEach(p=>byCode[p.ticker]=p);
+  document.getElementById('vol-basket-empty').style.display=window.volBasket.length?'none':'';
+  body.innerHTML=window.volBasket.map(b=>{
+    const p=byCode[b.code];
+    if(p&&p.name&&p.name!==b.code)b.name=p.name;   // 서버 반환 정식 종목명으로 갱신
+    const sig=p&&p.sigma!=null?(p.sigma*100).toFixed(2)+'%':(p&&p.error?'<span style="color:var(--red)">실패</span>':'—');
+    const n=p&&p.n_obs!=null?p.n_obs:'—';
+    const rm=p&&p.removed?p.removed:'—';
+    return `<tr><td>${b.name}</td><td>${b.code}</td><td style="text-align:right">${sig}</td><td style="text-align:right">${n}</td><td style="text-align:right">${rm}</td><td style="text-align:center"><span onclick="volRemove('${b.code}')" style="cursor:pointer;color:var(--red)">✕</span></td></tr>`;
+  }).join('');
+}
+async function volRun(){
+  if(!window.volBasket.length){volMsg('유사기업을 1개 이상 추가하세요.',false);return;}
+  const btn=document.getElementById('vol-run');btn.disabled=true;btn.textContent='조회 중…';
+  volMsg('KRX에서 가격 시계열 조회 중…',true);
+  try{
+    const r=await fetch('/api/volatility',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        tickers:window.volBasket.map(x=>x.code),
+        start:document.getElementById('vol_start').value,
+        end:document.getElementById('vol_end').value,
+        trading_days:parseInt(document.getElementById('vol_tradingdays').value)||252,
+        method:document.getElementById('vol_method').value,
+      })});
+    const j=await r.json();
+    if(j.status!=='ok'){volMsg('오류: '+j.message,false); if(j.per_ticker)volRenderBasket(j.per_ticker); return;}
+    window.volLastRaw=j.raw;
+    volRenderBasket(j.per_ticker);
+    volRenderResult(j);
+  }catch(e){volMsg('요청 실패: '+e.message,false);}
+  finally{btn.disabled=false;btn.textContent='변동성 조회·산출';}
+}
+async function volRunCsv(){
+  const f=document.getElementById('vol_csv_file').files[0];
+  if(!f){volMsg('CSV 파일을 선택하세요.',false);return;}
+  volMsg('CSV 분석 중…',true);
+  try{
+    const fd=new FormData();fd.append('file',f);
+    fd.append('trading_days',parseInt(document.getElementById('vol_tradingdays').value)||252);
+    fd.append('method',document.getElementById('vol_method').value);
+    const r=await fetch('/api/volatility/upload',{method:'POST',body:fd});
+    const j=await r.json();
+    if(j.status!=='ok'){volMsg('오류: '+j.message,false);return;}
+    window.volLastRaw=null;  // 업로드는 원자료 재내보내기 불필요(이미 사용자 파일)
+    volRenderResult(j);
+    volMsg('CSV 산출 완료 — 종목 '+j.per_ticker.length+'개.',true);
+  }catch(e){volMsg('요청 실패: '+e.message,false);}
+}
+function volRenderResult(j){
+  window.volLastSigmaPct=j.sigma_pct;
+  document.getElementById('vol-result').style.display='';
+  document.getElementById('vol-sigma').textContent=j.sigma_pct.toFixed(2)+'%';
+  const okN=j.per_ticker.filter(p=>p.sigma!=null).length;
+  const methodLabel={median:'중앙값',mean:'단순평균',cap_weighted:'시총가중'}[j.method]||j.method;
+  let meta=`집계방식 <b>${methodLabel}</b> · 유효종목 <b>${okN}개</b> · 연 거래일 ${j.trading_days}`;
+  if(j.start||j.end)meta+=` · 구간 ${j.start||'?'} ~ ${j.end||'?'}`;
+  if(j.failed&&j.failed.length)meta+=`<br><span style="color:var(--red)">조회 실패 ${j.failed.length}건: ${j.failed.map(f=>f.ticker).join(', ')}</span>`;
+  meta+='<br>※ 자동조회 값은 시점마다 달라질 수 있으니, 감리 증빙용으로 원자료 CSV를 내보내 보관하세요.';
+  document.getElementById('vol-meta').innerHTML=meta;
+  document.getElementById('vol-export').style.display=window.volLastRaw?'':'none';
+  volMsg('산출 완료 — σ = '+j.sigma_pct.toFixed(2)+'%.',true);
+}
+function volApplyToRcps(){
+  if(window.volLastSigmaPct==null)return;
+  const el=document.getElementById('volatility');
+  el.value=window.volLastSigmaPct.toFixed(2);
+  switchPage('rcps',document.getElementById('tab-rcps-btn'));
+  el.style.transition='none';el.style.background='#DCFCE7';
+  setTimeout(()=>{el.style.transition='background 1.5s ease';el.style.background='';},80);
+}
+function volExportCsv(){
+  const raw=window.volLastRaw;if(!raw)return;
+  const codes=Object.keys(raw);
+  // 날짜 합집합(정렬)
+  const dateSet=new Set();codes.forEach(c=>raw[c].dates.forEach(d=>dateSet.add(d)));
+  const dates=[...dateSet].sort();
+  const idx=codes.map(c=>{const m={};raw[c].dates.forEach((d,i)=>m[d]=raw[c].closes[i]);return m;});
+  const header=['date',...codes.map(c=>(raw[c].name||c)+'('+c+')')];
+  const lines=[header.join(',')];
+  dates.forEach(d=>{lines.push([d,...idx.map(m=>m[d]!=null?m[d]:'')].join(','));});
+  const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='volatility_prices.csv';a.click();URL.revokeObjectURL(a.href);
+}
+
 /* ══ ECOS / KOFIA 불러오기 ══ */
 function rateMsg(txt,ok){
   const el=document.getElementById('rate-fetch-msg');
@@ -2031,9 +2378,7 @@ dcfRenderTable();
 // ECOS 키 복원
 const _savedKey=localStorage.getItem('ecos_key');
 if(_savedKey){const k=document.getElementById('ecos-key');if(k)k.value=_savedKey;}
-// 계약서 AI 제공자/모델/키 초기화 (기본 Gemini 무료). 구 anthropic_key 마이그레이션.
-const _oldAnthropic=localStorage.getItem('anthropic_key');
-if(_oldAnthropic&&!localStorage.getItem('anthropic_contract_key')){localStorage.setItem('anthropic_contract_key',_oldAnthropic);}
+// 계약서 AI 요약: Claude CLI(내 Claude 구독) 전용.
 if(document.getElementById('contract-provider'))onProviderChange();
 // 오늘 날짜 기본값
 const _today=new Date().toISOString().slice(0,10);

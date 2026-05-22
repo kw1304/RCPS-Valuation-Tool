@@ -2,3 +2,5 @@ flask
 openpyxl
 numpy
 pdfplumber
+finance-datareader
+baostock
