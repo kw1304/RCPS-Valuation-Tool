@@ -1559,6 +1559,158 @@ def volatility_upload():
 
 
 # ══════════════════════════════════════════════════════════════════
+#  계약서 요약 → Excel 다운로드 (inputs/rcps 요약.xlsx 스타일)
+# ══════════════════════════════════════════════════════════════════
+def _fmt_num_kr(v, suffix=""):
+    """숫자면 천단위 콤마 + 단위, 아니면 원본."""
+    if v in (None, ""):
+        return None
+    try:
+        n = float(str(v).replace(",", ""))
+        body = f"{int(n):,}" if n == int(n) else f"{n:,.2f}"
+        return f"{body} {suffix}".strip()
+    except (ValueError, TypeError):
+        return str(v)
+
+
+@app.route("/api/contract/export", methods=["POST"])
+def contract_export_xlsx():
+    """계약서 요약(JSON) → Excel 다운로드. inputs/rcps 요약.xlsx 와 동일한 섹션·행 레이아웃."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    data = request.get_json(force=True) or {}
+    summary = data.get("summary") or data
+    if not summary or not isinstance(summary, dict):
+        return jsonify({"status": "error", "message": "summary JSON이 필요합니다."}), 400
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "계약서 요약"
+
+    F_TITLE = Font(bold=True, size=14)
+    F_HEAD = Font(bold=True, size=11, color="FFFFFF")
+    F_SUB = Font(bold=True, size=10)
+    FILL_HEAD = PatternFill("solid", fgColor="3182F6")
+    FILL_KEY = PatternFill("solid", fgColor="F2F4F6")
+    thin = Side(style="thin", color="DDDDDD")
+    BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
+    WRAP = Alignment(wrap_text=True, vertical="top")
+
+    row = 1
+    ws.cell(row=row, column=2, value="RCPS 계약서 요약").font = F_TITLE
+    row += 2
+
+    def section_header(text):
+        nonlocal row
+        c = ws.cell(row=row, column=2, value=text)
+        c.font = F_HEAD; c.fill = FILL_HEAD
+        c.alignment = Alignment(vertical="center", indent=1)
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=7)
+        ws.row_dimensions[row].height = 22
+        row += 1
+
+    def kv(k, v):
+        nonlocal row
+        kc = ws.cell(row=row, column=2, value=k)
+        kc.font = F_SUB; kc.fill = FILL_KEY; kc.alignment = WRAP; kc.border = BORDER
+        vc = ws.cell(row=row, column=3, value=v if v not in (None, "") else "—")
+        vc.alignment = WRAP
+        ws.merge_cells(start_row=row, start_column=3, end_row=row, end_column=7)
+        for col in range(2, 8):
+            ws.cell(row=row, column=col).border = BORDER
+        # 텍스트 길이에 따라 행 높이 조정
+        if isinstance(v, str) and ("\n" in v or len(v) > 60):
+            ws.row_dimensions[row].height = max(18, min(120, 15 + 14 * (v.count("\n") + len(v) // 60)))
+        row += 1
+
+    # ── 1. 발행조건 (고정 키) ──
+    s1 = summary.get("section1_발행조건", {}) or {}
+    section_header("1. 발행조건")
+    adj = s1.get("전환가액조정") or []
+    adj_text = "\n".join("· " + str(x) for x in adj) if adj else ""
+    conv_ratio = s1.get("전환비율") or ""
+    conv_combined = (conv_ratio + ("\n" + adj_text if adj_text else "")).strip()
+
+    for k, v in [
+        ("종류", s1.get("종류")),
+        ("우선주의 종류", s1.get("우선주의_종류")),
+        ("우선주 의결권", s1.get("우선주_의결권")),
+        ("발행일", s1.get("발행일")),
+        ("우선주 주식수", _fmt_num_kr(s1.get("주식수"), "주")),
+        ("주당 발행금액", _fmt_num_kr(s1.get("주당발행금액"), "원")),
+        ("총 발행금액", _fmt_num_kr(s1.get("총발행금액"), "원")),
+        ("1주당 액면가액", _fmt_num_kr(s1.get("액면가액"), "원")),
+        ("존속기간", s1.get("존속기간")),
+        ("전환비율 및 종류", conv_combined),
+        ("전환청구기간", s1.get("전환청구기간")),
+        ("상환청구기간", s1.get("상환청구기간")),
+        ("상환가액", s1.get("상환가액")),
+        ("우선배당률", s1.get("우선배당률")),
+    ]:
+        kv(k, v)
+    row += 1
+
+    # ── 2+. analysis_sections (AI 자율 구성) ──
+    secs = summary.get("analysis_sections") or []
+    for i, sec in enumerate(secs):
+        section_header(f"{i + 2}. {sec.get('title') or '분석'}")
+        st = sec.get("type")
+        if st == "table" and isinstance(sec.get("columns"), list) and isinstance(sec.get("rows"), list):
+            for j, col in enumerate(sec["columns"]):
+                c = ws.cell(row=row, column=2 + j, value=str(col))
+                c.font = F_SUB; c.fill = FILL_KEY; c.alignment = WRAP; c.border = BORDER
+            row += 1
+            for r in sec["rows"]:
+                cells = r if isinstance(r, list) else [r]
+                for j, cellv in enumerate(cells):
+                    c = ws.cell(row=row, column=2 + j, value=("" if cellv is None else str(cellv)))
+                    c.alignment = WRAP; c.border = BORDER
+                row += 1
+        elif st == "list" and isinstance(sec.get("items"), list):
+            for it in sec["items"]:
+                c = ws.cell(row=row, column=2, value="· " + str(it))
+                c.alignment = WRAP
+                ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=7)
+                row += 1
+        elif sec.get("body"):
+            c = ws.cell(row=row, column=2, value=str(sec["body"]))
+            c.alignment = WRAP
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=7)
+            body = str(sec["body"])
+            ws.row_dimensions[row].height = max(20, min(200, 15 + 14 * (body.count("\n") + len(body) // 70)))
+            row += 1
+        if sec.get("note"):
+            c = ws.cell(row=row, column=2, value="※ " + str(sec["note"]))
+            c.font = Font(size=9, color="888888"); c.alignment = WRAP
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=7)
+            row += 1
+        row += 1
+
+    # ── 담보제공자산 (있으면) ──
+    if summary.get("담보제공자산"):
+        section_header(f"{len(secs) + 2}. 담보제공자산")
+        c = ws.cell(row=row, column=2, value=str(summary["담보제공자산"]))
+        c.alignment = WRAP
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=7)
+        row += 1
+
+    # 열 너비
+    ws.column_dimensions["A"].width = 2
+    ws.column_dimensions["B"].width = 24
+    for col in range(3, 8):
+        ws.column_dimensions[get_column_letter(col)].width = 22
+
+    import tempfile, datetime
+    tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
+    wb.save(tmp.name); tmp.close()
+    fname = f"contract_summary_{datetime.date.today().isoformat()}.xlsx"
+    return send_file(tmp.name, as_attachment=True, download_name=fname,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ══════════════════════════════════════════════════════════════════
 #  BDT 단기금리 이항트리 — 풋채권가치 교차검증
 # ══════════════════════════════════════════════════════════════════
 @app.route("/api/bdt", methods=["POST"])
