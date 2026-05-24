@@ -84,6 +84,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
 .ref-dep{border-left:2px dashed var(--border);padding-left:10px;margin-top:6px}
 .ref-dep-off{opacity:.4;pointer-events:none}
 .ref-dep-off input,.ref-dep-off label{cursor:not-allowed}
+.dep-hint{font-size:0.66rem;color:var(--text3);font-weight:400;margin-left:2px}
 details.note-fold{margin-top:4px}
 details.note-fold>summary{cursor:pointer;list-style:none;user-select:none;font-size:0.67rem;color:var(--accent);padding:2px 0;letter-spacing:-0.01em}
 details.note-fold>summary::-webkit-details-marker{display:none}
@@ -492,7 +493,8 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">경로의존 옵션 <span class="badge-opt">선택 · MC 전용</span></div>
     <div class="note" style="margin-bottom:8px">아래 옵션은 주가 경로 이력에 의존(배리어·평균)하므로 켜면 <b>몬테카를로(MC) 전용</b>으로 평가합니다. TF/GS 트리는 과소반영되어 참고용으로만 표시됩니다.</div>
 
-    <!-- 강제전환: 콜·풋 의존 없음(전환 기능) → 맨 위 -->
+    <!-- 모든 경로의존 옵션을 동일 단으로 평탄 정렬. 의존성은 라벨 옆 회색 힌트·비활성 시 흐림으로 안내. -->
+    <!-- 강제전환: 의존 없음 -->
     <div class="toggle"><input type="checkbox" id="has_mandconv" onchange="togglePD('mandconv')"><label for="has_mandconv">강제전환 Knock-out</label></div>
     <div id="mandconv-fields" class="hidden">
       <div class="row3">
@@ -503,44 +505,37 @@ details.note-fold .note{margin-top:4px}
       <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 보통주로 강제전환(Knock-out). 충족 경로는 채권·풋이 소멸하고 전환가치로 확정됩니다.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 강제전환(<b>Parisian 배리어</b>) — 일시적 급등으로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).</div></details>
     </div>
 
-    <!-- 소프트콜: 발행자 콜 → 콜옵션 필요 -->
-    <div id="softcall-dep-group" class="ref-dep" style="margin-top:8px">
-      <div class="note" style="font-weight:600">↓ 발행자 콜 — <b>"콜옵션"</b>이 켜져 있어야 사용 가능</div>
-      <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_softcall" onchange="togglePD('softcall')"><label for="has_softcall">소프트콜 배리어 (발행자 콜)</label></div>
-      <div id="softcall-fields" class="hidden">
-        <div class="row3 field-row">
-          <div class="field"><label>배리어 (×전환가)</label><input type="number" id="call_soft_barrier" value="1.30" step="0.05"></div>
-          <div class="field"><label>관측창 (스텝)</label><input type="number" id="call_soft_window" value="1" step="1"></div>
-          <div class="field"><label>충족 횟수</label><input type="number" id="call_soft_count" value="1" step="1"></div>
-        </div>
-        <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 발행자 콜 활성.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 콜(<b>Parisian 배리어</b>) — 일시적 급등 스파이크로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).<br>콜 행사가는 위 콜옵션 설정(call_price_mode)을 사용.</div></details>
+    <!-- 소프트콜: 콜옵션 필요 -->
+    <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_softcall" onchange="togglePD('softcall')"><label for="has_softcall">소프트콜 배리어 (발행자 콜) <span class="dep-hint">· 콜옵션 필요</span></label></div>
+    <div id="softcall-fields" class="hidden">
+      <div class="row3 field-row">
+        <div class="field"><label>배리어 (×전환가)</label><input type="number" id="call_soft_barrier" value="1.30" step="0.05"></div>
+        <div class="field"><label>관측창 (스텝)</label><input type="number" id="call_soft_window" value="1" step="1"></div>
+        <div class="field"><label>충족 횟수</label><input type="number" id="call_soft_count" value="1" step="1"></div>
       </div>
+      <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 발행자 콜 활성.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 콜(<b>Parisian 배리어</b>) — 일시적 급등 스파이크로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).<br>콜 행사가는 위 콜옵션 설정(call_price_mode)을 사용.</div></details>
     </div>
 
-    <!-- 배리어 풋: 보유자 풋 → 풋옵션 필요 -->
-    <div id="putbarrier-dep-group" class="ref-dep" style="margin-top:8px">
-      <div class="note" style="font-weight:600">↓ 보유자 풋 — <b>"풋옵션"</b>이 켜져 있어야 사용 가능</div>
-      <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_putbarrier" onchange="togglePD('putbarrier')"><label for="has_putbarrier">배리어 풋 (down-and-in)</label></div>
-      <div id="putbarrier-fields" class="hidden">
-        <div class="row2">
-          <div class="field"><label>하단 배리어 (최초주가 S₀ 배수)</label><input type="number" id="put_barrier" value="0.50" step="0.05"></div>
-        </div>
-        <details class="note-fold"><summary></summary><div class="note">주가가 S₀×배리어 이하를 한 번이라도 터치한 경로에서만 풋 행사 가능(knock-in).</div></details>
+    <!-- 배리어 풋: 풋옵션 필요 -->
+    <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_putbarrier" onchange="togglePD('putbarrier')"><label for="has_putbarrier">배리어 풋 (down-and-in) <span class="dep-hint">· 풋옵션 필요</span></label></div>
+    <div id="putbarrier-fields" class="hidden">
+      <div class="row2">
+        <div class="field"><label>하단 배리어 (최초주가 S₀ 배수)</label><input type="number" id="put_barrier" value="0.50" step="0.05"></div>
       </div>
+      <details class="note-fold"><summary></summary><div class="note">주가가 S₀×배리어 이하를 한 번이라도 터치한 경로에서만 풋 행사 가능(knock-in).</div></details>
     </div>
 
-    <div id="refixing-dependent-group" class="ref-dep">
-      <div class="note" style="margin-top:8px;font-weight:600">↓ 리픽싱 <b>방식</b> 옵션 — "하향 리픽싱 조항"이 켜져 있어야 사용 가능</div>
-      <div class="toggle" style="margin-top:8px"><input type="checkbox" id="refixing_ratchet"><label for="refixing_ratchet">경로의존 래칫(lock-in)</label></div>
-      <details class="note-fold"><summary></summary><div class="note" id="ratchet-note">래칫 ON: 전환가가 경로상 최저로 내려가 유지(진짜 동적 리픽싱). recombining 트리(TF/GS)는 구조적으로 과소반영하므로 <b>몬테카를로 전용</b>으로 평가합니다.<br>래칫 OFF: 매 시점 현재주가로만 재산정(메모리 없음, 트리 근사) — TF/GS도 사용.</div></details>
+    <!-- 래칫: 리픽싱 조항 필요 -->
+    <div class="toggle" style="margin-top:6px"><input type="checkbox" id="refixing_ratchet"><label for="refixing_ratchet">경로의존 래칫(lock-in) <span class="dep-hint">· 리픽싱 조항 필요</span></label></div>
+    <details class="note-fold"><summary></summary><div class="note" id="ratchet-note">래칫 ON: 전환가가 경로상 최저로 내려가 유지(진짜 동적 리픽싱). recombining 트리(TF/GS)는 구조적으로 과소반영하므로 <b>몬테카를로 전용</b>으로 평가합니다.<br>래칫 OFF: 매 시점 현재주가로만 재산정(메모리 없음, 트리 근사) — TF/GS도 사용.</div></details>
 
-      <div class="toggle" style="margin-top:8px"><input type="checkbox" id="has_vwap" onchange="togglePD('vwap')"><label for="has_vwap">VWAP 리픽싱</label></div>
-      <div id="vwap-fields" class="hidden">
-        <div class="row2">
-          <div class="field"><label>평균 구간 (스텝 수)</label><input type="number" id="refixing_vwap_window" value="20" step="1"></div>
-        </div>
-        <details class="note-fold"><summary></summary><div class="note">리픽싱 트리거·새 전환가 산정 시 현재주가 대신 직전 N스텝 가중평균(VWAP)을 사용합니다.</div></details>
+    <!-- VWAP: 리픽싱 조항 필요 -->
+    <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_vwap" onchange="togglePD('vwap')"><label for="has_vwap">VWAP 리픽싱 <span class="dep-hint">· 리픽싱 조항 필요</span></label></div>
+    <div id="vwap-fields" class="hidden">
+      <div class="row2">
+        <div class="field"><label>평균 구간 (스텝 수)</label><input type="number" id="refixing_vwap_window" value="20" step="1"></div>
       </div>
+      <details class="note-fold"><summary></summary><div class="note">리픽싱 트리거·새 전환가 산정 시 현재주가 대신 직전 N스텝 가중평균(VWAP)을 사용합니다.</div></details>
     </div>
   </div>
 
@@ -1151,8 +1146,9 @@ function syncPDDeps(){
 function _pdDep(id,key,on){
   const cb=document.getElementById(id); if(!cb)return;
   cb.disabled=!on;
-  const grp=document.getElementById(key+'-dep-group');   // 그룹 전체 흐림(리픽싱 의존 그룹과 동일)
-  if(grp)grp.classList.toggle('ref-dep-off',!on);
+  const tog=cb.closest('.toggle');   // 토글 행 자체에 흐림(평탄 정렬 유지)
+  if(tog){tog.classList.toggle('ref-dep-off',!on);
+    tog.title=on?'':(key==='softcall'?'콜옵션을 먼저 켜야 선택할 수 있습니다':'풋옵션을 먼저 켜야 선택할 수 있습니다');}
   if(!on && cb.checked){cb.checked=false;togglePD(key);}
 }
 document.addEventListener('DOMContentLoaded',syncPDDeps);
@@ -1193,14 +1189,16 @@ function toggleRefixing(){
 // 리픽싱 방식 옵션(래칫·VWAP)은 "하향 리픽싱 조항"이 켜져 있을 때만 선택 가능
 function syncRefixingDependents(){
   const on=document.getElementById('refixing').checked;
-  const grp=document.getElementById('refixing-dependent-group');
-  if(grp) grp.classList.toggle('ref-dep-off',!on);
-  const rt=document.getElementById('refixing_ratchet'); if(rt) rt.disabled=!on;
+  // 래칫·VWAP 각 토글에 개별 흐림(평탄 정렬 유지)
+  ['refixing_ratchet','has_vwap'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.disabled=!on;
+    const tog=el.closest('.toggle');
+    if(tog){tog.classList.toggle('ref-dep-off',!on);
+      tog.title=on?'':'"하향 리픽싱 조항"을 먼저 켜야 선택할 수 있습니다';}
+  });
   const vw=document.getElementById('has_vwap');
-  if(vw){
-    vw.disabled=!on;
-    if(!on && vw.checked){ vw.checked=false; togglePD('vwap'); }
-  }
+  if(vw && !on && vw.checked){ vw.checked=false; togglePD('vwap'); }
 }
 document.addEventListener('DOMContentLoaded',syncRefixingDependents);
 function togglePD(key){const map={softcall:'has_softcall',mandconv:'has_mandconv',putbarrier:'has_putbarrier',vwap:'has_vwap'};const f=document.getElementById(key+'-fields');if(f)f.classList.toggle('hidden',!document.getElementById(map[key]).checked);}
