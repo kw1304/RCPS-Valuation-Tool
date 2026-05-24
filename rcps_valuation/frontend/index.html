@@ -85,6 +85,36 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
 .ref-dep-off{opacity:.4;pointer-events:none}
 .ref-dep-off input,.ref-dep-off label{cursor:not-allowed}
 .dep-hint{font-size:0.66rem;color:var(--text3);font-weight:400;margin-left:2px}
+footer.legal{padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;line-height:1.4}
+footer.legal b{color:var(--text2);font-weight:600}
+footer.legal .right{text-align:right;flex:1;min-width:240px}
+
+/* ── 모바일 반응형 (≤768px 태블릿/스마트폰, ≤480px 좁은 폰) */
+@media (max-width:768px){
+  body{font-size:13px}
+  header{padding:0.7rem 1rem;flex-wrap:wrap;gap:0.6rem}
+  .hd-title h1{font-size:0.95rem;line-height:1.25}
+  .hd-title p{font-size:0.66rem}
+  .hd-right{width:100%;flex-direction:column;align-items:stretch;gap:0.5rem}
+  .header-tabs{overflow-x:auto;flex-wrap:nowrap;border-radius:8px}
+  .header-tabs::-webkit-scrollbar{height:3px}
+  .nav-tab{padding:0.4rem 0.65rem;font-size:0.7rem}
+  .hd-badge{display:none}
+  .page.active{flex-direction:column}
+  .form-panel{width:100%;min-width:0;max-height:48vh;border-right:none;border-bottom:1px solid var(--border)}
+  .sec{padding:0.75rem 0.9rem}
+  .row3{grid-template-columns:1fr 1fr;gap:6px}
+  .dcf-assump{flex-direction:column}
+  footer.legal{flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px;line-height:1.35}
+  footer.legal .right{text-align:left;min-width:0;width:100%}
+}
+@media (max-width:480px){
+  .row2,.row3{grid-template-columns:1fr;gap:5px}
+  .hd-title h1{font-size:0.85rem}
+  .nav-tab{padding:0.35rem 0.5rem;font-size:0.66rem}
+  .sec-title{font-size:0.72rem}
+  .form-panel{max-height:55vh}
+}
 details.note-fold{margin-top:4px}
 details.note-fold>summary{cursor:pointer;list-style:none;user-select:none;font-size:0.67rem;color:var(--accent);padding:2px 0;letter-spacing:-0.01em}
 details.note-fold>summary::-webkit-details-marker{display:none}
@@ -526,8 +556,10 @@ details.note-fold .note{margin-top:4px}
     </div>
 
     <!-- 래칫: 리픽싱 조항 필요 -->
-    <div class="toggle" style="margin-top:6px"><input type="checkbox" id="refixing_ratchet"><label for="refixing_ratchet">경로의존 래칫(lock-in) <span class="dep-hint">· 리픽싱 조항 필요</span></label></div>
-    <details class="note-fold"><summary></summary><div class="note" id="ratchet-note">래칫 ON: 전환가가 경로상 최저로 내려가 유지(진짜 동적 리픽싱). recombining 트리(TF/GS)는 구조적으로 과소반영하므로 <b>몬테카를로 전용</b>으로 평가합니다.<br>래칫 OFF: 매 시점 현재주가로만 재산정(메모리 없음, 트리 근사) — TF/GS도 사용.</div></details>
+    <div class="toggle" style="margin-top:6px"><input type="checkbox" id="refixing_ratchet" onchange="togglePD('ratchet')"><label for="refixing_ratchet">경로의존 래칫(lock-in) <span class="dep-hint">· 리픽싱 조항 필요</span></label></div>
+    <div id="ratchet-fields" class="hidden">
+      <details class="note-fold"><summary></summary><div class="note" id="ratchet-note">래칫 ON: 전환가가 경로상 최저로 내려가 유지(진짜 동적 리픽싱). recombining 트리(TF/GS)는 구조적으로 과소반영하므로 <b>몬테카를로 전용</b>으로 평가합니다.<br>래칫 OFF: 매 시점 현재주가로만 재산정(메모리 없음, 트리 근사) — TF/GS도 사용.</div></details>
+    </div>
 
     <!-- VWAP: 리픽싱 조항 필요 -->
     <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_vwap" onchange="togglePD('vwap')"><label for="has_vwap">VWAP 리픽싱 <span class="dep-hint">· 리픽싱 조항 필요</span></label></div>
@@ -609,12 +641,12 @@ details.note-fold .note{margin-top:4px}
     <div class="comp-grid" id="comp-grid"></div>
     <div class="info-box" id="decomp-table" style="display:none;margin:10px 0"></div>
     <div class="info-box" id="bdt-cross" style="display:none;margin:10px 0">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-        <h4 style="margin:0;font-size:.86rem">BDT 풋채권 교차검증 <span style="font-weight:400;color:var(--text3);font-size:.72rem">(독립 금리트리 · TF와 분리)</span></h4>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:.75rem;color:var(--text2)">금리 변동성 (%)</label>
-          <input type="number" id="bdt_rate_vol" value="15" step="0.5" min="0" style="width:75px;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem">
-          <button class="btn-run" id="bdt-run-btn" onclick="runBdt()" style="padding:0.35rem 0.8rem;margin:0">BDT 재평가</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+        <h4 style="margin:0;font-size:.86rem;white-space:nowrap">BDT 풋채권 교차검증 <span style="font-weight:400;color:var(--text3);font-size:.72rem">(독립 금리트리 · TF와 분리)</span></h4>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <label for="bdt_rate_vol" style="font-size:.78rem;color:var(--text2);white-space:nowrap;font-weight:500">금리 변동성 (%)</label>
+          <input type="number" id="bdt_rate_vol" value="15" step="0.5" min="0" style="width:70px;height:32px;padding:0 0.55rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-variant-numeric:tabular-nums;text-align:right;box-sizing:border-box">
+          <button class="btn-run" id="bdt-run-btn" onclick="runBdt()" style="height:32px;padding:0 0.9rem;margin:0;font-size:.78rem;white-space:nowrap">BDT 재평가</button>
         </div>
       </div>
       <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용). "BDT 재평가" 버튼을 누르세요.</div>
@@ -1229,7 +1261,7 @@ function syncRefixingDependents(){
   if(vw && !on && vw.checked){ vw.checked=false; togglePD('vwap'); }
 }
 document.addEventListener('DOMContentLoaded',syncRefixingDependents);
-function togglePD(key){const map={softcall:'has_softcall',mandconv:'has_mandconv',putbarrier:'has_putbarrier',vwap:'has_vwap'};const f=document.getElementById(key+'-fields');if(f)f.classList.toggle('hidden',!document.getElementById(map[key]).checked);}
+function togglePD(key){const map={softcall:'has_softcall',mandconv:'has_mandconv',putbarrier:'has_putbarrier',vwap:'has_vwap',ratchet:'refixing_ratchet'};const f=document.getElementById(key+'-fields');if(f)f.classList.toggle('hidden',!document.getElementById(map[key]).checked);}
 
 let lastReq=null; let lastEvalResult=null;
 // BDT 교차검증: RD 곡선과 사용자 입력 금리변동성으로 풋채권가치 독립 산정 → TF/GS와 비교
@@ -2513,5 +2545,10 @@ if(_rd)_rd.value=_today;
   });
 });
 </script>
+
+<footer class="legal">
+  <span>© 2026 <b>김웅(웅계사)</b> · All Rights Reserved</span>
+  <span class="right">※ 본 툴 및 산출 결과는 K-IFRS 감사 참고 목적이며, 정확성·완전성은 보증되지 않습니다. 모든 사용·해석 책임은 사용자에게 있습니다 (Disclaimer).</span>
+</footer>
 </body>
 </html>
