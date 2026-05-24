@@ -608,6 +608,17 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div class="comp-grid" id="comp-grid"></div>
     <div class="info-box" id="decomp-table" style="display:none;margin:10px 0"></div>
+    <div class="info-box" id="bdt-cross" style="display:none;margin:10px 0">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <h4 style="margin:0;font-size:.86rem">BDT 풋채권 교차검증 <span style="font-weight:400;color:var(--text3);font-size:.72rem">(독립 금리트리 · TF와 분리)</span></h4>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:.75rem;color:var(--text2)">금리 변동성 (%)</label>
+          <input type="number" id="bdt_rate_vol" value="15" step="0.5" min="0" style="width:75px;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem">
+          <button class="btn-run" id="bdt-run-btn" onclick="runBdt()" style="padding:0.35rem 0.8rem;margin:0">BDT 재평가</button>
+        </div>
+      </div>
+      <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용). "BDT 재평가" 버튼을 누르세요.</div>
+    </div>
     <div class="model-row" id="model-row"></div>
     <div class="tabs">
       <div class="tab-bar">
@@ -1203,7 +1214,38 @@ function syncRefixingDependents(){
 document.addEventListener('DOMContentLoaded',syncRefixingDependents);
 function togglePD(key){const map={softcall:'has_softcall',mandconv:'has_mandconv',putbarrier:'has_putbarrier',vwap:'has_vwap'};const f=document.getElementById(key+'-fields');if(f)f.classList.toggle('hidden',!document.getElementById(map[key]).checked);}
 
-let lastReq=null;
+let lastReq=null; let lastEvalResult=null;
+// BDT 교차검증: RD 곡선과 사용자 입력 금리변동성으로 풋채권가치 독립 산정 → TF/GS와 비교
+async function runBdt(){
+  const out=document.getElementById('bdt-result');
+  const btn=document.getElementById('bdt-run-btn');
+  if(!lastReq){out.innerHTML='<span style="color:var(--red)">먼저 RCPS 평가를 실행하세요.</span>';return;}
+  if(!lastReq.rd_spot||!lastReq.rd_spot.length){
+    out.innerHTML='<span style="color:var(--red)">RD 곡선이 필요합니다. 이자율 부트스트래핑 탭에서 곡선을 채우고 다시 평가하세요.</span>';return;
+  }
+  const sigma=(parseFloat(document.getElementById('bdt_rate_vol').value)||0)/100;
+  if(sigma<=0){out.innerHTML='<span style="color:var(--red)">금리 변동성(%)을 양수로 입력하세요.</span>';return;}
+  btn.disabled=true; out.textContent='BDT 캘리브레이션·후방귀납 중…';
+  try{
+    const body=Object.assign({},lastReq,{rate_vol:sigma});
+    const res=await fetch('/api/bdt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await res.json();
+    if(d.status!=='ok'){out.innerHTML=`<span style="color:var(--red)">오류: ${d.message}</span>`;return;}
+    // TF 결과와 비교
+    const tf=(lastEvalResult&&lastEvalResult.result&&lastEvalResult.result.tf)||{};
+    const tfBv=tf.bond_value, tfPv=tf.put_option_value, tfPbv=tf.put_bond_value;
+    const diff=(bdt,tfv)=>(bdt!=null&&tfv!=null&&tfv!==0)?`<span style="color:${Math.abs((bdt-tfv)/tfv)<0.02?'var(--text3)':'var(--accent)'};font-size:.68rem">Δ ${(((bdt-tfv)/tfv)*100).toFixed(2)}%</span>`:'';
+    out.innerHTML=`
+      <table class="dtable" style="margin-top:4px"><thead><tr><th>구성요소</th><th style="text-align:right">TF (주가트리)</th><th style="text-align:right">BDT (금리트리)</th><th style="text-align:center">차이</th></tr></thead><tbody>
+        <tr><td>① 순채권가치 (Bond)</td><td style="text-align:right">${fmtW(tfBv)}</td><td style="text-align:right">${fmtW(d.bond_value)}</td><td style="text-align:center">${diff(d.bond_value,tfBv)}</td></tr>
+        <tr><td>② 풋채권가치 (Putable Bond)</td><td style="text-align:right">${fmtW(tfPbv)}</td><td style="text-align:right">${fmtW(d.put_bond_value)}</td><td style="text-align:center">${diff(d.put_bond_value,tfPbv)}</td></tr>
+        <tr><td>③ 풋옵션가치 (Put = 풋채권 − 순채권)</td><td style="text-align:right">${fmtW(tfPv)}</td><td style="text-align:right">${fmtW(d.put_option_value)}</td><td style="text-align:center">${diff(d.put_option_value,tfPv)}</td></tr>
+      </tbody></table>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:4px">BDT 입력 — 금리 σ <b>${(d.rate_vol*100).toFixed(2)}%</b> · 스텝 <b>${d.n_steps_used}</b> · dt ${d.dt.toFixed(4)}년 · 풋시작 step ${d.put_step}<br>
+      ※ BDT는 RD(신용조정) 곡선에 lognormal 단기금리트리를 캘리브레이션해 후방귀납으로 풋채권을 산정합니다. TF는 주가트리 + 결정론적 금리를 쓰므로 일반채권은 거의 같고, 풋옵션 가치는 모형 가정 차이로 달라질 수 있습니다.</div>`;
+  }catch(e){out.innerHTML=`<span style="color:var(--red)">요청 실패: ${e.message}</span>`;}
+  finally{btn.disabled=false;}
+}
 // 메인 단계 선택(60/120/240/주간)을 노드 수 N으로 해석. 평가·이항트리 시트 공용.
 function resolveSteps(params){
   const sel=document.getElementById('steps')?.value;
@@ -1284,6 +1326,7 @@ async function run(){
     const res=await fetch('/api/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastReq)});
     const d=await res.json();
     if(d.status==='error')throw new Error(d.message);
+    lastEvalResult=d;     // BDT 교차검증 비교에 사용
     renderRCPS(d);
   }catch(e){
     const b=document.getElementById('err-box');b.textContent='오류: '+e.message;b.style.display='block';
@@ -1337,10 +1380,13 @@ function renderRCPS(data){
   if(decompEl){
     if(r.mc_only){
       decompEl.style.display='none';
+      const bdtEl=document.getElementById('bdt-cross'); if(bdtEl) bdtEl.style.display='none';
     }else if(gs&&!gs.error&&gs.conversion_value!=null){
       const gbv=gs.bond_value, gpv=gs.put_option_value, gcv=gs.conversion_value;
       const same=(a,b)=>(a!=null&&b!=null&&Math.abs(a-b)<1)?'<span style="color:var(--text3);font-size:.68rem">동일</span>':'';
       decompEl.style.display='block';
+      const bdtEl=document.getElementById('bdt-cross');
+      if(bdtEl) bdtEl.style.display='block';   // TF 결과 있을 때 BDT 교차검증 사용 가능
       decompEl.innerHTML=`
         <h4 style="margin:0 0 6px;font-size:.82rem">구성요소 분해 — TF vs GS <span style="font-weight:400;color:var(--text3);font-size:.72rem">(채권·풋옵션은 모형 무관 공통값, 전환권만 상이)</span></h4>
         <table class="dtable"><thead><tr><th>구성요소</th><th style="text-align:right">TF</th><th style="text-align:right">GS</th><th style="text-align:center">비고</th></tr></thead><tbody>
@@ -1352,6 +1398,7 @@ function renderRCPS(data){
         <div style="font-size:.7rem;color:var(--text3);margin-top:4px">GS 전환권 = GS 공정가치 − 풋채권가치(채권+풋, 모형 무관) = ${fmtW(gsFv)} − ${fmtW(gs.put_bond_value)}</div>`;
     }else{
       decompEl.style.display='none';
+      const bdtEl=document.getElementById('bdt-cross'); if(bdtEl) bdtEl.style.display='none';
     }
   }
 

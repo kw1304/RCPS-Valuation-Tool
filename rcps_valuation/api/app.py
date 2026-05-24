@@ -1558,6 +1558,71 @@ def volatility_upload():
     })
 
 
+# ══════════════════════════════════════════════════════════════════
+#  BDT 단기금리 이항트리 — 풋채권가치 교차검증
+# ══════════════════════════════════════════════════════════════════
+@app.route("/api/bdt", methods=["POST"])
+def bdt_evaluate():
+    """BDT 트리로 풋옵션부 채권가치를 교차평가(TF 결과와 비교용).
+
+    body: /api/evaluate 와 동일 + rate_vol(연 단기금리 변동성, 소수).
+    RD(신용조정) 곡선을 BDT 트리에 캘리브레이션 후 후방귀납으로
+    풋채권가치(pbv)·일반채권가치(bv)·풋옵션가치(pbv−bv) 산정.
+    """
+    data = request.get_json(force=True) or {}
+    try:
+        params = parse_params(data["params"])    # /api/evaluate 와 동일한 body 구조 사용
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"파라미터 오류: {str(e)[:150]}"}), 200
+    try:
+        sigma = float(data.get("rate_vol") or 0)
+    except (TypeError, ValueError):
+        sigma = 0.0
+    if sigma <= 0:
+        return jsonify({"status": "error",
+                        "message": "금리 변동성(rate_vol)이 필요합니다 (예: 0.15 = 15%)."}), 200
+    rd_spot = data.get("rd_spot")
+    if not rd_spot:
+        return jsonify({"status": "error",
+                        "message": "RD 곡선(rd_spot)이 필요합니다. 이자율 부트스트래핑 탭을 먼저 채우세요."}), 200
+    if not params.has_put:
+        return jsonify({"status": "error",
+                        "message": "풋옵션이 없는 RCPS는 BDT 풋채권 교차검증이 의미가 없습니다."}), 200
+
+    T = params.T
+    steps = int(data.get("steps") or max(int(round(T * 12)), 12))
+    dt = T / steps
+
+    from models.binomial_v2 import _coupon_schedule
+    from models.bdt import evaluate_bdt_bond
+    coupon_cf = _coupon_schedule(params, steps, dt)
+
+    # 풋 스케줄: put_start 이후 매 스텝 행사가능(미국식). _date_to_step 동일 규칙.
+    if params.put_start is None:
+        put_step = steps
+    else:
+        days = (params.put_start - params.valuation_date).days
+        put_step = 0 if days <= 0 else min(int(days / (params.T * 365) * steps), steps)
+    put_schedule = {i: float(params.put_exercise_price(i * dt))
+                    for i in range(put_step, steps + 1)}
+
+    try:
+        out = evaluate_bdt_bond(rd_spot, T, steps, sigma, float(params.face_value),
+                                coupon_cf, put_schedule)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"BDT 평가 실패: {str(e)[:200]}"}), 200
+
+    out.update({
+        "status": "ok",
+        "T": T,
+        "n_steps_used": steps,
+        "put_step": put_step,
+        "rate_vol": sigma,
+        "model": "Black-Derman-Toy (constant sigma, q=0.5)",
+    })
+    return jsonify(out)
+
+
 if __name__ == "__main__":
     print("RCPS 평가툴 서버 시작: http://localhost:5000")
     app.run(debug=True, port=5000, host="0.0.0.0")
