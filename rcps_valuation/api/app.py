@@ -1433,9 +1433,15 @@ def volatility_eval():
         return jsonify({"status": "error", "message": "종목이 비어 있습니다."}), 200
     start = data.get("start") or None
     end = data.get("end") or None
-    trading_days = int(data.get("trading_days") or 252)
+    td_raw = data.get("trading_days", 252)
+    trading_days = "auto" if isinstance(td_raw, str) and td_raw.lower() == "auto" else int(td_raw or 252)
     method = data.get("method") or "median"
     log = data.get("log", True)
+    outlier_method = (data.get("outlier_method") or "none").lower()
+    outlier_k = data.get("outlier_k")
+    if outlier_k is not None:
+        try: outlier_k = float(outlier_k)
+        except Exception: outlier_k = None
 
     try:
         import FinanceDataReader as fdr
@@ -1467,11 +1473,11 @@ def volatility_eval():
 
     try:
         result = basket_volatility(series, trading_days=trading_days,
-                                   log=bool(log), method=method)
+                                   log=bool(log), method=method,
+                                   outlier_method=outlier_method, outlier_k=outlier_k)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)[:200]}), 200
 
-    # 전 종목 실패 → 종목별 사유를 함께 안내(어떤 티커가 왜 실패했는지)
     if result["sigma"] is None:
         reasons = "; ".join(
             f"{p['ticker']}: {p.get('error', '실패')}" for p in result["per_ticker"]
@@ -1491,6 +1497,7 @@ def volatility_eval():
         "start": start, "end": end,
         "per_ticker": result["per_ticker"],
         "failed": result["failed"],
+        "outlier_info": result.get("outlier_info"),
         "raw": raw,
     })
 
@@ -1519,7 +1526,8 @@ def volatility_upload():
                                           "dates": [], "closes": []}
               for i, name in enumerate(cols)}
     keys = list(series.keys())
-    trading_days = int(request.form.get("trading_days") or 252)
+    td_raw = request.form.get("trading_days") or "252"
+    trading_days = "auto" if td_raw.lower() == "auto" else int(td_raw)
     method = request.form.get("method") or "median"
 
     for r in rows[1:]:

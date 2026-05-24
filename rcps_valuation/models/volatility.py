@@ -87,17 +87,83 @@ def aggregate(per_ticker, method="median", caps=None):
     return float(np.median(sig))
 
 
-def basket_volatility(series, trading_days=252, log=True, method="median"):
+def _td_from_dates(dates):
+    """ISO 날짜 시계열에서 종목의 실측 연 거래일 수 산정.
+    (관측 거래일 수) × 365.25 / (시작~종료 달력일수). 산정 불가면 None.
+    """
+    if not dates or len(dates) < 2:
+        return None
+    try:
+        from datetime import date as _date
+        d0 = _date.fromisoformat(str(dates[0]))
+        d1 = _date.fromisoformat(str(dates[-1]))
+    except Exception:
+        return None
+    cal_days = (d1 - d0).days
+    if cal_days <= 0:
+        return None
+    return round(len(dates) * 365.25 / cal_days, 1)
+
+
+def _detect_outliers(per_ticker, method, k, min_n=5):
+    """유사기업 바스켓 σ에 이상치 플래그 부여(per_ticker 항목 in-place 수정).
+
+    method: 'iqr'(Tukey k×IQR 펜스) | 'mad'(|σ−중앙값|>k·MAD) | 그 외 → 미적용.
+    표본(유효종목 수)이 min_n 미만이면 자동 미적용(통계적으로 무의미).
+    """
+    if method not in ("iqr", "mad"):
+        return {"applied": False, "method": "none"}
+    valid = [p for p in per_ticker if p.get("sigma") is not None]
+    if len(valid) < min_n:
+        return {"applied": False, "method": method, "k": k,
+                "reason": f"표본 {len(valid)}<{min_n}: 필터 미적용"}
+    sigs = np.array([p["sigma"] for p in valid], dtype=float)
+    info = {"applied": True, "method": method, "k": k, "n_input": len(valid)}
+    if method == "iqr":
+        q1, q3 = np.percentile(sigs, [25, 75])
+        iqr = float(q3 - q1)
+        lo, hi = float(q1 - k * iqr), float(q3 + k * iqr)
+        info.update({"q1": float(q1), "q3": float(q3), "iqr": iqr, "lo": lo, "hi": hi})
+        for p in valid:
+            if p["sigma"] < lo or p["sigma"] > hi:
+                p["outlier"] = True
+                p["outlier_reason"] = f"IQR {k:g}× 밖 (허용 {lo*100:.2f}%~{hi*100:.2f}%)"
+    else:  # mad
+        med = float(np.median(sigs))
+        mad = float(np.median(np.abs(sigs - med)))
+        info.update({"median": med, "mad": mad})
+        if mad <= 0:
+            info["applied"] = False
+            info["reason"] = "MAD=0(전 종목 σ 동일): 필터 미적용"
+            return info
+        for p in valid:
+            if abs(p["sigma"] - med) > k * mad:
+                p["outlier"] = True
+                p["outlier_reason"] = f"MAD {k:g}× 밖 (|σ−중앙값|>{k*mad*100:.2f}%)"
+    info["n_excluded"] = sum(1 for p in valid if p.get("outlier"))
+    return info
+
+
+def basket_volatility(series, trading_days=252, log=True, method="median",
+                      outlier_method="none", outlier_k=None):
     """유사기업 바스켓 σ 산출 (편의 래퍼).
 
     series: {ticker: {"name", "dates", "closes", "volumes"(opt), "cap"(opt)}}
-    Returns {"sigma", "method", "per_ticker":[...], "failed":[...]}.
+    trading_days: 정수(고정) 또는 "auto"(종목별 시계열에서 실측 산정).
+    outlier_method: 'none' | 'iqr' | 'mad' (유사기업 σ 바스켓 이상치 제거).
+    outlier_k: 임계 배수(IQR 기본 1.5, MAD 기본 3.0). None이면 method에 맞춰 기본값.
+    Returns {"sigma", "method", "per_ticker":[...], "failed":[...], "outlier_info":{...}}.
     """
     per, caps, failed = [], [], []
+    auto_td = isinstance(trading_days, str) and trading_days.lower() == "auto"
     for tk, s in series.items():
         try:
-            _, cc, removed = clean_closes(s.get("dates"), s["closes"], s.get("volumes"))
-            hv = historical_vol(cc, trading_days=trading_days, log=log)
+            cleaned_dates, cc, removed = clean_closes(s.get("dates"), s["closes"], s.get("volumes"))
+            if auto_td:
+                td = _td_from_dates(cleaned_dates) or 252   # 산정 불가 시 252 fallback
+            else:
+                td = int(trading_days)
+            hv = historical_vol(cc, trading_days=td, log=log)
             per.append({
                 "ticker": tk,
                 "name": s.get("name", tk),
@@ -105,6 +171,7 @@ def basket_volatility(series, trading_days=252, log=True, method="median"):
                 "n_obs": hv["n_obs"],
                 "removed": removed,
                 "cap": s.get("cap"),
+                "trading_days_used": td,
             })
             caps.append(s.get("cap"))
         except Exception as e:  # noqa: BLE001 — 종목별 실패는 스킵하고 사유 보존
@@ -113,11 +180,19 @@ def basket_volatility(series, trading_days=252, log=True, method="median"):
             caps.append(None)
             failed.append({"ticker": tk, "error": str(e)})
 
-    # 전 종목 실패 시 raise 하지 않고 sigma=None 으로 반환(라우트가 사유를 안내)
+    # 이상치 필터: 유사기업 σ 바스켓에 적용 (IQR/MAD, 평가자 조정가능 임계)
+    if outlier_k is None:
+        outlier_k = 1.5 if outlier_method == "iqr" else 3.0
+    outlier_info = _detect_outliers(per, outlier_method, float(outlier_k))
+
+    # 집계는 이상치 제외 후 수행. cap_weighted는 동일 인덱스 보존 필요
+    active_idx = [i for i, p in enumerate(per) if p.get("sigma") is not None and not p.get("outlier")]
+    active_per = [per[i] for i in active_idx]
+    active_caps = [caps[i] for i in active_idx] if method == "cap_weighted" else None
     try:
-        agg = aggregate(per, method=method, caps=caps if method == "cap_weighted" else None)
+        agg = aggregate(active_per, method=method, caps=active_caps)
         agg_err = None
     except Exception as e:  # noqa: BLE001
         agg, agg_err = None, str(e)
     return {"sigma": agg, "method": method, "per_ticker": per,
-            "failed": failed, "error": agg_err}
+            "failed": failed, "error": agg_err, "outlier_info": outlier_info}

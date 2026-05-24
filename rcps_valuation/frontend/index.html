@@ -726,7 +726,15 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
     <div class="row3">
-      <div class="field"><label>연 거래일 수</label><input type="number" id="vol_tradingdays" value="252" step="1"></div>
+      <div class="field"><label>연 거래일 수 산정</label>
+        <select id="vol_tdmode" onchange="volTdModeChange()">
+          <option value="auto">자동 (시계열 실측, 권장)</option>
+          <option value="252">252 (국제 관행)</option>
+          <option value="250">250 (국내 관행)</option>
+          <option value="custom">직접 입력</option>
+        </select>
+      </div>
+      <div class="field" id="vol-tdays-field" style="display:none"><label>연 거래일 수</label><input type="number" id="vol_tradingdays" value="252" step="1"></div>
       <div class="field"><label>집계 방식</label>
         <select id="vol_method">
           <option value="median">중앙값 (권장)</option>
@@ -734,6 +742,14 @@ details.note-fold .note{margin-top:4px}
           <option value="cap_weighted">시총가중</option>
         </select>
       </div>
+      <div class="field"><label>이상치 제거 (유사기업 σ)</label>
+        <select id="vol_outlier" onchange="volOutlierChange()">
+          <option value="none">없음 (기본)</option>
+          <option value="iqr">IQR (Tukey k·IQR)</option>
+          <option value="mad">MAD (k·MAD)</option>
+        </select>
+      </div>
+      <div class="field" id="vol-outlier-k-field" style="display:none"><label>임계 배수 k <span style="color:var(--text3);font-weight:400">(기본 IQR 1.5 · MAD 3.0)</span></label><input type="number" id="vol_outlier_k" value="1.5" step="0.1" min="0.1"></div>
       <div class="field"><label>데이터 소스</label>
         <select id="vol_source" onchange="volToggleSource()">
           <option value="auto">자동조회 (KRX+해외)</option>
@@ -757,7 +773,7 @@ details.note-fold .note{margin-top:4px}
       <details class="note-fold" style="margin-top:4px"><summary></summary><div class="note">해외 이름 검색은 Yahoo Finance 기준이라 동명·복수상장이 섞일 수 있으니 거래소(예: MIL=밀라노, PAR=파리)를 확인하고 고르세요. 직접 입력 시 거래소별 접미사 — 밀라노 <code>.MI</code> · 런던 <code>.L</code> · 파리 <code>.PA</code> · 프랑크푸르트 <code>.DE</code> · 도쿄 <code>.T</code> · 홍콩 <code>.HK</code> · 상하이/선전 <code>.SS</code>/<code>.SZ</code>.<br><b>중국 본토 A주</b>(상하이 <code>.SS</code>/선전 <code>.SZ</code>)는 이름 검색에 안 나오니 <b>코드로 직접 입력</b>하세요 — 예: 마오타이 <code>600519.SS</code>, BYD A주 <code>002594.SZ</code>. (전복권 종가 기준)</div></details>
     </div>
     <table class="mini-table" id="vol-basket">
-      <thead><tr><th>종목</th><th>코드</th><th>σ (연율)</th><th>관측치</th><th>제외</th><th></th></tr></thead>
+      <thead><tr><th>종목</th><th>코드</th><th>σ (연율)</th><th>연거래일</th><th>관측치</th><th>제외</th><th></th></tr></thead>
       <tbody id="vol-basket-body"></tbody>
     </table>
     <div class="note" id="vol-basket-empty" style="margin-top:6px">위 검색창에서 유사상장기업을 추가하세요.</div>
@@ -1890,6 +1906,26 @@ function volAddTicker(code,name){
   volRenderBasket();
 }
 function volRemove(code){window.volBasket=window.volBasket.filter(x=>x.code!==code);volRenderBasket();}
+// 연 거래일 수 산정방식: auto / 252 / 250 / custom(직접입력)
+function volTdModeChange(){
+  const m=document.getElementById('vol_tdmode').value;
+  document.getElementById('vol-tdays-field').style.display=(m==='custom')?'':'none';
+  if(m==='252'||m==='250')document.getElementById('vol_tradingdays').value=m;
+}
+function _volTdParam(){
+  const m=document.getElementById('vol_tdmode').value;
+  if(m==='auto')return 'auto';
+  if(m==='custom')return parseInt(document.getElementById('vol_tradingdays').value)||252;
+  return parseInt(m);
+}
+// 이상치 제거(유사기업 σ): IQR/MAD 선택 시 임계 배수 k 입력 노출 + 방식별 기본값 자동
+function volOutlierChange(){
+  const m=document.getElementById('vol_outlier').value;
+  const f=document.getElementById('vol-outlier-k-field');
+  f.style.display=(m==='none')?'none':'';
+  if(m==='iqr')document.getElementById('vol_outlier_k').value='1.5';
+  else if(m==='mad')document.getElementById('vol_outlier_k').value='3.0';
+}
 function volRenderBasket(per){
   const body=document.getElementById('vol-basket-body');
   const byCode={};(per||[]).forEach(p=>byCode[p.ticker]=p);
@@ -1897,10 +1933,16 @@ function volRenderBasket(per){
   body.innerHTML=window.volBasket.map(b=>{
     const p=byCode[b.code];
     if(p&&p.name&&p.name!==b.code)b.name=p.name;   // 서버 반환 정식 종목명으로 갱신
-    const sig=p&&p.sigma!=null?(p.sigma*100).toFixed(2)+'%':(p&&p.error?'<span style="color:var(--red)">실패</span>':'—');
+    let sig;
+    if(p&&p.sigma!=null){
+      const sp=(p.sigma*100).toFixed(2)+'%';
+      sig=p.outlier?`<span title="${(p.outlier_reason||'').replace(/"/g,'&quot;')}" style="text-decoration:line-through;color:var(--text3)">${sp}</span> <span style="color:var(--red);font-size:0.66rem;font-weight:600">이상치</span>`:sp;
+    } else sig=(p&&p.error)?'<span style="color:var(--red)">실패</span>':'—';
     const n=p&&p.n_obs!=null?p.n_obs:'—';
     const rm=p&&p.removed?p.removed:'—';
-    return `<tr><td>${b.name}</td><td>${b.code}</td><td style="text-align:right">${sig}</td><td style="text-align:right">${n}</td><td style="text-align:right">${rm}</td><td style="text-align:center"><span onclick="volRemove('${b.code}')" style="cursor:pointer;color:var(--red)">✕</span></td></tr>`;
+    const td=p&&p.trading_days_used!=null?p.trading_days_used:'—';
+    const rowStyle=p&&p.outlier?' style="opacity:.7"':'';
+    return `<tr${rowStyle}><td>${b.name}</td><td>${b.code}</td><td style="text-align:right">${sig}</td><td style="text-align:right">${td}</td><td style="text-align:right">${n}</td><td style="text-align:right">${rm}</td><td style="text-align:center"><span onclick="volRemove('${b.code}')" style="cursor:pointer;color:var(--red)">✕</span></td></tr>`;
   }).join('');
 }
 async function volRun(){
@@ -1913,8 +1955,10 @@ async function volRun(){
         tickers:window.volBasket.map(x=>x.code),
         start:document.getElementById('vol_start').value,
         end:document.getElementById('vol_end').value,
-        trading_days:parseInt(document.getElementById('vol_tradingdays').value)||252,
+        trading_days:_volTdParam(),
         method:document.getElementById('vol_method').value,
+        outlier_method:document.getElementById('vol_outlier').value,
+        outlier_k:parseFloat(document.getElementById('vol_outlier_k').value)||null,
       })});
     const j=await r.json();
     if(j.status!=='ok'){volMsg('오류: '+j.message,false); if(j.per_ticker)volRenderBasket(j.per_ticker); return;}
@@ -1930,7 +1974,7 @@ async function volRunCsv(){
   volMsg('CSV 분석 중…',true);
   try{
     const fd=new FormData();fd.append('file',f);
-    fd.append('trading_days',parseInt(document.getElementById('vol_tradingdays').value)||252);
+    fd.append('trading_days',_volTdParam());
     fd.append('method',document.getElementById('vol_method').value);
     const r=await fetch('/api/volatility/upload',{method:'POST',body:fd});
     const j=await r.json();
@@ -1946,8 +1990,23 @@ function volRenderResult(j){
   document.getElementById('vol-sigma').textContent=j.sigma_pct.toFixed(2)+'%';
   const okN=j.per_ticker.filter(p=>p.sigma!=null).length;
   const methodLabel={median:'중앙값',mean:'단순평균',cap_weighted:'시총가중'}[j.method]||j.method;
-  let meta=`집계방식 <b>${methodLabel}</b> · 유효종목 <b>${okN}개</b> · 연 거래일 ${j.trading_days}`;
+  // 연 거래일 표시: auto면 종목별 산정값의 범위(min~max), 고정이면 그 값
+  const tds=j.per_ticker.filter(p=>p.trading_days_used!=null).map(p=>p.trading_days_used);
+  const tdLabel=(j.trading_days==='auto')
+    ? (tds.length?`자동(종목별 ${Math.min(...tds)}~${Math.max(...tds)})`:'자동')
+    : j.trading_days;
+  // 이상치 필터 결과 표시
+  const oi=j.outlier_info||{};
+  const olNames=j.per_ticker.filter(p=>p.outlier).map(p=>p.name||p.ticker);
+  const usedN=okN-olNames.length;
+  let meta=`집계방식 <b>${methodLabel}</b> · 사용종목 <b>${usedN}개</b>(유효 ${okN}) · 연 거래일 <b>${tdLabel}</b>`;
   if(j.start||j.end)meta+=` · 구간 ${j.start||'?'} ~ ${j.end||'?'}`;
+  if(oi.applied){
+    const mk={iqr:'IQR',mad:'MAD'}[oi.method]||oi.method;
+    meta+=`<br>이상치 제거 <b>${mk} ${oi.k}×</b> 적용 — 제외 <b>${olNames.length}종목</b>${olNames.length?` (${olNames.join(', ')})`:''}`;
+  } else if(oi.method&&oi.method!=='none'&&oi.reason){
+    meta+=`<br><span style="color:var(--text3)">이상치 필터 미적용: ${oi.reason}</span>`;
+  }
   if(j.failed&&j.failed.length)meta+=`<br><span style="color:var(--red)">조회 실패 ${j.failed.length}건: ${j.failed.map(f=>f.ticker).join(', ')}</span>`;
   meta+='<br>※ 자동조회 값은 시점마다 달라질 수 있으니, 감리 증빙용으로 원자료 CSV를 내보내 보관하세요.';
   document.getElementById('vol-meta').innerHTML=meta;
