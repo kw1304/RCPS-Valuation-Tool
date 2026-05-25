@@ -4,3 +4,4 @@ numpy
 pdfplumber
 finance-datareader
 baostock
+yfinance

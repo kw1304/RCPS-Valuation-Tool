@@ -808,7 +808,12 @@ details.note-fold .note{margin-top:4px}
           <option value="weekly">주별 (Bloomberg 관행, 노이즈↓)</option>
         </select>
       </div>
-      <div class="field"></div>
+      <div class="field"><label>D/E 기준</label>
+        <select id="w_de_basis">
+          <option value="market">시가총액 기준 D/E (D_book/MV) — 권장</option>
+          <option value="book">도서가 기준 D/E (D_book/E_book) — Yahoo 기본</option>
+        </select>
+      </div>
     </div>
     <table class="mini-table" id="w-peers-tbl">
       <thead><tr><th style="width:40%">유사기업</th><th>β_L</th><th>D/E (%)</th><th>β_U</th><th></th></tr></thead>
@@ -817,6 +822,7 @@ details.note-fold .note{margin-top:4px}
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
       <button class="btn-run" onclick="waccAddPeer()" style="padding:0.4rem 0.8rem;margin:0">+ 유사기업 추가</button>
       <button class="btn-run" id="w-beta-run-btn" onclick="waccAutoBeta()" style="padding:0.4rem 0.8rem;margin:0;background:var(--text2)">📊 β_L 자동 회귀산정</button>
+      <button class="btn-run" id="w-de-run-btn" onclick="waccAutoDE()" style="padding:0.4rem 0.8rem;margin:0;background:var(--text2)">📑 D/E 자동 가져오기</button>
       <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center"></span>
     </div>
     <div class="row3" style="margin-top:12px">
@@ -2220,6 +2226,50 @@ async function waccAutoBeta(){
   }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
   finally{btn.disabled=false;}
 }
+async function waccAutoDE(){
+  const btn=document.getElementById('w-de-run-btn');
+  const status=document.getElementById('w-beta-status');
+  const peers=window.waccPeers.filter(p=>(p.name||'').trim());
+  if(!peers.length){status.style.color='var(--red)';status.textContent='유사기업 이름을 먼저 입력하세요.';return;}
+  btn.disabled=true; status.style.color='var(--text3)'; status.textContent='이름→티커 해석 중…';
+  const codes=[];
+  for(const p of peers){
+    const q=p.name.trim();
+    if(/^\d{6}$/.test(q) || /\.[A-Za-z]{1,3}$/.test(q) || /^(sh|sz)\./i.test(q)){codes.push({peer:p,code:q});continue;}
+    try{
+      const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
+      const j=await r.json();
+      if(j.status==='ok'&&j.results.length){codes.push({peer:p,code:j.results[0].code});}
+      else if(/^[A-Za-z][A-Za-z0-9.\-]{0,11}$/.test(q)){codes.push({peer:p,code:q.toUpperCase()});}
+      else{codes.push({peer:p,code:null});}
+    }catch(e){codes.push({peer:p,code:null});}
+  }
+  const unresolved=codes.filter(x=>!x.code).map(x=>x.peer.name);
+  if(unresolved.length){status.style.color='var(--red)';status.textContent='해석 실패: '+unresolved.join(', ');btn.disabled=false;return;}
+  const basis=document.getElementById('w_de_basis').value;
+  status.textContent=`Yahoo 재무 조회 중 (${basis==='market'?'시총 기준':'도서가 기준'})…`;
+  try{
+    const r=await fetch('/api/wacc/de',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers:codes.map(x=>x.code)})});
+    const j=await r.json();
+    if(j.status!=='ok'){status.style.color='var(--red)';status.textContent='오류: '+j.message;btn.disabled=false;return;}
+    const byCode={};j.results.forEach(x=>byCode[x.ticker]=x);
+    let okN=0, failN=0, details=[];
+    codes.forEach(({peer,code})=>{
+      const res=byCode[code];
+      const de = (basis==='market') ? res?.de_market : res?.de_book;
+      if(res && de!=null){
+        peer.de = de;
+        okN++;
+        details.push(`${res.name||code}: D/E=${de.toFixed(1)}%`);
+      } else failN++;
+    });
+    waccRenderPeers(); waccRecalc();
+    status.style.color='var(--green)';
+    status.innerHTML=`✓ ${okN}개 D/E 채움${failN?', 실패 '+failN:''} · ${basis==='market'?'시총':'도서가'} 기준`;
+  }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
+  finally{btn.disabled=false;}
+}
+
 function waccApplyToDcf(){
   if(window._lastWacc==null){alert('WACC 산출 후 적용하세요.');return;}
   const w=document.getElementById('a_wacc');

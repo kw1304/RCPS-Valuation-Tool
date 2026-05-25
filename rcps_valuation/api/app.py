@@ -1872,6 +1872,74 @@ def wacc_beta():
     })
 
 
+# ══════════════════════════════════════════════════════════════════
+#  유사기업 D/E 자동 조회 (yfinance — Yahoo 재무제표 + 시가총액)
+# ══════════════════════════════════════════════════════════════════
+def _to_yahoo_symbol(code, listing_map):
+    """6자리 KR 코드 → .KS/.KQ 부착. 이미 접미사 있거나 영문 티커는 그대로."""
+    c = (code or "").strip()
+    if not c:
+        return c
+    # 이미 접미사 있음(.MI/.HK/...) 또는 영문 포함 → 그대로
+    if "." in c or any(ch.isalpha() for ch in c):
+        return c
+    # 순수 6자리 → 시장 매핑
+    market = (listing_map.get(c) or "KOSPI").upper()
+    return c + (".KQ" if market == "KOSDAQ" else ".KS")
+
+
+@app.route("/api/wacc/de", methods=["POST"])
+def wacc_de():
+    """유사기업 D/E·총부채·시가총액·Yahoo 베타 자동 조회.
+
+    body: {tickers:[...]}.
+    Yahoo의 debtToEquity는 도서가 기준(D_book/E_book × 100). 별도로 D_book/MarketCap
+    (시총 기준 D/E)도 계산해 같이 반환. WACC Hamada에는 시총 기준이 더 일반적.
+    """
+    data = request.get_json(force=True) or {}
+    tickers = [str(t).strip() for t in (data.get("tickers") or []) if str(t).strip()]
+    if not tickers:
+        return jsonify({"status": "error", "message": "종목이 비어있습니다."}), 200
+    try:
+        import yfinance as yf
+    except Exception:
+        return jsonify({"status": "error", "message": "yfinance 미설치"}), 200
+
+    # 시장 매핑
+    listing_map = {}
+    try:
+        for r in _stock_listing():
+            listing_map[r["code"]] = r["market"]
+    except Exception:
+        pass
+
+    results = []
+    for code in tickers:
+        ysym = _to_yahoo_symbol(code, listing_map)
+        try:
+            t = yf.Ticker(ysym)
+            info = t.info or {}
+            de_book = info.get('debtToEquity')          # 도서가 기준 (%)
+            td = info.get('totalDebt')                   # 절대값(통화)
+            mc = info.get('marketCap')                   # 절대값(통화)
+            de_market = round(td / mc * 100, 2) if td and mc and mc > 0 else None
+            results.append({
+                "ticker": code,
+                "yahoo_symbol": ysym,
+                "name": info.get('shortName') or info.get('longName') or code,
+                "de_book": round(de_book, 2) if de_book is not None else None,
+                "de_market": de_market,
+                "total_debt": td,
+                "total_cash": info.get('totalCash'),
+                "market_cap": mc,
+                "yahoo_beta": info.get('beta'),
+            })
+        except Exception as e:  # noqa: BLE001
+            results.append({"ticker": code, "yahoo_symbol": ysym, "error": str(e)[:150]})
+
+    return jsonify({"status": "ok", "results": results})
+
+
 if __name__ == "__main__":
     print("RCPS 평가툴 서버 시작: http://localhost:5000")
     app.run(debug=True, port=5000, host="0.0.0.0")
