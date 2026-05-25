@@ -819,7 +819,7 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">① 무위험이자율 (Rf) · 시장위험프리미엄 (MRP)</div>
     <div class="row3">
       <div class="field"><label>무위험이자율 Rf (%)</label><input type="number" id="w_rf" value="3.0" step="0.05" oninput="waccRecalc()"></div>
-      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullRf()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 RF 곡선 10년물 → Rf</button></div>
+      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullRf()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 Rf 곡선 10년물 → Rf</button></div>
       <div class="field"><label>시장위험프리미엄 MRP (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">권장값↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_mrp" value="6.0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
@@ -974,10 +974,10 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">④ 타인자본비용 (Kd)</div>
     <div class="row3">
       <div class="field"><label>세전 Kd (%)</label><input type="number" id="w_kd" value="5.0" step="0.05" oninput="waccRecalc()"></div>
-      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullKd()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 RD 곡선 5년물 → Kd</button></div>
+      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullKd()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 Rd 곡선 5년물 → Kd</button></div>
       <div class="field"><label>세후 Kd</label><input type="text" id="w_kd_after" readonly></div>
     </div>
-    <details class="note-fold"><summary></summary><div class="note">Kd는 회사채 등급별 yield(예: KIS-NET 민평표) 또는 재무제표상 가중평균 차입금리. 세후 Kd = Kd × (1 − t).<br><b>Rf 10년 vs Kd 5년 만기 차이:</b> Rf는 CAPM 표준상 장기 자기자본위험을 반영해 10년 국고채를, Kd는 한국 회사채 일반발행 평균만기(3~5년)에 맞춰 5년 민평을 사용 — 한국 평가사 관행. 평가대상 부채구조 만기가 길면 RD 10년물로 보간해 입력 권장.</div></details>
+    <details class="note-fold"><summary></summary><div class="note">Kd는 회사채 등급별 yield(예: KIS-NET 민평표) 또는 재무제표상 가중평균 차입금리. 세후 Kd = Kd × (1 − t).<br><b>Rf 10년 vs Kd 5년 만기 차이:</b> Rf는 CAPM 표준상 장기 자기자본위험을 반영해 10년 국고채를, Kd는 한국 회사채 일반발행 평균만기(3~5년)에 맞춰 5년 민평을 사용 — 한국 평가사 관행. 평가대상 부채구조 만기가 길면 Rd 10년물로 보간해 입력 권장.</div></details>
   </div>
 
   <!-- ⑤ 자본구조 -->
@@ -1110,9 +1110,9 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-boot" style="display:none">
 
-  <!-- 금리 자동 구성: ECOS 국고채(RF) + 이자율 파일(RD) -->
+  <!-- 금리 자동 구성: ECOS 국고채(Rf) + 이자율 파일(Rd) -->
   <div class="dcf-assump" style="flex-shrink:0">
-    <div class="dcf-assump-hd">금리 자동 구성 (ECOS 국고채 RF + 이자율 파일 RD)</div>
+    <div class="dcf-assump-hd">금리 자동 구성 (ECOS 국고채 Rf + 이자율 파일 Rd)</div>
     <style>#rate-auto-grid .field input,#rate-auto-grid .field select,#rate-auto-grid .field button{height:2.45rem;box-sizing:border-box;line-height:1.2}</style>
     <div class="dcf-assump-grid" id="rate-auto-grid" style="grid-template-columns:1.6fr 1fr 0.9fr 1fr 1.3fr 1.3fr 1.3fr;align-items:end">
       <div class="field"><label>한국은행 ECOS API 키</label>
@@ -1124,7 +1124,7 @@ details.note-fold .note{margin-top:4px}
         <input type="checkbox" id="rate-date-sync" checked style="display:none">
       </div>
       <div class="field"><label style="visibility:hidden">.</label>
-        <button class="btn-sm add" style="width:100%;white-space:nowrap" onclick="fetchEcos()">국고채↓ RF</button>
+        <button class="btn-sm add" style="width:100%;white-space:nowrap" onclick="fetchEcos()">국고채↓ Rf</button>
       </div>
       <div class="field"><label>회사채 신용등급</label>
         <select id="kofia-grade" onchange="applyUploaded()">
@@ -1145,28 +1145,28 @@ details.note-fold .note{margin-top:4px}
         <input type="file" id="minpyung-file" accept=".xlsx,.xls,.csv,.pdf" style="font-size:.7rem;width:100%">
       </div>
       <div class="field"><label style="visibility:hidden">.</label>
-        <button class="btn-sm" style="width:100%;white-space:nowrap;background:#EFF6FF;color:var(--accent2);border-color:#BFDBFE" onclick="uploadMinpyung()">이자율 파일 업로드 → RF/RD</button>
+        <button class="btn-sm" style="width:100%;white-space:nowrap;background:#EFF6FF;color:var(--accent2);border-color:#BFDBFE" onclick="uploadMinpyung()">이자율 파일 업로드 → Rf/Rd</button>
       </div>
     </div>
     <div id="rate-fetch-msg" style="font-size:0.7rem;color:var(--text3);margin-top:6px;display:none"></div>
   </div>
 
-  <!-- RF / RD 2-column 부트스트래핑 -->
+  <!-- Rf / Rd 2-column 부트스트래핑 -->
   <div class="boot-dual">
 
-    <!-- RF Section (반기, m=2) -->
+    <!-- Rf Section (반기, m=2) -->
     <div class="boot-sect">
-      <div class="boot-sect-hd">BOOTSTRAPPING &mdash; RF</div>
+      <div class="boot-sect-hd">BOOTSTRAPPING &mdash; Rf</div>
       <div class="boot-sect-body">
         <div class="boot-col">
           <table class="bst">
-            <thead><tr><th>NO</th><th>YEAR</th><th>RF-YTM</th></tr></thead>
+            <thead><tr><th>NO</th><th>YEAR</th><th>Rf-YTM</th></tr></thead>
             <tbody id="brf-inp"></tbody>
           </table>
         </div>
         <div class="boot-col">
           <table class="bst">
-            <thead><tr><th>YEAR</th><th>HALF<br>YEAR</th><th>RF (H)</th><th>D-SPOT (H)</th><th>PV FACTOR</th></tr></thead>
+            <thead><tr><th>YEAR</th><th>HALF<br>YEAR</th><th>Rf (H)</th><th>D-SPOT (H)</th><th>PV FACTOR</th></tr></thead>
             <tbody id="brf-mid"></tbody>
           </table>
         </div>
@@ -1186,19 +1186,19 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
 
-    <!-- RD Section (분기, m=4) -->
+    <!-- Rd Section (분기, m=4) -->
     <div class="boot-sect">
-      <div class="boot-sect-hd">BOOTSTRAPPING &mdash; RD</div>
+      <div class="boot-sect-hd">BOOTSTRAPPING &mdash; Rd</div>
       <div class="boot-sect-body">
         <div class="boot-col">
           <table class="bst">
-            <thead><tr><th>NO</th><th>YEAR</th><th>RD-YTM</th></tr></thead>
+            <thead><tr><th>NO</th><th>YEAR</th><th>Rd-YTM</th></tr></thead>
             <tbody id="brd-inp"></tbody>
           </table>
         </div>
         <div class="boot-col">
           <table class="bst">
-            <thead><tr><th>YEAR</th><th>QUARTER</th><th>RD (Q)</th><th>D-SPOT (Q)</th><th>PV FACTOR</th></tr></thead>
+            <thead><tr><th>YEAR</th><th>QUARTER</th><th>Rd (Q)</th><th>D-SPOT (Q)</th><th>PV FACTOR</th></tr></thead>
             <tbody id="brd-mid"></tbody>
           </table>
         </div>
@@ -1234,14 +1234,14 @@ details.note-fold .note{margin-top:4px}
           <th>DATE</th>
           <th>dT</th>
           <th>누적 dT<br>(Years)</th>
-          <th>RF D-SPOT<br>(%/Y)</th>
-          <th>RF C-SPOT<br>(%/Y)</th>
-          <th>RF C-FWD<br>(%/Y)</th>
-          <th>RF C-DF</th>
-          <th>RD D-SPOT<br>(%/Y)</th>
-          <th>RD C-SPOT<br>(%/Y)</th>
-          <th>RD C-FWD<br>(%/Y)</th>
-          <th>RD C-DF</th>
+          <th>Rf D-SPOT<br>(%/Y)</th>
+          <th>Rf C-SPOT<br>(%/Y)</th>
+          <th>Rf C-FWD<br>(%/Y)</th>
+          <th>Rf C-DF</th>
+          <th>Rd D-SPOT<br>(%/Y)</th>
+          <th>Rd C-SPOT<br>(%/Y)</th>
+          <th>Rd C-FWD<br>(%/Y)</th>
+          <th>Rd C-DF</th>
         </tr></thead>
         <tbody id="rate-data-tbody"></tbody>
       </table>
@@ -1585,7 +1585,7 @@ async function runBdt(){
         <tr><td>③ 풋옵션가치 (Put = 풋채권 − 순채권)</td><td style="text-align:right">${fmtW(tfPv)}</td><td style="text-align:right">${fmtW(d.put_option_value)}</td><td style="text-align:center">${diff(d.put_option_value,tfPv)}</td></tr>
       </tbody></table>
       <div style="font-size:.7rem;color:var(--text3);margin-top:4px">BDT 입력 — 금리 σ <b>${(d.rate_vol*100).toFixed(2)}%</b> · 스텝 <b>${d.n_steps_used}</b> · dt ${d.dt.toFixed(4)}년 · 풋시작 step ${d.put_step}<br>
-      ※ BDT는 RD(신용조정) 곡선에 lognormal 단기금리트리를 캘리브레이션해 후방귀납으로 풋채권을 산정합니다. TF는 주가트리 + 결정론적 금리를 쓰므로 일반채권은 거의 같고, 풋옵션 가치는 모형 가정 차이로 달라질 수 있습니다.</div>`;
+      ※ BDT는 Rd(신용조정) 곡선에 lognormal 단기금리트리를 캘리브레이션해 후방귀납으로 풋채권을 산정합니다. TF는 주가트리 + 결정론적 금리를 쓰므로 일반채권은 거의 같고, 풋옵션 가치는 모형 가정 차이로 달라질 수 있습니다.</div>`;
   }catch(e){out.innerHTML=`<span style="color:var(--red)">요청 실패: ${e.message}</span>`;}
   finally{btn.disabled=false;}
 }
@@ -3156,9 +3156,9 @@ function applyUploaded(){
   if(rd){bootRdRows=rd.points.map(p=>({t:p.t,y:p.y})).sort((a,b)=>a.t-b.t);}
   bootRender();
   if(!rf && !rd){rateMsg('파일에서 국고채/해당 등급을 찾지 못했습니다.',false);return;}
-  const msgs=[]; if(rf)msgs.push('국고채 RF');
-  if(rd)msgs.push(`회사채${gradeTok}(${(rd.subtype||'').replace(/\s/g,'')||issue}) RD`);
-  else msgs.push(`⚠ 회사채${gradeTok}(${issue}) 미발견 — RD 곡선 미변경`);
+  const msgs=[]; if(rf)msgs.push('국고채 Rf');
+  if(rd)msgs.push(`회사채${gradeTok}(${(rd.subtype||'').replace(/\s/g,'')||issue}) Rd`);
+  else msgs.push(`⚠ 회사채${gradeTok}(${issue}) 미발견 — Rd 곡선 미변경`);
   rateMsg(msgs.join(' + ')+(usedFallback?' (구분 자동대체)':''),!!(rf||rd));
 }
 
