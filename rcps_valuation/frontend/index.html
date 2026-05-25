@@ -819,11 +819,10 @@ details.note-fold .note{margin-top:4px}
       <thead><tr><th style="width:40%">유사기업</th><th>β_L</th><th>D/E (%)</th><th>β_U</th><th></th></tr></thead>
       <tbody id="w-peers-body"></tbody>
     </table>
-    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
       <button class="btn-run" onclick="waccAddPeer()" style="padding:0.4rem 0.8rem;margin:0">+ 유사기업 추가</button>
-      <button class="btn-run" id="w-beta-run-btn" onclick="waccAutoBeta()" style="padding:0.4rem 0.8rem;margin:0;background:var(--text2)">📊 β_L 자동 회귀산정</button>
-      <button class="btn-run" id="w-de-run-btn" onclick="waccAutoDE()" style="padding:0.4rem 0.8rem;margin:0;background:var(--text2)">📑 D/E 자동 가져오기</button>
-      <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center"></span>
+      <span style="font-size:.7rem;color:var(--text3)">유사기업 칸에 회사명·코드 입력 후 <b>Enter</b> → β·D/E 자동</span>
+      <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center;margin-left:auto"></span>
     </div>
     <div class="row3" style="margin-top:12px">
       <div class="field"><label>평가대상 D/E (%)</label><input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')"></div>
@@ -2171,61 +2170,6 @@ function waccRecalc(){
     `WACC = E/V <b>${(ev*100).toFixed(1)}%</b> × Ke <b>${(ke*100).toFixed(2)}%</b> + D/V <b>${(dv*100).toFixed(1)}%</b> × Kd <b>${(kd*100).toFixed(2)}%</b> × (1−t) <b>${((1-tax)*100).toFixed(1)}%</b> = <b style="color:var(--accent)">${(wacc*100).toFixed(2)}%</b>`;
   window._lastWacc = wacc;
 }
-async function waccAutoBeta(){
-  const btn=document.getElementById('w-beta-run-btn');
-  const status=document.getElementById('w-beta-status');
-  const peers=window.waccPeers.filter(p=>(p.name||'').trim());
-  if(!peers.length){status.style.color='var(--red)';status.textContent='유사기업 이름을 먼저 입력하세요.';return;}
-  btn.disabled=true; status.style.color='var(--text3)';
-  // 이름→코드 해석 (변동성 검색 재사용)
-  status.textContent='이름→티커 해석 중…';
-  const codes=[];
-  for(const p of peers){
-    const q=p.name.trim();
-    // 명확한 코드/티커는 그대로
-    if(/^\d{6}$/.test(q) || /\.[A-Za-z]{1,3}$/.test(q) || /^(sh|sz)\./i.test(q)){codes.push({peer:p,code:q});continue;}
-    try{
-      const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
-      const j=await r.json();
-      if(j.status==='ok'&&j.results.length){codes.push({peer:p,code:j.results[0].code,resolvedName:j.results[0].name});}
-      else if(/^[A-Za-z][A-Za-z0-9.\-]{0,11}$/.test(q)){codes.push({peer:p,code:q.toUpperCase()});}
-      else{codes.push({peer:p,code:null});}
-    }catch(e){codes.push({peer:p,code:null});}
-  }
-  const unresolved=codes.filter(x=>!x.code).map(x=>x.peer.name);
-  if(unresolved.length){status.style.color='var(--red)';status.textContent='해석 실패: '+unresolved.join(', ');btn.disabled=false;return;}
-  // 시장지수·기간·보정
-  const market=document.getElementById('w_market_idx').value;
-  const lookback=parseInt(document.getElementById('w_beta_lookback').value)||2;
-  const adjust=document.getElementById('w_beta_adjust').value;
-  const frequency=document.getElementById('w_beta_freq').value;
-  const end=new Date(); const start=new Date(end); start.setFullYear(end.getFullYear()-lookback);
-  const ymd=d=>d.toISOString().slice(0,10);
-  status.textContent=`회귀분석 중 (${market}, ${lookback}년, ${frequency==='weekly'?'주별':'일별'}, ${adjust})…`;
-  try{
-    const r=await fetch('/api/wacc/beta',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tickers:codes.map(x=>x.code),market,start:ymd(start),end:ymd(end),adjustment:adjust,frequency})});
-    const j=await r.json();
-    if(j.status!=='ok'){status.style.color='var(--red)';status.textContent='오류: '+j.message;btn.disabled=false;return;}
-    // 결과를 peer 표에 매핑
-    const byCode={};j.results.forEach(x=>byCode[x.ticker]=x);
-    let okN=0, failN=0;
-    codes.forEach(({peer,code,resolvedName})=>{
-      const res=byCode[code];
-      if(res && res.adjusted_beta!=null){
-        peer.betaL=res.adjusted_beta;
-        if(resolvedName && !peer.name.toLowerCase().includes(resolvedName.toLowerCase()))peer.name=resolvedName+' ('+code+')';
-        okN++;
-      } else failN++;
-    });
-    waccRenderPeers(); waccRecalc();
-    const failMsg=failN?`, 실패 ${failN}`:'';
-    const ar2=j.results.filter(x=>x.r2!=null).reduce((s,x)=>s+x.r2,0)/(j.results.filter(x=>x.r2!=null).length||1);
-    status.style.color='var(--green)';
-    status.innerHTML=`✓ ${okN}개 산정 완료${failMsg} · ${frequency==='weekly'?'주별':'일별'} · 평균 R² ${ar2.toFixed(3)} · ${adjust==='blume'?'Blume 보정':'Raw β'}`;
-  }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
-  finally{btn.disabled=false;}
-}
 // 종목명/코드 입력 + Enter → 해당 행만 β·D/E 동시 자동 채움
 async function waccFetchPeer(i){
   const peer=window.waccPeers[i]; if(!peer)return;
@@ -2278,50 +2222,6 @@ async function waccFetchPeer(i){
     waccRenderPeers(); waccRecalc();
     status.style.color='var(--green)'; status.innerHTML=`✓ ${peer.name}: ${parts.join(', ')}`;
   }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
-}
-
-async function waccAutoDE(){
-  const btn=document.getElementById('w-de-run-btn');
-  const status=document.getElementById('w-beta-status');
-  const peers=window.waccPeers.filter(p=>(p.name||'').trim());
-  if(!peers.length){status.style.color='var(--red)';status.textContent='유사기업 이름을 먼저 입력하세요.';return;}
-  btn.disabled=true; status.style.color='var(--text3)'; status.textContent='이름→티커 해석 중…';
-  const codes=[];
-  for(const p of peers){
-    const q=p.name.trim();
-    if(/^\d{6}$/.test(q) || /\.[A-Za-z]{1,3}$/.test(q) || /^(sh|sz)\./i.test(q)){codes.push({peer:p,code:q});continue;}
-    try{
-      const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
-      const j=await r.json();
-      if(j.status==='ok'&&j.results.length){codes.push({peer:p,code:j.results[0].code});}
-      else if(/^[A-Za-z][A-Za-z0-9.\-]{0,11}$/.test(q)){codes.push({peer:p,code:q.toUpperCase()});}
-      else{codes.push({peer:p,code:null});}
-    }catch(e){codes.push({peer:p,code:null});}
-  }
-  const unresolved=codes.filter(x=>!x.code).map(x=>x.peer.name);
-  if(unresolved.length){status.style.color='var(--red)';status.textContent='해석 실패: '+unresolved.join(', ');btn.disabled=false;return;}
-  const basis=document.getElementById('w_de_basis').value;
-  status.textContent=`Yahoo 재무 조회 중 (${basis==='market'?'시총 기준':'도서가 기준'})…`;
-  try{
-    const r=await fetch('/api/wacc/de',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers:codes.map(x=>x.code)})});
-    const j=await r.json();
-    if(j.status!=='ok'){status.style.color='var(--red)';status.textContent='오류: '+j.message;btn.disabled=false;return;}
-    const byCode={};j.results.forEach(x=>byCode[x.ticker]=x);
-    let okN=0, failN=0, details=[];
-    codes.forEach(({peer,code})=>{
-      const res=byCode[code];
-      const de = (basis==='market') ? res?.de_market : res?.de_book;
-      if(res && de!=null){
-        peer.de = de;
-        okN++;
-        details.push(`${res.name||code}: D/E=${de.toFixed(1)}%`);
-      } else failN++;
-    });
-    waccRenderPeers(); waccRecalc();
-    status.style.color='var(--green)';
-    status.innerHTML=`✓ ${okN}개 D/E 채움${failN?', 실패 '+failN:''} · ${basis==='market'?'시총':'도서가'} 기준`;
-  }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
-  finally{btn.disabled=false;}
 }
 
 function waccApplyToDcf(){
