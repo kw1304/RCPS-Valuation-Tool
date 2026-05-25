@@ -1054,8 +1054,13 @@ details.note-fold .note{margin-top:4px}
         <input type="text" id="ecos-key" placeholder="발급받은 키 입력 (ecos.bok.or.kr)"
           oninput="localStorage.setItem('ecos_key',this.value)" style="font-size:0.72rem">
       </div>
-      <div class="field"><label>조회 기준일</label>
-        <input type="date" id="rate-date" value="">
+      <div class="field"><label>조회 기준일 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">평가기준일 동기화↓</span></label>
+        <div style="display:flex;gap:4px;align-items:center">
+          <input type="date" id="rate-date" value="" oninput="rateDateManualEdit()" style="flex:1;min-width:0">
+          <label style="display:flex;align-items:center;gap:3px;font-size:0.7rem;color:var(--text3);white-space:nowrap;cursor:pointer">
+            <input type="checkbox" id="rate-date-sync" checked onchange="rateDateSyncToggle()" style="margin:0">🔗
+          </label>
+        </div>
       </div>
       <div class="field"><label style="visibility:hidden">.</label>
         <button class="btn-sm add" style="width:100%;white-space:nowrap" onclick="fetchEcos()">국고채↓ RF</button>
@@ -2196,6 +2201,31 @@ function onValDateChange(){
   if(typeof volApplyPreset==='function' && document.getElementById('vol_preset'))volApplyPreset();
   // MRP/CRP/사이즈 드롭다운 연도별 재생성
   if(typeof waccRebuildPremiumDropdowns==='function')waccRebuildPremiumDropdowns();
+  // 부트스트래핑 조회 기준일: 동기화 ON이면 평가기준일을 그대로 반영
+  const _rd2=document.getElementById('rate-date');
+  const _sync2=document.getElementById('rate-date-sync');
+  if(_rd2 && _sync2 && _sync2.checked && v){
+    _rd2.value=v;
+    _rd2.dataset.programmatic='1';
+  }
+}
+// 동기화 체크박스 토글: ON 전환 시 평가기준일을 즉시 반영
+function rateDateSyncToggle(){
+  const sync=document.getElementById('rate-date-sync');
+  const rd=document.getElementById('rate-date');
+  if(!sync||!rd)return;
+  if(sync.checked){
+    const v=document.getElementById('valuation_date')?.value||'';
+    if(v){rd.value=v;rd.dataset.programmatic='1';}
+  }
+}
+// 조회 기준일 수동 편집: 동기화 자동 해제 (단 onValDateChange가 프로그래밍적으로 채운 경우는 제외)
+function rateDateManualEdit(){
+  const rd=document.getElementById('rate-date');
+  const sync=document.getElementById('rate-date-sync');
+  if(!rd||!sync)return;
+  if(rd.dataset.programmatic==='1'){rd.dataset.programmatic='';return;}
+  sync.checked=false;
 }
 document.addEventListener('DOMContentLoaded',onValDateChange);
 
@@ -3130,10 +3160,15 @@ const _savedKey=localStorage.getItem('ecos_key');
 if(_savedKey){const k=document.getElementById('ecos-key');if(k)k.value=_savedKey;}
 // 계약서 AI 요약: Claude CLI(내 Claude 구독) 전용.
 if(document.getElementById('contract-provider'))onProviderChange();
-// 오늘 날짜 기본값
+// 조회 기준일: 평가기준일 동기화 ON이 기본. ON이면 #valuation_date 값을, 없으면 오늘 날짜를 채움.
 const _today=new Date().toISOString().slice(0,10);
 const _rd=document.getElementById('rate-date');
-if(_rd)_rd.value=_today;
+if(_rd){
+  const _vd=document.getElementById('valuation_date')?.value||'';
+  const _syncEl=document.getElementById('rate-date-sync');
+  const _synced=_syncEl?_syncEl.checked:true;
+  _rd.value=(_synced && _vd)?_vd:_today;
+}
 // 날짜/단계 변경 시 이자율 DATA 시트 재렌더 (boot 탭 활성 시)
 ['issue_date','valuation_date','maturity_date','steps'].forEach(function(id){
   const el=document.getElementById(id);
