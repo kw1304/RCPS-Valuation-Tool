@@ -1317,8 +1317,14 @@ def _stock_listing():
                         print(f"[listing] KRX via static CSV: {cnt} stocks", flush=True)
             except Exception as e:
                 print(f"[listing] KRX static CSV failed: {e}", flush=True)
-        # 2) 미국 거래소
-        for mk in ('NASDAQ', 'NYSE', 'AMEX'):
+        # 2) 미국 거래소 (NASDAQ/NYSE/AMEX) — FDR 우선, 실패 시 정적 CSV
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+        import csv as _csv
+        for mk, fn in (('NASDAQ', 'nasdaq_listing.csv'),
+                       ('NYSE', 'nyse_listing.csv'),
+                       ('AMEX', 'amex_listing.csv')):
+            mk_ok = False
+            mk_start = len(rows)
             try:
                 for r in fdr.StockListing(mk).to_dict('records'):
                     sym = str(r.get('Symbol') or r.get('Code') or '').strip()
@@ -1327,8 +1333,29 @@ def _stock_listing():
                     seen.add(sym)
                     rows.append({"code": sym, "name": str(r.get('Name') or '').strip(),
                                  "market": mk, "marcap": r.get('Marcap')})
-            except Exception:
-                pass
+                if (len(rows) - mk_start) > 50:
+                    mk_ok = True
+                    print(f"[listing] {mk} via FDR: {len(rows)-mk_start} stocks", flush=True)
+            except Exception as e:
+                print(f"[listing] {mk} FDR failed: {e}", flush=True)
+            # FDR 실패 시 정적 CSV 폴백
+            if not mk_ok:
+                csv_path = os.path.join(data_dir, fn)
+                try:
+                    if os.path.exists(csv_path):
+                        cnt = 0
+                        with open(csv_path, 'r', encoding='utf-8') as f:
+                            for r in _csv.DictReader(f):
+                                sym = (r.get('Symbol') or '').strip()
+                                if not sym or sym in seen:
+                                    continue
+                                seen.add(sym)
+                                rows.append({"code": sym, "name": (r.get('Name') or '').strip(),
+                                             "market": mk, "marcap": None})
+                                cnt += 1
+                            print(f"[listing] {mk} via static CSV: {cnt} stocks", flush=True)
+                except Exception as e:
+                    print(f"[listing] {mk} static CSV failed: {e}", flush=True)
         _STOCK_LISTING = rows
     return _STOCK_LISTING
 

@@ -1,14 +1,13 @@
-name: Update KRX Listing CSV
+name: Update Stock Listings CSV (KRX + NASDAQ + NYSE + AMEX)
 
 on:
   schedule:
     # 매주 월요일 00:00 UTC (한국 오전 9시 = 장 시작 시각)
     - cron: '0 0 * * 1'
-  # 수동 실행도 가능 (GitHub Actions 탭에서 "Run workflow" 버튼)
   workflow_dispatch:
 
 permissions:
-  contents: write  # 자동 커밋·푸시 권한
+  contents: write
 
 jobs:
   update:
@@ -25,29 +24,37 @@ jobs:
       - name: Install FinanceDataReader
         run: pip install finance-datareader pandas
 
-      - name: Fetch KRX listing
+      - name: Fetch listings (KRX + NASDAQ + NYSE + AMEX)
         run: |
-          python -c "
+          python <<'EOF'
           import FinanceDataReader as fdr
-          df = fdr.StockListing('KRX')
-          print(f'Fetched {len(df)} stocks')
-          df[['Code','Name','Market','Marcap']].to_csv(
-              'rcps_valuation/data/krx_listing.csv',
-              index=False, encoding='utf-8'
-          )
-          print('Saved: rcps_valuation/data/krx_listing.csv')
-          "
+          import os
+          os.makedirs('rcps_valuation/data', exist_ok=True)
+          # KRX (코스피·코스닥·코넥스 통합) — Code/Name/Market/Marcap
+          krx = fdr.StockListing('KRX')
+          krx[['Code','Name','Market','Marcap']].to_csv(
+              'rcps_valuation/data/krx_listing.csv', index=False, encoding='utf-8')
+          print(f'KRX: {len(krx)} stocks')
+          # 미국 거래소 — Symbol/Name (marcap 없음)
+          for mk, fn in [('NASDAQ','nasdaq_listing.csv'),
+                         ('NYSE','nyse_listing.csv'),
+                         ('AMEX','amex_listing.csv')]:
+              df = fdr.StockListing(mk)
+              df[['Symbol','Name']].to_csv(
+                  f'rcps_valuation/data/{fn}', index=False, encoding='utf-8')
+              print(f'{mk}: {len(df)} stocks')
+          EOF
 
       - name: Check for changes
         id: diff
         run: |
-          git diff --quiet rcps_valuation/data/krx_listing.csv || echo "changed=1" >> $GITHUB_OUTPUT
+          git diff --quiet rcps_valuation/data/ || echo "changed=1" >> $GITHUB_OUTPUT
 
       - name: Commit and push if changed
         if: steps.diff.outputs.changed == '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add rcps_valuation/data/krx_listing.csv
-          git commit -m "Auto-update KRX listing CSV (weekly cron)"
+          git add rcps_valuation/data/
+          git commit -m "Auto-update stock listings CSV (KRX + NASDAQ + NYSE + AMEX, weekly cron)"
           git push
