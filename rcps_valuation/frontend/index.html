@@ -929,7 +929,7 @@ details.note-fold .note{margin-top:4px}
       <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullKd()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 RD 곡선 5년물 → Kd</button></div>
       <div class="field"><label>세후 Kd</label><input type="text" id="w_kd_after" readonly></div>
     </div>
-    <details class="note-fold"><summary></summary><div class="note">Kd는 회사채 등급별 yield(예: KIS-NET 민평표) 또는 재무제표상 가중평균 차입금리. 세후 Kd = Kd × (1 − t).</div></details>
+    <details class="note-fold"><summary></summary><div class="note">Kd는 회사채 등급별 yield(예: KIS-NET 민평표) 또는 재무제표상 가중평균 차입금리. 세후 Kd = Kd × (1 − t).<br><b>Rf 10년 vs Kd 5년 만기 차이:</b> Rf는 CAPM 표준상 장기 자기자본위험을 반영해 10년 국고채를, Kd는 한국 회사채 일반발행 평균만기(3~5년)에 맞춰 5년 민평을 사용 — 한국 평가사 관행. 평가대상 부채구조 만기가 길면 RD 10년물로 보간해 입력 권장.</div></details>
   </div>
 
   <!-- ⑤ 자본구조 -->
