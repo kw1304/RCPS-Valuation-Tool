@@ -742,7 +742,13 @@ details.note-fold .note{margin-top:4px}
 <div class="page" id="page-dcf" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
   <div class="dcf-assump">
-    <div class="dcf-assump-hd">밸류에이션 가정</div>
+    <div class="dcf-assump-hd" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <span>밸류에이션 가정</span>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button class="btn-run" onclick="dcfAutoFillListed()" style="padding:0.35rem 0.7rem;margin:0;font-size:0.72rem">📊 상장사 자동 채움 (yfinance)</button>
+        <span id="dcf-auto-status" style="font-size:.7rem;color:var(--text3)"></span>
+      </div>
+    </div>
     <div class="dcf-assump-grid">
       <div class="field"><label>WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
       <div class="field"><label>영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"><div class="note" style="margin-top:3px">WACC 미만 권장</div></div>
@@ -751,6 +757,10 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>총발행주식수 (주)</label><input type="text" id="a_shares" class="money" value="1,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
       <div class="field"><label>비영업자산 (원)</label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
     </div>
+    <details id="dcf-auto-detail" style="margin-top:8px;display:none">
+      <summary style="font-size:.72rem;color:var(--text3);cursor:pointer">자동 채움 원자료 (BS/IS 매칭 일자·구성)</summary>
+      <div id="dcf-auto-detail-body" style="font-size:.7rem;color:var(--text3);margin-top:6px;line-height:1.7"></div>
+    </details>
   </div>
 
   <div class="dcf-actions">
@@ -2109,6 +2119,49 @@ function sendToRCPS(){
   const el=document.getElementById('stock_price');
   el.style.transition='none';el.style.background='#DCFCE7';
   setTimeout(()=>{el.style.transition='background 1.5s ease';el.style.background='';},80);
+}
+
+// DCF 상장사 자동 채움 — RCPS 탭 #self_ticker + 글로벌 #valuation_date 사용해
+// 평가기준일 기준 BS/IS/CF 추출 → 순차입금·총발행주식수·비영업자산 입력칸에 반영
+async function dcfAutoFillListed(){
+  const ticker=document.getElementById('self_ticker')?.value?.trim();
+  const vd=document.getElementById('valuation_date')?.value||'';
+  const status=document.getElementById('dcf-auto-status');
+  if(!ticker){status.style.color='var(--red)';status.textContent='RCPS 탭 시장데이터의 종목코드(#self_ticker)를 먼저 입력하세요.';return;}
+  status.style.color='var(--text3)';status.textContent=`${ticker} 재무제표 조회 중 (${vd||'현시점'})…`;
+  try{
+    const r=await fetch('/api/dcf/auto_inputs',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ticker,date:vd||null})});
+    const j=await r.json();
+    if(j.status!=='ok'){
+      status.style.color='var(--red)';status.textContent=`조회 실패: ${j.message||'unknown'}`;return;
+    }
+    const filled=[];
+    if(j.net_debt!=null){setMoney('a_nd', j.net_debt); filled.push(`순차입금 ${(j.net_debt/1e8).toLocaleString('ko-KR',{maximumFractionDigits:0})}억`);}
+    if(j.shares!=null){setMoney('a_shares', j.shares); filled.push(`주식수 ${j.shares.toLocaleString('ko-KR')}`);}
+    if(j.non_op_assets!=null){setMoney('a_nonop', j.non_op_assets); filled.push(`비영업자산 ${(j.non_op_assets/1e8).toLocaleString('ko-KR',{maximumFractionDigits:0})}억`);}
+    dcfCalc();
+    // 펼치기 상세 — 매칭 일자·구성요소 노출 (감사 증적)
+    const det=document.getElementById('dcf-auto-detail-body');
+    const c=j.components||{}, s=j.sources||{};
+    const fmt=v=>v==null?'—':(v/1e8).toLocaleString('ko-KR',{maximumFractionDigits:0})+'억';
+    det.innerHTML=`
+      <b>${j.name}</b> (${j.yahoo_symbol})<br>
+      <u>순차입금</u> = Total Debt ${fmt(c.total_debt)}<small>(${s.total_debt||'—'})</small>
+        − 현금 ${fmt(c.cash_and_equiv)}<small>(${s.cash||'—'})</small>
+        − 단기금융상품 ${fmt(c.short_term_investments)}<small>(${s.short_term_investments||'—'})</small>
+        = <b>${fmt(j.net_debt)}</b><br>
+      <u>비영업자산</u> ≈ 단기금융상품 ${fmt(c.short_term_investments)} + 장기투자 ${fmt(c.long_term_investments)}<small>(${s.long_term_investments||'—'})</small>
+        = <b>${fmt(j.non_op_assets)}</b><br>
+      <u>참고 — 매출액</u> ${fmt(j.total_revenue)}<small>(${s.revenue||'—'})</small>
+        · <u>영업이익</u> ${fmt(j.operating_income)}<small>(${s.operating_income||'—'})</small>
+        · <u>감가상각비</u> ${fmt(j.depreciation)}<small>(${s.depreciation||'—'})</small><br>
+      <span style="color:#B45309">⚠ 주의: yfinance Total Debt에 리스부채(K-IFRS 1116) 포함 가능. 비영업자산은 단기금융상품+장기투자 단순합산 — 자세한 분류는 사업보고서로 직접 확인 권장.</span>
+    `;
+    document.getElementById('dcf-auto-detail').style.display='block';
+    document.getElementById('dcf-auto-detail').open=true;
+    status.style.color='var(--green)';status.textContent=`✓ ${j.name}: ${filled.join(' · ')}`;
+  }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
 }
 
 /* ══ WACC 상세 산정 (CAPM + Hamada) ══ */
