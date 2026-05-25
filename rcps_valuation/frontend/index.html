@@ -310,15 +310,15 @@ details.note-fold .note{margin-top:4px}
 #page-boot{flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.2rem;gap:10px}
 .boot-dual{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
 .boot-sect{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.boot-sect-hd{background:#5B21B6;color:#fff;text-align:center;font-weight:800;padding:.5rem 1rem;font-size:.78rem;letter-spacing:.1em;flex-shrink:0}
+.boot-sect-hd{background:var(--accent);color:#fff;text-align:center;font-weight:800;padding:.5rem 1rem;font-size:.78rem;letter-spacing:.1em;flex-shrink:0}
 .boot-sect-body{display:flex;overflow-x:auto;overflow-y:auto;max-height:580px;align-items:flex-start}
-.boot-col{flex-shrink:0;border-right:1px solid #EDE9FE}
+.boot-col{flex-shrink:0;border-right:1px solid #DBEAFE}
 .bst{border-collapse:collapse;font-size:.685rem}
-.bst th{background:#EDE9FE;color:#5B21B6;padding:4px 5px;text-align:center;border:1px solid #DDD6FE;white-space:nowrap;font-weight:700;font-size:.66rem;line-height:1.3}
-.bst td{padding:2px 5px;border:1px solid #F3F0FF;text-align:right;white-space:nowrap}
+.bst th{background:#EFF6FF;color:var(--accent2);padding:4px 5px;text-align:center;border:1px solid #BFDBFE;white-space:nowrap;font-weight:700;font-size:.66rem;line-height:1.3}
+.bst td{padding:2px 5px;border:1px solid #DBEAFE;text-align:right;white-space:nowrap}
 .bst td.ct{text-align:center}
-.bst tbody tr:nth-child(even) td{background:#FDFCFF}
-.bst tbody tr.hi td{background:#DBEAFE!important;color:#1D4ED8;font-weight:700}
+.bst tbody tr:nth-child(even) td{background:#F8FBFF}
+.bst tbody tr.hi td{background:#DBEAFE!important;color:var(--accent2);font-weight:700}
 .bst input.be{width:52px;border:none;background:transparent;text-align:right;font-size:.685rem;font-family:var(--sans);color:var(--text);padding:0;outline:none}
 .bst input.be:focus{outline:1px solid var(--accent);border-radius:3px;background:#fff}
 .boot-sect-ft{padding:.5rem .75rem;border-top:1px solid var(--border);background:var(--bg3);flex-shrink:0}
@@ -1180,7 +1180,7 @@ details.note-fold .note{margin-top:4px}
         <input type="file" id="minpyung-file" accept=".xlsx,.xls,.csv,.pdf" style="font-size:.7rem;width:100%">
       </div>
       <div class="field"><label style="visibility:hidden">.</label>
-        <button class="btn-sm" style="width:100%;white-space:nowrap;background:#EDE9FE;color:#5B21B6;border-color:#DDD6FE" onclick="uploadMinpyung()">이자율 파일 업로드 → RF/RD</button>
+        <button class="btn-sm" style="width:100%;white-space:nowrap;background:#EFF6FF;color:var(--accent2);border-color:#BFDBFE" onclick="uploadMinpyung()">이자율 파일 업로드 → RF/RD</button>
       </div>
     </div>
     <div id="rate-fetch-msg" style="font-size:0.7rem;color:var(--text3);margin-top:6px;display:none"></div>
@@ -1248,7 +1248,7 @@ details.note-fold .note{margin-top:4px}
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <button class="btn-sm add" onclick="bRdAdd()">+ 추가</button>
           <button class="btn-sm del" onclick="bRdDel()">− 제거</button>
-          <span id="brd-res" style="font-size:.72rem;font-weight:700;color:#7C3AED;margin-left:6px"></span>
+          <span id="brd-res" style="font-size:.72rem;font-weight:700;color:var(--accent2);margin-left:6px"></span>
         </div>
       </div>
     </div>
@@ -3447,9 +3447,9 @@ function renderRateData(){
         <td>${p4(rfCs)}</td>
         <td style="color:var(--accent2)">${p4(rfFwd)}</td>
         <td>${p6(rfDF)}</td>
-        <td style="color:var(--purple)">${p4(rdD)}</td>
+        <td style="color:#1E40AF">${p4(rdD)}</td>
         <td>${p4(rdCs)}</td>
-        <td style="color:#5B21B6">${p4(rdFwd)}</td>
+        <td style="color:#1E40AF">${p4(rdFwd)}</td>
         <td>${p6(rdDF)}</td>
       </tr>`;
     }
