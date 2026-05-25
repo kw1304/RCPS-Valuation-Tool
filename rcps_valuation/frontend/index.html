@@ -889,7 +889,7 @@ details.note-fold .note{margin-top:4px}
       </div>
       <div class="field" id="w_size_manual_wrap" style="display:none">
         <label>평가대상 매출액 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">단위: 백만원</span></label>
-        <input type="text" id="w_self_revenue" placeholder="예: 1,200,000 (= 1.2조)" oninput="this.value=this.value.replace(/[^\d,]/g,'')">
+        <input type="text" id="w_self_revenue" class="money" placeholder="예: 1,200,000 (= 1.2조)" onfocus="mFocus(this)" onblur="mBlur(this)" oninput="mInput(this)">
       </div>
     </div>
     <div class="row2">
@@ -2453,7 +2453,8 @@ async function waccAutoPremiums(){
   const selfTicker=document.getElementById('self_ticker')?.value?.trim();
   if(basis==='revenue'){
     // 매출액 기준: 수동 입력 우선, 빈 칸이면 #self_ticker로 yfinance TTM 매출액
-    const manualRevTxt=document.getElementById('w_self_revenue')?.value?.replace(/,/g,'').trim();
+    const revEl=document.getElementById('w_self_revenue');
+    const manualRevTxt=(revEl?.dataset.v || revEl?.value?.replace(/,/g,'') || '').trim();
     const manualRev=manualRevTxt?parseFloat(manualRevTxt)*1e6:null;  // 입력 단위: 백만원 → 원
     let rev=manualRev;
     let revSrc=manualRev?'수동입력':null;
