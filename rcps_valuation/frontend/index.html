@@ -1132,13 +1132,9 @@ details.note-fold .note{margin-top:4px}
         <input type="text" id="ecos-key" placeholder="발급받은 키 입력 (ecos.bok.or.kr)"
           oninput="localStorage.setItem('ecos_key',this.value)" style="font-size:0.72rem">
       </div>
-      <div class="field"><label>조회 기준일 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">평가기준일 동기화↓</span></label>
-        <div style="display:flex;gap:4px;align-items:center">
-          <input type="date" id="rate-date" value="" oninput="rateDateManualEdit()" style="flex:1;min-width:0">
-          <label style="display:flex;align-items:center;gap:3px;font-size:0.7rem;color:var(--text3);white-space:nowrap;cursor:pointer">
-            <input type="checkbox" id="rate-date-sync" checked onchange="rateDateSyncToggle()" style="margin:0">🔗
-          </label>
-        </div>
+      <div class="field"><label>조회 기준일 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">기본=평가기준일 · 바꾸려면 클릭</span></label>
+        <input type="date" id="rate-date" value="" oninput="rateDateManualEdit()">
+        <input type="checkbox" id="rate-date-sync" checked style="display:none">
       </div>
       <div class="field"><label style="visibility:hidden">.</label>
         <button class="btn-sm add" style="width:100%;white-space:nowrap" onclick="fetchEcos()">국고채↓ RF</button>
