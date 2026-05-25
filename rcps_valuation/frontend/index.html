@@ -752,75 +752,43 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>비영업자산 (원) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">현금 전액 포함</span></label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
       <div class="field"><label>비지배지분조정 (원) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">연결평가 시</span></label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
     </div>
-    <details style="margin-top:10px">
-      <summary style="font-size:.72rem;color:var(--text3);cursor:pointer;font-weight:600">🧮 BS 항목별 입력 헬퍼 (펼치기) — 이자부부채·비영업자산 자동 합산</summary>
-      <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:.72rem">
-        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:6px 10px">
-          <div style="font-weight:700;color:#991B1B;margin-bottom:3px">이자부부채 (Interest-bearing debt)</div>
-          <div class="bs-helper" data-target="a_nd">
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>단기차입금</label><input type="text" class="money bs-d" data-k="d_short" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>유동성장기부채</label><input type="text" class="money bs-d" data-k="d_curlt" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>장기차입금</label><input type="text" class="money bs-d" data-k="d_long" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>사채</label><input type="text" class="money bs-d" data-k="d_bond" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>유동성리스부채</label><input type="text" class="money bs-d" data-k="d_curlease" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>리스부채 (비유동)</label><input type="text" class="money bs-d" data-k="d_lease" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>기타 이자부부채</label><input type="text" class="money bs-d" data-k="d_other" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0">
-            </div>
-            <div style="border-top:1px solid #FECACA;margin-top:3px;padding-top:3px;display:grid;grid-template-columns:1fr 130px;gap:4px;font-weight:700;color:#991B1B">
-              <span>이자부부채 합계 →</span><span id="bs-d-sum" style="text-align:right">0</span>
-            </div>
-          </div>
+    <details style="margin-top:10px" id="dcf-bs-helper-details">
+      <summary style="font-size:.78rem;color:var(--text2);cursor:pointer;font-weight:600;padding:6px 0">🧮 BS 항목별 입력 헬퍼 — 이자부부채·비영업자산 자동 합산</summary>
+      <!-- 이자부부채 -->
+      <div style="margin-top:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem">
+        <div class="dcf-assump-hd" style="margin-bottom:0.7rem">
+          <span>이자부부채 (Interest-bearing debt)</span>
+          <span style="font-weight:400;font-size:0.7rem;color:var(--text3);margin-left:auto">합계 → <b id="bs-d-sum" style="color:#991B1B;font-variant-numeric:tabular-nums">0</b> 원</span>
         </div>
-        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:6px 10px">
-          <div style="font-weight:700;color:#166534;margin-bottom:3px">비영업자산 (Non-operating assets)</div>
-          <div class="bs-helper" data-target="a_nonop">
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>현금및현금성자산</label><input type="text" class="money bs-n" data-k="n_cash" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>단기금융상품</label><input type="text" class="money bs-n" data-k="n_stinv" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>장기금융상품</label><input type="text" class="money bs-n" data-k="n_ltinv" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>FVTPL 금융자산</label><input type="text" class="money bs-n" data-k="n_fvtpl" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>FVOCI 금융자산</label><input type="text" class="money bs-n" data-k="n_fvoci" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>단기대여금</label><input type="text" class="money bs-n" data-k="n_stloan" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>장기대여금</label><input type="text" class="money bs-n" data-k="n_ltloan" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>관계·공동기업투자</label><input type="text" class="money bs-n" data-k="n_assoc" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 130px;gap:4px;align-items:center;margin-bottom:1px">
-              <label>투자부동산·기타</label><input type="text" class="money bs-n" data-k="n_other" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0">
-            </div>
-            <div style="border-top:1px solid #BBF7D0;margin-top:3px;padding-top:3px;display:grid;grid-template-columns:1fr 130px;gap:4px;font-weight:700;color:#166534">
-              <span>비영업자산 합계 →</span><span id="bs-n-sum" style="text-align:right">0</span>
-            </div>
-          </div>
+        <div class="dcf-assump-grid bs-helper" data-target="a_nd">
+          <div class="field"><label>단기차입금</label><input type="text" class="money bs-d" data-k="d_short" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
+          <div class="field"><label>유동성장기부채</label><input type="text" class="money bs-d" data-k="d_curlt" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
+          <div class="field"><label>장기차입금</label><input type="text" class="money bs-d" data-k="d_long" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
+          <div class="field"><label>사채</label><input type="text" class="money bs-d" data-k="d_bond" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
+          <div class="field"><label>유동성리스부채</label><input type="text" class="money bs-d" data-k="d_curlease" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
+          <div class="field"><label>리스부채 (비유동)</label><input type="text" class="money bs-d" data-k="d_lease" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
+          <div class="field"><label>기타 이자부부채</label><input type="text" class="money bs-d" data-k="d_other" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
         </div>
       </div>
-      <div style="font-size:.66rem;color:var(--text3);margin-top:8px;line-height:1.6">
+      <!-- 비영업자산 -->
+      <div style="margin-top:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem">
+        <div class="dcf-assump-hd" style="margin-bottom:0.7rem">
+          <span>비영업자산 (Non-operating assets)</span>
+          <span style="font-weight:400;font-size:0.7rem;color:var(--text3);margin-left:auto">합계 → <b id="bs-n-sum" style="color:#166534;font-variant-numeric:tabular-nums">0</b> 원</span>
+        </div>
+        <div class="dcf-assump-grid bs-helper" data-target="a_nonop">
+          <div class="field"><label>현금및현금성자산</label><input type="text" class="money bs-n" data-k="n_cash" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>단기금융상품</label><input type="text" class="money bs-n" data-k="n_stinv" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>장기금융상품</label><input type="text" class="money bs-n" data-k="n_ltinv" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>FVTPL 금융자산</label><input type="text" class="money bs-n" data-k="n_fvtpl" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>FVOCI 금융자산</label><input type="text" class="money bs-n" data-k="n_fvoci" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>단기대여금</label><input type="text" class="money bs-n" data-k="n_stloan" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>장기대여금</label><input type="text" class="money bs-n" data-k="n_ltloan" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>관계·공동기업투자</label><input type="text" class="money bs-n" data-k="n_assoc" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+          <div class="field"><label>투자부동산·기타</label><input type="text" class="money bs-n" data-k="n_other" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
+        </div>
+      </div>
+      <div class="note" style="margin-top:8px;font-size:.7rem;line-height:1.6">
         K-IFRS 평가실무 정의(코스맥스이스트 RCPS 평가보고서 p.50 기준): <b>이자부부채</b> = 차입금(단기+유동성장기+장기+사채) + 리스부채(유동+비유동). RCPS·파생상품부채(평가대상 자체)는 제외. <b>비영업자산</b> = 현금성자산(전액) + 모든 금융상품/금융자산 + 영업외 대여금 + 관계·공동기업투자 + 투자부동산. 운영현금 차감 없음(현금 전액 비영업으로 분류).
       </div>
     </details>
