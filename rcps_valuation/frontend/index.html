@@ -879,15 +879,18 @@ details.note-fold .note{margin-top:4px}
   <!-- ③ 자기자본비용 Ke -->
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">③ 자기자본비용 (Ke) — CAPM</div>
-    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br>📅 <button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;
-      <label style="font-size:.72rem;color:var(--text3);margin-left:6px">사이즈 기준:
-        <select id="w_size_basis" onchange="waccToggleSizeManual()" style="font-size:.72rem;padding:1px 4px">
-          <option value="mcap">시가총액 (상장)</option>
-          <option value="revenue">매출액 (비상장 대응)</option>
+    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br>📅 <button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.<br>사이즈 프리미엄: 시총(상장사) 또는 매출액(비상장 평가대상은 수동입력 권장) — Kroll Cost of Capital Navigator 8개 지표 중 가장 흔한 두 가지.</span></div>
+    <div class="row2" style="margin-bottom:8px">
+      <div class="field"><label>사이즈 기준 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">자동 매핑 기준 지표</span></label>
+        <select id="w_size_basis" onchange="waccToggleSizeManual()">
+          <option value="mcap">시가총액 (상장 평가대상)</option>
+          <option value="revenue">매출액 (비상장 평가대상)</option>
         </select>
-      </label>
-      <span id="w_size_manual_wrap" style="display:none;font-size:.72rem;margin-left:6px">평가대상 매출액 <input type="text" id="w_self_revenue" placeholder="예 12,000" oninput="this.value=this.value.replace(/[^\d,]/g,'')" style="width:90px;padding:1px 4px;font-size:.72rem">백만원</span>
-      &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.<br>사이즈 프리미엄: 시총(상장사) 또는 매출액(비상장 평가대상은 수동입력 권장) — Kroll Cost of Capital Navigator 8개 지표 중 가장 흔한 두 가지.</span>
+      </div>
+      <div class="field" id="w_size_manual_wrap" style="display:none">
+        <label>평가대상 매출액 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">단위: 백만원</span></label>
+        <input type="text" id="w_self_revenue" placeholder="예: 1,200,000 (= 1.2조)" oninput="this.value=this.value.replace(/[^\d,]/g,'')">
+      </div>
     </div>
     <div class="row2">
       <div class="field"><label>사이즈 프리미엄 (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">규모↓</span></label>
