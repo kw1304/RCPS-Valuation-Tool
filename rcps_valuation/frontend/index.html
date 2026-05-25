@@ -863,24 +863,7 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>법인세율 t (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가/구간↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_tax" value="22" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select onchange="if(this.value){document.getElementById('w_tax').value=this.value;waccRecalc();}" style="width:128px;flex-shrink:0">
-            <option value="">국가/구간…</option>
-            <optgroup label="한국 (지방세 10% 포함)">
-              <option value="22">한국 22% (관행)</option>
-              <option value="23.1">한국 23.1% (200~3000억)</option>
-              <option value="26.4">한국 26.4% (3000억+ 최고)</option>
-              <option value="9.9">한국 9.9% (2억 이하)</option>
-              <option value="20.9">한국 20.9% (2억~200억)</option>
-            </optgroup>
-            <optgroup label="해외 (합산 실효)">
-              <option value="25">미국 25% (연방+주)</option>
-              <option value="21">미국 21% (연방만)</option>
-              <option value="25">영국 25% (2023.4~)</option>
-              <option value="30">독일 30% (법인+영업세)</option>
-              <option value="30.6">일본 30.6% (도쿄)</option>
-              <option value="25">중국 25%</option>
-            </optgroup>
-          </select>
+          <select id="w_tax_sel" onchange="if(this.value){document.getElementById('w_tax').value=this.value;waccRecalc();}" style="width:148px;flex-shrink:0"></select>
         </div>
       </div>
       <div class="field"><label>집계 방식 (β_U)</label>
@@ -2263,6 +2246,40 @@ const _SIZE_PREMIUM_BY_YEAR={
   '2020':{large:0,mid:1.0,small:1.9,micro:3.0,nano:4.5},
   '2019':{large:0,mid:0.9,small:1.8,micro:2.8,nano:4.3},
 };
+// 법인세율 연도별 (지방세 10% 가산 한국 누진세율 + 해외 합산 실효).
+// 한국: 2018~2022 = 10/20/22/25 → 합산 11/22/24.2/27.5
+//       2023~     = 9/19/21/24  → 합산 9.9/20.9/23.1/26.4
+// 미국 연방 21% (2018~), 합산 ~25%. 영국 19%(~2023.3) / 25%(2023.4~).
+// 독일 ~30%, 일본 ~30.6%(도쿄), 중국 25%.
+function _krTaxByYear(yr){
+  const y=parseInt(yr,10);
+  if(y>=2023)return [
+    {v:9.9, lab:'한국 9.9% (2억 이하)'},
+    {v:20.9,lab:'한국 20.9% (2~200억)'},
+    {v:23.1,lab:'한국 23.1% (200~3000억)'},
+    {v:26.4,lab:'한국 26.4% (3000억+ 최고)'},
+    {v:22,  lab:'한국 22% (관행)'},
+  ];
+  return [
+    {v:11,  lab:'한국 11% (2억 이하)'},
+    {v:22,  lab:'한국 22% (2~200억)'},
+    {v:24.2,lab:'한국 24.2% (200~3000억)'},
+    {v:27.5,lab:'한국 27.5% (3000억+ 최고)'},
+    {v:22,  lab:'한국 22% (관행)'},
+  ];
+}
+function _intlTaxByYear(yr){
+  const y=parseInt(yr,10);
+  const uk = (y>=2024 || (y===2023))? {v:25,lab:'영국 25% (2023.4~)'} : {v:19,lab:'영국 19% (~2023.3)'};
+  return [
+    {v:25,  lab:'미국 25% (연방+주)'},
+    {v:21,  lab:'미국 21% (연방만)'},
+    uk,
+    {v:30,  lab:'독일 30% (법인+영업세)'},
+    {v:30.6,lab:'일본 30.6% (도쿄)'},
+    {v:25,  lab:'중국 25%'},
+  ];
+}
 function _yearFromValDate(){
   const vd=document.getElementById('valuation_date')?.value||'';
   return vd.slice(0,4) || String(new Date().getFullYear());
@@ -2315,6 +2332,17 @@ function waccRebuildPremiumDropdowns(){
       html+=`<option value="${v}">${b.label} ${v}%</option>`;
     });
     sizeSel.innerHTML=html;
+  }
+  // ④ 법인세율 드롭다운 (한국 누진 + 해외 합산)
+  const taxSel=document.getElementById('w_tax_sel');
+  if(taxSel){
+    let html=`<option value="">국가/구간…(${yr})</option>`;
+    html+=`<optgroup label="한국 (지방세 10% 포함)">`;
+    _krTaxByYear(yr).forEach(o=>{html+=`<option value="${o.v}">${o.lab}</option>`;});
+    html+=`</optgroup><optgroup label="해외 (합산 실효)">`;
+    _intlTaxByYear(yr).forEach(o=>{html+=`<option value="${o.v}">${o.lab}</option>`;});
+    html+=`</optgroup>`;
+    taxSel.innerHTML=html;
   }
 }
 document.addEventListener('DOMContentLoaded',waccRebuildPremiumDropdowns);
