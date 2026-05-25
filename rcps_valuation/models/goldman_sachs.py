@@ -93,7 +93,11 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     # 만기에서 Kd forward 로 역방향 할인, put_start 이후 put 하한 적용
     if use_dil:
         bond_pv = [0.0] * (steps + 1)
-        redeem_at = [params.put_exercise_price(i * dt) for i in range(steps + 1)]
+        # 풋이 유효(만기 전 시작)일 때만 풋 행사가 적용
+        if params.has_put:
+            redeem_at = [params.put_exercise_price(i * dt) for i in range(steps + 1)]
+        else:
+            redeem_at = [face] * (steps + 1)
         bond_pv[steps] = max(face, redeem_at[steps]) + coupon_cf.get(steps, 0)
         for i in range(steps - 1, -1, -1):
             kd_i = _kd(i)
@@ -109,8 +113,9 @@ def gs_rcps(params: RCPSParams, steps: int = None,
         bond_pv = None
 
     # ── 만기 상환액 (레퍼런스: redeem[N] = face*(1+put_rate)^N)
+    # 풋이 유효(만기 전 시작)일 때만 풋 행사가 적용
     t_mat = steps * dt
-    put_mat = params.put_exercise_price(t_mat)
+    put_mat = params.put_exercise_price(t_mat) if params.has_put else face
     mat_redeem = max(face, put_mat) + coupon_cf.get(steps, 0)
 
     # ── 노드 주가
@@ -127,17 +132,21 @@ def gs_rcps(params: RCPSParams, steps: int = None,
                 return K / max(K_floor, S)
         return 1.0
 
-    # ── 희석주가
+    # ── 희석주가: 전환 후 1주당 가격
+    # 전환 시 회사가치 = 기존지분(n_com·S) + 부채흡수(bond_pv TOTAL)
+    # 총 주식수 = n_com + n_rcps·ratio
     def _diluted(i, j):
         S = _S(i, j)
         r = _ratio(i, j)
-        return (S * n_com + bond_pv[i] * n_rcps) / (n_com + n_rcps * r)
+        return (S * n_com + bond_pv[i]) / (n_com + n_rcps * r)
 
-    # ── 전환가치 (희석 경로)
+    # ── 전환가치 (희석 경로) — TOTAL 단위 (모든 RCPS 합산)
+    # per-share post × n_rcps × ratio = 전환 시 RCPS 보유자가 받는 총 가치
+    # (mat_redeem, _redeem, face 모두 TOTAL 단위 → 일관성 유지)
     def _conv_val_dil(i, j):
         if i < conv_step:
             return 0.0
-        return _diluted(i, j) * _ratio(i, j)
+        return _diluted(i, j) * _ratio(i, j) * n_rcps
 
     # ── 전환가치 (레거시 경로: (face/K_eff)*S)
     def _conv_val_leg(i, j):
@@ -391,8 +400,15 @@ def _eff_K(S, K, K_floor, params, step, steps):
 
 
 def _date_to_step(target, params, steps):
+    """이벤트 일자 → 트리 step 인덱스 변환.
+    target=None → steps (활성화 없음)
+    target > maturity → steps+1 (절대 활성화 안 됨)
+    target ≤ valuation → 0 (즉시 활성)
+    """
     if target is None:
         return steps
+    if target > params.maturity_date:
+        return steps + 1
     days = (target - params.valuation_date).days
     if days <= 0:
         return 0

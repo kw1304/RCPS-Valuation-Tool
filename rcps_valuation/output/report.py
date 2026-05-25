@@ -66,17 +66,23 @@ def _write_model_comparison(ws, eval_result, params):
         v = d.get(k) if isinstance(d, dict) else None
         return v if v not in (None, "", 0) or k.startswith("fair") else None
 
+    # 5803 방식: 채권·풋은 모형 무관 공통값(TF값) — GS·MC 모두 동일 사용
+    _bond = tf.get("bond_value")
+    _put = tf.get("put_option_value")
+    _putb = tf.get("put_bond_value")
+    _mc_fv = mc.get("fair_value")
+    _mc_conv = (_mc_fv - _putb) if (_mc_fv is not None and _putb is not None) else None
+
     rows = [
-        ("순채권가치 (Bond)", tf.get("bond_value"), gs.get("bond_value"), None,
-         "원금·이자 이산복리"),
-        ("풋옵션가치 (Put)", tf.get("put_option_value"), gs.get("put_option_value"), None,
-         "보장수익률 IRR 행사시 가치"),
-        ("풋채권가치 (Putable Bond)", tf.get("put_bond_value"), gs.get("put_bond_value"), None,
-         "= 순채권 + 풋"),
-        ("전환권가치 (Conversion)", tf.get("conversion_value"), gs.get("conversion_value"),
-         (mc.get("fair_value", 0) - (tf.get("put_bond_value") or 0)) if mc.get("fair_value") and tf.get("put_bond_value") else None,
-         "≈ 공정가치 - 풋채권"),
-        ("공정가치 (FV)", tf.get("fair_value"), gs.get("fair_value"), mc.get("fair_value"),
+        ("순채권가치 (Bond)", _bond, _bond, _bond,
+         "모형 무관 공통값 (이자율·CF 기반)"),
+        ("풋옵션가치 (Put)", _put, _put, _put,
+         "모형 무관 공통값 (보장수익률 IRR)"),
+        ("풋채권가치 (Putable Bond)", _putb, _putb, _putb,
+         "순채권 + 풋"),
+        ("전환권가치 (Conversion)", tf.get("conversion_value"), gs.get("conversion_value"), _mc_conv,
+         "공정가치 − 풋채권"),
+        ("공정가치 (FV)", tf.get("fair_value"), gs.get("fair_value"), _mc_fv,
          "TF=주채택 / GS=비교 / MC=참고"),
     ]
     for ri, (label, vtf, vgs, vmc, note) in enumerate(rows, 4):
@@ -187,11 +193,6 @@ def _write_tree(ws, title, tree, params=None):
     c.font = Font(name="맑은 고딕", size=9, color="718096")
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=min(n + 1, 14))
 
-    # 컬럼 폭
-    ws.column_dimensions["A"].width = 14
-    for col_i in range(2, n + 2):
-        ws.column_dimensions[get_column_letter(col_i)].width = 13
-
     # 그리드 정의 — 웹 화면(renderTreeGrids)과 동일 순서/라벨
     is_tf = ("Tsiveriotis" in title) or ("TF" in title.upper())
     if is_tf:
@@ -223,22 +224,41 @@ def _write_tree(ws, title, tree, params=None):
     # 주가는 모형에서 이미 per-share, 확률·할인계수는 단위 없음
     # decision 은 텍스트
 
+    # ── 웹 화면(renderTreeGrids)의 visIdx와 동일: n+1<=20이면 전부, 아니면 앞 10 + ⋯ + 뒤 10 ──
+    MAXV, HEAD, TAIL = 20, 10, 10
+    if (N + 1) <= MAXV:
+        idx_list = list(range(N + 1))
+        elided = False
+    else:
+        idx_list = list(range(HEAD)) + ["…"] + list(range(N - TAIL + 1, N + 1))
+        elided = True
+
     def _grid_block(start_row, key, label, grid):
         r0 = start_row
-        c = ws.cell(row=r0, column=1, value=f"■ {label}")
+        head_label = f"■ {label}"
+        if elided:
+            head_label += "  (중간 노드 생략 · 끝노드까지 표시)"
+        c = ws.cell(row=r0, column=1, value=head_label)
         c.font = Font(name="맑은 고딕", bold=True, size=11, color="1A365D")
-        # 헤더 행: step i (i=0..N)
+        # 헤더 행: i (생략 시 …)
         _hdr(ws, r0 + 1, 1, "j \\ i")
-        for i_step in range(N + 1):
-            _hdr(ws, r0 + 1, i_step + 2, str(i_step))
-        # 데이터 행: j=0..N (위에서 아래로 j 증가, 웹 화면과 동일)
-        for j in range(N + 1):
-            row_idx = r0 + 2 + j
+        for col_off, i_step in enumerate(idx_list, start=2):
+            _hdr(ws, r0 + 1, col_off, "⋯" if i_step == "…" else str(i_step))
+        # 데이터 행: j (생략 시 ⋮ 행 한 줄)
+        for row_off, j in enumerate(idx_list, start=2):
+            row_idx = r0 + row_off
+            if j == "…":
+                _hdr(ws, row_idx, 1, "⋮")
+                for col_off, i_step in enumerate(idx_list, start=2):
+                    _cell(ws, row_idx, col_off, "⋯", bg="F7FAFC", align="center", color="A0AEC0")
+                continue
             _hdr(ws, row_idx, 1, str(j))
-            for i_step in range(N + 1):
-                col_idx = i_step + 2
+            for col_off, i_step in enumerate(idx_list, start=2):
+                if i_step == "…":
+                    _cell(ws, row_idx, col_off, "⋯", bg="F7FAFC", align="center", color="A0AEC0")
+                    continue
                 if j > i_step:
-                    _cell(ws, row_idx, col_idx, "", bg="F7FAFC")
+                    _cell(ws, row_idx, col_off, None, bg="F7FAFC")
                     continue
                 v = None
                 if i_step < len(grid):
@@ -246,21 +266,27 @@ def _write_tree(ws, title, tree, params=None):
                     if j < len(rr):
                         v = rr[j]
                 if v is None or v == "":
-                    _cell(ws, row_idx, col_idx, "", bg="F7FAFC")
+                    _cell(ws, row_idx, col_off, None, bg="F7FAFC")
                     continue
                 bg = "F7FAFC" if (i_step + j) % 2 == 0 else "FFFFFF"
                 if key == "decision":
-                    bg2 = {"전환": "C6F6D5", "상환": "FED7D7", "콜": "FEEBC8", "보유": bg}.get(v, bg)
-                    _cell(ws, row_idx, col_idx, v, bg=bg2, align="center")
+                    # 웹 화면(renderTreeGrids)과 동일 색상
+                    bg2 = {"전환": "DCFCE7", "상환": "FEF3C7", "콜": "FEEBC8", "보유": "F2F4F6"}.get(v, bg)
+                    _cell(ws, row_idx, col_off, v, bg=bg2, align="center")
                 elif key in ("conv_prob", "disc_factor"):
-                    _cell(ws, row_idx, col_idx, float(v), bg=bg, num_fmt="0.0000", align="right")
+                    _cell(ws, row_idx, col_off, float(v), bg=bg, num_fmt="0.0000", align="right")
                 else:
                     val = float(v)
                     if key in VALUE_KEYS and rcps_shares > 1:
                         val = val / rcps_shares
                     fmt = "#,##0.00" if key == "stock" else "#,##0"
-                    _cell(ws, row_idx, col_idx, val, bg=bg, num_fmt=fmt, align="right")
-        return r0 + 2 + (N + 1)  # 다음 블록 시작 row
+                    _cell(ws, row_idx, col_off, val, bg=bg, num_fmt=fmt, align="right")
+        return r0 + 1 + len(idx_list) + 1  # 다음 블록 시작 row
+
+    # 컬럼 폭 (생략 후 실제 표시 열 수에 맞춰)
+    ws.column_dimensions["A"].width = 14
+    for col_off in range(2, len(idx_list) + 2):
+        ws.column_dimensions[get_column_letter(col_off)].width = 13
 
     next_row = 4
     for key, label in grids:
@@ -271,7 +297,17 @@ def _write_tree(ws, title, tree, params=None):
 
 
 def _cell(ws, row, col, value, bold=False, bg=None, num_fmt=None, align="left", color=None):
-    cell = ws.cell(row=row, column=col, value=value)
+    # value=None / "" 인 셀에 스타일만 적용 시 openpyxl이 t="n"(빈 numeric) 또는
+    # t="inlineStr"(빈 컨텐츠)로 직렬화 → Excel "복구 필요" 오류 유발.
+    # 해결: 명시적으로 단일 공백 " " 으로 inline-string 형태 보장
+    if value is None or value == "":
+        cell = ws.cell(row=row, column=col, value=" ")
+    else:
+        cell = ws.cell(row=row, column=col, value=value)
+    # 문자열이 '=' '+' '-' '@' 로 시작하면 openpyxl이 수식으로 직렬화 → Excel 손상 경고
+    # 텍스트로 강제: quotePrefix 활성화 + data_type 명시
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@"):
+        cell.data_type = "s"
     font_kwargs = dict(name="맑은 고딕", bold=bold, size=10)
     if color:
         font_kwargs["color"] = color

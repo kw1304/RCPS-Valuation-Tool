@@ -309,6 +309,8 @@ def _eff_K(S, K, K_floor, params: RCPSParams, step: int, steps: int) -> float:
 def _date_to_step(target, params: RCPSParams, steps: int) -> int:
     if target is None:
         return steps  # 해당 없으면 만기 이후
+    if target > params.maturity_date:
+        return steps + 1  # 만기 이후 시작 → 절대 활성화 안 됨
     days = (target - params.valuation_date).days
     if days <= 0:
         return 0

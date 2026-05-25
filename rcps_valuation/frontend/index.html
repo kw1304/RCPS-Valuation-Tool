@@ -1837,9 +1837,26 @@ async function dlExcel(){
   if(!lastReq)return;showLoader('감사조서 Excel 생성 중...');
   try{
     // 평가 결과(TF/GS/MC) + BDT 교차검증 데이터 함께 전송
+    // tree_steps: 웹 트리와 동일한 단계 수 (resolveSteps — UI '단계' 선택값)
+    let _treeSteps = null;
+    try { _treeSteps = resolveSteps(lastReq.params); } catch(_) {}
+
+    // gs_params (rcps_shares / common_shares / EV·net_debt) — 트리 1주(1RCPS) 기준 표시에 필요
+    const _gsParams = {};
+    const _evEl = document.getElementById('enterprise_value');
+    const _ndEl = document.getElementById('net_debt');
+    const _csEl = document.getElementById('common_shares');
+    const _rsEl = document.getElementById('rcps_shares');
+    if (_evEl && _evEl.value) _gsParams.enterprise_value = _evEl.value.replace(/,/g,'');
+    if (_ndEl && _ndEl.value) _gsParams.net_debt = _ndEl.value.replace(/,/g,'');
+    if (_csEl && _csEl.value) _gsParams.common_shares = _csEl.value.replace(/,/g,'');
+    if (_rsEl && _rsEl.value) _gsParams.rcps_shares = _rsEl.value.replace(/,/g,'');
+
     const payload = Object.assign({}, lastReq, {
       eval_result: lastEvalResult ? lastEvalResult.result : null,
-      bdt_cross: window._lastBdtCross || null
+      bdt_cross: window._lastBdtCross || null,
+      tree_steps: _treeSteps || undefined,
+      gs_params: Object.keys(_gsParams).length ? _gsParams : undefined
     });
     const res=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res.ok)throw new Error('다운로드 실패');

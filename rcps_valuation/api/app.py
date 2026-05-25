@@ -430,6 +430,18 @@ def download():
     try:
         data = request.json
         params = parse_params(data["params"])
+
+        # propagate share counts from gs_params (same as /api/evaluate, /api/tree)
+        # — 트리 1주(1RCPS) 기준 표시·희석경로에 필요
+        if data.get("gs_params"):
+            gp = data["gs_params"]
+            cs = _f(gp.get("common_shares"))
+            rs = _f(gp.get("rcps_shares"))
+            if cs:
+                params.common_shares = cs
+            if rs:
+                params.rcps_shares = rs
+
         # ── 선도이자율 커브 (term structure, optional)
         dl_rf_curve = None
         dl_kd_curve = None
@@ -493,15 +505,33 @@ def download():
             },
         }
 
-        # 이항트리 수집 (TF + GS) — 감사조서에 첨부 (가로 팬아웃 시각화: 20 step 권장)
-        tree_steps_dl = min(int(data.get("tree_steps", 20) or 20), 40)
+        # 이항트리 수집 (TF + GS) — 감사조서에 첨부
+        # 웹 화면 /api/tree 와 동일 로직: 월별, 120 cap (수동 지정 시 최대 520)
+        ts_raw = data.get("tree_steps")
         try:
-            tf_tree_res = tf_rcps(params, steps=tree_steps_dl, collect_tree=True, **dl_kw)
+            tree_steps_dl = max(1, min(int(ts_raw), 520)) if ts_raw else None
+        except (TypeError, ValueError):
+            tree_steps_dl = None
+        if not tree_steps_dl:
+            tree_steps_dl = max(1, min(round(params.T * 12), 120))
+
+        # 트리 전용 커브 — 웹 /api/tree 와 동일하게 tree_steps_dl 길이로 재구성
+        tree_dl_kw = {"bond_discrete": False}
+        try:
+            rf_spot = data.get("rf_spot")
+            rd_spot = data.get("rd_spot")
+            if rf_spot and rd_spot:
+                tree_dl_kw["rf_curve"] = _spot_to_step_forwards(rf_spot, params.T, tree_steps_dl)
+                tree_dl_kw["kd_curve"] = _spot_to_step_forwards(rd_spot, params.T, tree_steps_dl)
+        except Exception:
+            pass
+        try:
+            tf_tree_res = tf_rcps(params, steps=tree_steps_dl, collect_tree=True, **tree_dl_kw)
             tf_tree_dl = tf_tree_res.get("tree")
         except Exception:
             tf_tree_dl = None
         try:
-            gs_kw_dl = dict(dl_kw)
+            gs_kw_dl = dict(tree_dl_kw)
             if data.get("gs_params"):
                 gp = data["gs_params"]
                 for k in ("enterprise_value", "net_debt", "common_shares", "rcps_shares"):

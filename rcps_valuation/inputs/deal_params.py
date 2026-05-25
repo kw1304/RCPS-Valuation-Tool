@@ -267,8 +267,11 @@ class RCPSParams:
 
     @property
     def has_put(self) -> bool:
-        """풋옵션 활성 여부 (fixed→가격>0, contract→비율>0, sp/cp/irr→rate>0)"""
+        """풋옵션 활성 여부 (fixed→가격>0, contract→비율>0, sp/cp/irr→rate>0)
+        + put_start이 만기 이전이어야 함 (만기 이후 풋은 사실상 무효 → 채권보호 미적용)"""
         if self.put_start is None:
+            return False
+        if self.put_start > self.maturity_date:
             return False
         mode = self.put_price_mode or "irr_y"
         if mode == "fixed":
@@ -279,8 +282,11 @@ class RCPSParams:
 
     @property
     def has_call(self) -> bool:
-        """발행자 콜 활성 여부 (fixed→가격>0, contract→비율>0, sp/cp/irr→rate>0)"""
+        """발행자 콜 활성 여부 (fixed→가격>0, contract→비율>0, sp/cp/irr→rate>0)
+        + call_start이 만기 이전이어야 함 (만기 이후 콜은 사실상 무효)"""
         if self.call_start is None:
+            return False
+        if self.call_start > self.maturity_date:
             return False
         mode = self.call_price_mode or "cp_y"
         if mode == "fixed":

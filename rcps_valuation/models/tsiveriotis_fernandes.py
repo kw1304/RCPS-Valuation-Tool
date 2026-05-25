@@ -60,7 +60,11 @@ def tf_rcps(params: RCPSParams, steps: int = None,
     # put_start 이후에는 put_exercise_price 하한 적용
     if use_dil:
         bond_pv = [0.0] * (steps + 1)
-        redeem_at = [params.put_exercise_price(i * dt) for i in range(steps + 1)]
+        # 풋이 유효(만기 전 시작)할 때만 풋 행사가 적용, 그렇지 않으면 face
+        if params.has_put:
+            redeem_at = [params.put_exercise_price(i * dt) for i in range(steps + 1)]
+        else:
+            redeem_at = [face] * (steps + 1)
         # 만기: max(face, put_exercise_price(T)) + 만기쿠폰
         bond_pv[steps] = max(face, redeem_at[steps]) + coupon_cf.get(steps, 0)
         for i in range(steps - 1, -1, -1):
@@ -78,7 +82,8 @@ def tf_rcps(params: RCPSParams, steps: int = None,
 
     # ── 만기 페이오프
     t_mat = steps * dt
-    put_mat = params.put_exercise_price(t_mat)
+    # 풋 보장이 만기에 유효한 경우만 put_mat 적용 (put_start>만기면 보장 없음)
+    put_mat = params.put_exercise_price(t_mat) if params.has_put else face
     mat_redeem = max(face, put_mat) + coupon_cf.get(steps, 0)
 
     E = np.zeros(steps + 1)
@@ -96,16 +101,19 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         return 1.0
 
     def _diluted(i, j):
-        """희석주가: (S*n_com + bond_pv[i]*n_rcps) / (n_com + n_rcps*ratio)"""
+        """전환 후 1주당 가격 = (n_com·S + bond_pv_total) / (n_com + n_rcps·ratio)
+        bond_pv[i]는 TOTAL 채권 PV. 전환 시 회사가치 = 기존지분(n_com·S) + 부채흡수(bond_pv).
+        총 주식수 = n_com + n_rcps·ratio."""
         S = S0 * (u ** (i - j)) * (d_fac ** j)
         r = _ratio(i, j)
-        return (S * n_com + bond_pv[i] * n_rcps) / (n_com + n_rcps * r)
+        return (S * n_com + bond_pv[i]) / (n_com + n_rcps * r)
 
     def _conv_val_dil(i, j):
-        """희석경로 전환가치 = diluted_price * ratio"""
+        """희석경로 전환가치 (TOTAL 단위, 모든 RCPS 합산).
+        per-share post × n_rcps × ratio = 전환 시 RCPS 보유자가 받는 총 가치."""
         if i < conv_step:
             return 0.0
-        return _diluted(i, j) * _ratio(i, j)
+        return _diluted(i, j) * _ratio(i, j) * n_rcps
 
     # 단계별 rf/kd 조회
     def _rf(step_idx):
@@ -148,9 +156,13 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         _g_bond_hold  = [[0.0]*(i+1) for i in range(steps+1)]  # 채권 보유가치
 
     # ── 만기 노드 초기화
+    # 만기에 전환 가능한지 체크 (conv_step ≤ steps)
+    conv_at_mat = conv_step <= steps
     for j in range(steps + 1):
         S_T = S0 * (u ** (steps - j)) * (d_fac ** j)
-        if use_dil:
+        if not conv_at_mat:
+            cv = 0.0
+        elif use_dil:
             cv = _conv_val_dil(steps, j)
         else:
             K_eff = _eff_K(S_T, K, K_floor, params, steps, steps)
@@ -321,7 +333,15 @@ def _eff_K(S, K, K_floor, params, step, steps):
 
 
 def _date_to_step(target, params, steps):
+    """이벤트 일자 → 트리 step 인덱스 변환.
+    target=None → steps (활성화 없음, 만기까지 비활성)
+    target > maturity → steps+1 (절대 활성화 안 됨)
+    target ≤ valuation → 0 (즉시 활성)
+    """
     if target is None: return steps
+    # 만기 이후 시작: 활성화 절대 안 됨 (i < steps+1 항상 참 → 비교 실패)
+    if target > params.maturity_date:
+        return steps + 1
     days = (target - params.valuation_date).days
     if days <= 0: return 0
     return min(int(round(days / (params.T * 365) * steps)), steps)

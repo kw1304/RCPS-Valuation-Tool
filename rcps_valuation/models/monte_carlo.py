@@ -110,7 +110,8 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     coupon_cf = _coupon_schedule(params, n_steps, dt)
 
     # ── 만기 가치: 전환 vs 상환 → E/B 버킷 분리 ──
-    put_mat = params.put_exercise_price(n_steps * dt)
+    # 풋이 유효일 때만 풋 행사가 적용
+    put_mat = params.put_exercise_price(n_steps * dt) if params.has_put else face
     redeem_T = max(face, put_mat)
     conv_T = (face / K_path[:, -1]) * S[:, -1]
     # 만기 강제전환(KO): 배리어 충족 경로는 무조건 전환
@@ -216,6 +217,8 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
 
 def _date_to_step(target, params, steps):
     if target is None: return steps
+    if target > params.maturity_date:
+        return steps + 1  # 만기 이후 시작 → 활성화 안 됨
     days = (target - params.valuation_date).days
     if days <= 0: return 0
     return min(int(days / (params.T * 365) * steps), steps)
