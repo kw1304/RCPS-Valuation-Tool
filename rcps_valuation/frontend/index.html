@@ -747,7 +747,7 @@ details.note-fold .note{margin-top:4px}
 
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">WACC 상세 산정 <span class="badge-opt">DCF 할인율</span></div>
-    <div class="note">CAPM 기반 자기자본비용 + 부채비용을 가중평균해 WACC를 산정합니다. 산출값은 "DCF에 적용" 버튼으로 DCF 탭의 WACC 입력칸에 자동 반영됩니다.</div>
+    <div class="note">CAPM 기반 자기자본비용 + 부채비용을 가중평균해 WACC를 산정합니다. 산출값은 "DCF에 적용" 버튼으로 DCF 탭의 WACC 입력칸에 자동 반영됩니다.<br>📌 모든 자동조회(β·D/E·Rf·Kd)는 RCPS 탭의 <b>평가기준일 (<span id="w_val_date_disp">—</span>)</b> 기준입니다. 기준일을 바꾸면 다시 자동조회하면 됩니다.</div>
   </div>
 
   <!-- ① 무위험이자율 + 시장위험프리미엄 -->
@@ -2169,6 +2169,10 @@ function waccRecalc(){
   document.getElementById('w_wacc_formula').innerHTML =
     `WACC = E/V <b>${(ev*100).toFixed(1)}%</b> × Ke <b>${(ke*100).toFixed(2)}%</b> + D/V <b>${(dv*100).toFixed(1)}%</b> × Kd <b>${(kd*100).toFixed(2)}%</b> × (1−t) <b>${((1-tax)*100).toFixed(1)}%</b> = <b style="color:var(--accent)">${(wacc*100).toFixed(2)}%</b>`;
   window._lastWacc = wacc;
+  // 평가기준일 동기화 표시
+  const vd=document.getElementById('valuation_date')?.value;
+  const disp=document.getElementById('w_val_date_disp');
+  if(disp)disp.textContent=vd||'—';
 }
 // 종목명/코드 입력 + Enter → 해당 행만 β·D/E 동시 자동 채움
 async function waccFetchPeer(i){
@@ -2193,34 +2197,40 @@ async function waccFetchPeer(i){
   }
   if(!code){status.style.color='var(--red)';status.textContent=`'${q}' 티커 해석 실패`;return;}
   if(resolvedName && !q.includes(code))peer.name=resolvedName+' ('+code+')';
-  // 2) β와 D/E 병렬 조회
+  // 2) β와 D/E 병렬 조회 — 평가기준일(#valuation_date) 기준으로 회귀 종료일·재무제표 일치
+  const valDateStr=document.getElementById('valuation_date')?.value || '';
   const market=document.getElementById('w_market_idx').value;
   const lookback=parseInt(document.getElementById('w_beta_lookback').value)||2;
   const adjust=document.getElementById('w_beta_adjust').value;
   const frequency=document.getElementById('w_beta_freq').value;
   const basis=document.getElementById('w_de_basis').value;
-  const end=new Date(); const start=new Date(end); start.setFullYear(end.getFullYear()-lookback);
+  const endDate=valDateStr?new Date(valDateStr):new Date();
+  const startDate=new Date(endDate); startDate.setFullYear(endDate.getFullYear()-lookback);
   const ymd=d=>d.toISOString().slice(0,10);
-  status.textContent=`${peer.name}: β·D/E 조회 중…`;
+  status.textContent=`${peer.name}: β·D/E 조회 중 (기준일 ${valDateStr||'오늘'})…`;
   try{
     const [bR, dR] = await Promise.all([
       fetch('/api/wacc/beta',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({tickers:[code],market,start:ymd(start),end:ymd(end),adjustment:adjust,frequency})}).then(r=>r.json()),
+        body:JSON.stringify({tickers:[code],market,start:ymd(startDate),end:ymd(endDate),adjustment:adjust,frequency})}).then(r=>r.json()),
       fetch('/api/wacc/de',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({tickers:[code]})}).then(r=>r.json())
+        body:JSON.stringify({tickers:[code],date:valDateStr||null})}).then(r=>r.json())
     ]);
     const parts=[];
     if(bR.status==='ok' && bR.results[0] && bR.results[0].adjusted_beta!=null){
       peer.betaL=bR.results[0].adjusted_beta;
       parts.push(`β=${peer.betaL} (R²=${bR.results[0].r2})`);
     } else parts.push('β 실패');
+    let asOf=null;
     if(dR.status==='ok' && dR.results[0]){
-      const de = basis==='market' ? dR.results[0].de_market : dR.results[0].de_book;
+      const r0=dR.results[0];
+      const de = basis==='market' ? r0.de_market : r0.de_book;
       if(de!=null){peer.de=de; parts.push(`D/E=${de.toFixed(1)}%`);}
       else parts.push('D/E 실패');
+      if(r0.as_of)asOf=r0.as_of;
     }
     waccRenderPeers(); waccRecalc();
-    status.style.color='var(--green)'; status.innerHTML=`✓ ${peer.name}: ${parts.join(', ')}`;
+    const asOfTxt=asOf?` · D/E 기준 ${asOf}`:(valDateStr?` · D/E 현시점(과거데이터 미확보)`:'');
+    status.style.color='var(--green)'; status.innerHTML=`✓ ${peer.name}: ${parts.join(', ')}${asOfTxt}`;
   }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
 }
 

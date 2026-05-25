@@ -1888,24 +1888,61 @@ def _to_yahoo_symbol(code, listing_map):
     return c + (".KQ" if market == "KOSDAQ" else ".KS")
 
 
+def _find_bs_at(ticker_obj, target_date_str):
+    """target_date 이하 가장 가까운 period-end의 Total Debt·Equity 추출.
+    분기 우선, 없으면 연간. (period_end_str, total_debt, total_equity) 또는 None.
+    """
+    try:
+        import pandas as pd
+    except Exception:
+        return None
+    target = pd.Timestamp(target_date_str)
+    for bs_attr in ('quarterly_balance_sheet', 'balance_sheet'):
+        bs = getattr(ticker_obj, bs_attr, None)
+        if bs is None or bs.empty or 'Total Debt' not in bs.index:
+            continue
+        # period_end ≤ target & Total Debt 값 존재
+        valid_cols = []
+        for c in bs.columns:
+            try:
+                if pd.Timestamp(c) <= target and pd.notna(bs.loc['Total Debt', c]):
+                    valid_cols.append(c)
+            except Exception:
+                continue
+        if not valid_cols:
+            continue
+        best = max(valid_cols)
+        td = float(bs.loc['Total Debt', best])
+        eq = None
+        for eq_row in ('Stockholders Equity', 'Common Stock Equity', 'Total Equity Gross Minority Interest'):
+            try:
+                if eq_row in bs.index and pd.notna(bs.loc[eq_row, best]):
+                    eq = float(bs.loc[eq_row, best]); break
+            except Exception:
+                continue
+        return (str(best.date()), td, eq)
+    return None
+
+
 @app.route("/api/wacc/de", methods=["POST"])
 def wacc_de():
     """유사기업 D/E·총부채·시가총액·Yahoo 베타 자동 조회.
 
-    body: {tickers:[...]}.
-    Yahoo의 debtToEquity는 도서가 기준(D_book/E_book × 100). 별도로 D_book/MarketCap
-    (시총 기준 D/E)도 계산해 같이 반환. WACC Hamada에는 시총 기준이 더 일반적.
+    body: {tickers:[...], date:'YYYY-MM-DD' (선택)}.
+    date 지정 시 분기/연간 재무상태표에서 그 일자 이하 가장 가까운 period의 값 사용.
+    시가총액은 FDR로 그 일자의 종가 × 현재 발행주식수(근사).
+    date 미지정 시 현 시점 스냅샷(.info) 사용.
     """
     data = request.get_json(force=True) or {}
     tickers = [str(t).strip() for t in (data.get("tickers") or []) if str(t).strip()]
     if not tickers:
         return jsonify({"status": "error", "message": "종목이 비어있습니다."}), 200
+    date_str = (data.get("date") or "").strip() or None
     try:
         import yfinance as yf
     except Exception:
         return jsonify({"status": "error", "message": "yfinance 미설치"}), 200
 
-    # 시장 매핑
     listing_map = {}
     try:
         for r in _stock_listing():
@@ -1919,25 +1956,52 @@ def wacc_de():
         try:
             t = yf.Ticker(ysym)
             info = t.info or {}
-            de_book = info.get('debtToEquity')          # 도서가 기준 (%)
-            td = info.get('totalDebt')                   # 절대값(통화)
-            mc = info.get('marketCap')                   # 절대값(통화)
+            name = info.get('shortName') or info.get('longName') or code
+            shares = info.get('sharesOutstanding')
+            beta_yahoo = info.get('beta')
+
+            td = eq = mc = period_end = None
+            if date_str:
+                bs = _find_bs_at(t, date_str)
+                if bs:
+                    period_end, td, eq = bs
+                # 평가기준일 종가 × 현재 발행주식수 → 시총 근사
+                try:
+                    dates, closes, _ = _fetch_price_series(code, (datetime.fromisoformat(date_str) - timedelta(days=14)).date().isoformat(), (datetime.fromisoformat(date_str) + timedelta(days=2)).date().isoformat())
+                    pick = None
+                    for dt, c in zip(dates, closes):
+                        if dt <= date_str:
+                            pick = (dt, c)
+                    if pick and shares:
+                        mc = pick[1] * shares
+                except Exception:
+                    pass
+            # 현 시점 폴백 (date 없거나 historical 조회 실패)
+            if td is None:
+                td = info.get('totalDebt')
+            if mc is None:
+                mc = info.get('marketCap')
+            # D/E 산정
+            de_book = round(td / eq * 100, 2) if td and eq else (info.get('debtToEquity') if not date_str else None)
             de_market = round(td / mc * 100, 2) if td and mc and mc > 0 else None
+
             results.append({
                 "ticker": code,
                 "yahoo_symbol": ysym,
-                "name": info.get('shortName') or info.get('longName') or code,
-                "de_book": round(de_book, 2) if de_book is not None else None,
+                "name": name,
+                "de_book": de_book,
                 "de_market": de_market,
                 "total_debt": td,
-                "total_cash": info.get('totalCash'),
+                "stockholders_equity": eq,
                 "market_cap": mc,
-                "yahoo_beta": info.get('beta'),
+                "yahoo_beta": beta_yahoo,
+                "as_of": period_end,
+                "requested_date": date_str,
             })
         except Exception as e:  # noqa: BLE001
             results.append({"ticker": code, "yahoo_symbol": ysym, "error": str(e)[:150]})
 
-    return jsonify({"status": "ok", "results": results})
+    return jsonify({"status": "ok", "results": results, "date": date_str})
 
 
 if __name__ == "__main__":
