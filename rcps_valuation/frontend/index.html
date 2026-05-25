@@ -800,28 +800,7 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>시장위험프리미엄 MRP (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">권장값↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_mrp" value="6.0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select onchange="waccSetMrp(this.value)" style="width:148px;flex-shrink:0">
-            <option value="">권장값…</option>
-            <optgroup label="① Mature(CRP 분리)">
-              <option value="4.23|sep">2026 4.23%</option>
-              <option value="4.30|sep">2025 4.30%</option>
-              <option value="4.60|sep">2024 4.60%</option>
-              <option value="5.00|sep">2023 5.00%</option>
-              <option value="4.40|sep">2022 4.40%</option>
-            </optgroup>
-            <optgroup label="② 한국 Total(CRP=0)">
-              <option value="4.87|kr">2026 한국 4.87%</option>
-              <option value="5.10|kr">2025 한국 5.10%</option>
-              <option value="5.45|kr">2024 한국 5.45%</option>
-              <option value="5.95|kr">2023 한국 5.95%</option>
-              <option value="5.50|kr">2022 한국 5.50%</option>
-            </optgroup>
-            <optgroup label="② 기타 Total(CRP=0)">
-              <option value="4.23|usa">미국 4.23%</option>
-              <option value="5.30|jp">일본 5.30%</option>
-              <option value="7.50|cn">중국 7.50%</option>
-            </optgroup>
-          </select>
+          <select id="w_mrp_sel" onchange="waccSetMrp(this.value)" style="width:148px;flex-shrink:0"></select>
         </div>
       </div>
     </div>
@@ -919,21 +898,16 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">③ 자기자본비용 (Ke) — CAPM</div>
     <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br>📅 <button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.</span></div>
     <div class="row2">
-      <div class="field"><label>사이즈 프리미엄 (%, 선택)</label>
-        <input type="number" id="w_size_p" value="0" step="0.1" oninput="waccRecalc()">
+      <div class="field"><label>사이즈 프리미엄 (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">규모↓</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="w_size_p" value="0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
+          <select id="w_size_p_sel" onchange="if(this.value!==''){document.getElementById('w_size_p').value=this.value;waccRecalc();}" style="width:148px;flex-shrink:0"></select>
+        </div>
       </div>
       <div class="field"><label>국가위험 프리미엄 CRP (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_country_p" value="0" step="0.05" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select onchange="if(this.value!==''){document.getElementById('w_country_p').value=this.value;waccRecalc();}" style="width:130px;flex-shrink:0">
-            <option value="">국가 선택…</option>
-            <option value="0">미국·독일·일본 0%</option>
-            <option value="0.6">영국 0.6%</option>
-            <option value="0.7">중국 0.7%</option>
-            <option value="0.85">한국 (AA) 0.85%</option>
-            <option value="2.0">베트남·인니 2.0%</option>
-            <option value="3.5">신흥국 일반 3.5%</option>
-          </select>
+          <select id="w_country_p_sel" onchange="if(this.value!==''){document.getElementById('w_country_p').value=this.value;waccRecalc();}" style="width:148px;flex-shrink:0"></select>
         </div>
       </div>
     </div>
@@ -2237,6 +2211,8 @@ function onValDateChange(){
   const wd=document.getElementById('w_val_date_disp');   if(wd)wd.textContent=v||'—';
   // 변동성 탭이 활성이면 잔여만기 매칭 다시 적용
   if(typeof volApplyPreset==='function' && document.getElementById('vol_preset'))volApplyPreset();
+  // MRP/CRP/사이즈 드롭다운 연도별 재생성
+  if(typeof waccRebuildPremiumDropdowns==='function')waccRebuildPremiumDropdowns();
 }
 document.addEventListener('DOMContentLoaded',onValDateChange);
 
@@ -2245,6 +2221,103 @@ document.addEventListener('DOMContentLoaded',onValDateChange);
 // 연도별 근사값 (Damodaran 반기 업데이트 기준). 정확값은 pages.stern.nyu.edu/~adamodar/ctryprem 확인 권장.
 const _MATURE_ERP={'2026':4.23,'2025':4.30,'2024':4.60,'2023':5.00,'2022':4.40,'2021':4.25,'2020':5.20,'2019':5.06};
 const _CRP_KR={'2026':0.64,'2025':0.80,'2024':0.85,'2023':0.95,'2022':1.10,'2021':0.85,'2020':1.05,'2019':0.80};
+// CRP 연도×국가 매트릭스 (Damodaran). 단위 %.
+const _CRP_BY_COUNTRY={
+  // 선진국
+  US:  {'2026':0,'2025':0,'2024':0,'2023':0,'2022':0,'2021':0,'2020':0,'2019':0},
+  DE:  {'2026':0,'2025':0,'2024':0,'2023':0,'2022':0,'2021':0,'2020':0,'2019':0},
+  JP:  {'2026':0.40,'2025':0.43,'2024':0.43,'2023':0.50,'2022':0.51,'2021':0.45,'2020':0.55,'2019':0.41},
+  GB:  {'2026':0.40,'2025':0.43,'2024':0.43,'2023':0.50,'2022':0.51,'2021':0.45,'2020':0.55,'2019':0.41},
+  // 한국 (위와 동일 _CRP_KR)
+  KR:  {'2026':0.64,'2025':0.80,'2024':0.85,'2023':0.95,'2022':1.10,'2021':0.85,'2020':1.05,'2019':0.80},
+  // 중국 (A 등급권)
+  CN:  {'2026':0.64,'2025':0.80,'2024':0.85,'2023':0.95,'2022':0.70,'2021':0.55,'2020':0.74,'2019':0.59},
+  // 이탈리아
+  IT:  {'2026':1.45,'2025':1.65,'2024':1.69,'2023':1.94,'2022':2.20,'2021':1.91,'2020':2.40,'2019':2.17},
+  // 인도 (BBB-)
+  IN:  {'2026':2.20,'2025':2.42,'2024':2.43,'2023':2.78,'2022':2.61,'2021':2.27,'2020':2.86,'2019':2.59},
+  // 베트남 (BB+)
+  VN:  {'2026':3.65,'2025':3.85,'2024':3.86,'2023':4.43,'2022':4.41,'2021':3.83,'2020':4.83,'2019':4.36},
+  // 인도네시아 (BBB)
+  ID:  {'2026':2.20,'2025':2.42,'2024':2.43,'2023':2.78,'2022':2.20,'2021':1.91,'2020':2.40,'2019':2.17},
+  // 신흥국 일반 평균 (B+ 권역 대표)
+  EM:  {'2026':3.65,'2025':3.85,'2024':3.86,'2023':4.43,'2022':4.41,'2021':3.83,'2020':4.83,'2019':4.36},
+};
+const _COUNTRY_LABEL={US:'미국',DE:'독일',JP:'일본',GB:'영국',KR:'한국 (AA)',CN:'중국',IT:'이탈리아',IN:'인도',VN:'베트남',ID:'인도네시아',EM:'신흥국 일반'};
+// 사이즈 프리미엄 (Duff & Phelps / Kroll) — 한국 원화 시총 기준 매핑.
+// 연도별 미세 변동이 있어 근사 매트릭스 사용 (Kroll Cost of Capital Navigator 통상치).
+const _SIZE_BRACKETS=[
+  {key:'large',  label:'대기업 (5조+)',         min:5e12},
+  {key:'mid',    label:'중견 (5천억~5조)',      min:5e11},
+  {key:'small',  label:'중소 (1천억~5천억)',    min:1e11},
+  {key:'micro',  label:'소형 (500억~1천억)',    min:5e10},
+  {key:'nano',   label:'마이크로 (<500억)',     min:0},
+];
+const _SIZE_PREMIUM_BY_YEAR={
+  '2026':{large:0,mid:1.0,small:1.9,micro:2.9,nano:4.6},
+  '2025':{large:0,mid:1.0,small:1.9,micro:2.9,nano:4.6},
+  '2024':{large:0,mid:1.0,small:2.0,micro:3.0,nano:4.7},
+  '2023':{large:0,mid:1.1,small:2.0,micro:3.1,nano:4.8},
+  '2022':{large:0,mid:1.0,small:1.9,micro:3.0,nano:4.5},
+  '2021':{large:0,mid:0.9,small:1.8,micro:2.8,nano:4.3},
+  '2020':{large:0,mid:1.0,small:1.9,micro:3.0,nano:4.5},
+  '2019':{large:0,mid:0.9,small:1.8,micro:2.8,nano:4.3},
+};
+function _yearFromValDate(){
+  const vd=document.getElementById('valuation_date')?.value||'';
+  return vd.slice(0,4) || String(new Date().getFullYear());
+}
+function waccRebuildPremiumDropdowns(){
+  const yr=_yearFromValDate();
+  // ① MRP 드롭다운
+  const mrpSel=document.getElementById('w_mrp_sel');
+  if(mrpSel){
+    const mature=_MATURE_ERP[yr]||4.5;
+    const crpKr=_CRP_BY_COUNTRY.KR[yr]||0.80;
+    const crpUs=_CRP_BY_COUNTRY.US[yr]||0;
+    const crpJp=_CRP_BY_COUNTRY.JP[yr]||0.4;
+    const crpCn=_CRP_BY_COUNTRY.CN[yr]||0.7;
+    const totalKr=(mature+crpKr).toFixed(2);
+    const totalUs=(mature+crpUs).toFixed(2);
+    const totalJp=(mature+crpJp).toFixed(2);
+    const totalCn=(mature+crpCn).toFixed(2);
+    mrpSel.innerHTML=
+      `<option value="">권장값…(${yr})</option>`+
+      `<optgroup label="Mature + CRP 분리">`+
+        `<option value="${mature}|sep">선진국 Mature ${mature}% (CRP 별도)</option>`+
+      `</optgroup>`+
+      `<optgroup label="Country Total ERP (CRP=0)">`+
+        `<option value="${totalKr}|kr">한국 Total ${totalKr}%</option>`+
+        `<option value="${totalUs}|usa">미국 Total ${totalUs}%</option>`+
+        `<option value="${totalJp}|jp">일본 Total ${totalJp}%</option>`+
+        `<option value="${totalCn}|cn">중국 Total ${totalCn}%</option>`+
+      `</optgroup>`;
+  }
+  // ② CRP 드롭다운
+  const crpSel=document.getElementById('w_country_p_sel');
+  if(crpSel){
+    let html=`<option value="">국가 선택…(${yr})</option>`;
+    ['US','DE','JP','GB','KR','CN','IT','IN','VN','ID','EM'].forEach(k=>{
+      const v=_CRP_BY_COUNTRY[k]?.[yr];
+      if(v===undefined)return;
+      html+=`<option value="${v}">${_COUNTRY_LABEL[k]} ${v}%</option>`;
+    });
+    crpSel.innerHTML=html;
+  }
+  // ③ 사이즈 프리미엄 드롭다운
+  const sizeSel=document.getElementById('w_size_p_sel');
+  if(sizeSel){
+    const tbl=_SIZE_PREMIUM_BY_YEAR[yr]||_SIZE_PREMIUM_BY_YEAR['2025'];
+    let html=`<option value="">규모 선택…(${yr})</option>`;
+    _SIZE_BRACKETS.forEach(b=>{
+      const v=tbl[b.key];
+      if(v===undefined)return;
+      html+=`<option value="${v}">${b.label} ${v}%</option>`;
+    });
+    sizeSel.innerHTML=html;
+  }
+}
+document.addEventListener('DOMContentLoaded',waccRebuildPremiumDropdowns);
 function _sizePremiumFromMcap(mc){
   // 한국 원화 시가총액 → 사이즈 프리미엄 (Duff & Phelps 통상 매핑, 원화 기준)
   if(!mc || mc<=0)return null;
