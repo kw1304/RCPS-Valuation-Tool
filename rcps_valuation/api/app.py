@@ -1277,7 +1277,8 @@ def _stock_listing():
     if _STOCK_LISTING is None:
         import FinanceDataReader as fdr  # lazy import — 변동성 요청에만 비용
         rows, seen = [], set()
-        # 1) KRX
+        # 1) KRX — FDR이 Render Singapore에서 가끔 실패 → 정적 CSV 폴백
+        krx_ok = False
         try:
             for r in fdr.StockListing('KRX').to_dict('records'):
                 code = str(r.get('Code') or '').strip()
@@ -1287,8 +1288,35 @@ def _stock_listing():
                 rows.append({"code": code, "name": str(r.get('Name') or '').strip(),
                              "market": str(r.get('Market') or '').strip(),
                              "marcap": r.get('Marcap')})
-        except Exception:
-            pass
+            if len(rows) > 100:
+                krx_ok = True
+                print(f"[listing] KRX via FDR: {len(rows)} stocks", flush=True)
+        except Exception as e:
+            print(f"[listing] KRX FDR failed: {e}", flush=True)
+        # KRX FDR 실패 시 정적 CSV로 폴백
+        if not krx_ok:
+            try:
+                csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                        'data', 'krx_listing.csv')
+                if os.path.exists(csv_path):
+                    import csv as _csv
+                    with open(csv_path, 'r', encoding='utf-8') as f:
+                        cnt = 0
+                        for r in _csv.DictReader(f):
+                            code = (r.get('Code') or '').strip()
+                            if not code or code in seen:
+                                continue
+                            seen.add(code)
+                            marcap = r.get('Marcap')
+                            try: marcap = float(marcap) if marcap else None
+                            except: marcap = None
+                            rows.append({"code": code, "name": (r.get('Name') or '').strip(),
+                                         "market": (r.get('Market') or '').strip(),
+                                         "marcap": marcap})
+                            cnt += 1
+                        print(f"[listing] KRX via static CSV: {cnt} stocks", flush=True)
+            except Exception as e:
+                print(f"[listing] KRX static CSV failed: {e}", flush=True)
         # 2) 미국 거래소
         for mk in ('NASDAQ', 'NYSE', 'AMEX'):
             try:
