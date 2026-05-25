@@ -1959,6 +1959,8 @@ def wacc_de():
             name = info.get('shortName') or info.get('longName') or code
             shares = info.get('sharesOutstanding')
             beta_yahoo = info.get('beta')
+            # 매출액 (사이즈 프리미엄 보조지표). info.totalRevenue 는 TTM(최근 4분기). 평가기준일 매칭은 약함.
+            total_revenue = info.get('totalRevenue')
 
             td = eq = mc = period_end = None
             td_source = mc_source = None
@@ -2003,6 +2005,7 @@ def wacc_de():
                 "total_debt": td,
                 "stockholders_equity": eq,
                 "market_cap": mc,
+                "total_revenue": total_revenue,
                 "yahoo_beta": beta_yahoo,
                 "as_of": period_end,
                 "mc_as_of": mc_as_of,
