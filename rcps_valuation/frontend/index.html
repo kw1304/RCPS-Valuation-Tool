@@ -859,7 +859,12 @@ details.note-fold .note{margin-top:4px}
       <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center;margin-left:auto"></span>
     </div>
     <div class="row3" style="margin-top:12px">
-      <div class="field"><label>평가대상 D/E (%)</label><input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')"></div>
+      <div class="field"><label>평가대상 D/E (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">비상장은 유사기업 중앙값 권장</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')" style="flex:1;min-width:0">
+          <button type="button" onclick="waccApplyPeerMedianDE()" title="유사기업 D/E 중앙값을 평가대상 D/E로 적용 (Hamada relever 표준 절차)" style="padding:0.3rem 0.55rem;font-size:0.7rem;background:#EDE9FE;color:#5B21B6;border:1px solid #DDD6FE;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">유사기업<br>중앙값↓</button>
+        </div>
+      </div>
       <div class="field"><label>법인세율 t (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가/구간↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_tax" value="22" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
@@ -2107,6 +2112,23 @@ function waccRenderPeers(){
   }).join('');
 }
 function waccAddPeer(){window.waccPeers.push({name:'',betaL:1.0,de:50});waccRenderPeers();waccRecalc();}
+// 비상장 평가대상: 유사기업 D/E 중앙값을 평가대상 D/E로 적용 (Hamada relever 표준)
+function waccApplyPeerMedianDE(){
+  const status=document.getElementById('w-beta-status');
+  const vals=(window.waccPeers||[]).map(p=>parseFloat(p.de)).filter(v=>!isNaN(v)&&v>=0);
+  if(!vals.length){
+    if(status){status.style.color='var(--red)';status.textContent='유사기업 D/E 자동조회 먼저 (이름 입력 후 Enter).';}
+    return;
+  }
+  vals.sort((a,b)=>a-b);
+  const mid=vals.length%2?vals[(vals.length-1)/2]:0.5*(vals[vals.length/2-1]+vals[vals.length/2]);
+  const el=document.getElementById('w_de_target');
+  el.value=(Math.round(mid*100)/100).toFixed(2);
+  waccSyncCap('de');
+  el.style.transition='none';el.style.background='#DCFCE7';
+  setTimeout(()=>{el.style.transition='background 1.2s ease';el.style.background='';},80);
+  if(status){status.style.color='var(--green)';status.textContent=`✓ 유사기업 D/E 중앙값 ${mid.toFixed(2)}% → 평가대상 D/E 적용 (n=${vals.length})`;}
+}
 // D/E ↔ D/V ↔ E/V 자동 연동: 변환식 D/V = (D/E)/(1+D/E), D/E = (D/V)/(1−D/V)
 function waccSyncCap(src){
   const deEl=document.getElementById('w_de_target');
