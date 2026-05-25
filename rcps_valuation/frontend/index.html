@@ -919,18 +919,8 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">③ 자기자본비용 (Ke) — CAPM</div>
     <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br>📅 <button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.</span></div>
     <div class="row2">
-      <div class="field"><label>사이즈 프리미엄 (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">규모↓</span></label>
-        <div style="display:flex;gap:6px">
-          <input type="number" id="w_size_p" value="0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select onchange="if(this.value!==''){document.getElementById('w_size_p').value=this.value;waccRecalc();}" style="width:130px;flex-shrink:0">
-            <option value="">규모 선택…</option>
-            <option value="0">대기업 (5조+) 0%</option>
-            <option value="1.0">중견 (5천억~5조) 1.0%</option>
-            <option value="2.0">중소 (1천억~5천억) 2.0%</option>
-            <option value="3.0">소형 (~1천억) 3.0%</option>
-            <option value="4.5">마이크로 (&lt;500억) 4.5%</option>
-          </select>
-        </div>
+      <div class="field"><label>사이즈 프리미엄 (%, 선택)</label>
+        <input type="number" id="w_size_p" value="0" step="0.1" oninput="waccRecalc()">
       </div>
       <div class="field"><label>국가위험 프리미엄 CRP (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가↓</span></label>
         <div style="display:flex;gap:6px">
