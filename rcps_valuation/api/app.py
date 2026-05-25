@@ -1062,11 +1062,36 @@ def _llm_summarize(provider: str, api_key: str, model: str, prompt: str,
         return "".join(p.get("text", "") for p in parts_out).strip()
 
     if provider == "groq":
-        # Groq (무료·빠름, OpenAI 호환) — 텍스트 전용(비전 미지원)
+        # Groq (무료·빠름, OpenAI 호환). 비전 모델(llama-4-scout/maverick)이면 PDF → 이미지 변환 후 첨부.
         m = model if model else "llama-3.3-70b-versatile"
+        is_vision = bool(pdf_bytes) and ("scout" in m.lower() or "maverick" in m.lower() or "vision" in m.lower())
+        # 메시지 구성: 비전이면 이미지 첨부, 아니면 텍스트만
+        if is_vision:
+            # PDF 페이지를 PNG 이미지로 변환 → base64 → image_url 데이터 URI
+            import fitz  # PyMuPDF
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            content_parts = [{"type": "text", "text": prompt}]
+            max_pages = 5  # Groq vision은 한 요청당 이미지 5장까지 권장 (속도·토큰)
+            mat = fitz.Matrix(150/72.0, 150/72.0)  # DPI 150 (Vision 모델은 200~300 불필요)
+            try:
+                for i, page in enumerate(doc):
+                    if i >= max_pages:
+                        break
+                    pix = page.get_pixmap(matrix=mat)
+                    png_bytes = pix.tobytes("png")
+                    b64 = base64.b64encode(png_bytes).decode("ascii")
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{b64}"}
+                    })
+            finally:
+                doc.close()
+            messages = [{"role": "user", "content": content_parts}]
+        else:
+            messages = [{"role": "user", "content": prompt}]
         body = json.dumps({
             "model": m,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "temperature": 0.2, "max_tokens": 8000,
         }).encode("utf-8")
         req = urllib.request.Request(
@@ -1210,21 +1235,23 @@ def contract_parse():
                     ocr_text = _ocr_pdf(raw)
                 except Exception:
                     ocr_text = ''
+                # Groq 비전 모델 선택 시 OCR 우회하고 직접 이미지 분석 (무료·빠름)
+                groq_vision = provider == 'groq' and any(k in (model or '').lower() for k in ('scout','maverick','vision'))
                 if ocr_text and len(ocr_text.strip()) >= 100:
                     out = _llm_summarize(provider, api_key, model,
                                          cprompt + ocr_text[:maxchars])
-                elif provider in ('gemini', 'anthropic'):
-                    # 2순위(비전 지원 모델만): 로컬 OCR 불가/실패 → PDF 직접 전달
+                elif provider in ('gemini', 'anthropic') or groq_vision:
+                    # 2순위(비전 지원 모델): 로컬 OCR 불가/실패 → PDF 직접 전달
                     if len(raw) > 18_000_000:
                         return jsonify({"status": "error",
-                                        "message": "스캔 PDF가 큽니다(18MB 초과). 로컬 OCR(Tesseract) 설치 또는 페이지 분할 후 재시도하세요."}), 200
+                                        "message": "스캔 PDF가 큽니다(18MB 초과). 페이지 분할 후 재시도하세요."}), 200
                     out = _llm_summarize(provider, api_key, model,
-                                         _CONTRACT_PROMPT + "(첨부된 PDF 계약서를 직접 읽고 분석하세요. 스캔본이면 OCR하여 텍스트를 인식하세요.)",
+                                         _CONTRACT_PROMPT + "(첨부된 PDF 계약서 이미지를 직접 읽고 분석하세요. 한국어 OCR 수행.)",
                                          pdf_bytes=raw)
                 else:
-                    # Groq 등 텍스트 전용: 로컬 OCR 실패 시 비전 불가
+                    # 텍스트 전용 모델: OCR 실패 시 비전 불가
                     return jsonify({"status": "error",
-                                    "message": "스캔 PDF인데 로컬 OCR 추출에 실패했습니다. Tesseract 설치를 확인하거나, 비전 지원 제공자(Gemini/Claude)를 사용하세요."}), 200
+                                    "message": "스캔 PDF인데 OCR 실패. 비전 지원 모델 선택 권장: Gemini, Claude API, 또는 Groq의 Llama 4 Scout/Maverick."}), 200
             else:
                 if not text or not text.strip():
                     return jsonify({"status": "error",
