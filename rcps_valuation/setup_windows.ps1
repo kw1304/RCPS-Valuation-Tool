@@ -1,4 +1,4 @@
-# RCPS Valuation Tool — Windows 자동 셋업 스크립트
+﻿# RCPS Valuation Tool — Windows 자동 셋업 스크립트
 # 관리자 PowerShell 에서 실행:
 #   irm https://raw.githubusercontent.com/kw1304/RCPS-Valuation-Tool/master/rcps_valuation/setup_windows.ps1 | iex
 
