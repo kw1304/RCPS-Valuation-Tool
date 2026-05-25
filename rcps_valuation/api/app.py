@@ -1424,7 +1424,7 @@ def volatility_eval():
 
     body: {tickers:[code...], start, end, trading_days, method, log}
     각 종목을 FDR로 조회 → 종목별 σ·시총 → 집계 σ. 조회 실패 종목은 스킵.
-    원자료(날짜·종가)도 함께 반환(감리 재현성·CSV 내보내기용).
+    원자료(날짜·종가)도 함께 반환(감사 재현성·CSV 내보내기용).
     """
     from models.volatility import basket_volatility
     data = request.get_json(force=True) or {}

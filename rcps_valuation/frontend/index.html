@@ -812,13 +812,34 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">② 베타 산정 — Hamada Unlever / Re-lever</div>
     <div class="note" style="margin-bottom:8px">유사상장기업의 <b>레버드 베타(β_L)</b>를 자본구조 영향 제거(unlever)해 자산 베타(β_U)로 만든 뒤, 평가대상의 자본구조로 다시 re-lever 합니다.<br>식: <code>β_U = β_L / (1 + (1−t)·D/E)</code> &nbsp; · &nbsp; <code>β_target_L = β_U × (1 + (1−t)·D/E_target)</code><br>유사기업 칸에 <b>회사명·코드·해외티커</b> 입력 후 "베타 자동산정"을 누르면 시장지수 회귀로 β_L이 자동 채워집니다.</div>
     <div class="row3" style="margin-bottom:8px">
-      <div class="field"><label>시장지수</label>
+      <div class="field"><label>시장지수 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">peer 상장시장에 매칭</span></label>
         <select id="w_market_idx">
-          <option value="KS11">KOSPI</option>
-          <option value="KQ11">KOSDAQ</option>
-          <option value="DJI">Dow Jones</option>
-          <option value="IXIC">NASDAQ Composite</option>
-          <option value="US500">S&P 500</option>
+          <optgroup label="한국">
+            <option value="KS11">KOSPI</option>
+            <option value="KQ11">KOSDAQ</option>
+          </optgroup>
+          <optgroup label="미국">
+            <option value="US500">S&P 500</option>
+            <option value="DJI">Dow Jones</option>
+            <option value="IXIC">NASDAQ Composite</option>
+          </optgroup>
+          <optgroup label="아시아">
+            <option value="N225">Nikkei 225 (일본)</option>
+            <option value="HSI">Hang Seng (홍콩)</option>
+            <option value="SSEC">Shanghai Composite (중국 A주)</option>
+            <option value="TWII">Taiwan Weighted (대만)</option>
+          </optgroup>
+          <optgroup label="유럽">
+            <option value="STOXX50E">Euro Stoxx 50</option>
+            <option value="FTSE">FTSE 100 (영국)</option>
+            <option value="GDAXI">DAX (독일)</option>
+            <option value="FCHI">CAC 40 (프랑스)</option>
+            <option value="FTSEMIB.MI">FTSE MIB (이탈리아)</option>
+          </optgroup>
+          <optgroup label="기타">
+            <option value="BSESN">Sensex (인도)</option>
+            <option value="BVSP">Bovespa (브라질)</option>
+          </optgroup>
         </select>
       </div>
       <div class="field"><label>회귀 기간</label>
@@ -865,7 +886,6 @@ details.note-fold .note{margin-top:4px}
           <button type="button" onclick="waccApplySelfDE()" title="평가대상 본인 BS 장부가 D/E 적용. 평가대상이 산업과 크게 다른 자본구조면 권장." style="padding:0.3rem 0.5rem;font-size:0.66rem;background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">평가대상<br>본인↓</button>
           <button type="button" onclick="waccApplyPeerMedianDE()" title="유사기업 D/E 중앙값 적용. 산업 자본구조가 안정적일 때 권장 (Damodaran 표준)." style="padding:0.3rem 0.5rem;font-size:0.66rem;background:#EDE9FE;color:#5B21B6;border:1px solid #DDD6FE;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">유사기업<br>중앙값↓</button>
         </div>
-        <div style="font-size:.62rem;color:var(--text3);margin-top:2px">감리 권장: 두 값 모두 산출 후 sensitivity 분석</div>
       </div>
       <div class="field"><label>법인세율 t (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가/구간↓</span></label>
         <div style="display:flex;gap:6px">
@@ -964,7 +984,7 @@ details.note-fold .note{margin-top:4px}
 
   <div class="sec">
     <div class="sec-title">변동성 평가 <span class="badge-opt">유사기업 · 역사적</span></div>
-    <div class="note">비상장 발행사의 변동성(σ)은 <b>유사상장기업의 역사적 변동성</b>으로 추정합니다. 산정기간은 <b>잔여만기 매칭</b>이 K-IFRS 감리 기본값입니다. 산출 후 <b>"RCPS 평가에 적용"</b>으로 변동성 입력칸에 반영됩니다.</div>
+    <div class="note">비상장 발행사의 변동성(σ)은 <b>유사상장기업의 역사적 변동성</b>으로 추정합니다. 산정기간은 <b>잔여만기 매칭</b>이 K-IFRS 감사 기본값입니다. 산출 후 <b>"RCPS 평가에 적용"</b>으로 변동성 입력칸에 반영됩니다.</div>
   </div>
 
   <div class="sec">
@@ -2881,7 +2901,7 @@ function volRenderResult(j){
     meta+=`<br><span style="color:var(--text3)">이상치 필터 미적용: ${oi.reason}</span>`;
   }
   if(j.failed&&j.failed.length)meta+=`<br><span style="color:var(--red)">조회 실패 ${j.failed.length}건: ${j.failed.map(f=>f.ticker).join(', ')}</span>`;
-  meta+='<br>※ 자동조회 값은 시점마다 달라질 수 있으니, 감리 증빙용으로 원자료 CSV를 내보내 보관하세요.';
+  meta+='<br>※ 자동조회 값은 시점마다 달라질 수 있으니, 감사 증빙용으로 원자료 CSV를 내보내 보관하세요.';
   document.getElementById('vol-meta').innerHTML=meta;
   document.getElementById('vol-export').style.display=window.volLastRaw?'':'none';
   volMsg('산출 완료 — σ = '+j.sigma_pct.toFixed(2)+'%.',true);
