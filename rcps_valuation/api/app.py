@@ -1961,10 +1961,13 @@ def wacc_de():
             beta_yahoo = info.get('beta')
 
             td = eq = mc = period_end = None
+            td_source = mc_source = None
+            mc_as_of = None
             if date_str:
                 bs = _find_bs_at(t, date_str)
                 if bs:
                     period_end, td, eq = bs
+                    td_source = 'bs'  # 평가기준일 ≤ period_end 매칭
                 # 평가기준일 종가 × 현재 발행주식수 → 시총 근사
                 try:
                     dates, closes, _ = _fetch_price_series(code, (datetime.fromisoformat(date_str) - timedelta(days=14)).date().isoformat(), (datetime.fromisoformat(date_str) + timedelta(days=2)).date().isoformat())
@@ -1974,13 +1977,19 @@ def wacc_de():
                             pick = (dt, c)
                     if pick and shares:
                         mc = pick[1] * shares
+                        mc_source = 'fdr'  # 평가기준일 종가 × 현 sharesOutstanding
+                        mc_as_of = pick[0]
                 except Exception:
                     pass
             # 현 시점 폴백 (date 없거나 historical 조회 실패)
             if td is None:
                 td = info.get('totalDebt')
+                if td is not None:
+                    td_source = 'info'  # 현시점 스냅샷 폴백
             if mc is None:
                 mc = info.get('marketCap')
+                if mc is not None:
+                    mc_source = 'info'
             # D/E 산정
             de_book = round(td / eq * 100, 2) if td and eq else (info.get('debtToEquity') if not date_str else None)
             de_market = round(td / mc * 100, 2) if td and mc and mc > 0 else None
@@ -1996,6 +2005,9 @@ def wacc_de():
                 "market_cap": mc,
                 "yahoo_beta": beta_yahoo,
                 "as_of": period_end,
+                "mc_as_of": mc_as_of,
+                "td_source": td_source,
+                "mc_source": mc_source,
                 "requested_date": date_str,
             })
         except Exception as e:  # noqa: BLE001

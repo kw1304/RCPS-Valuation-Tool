@@ -2076,8 +2076,17 @@ function waccRenderPeers(){
   const tax=(parseFloat(document.getElementById('w_tax')?.value)||25)/100;
   tb.innerHTML=window.waccPeers.map((p,i)=>{
     const beta_u=p.betaL/(1+(1-tax)*p.de/100);
+    // D/E 출처 라벨: as_of(매칭된 BS 일자) 또는 ⚠ 폴백 경고
+    let deMeta='';
+    if(p.tdSource==='bs' && p.asOf){
+      deMeta=`<div style="font-size:.62rem;color:var(--text3);margin-top:2px">D/E 기준 ${p.asOf}</div>`;
+    } else if(p.tdSource==='info'){
+      deMeta=`<div style="font-size:.62rem;color:#B45309;margin-top:2px" title="평가기준일 BS 미확보 → 현시점 yfinance.info 값으로 폴백. 평가기준일 이후 자본구조 변동 시 부정확.">⚠ 현시점 폴백 (평가기준일 BS 미확보)</div>`;
+    } else if(p.mcSource==='info' && p.tdSource){
+      deMeta=`<div style="font-size:.62rem;color:#B45309;margin-top:2px" title="시총 현시점 폴백">⚠ 시총 현시점 폴백</div>`;
+    }
     return `<tr>
-      <td><input value="${(p.name||'').replace(/"/g,'&quot;')}" onchange="window.waccPeers[${i}].name=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault();window.waccPeers[${i}].name=this.value;waccFetchPeer(${i});}" style="width:100%;border:none;background:transparent;font-size:.75rem;font-family:var(--sans)" placeholder="예: 코스맥스 (Enter로 β·D/E 자동)"></td>
+      <td><input value="${(p.name||'').replace(/"/g,'&quot;')}" onchange="window.waccPeers[${i}].name=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault();window.waccPeers[${i}].name=this.value;waccFetchPeer(${i});}" style="width:100%;border:none;background:transparent;font-size:.75rem;font-family:var(--sans)" placeholder="예: 코스맥스 (Enter로 β·D/E 자동)">${deMeta}</td>
       <td><input type="number" value="${p.betaL}" step="0.05" onchange="window.waccPeers[${i}].betaL=parseFloat(this.value)||0;waccRecalc()" style="width:80%;border:none;background:transparent;text-align:right;font-variant-numeric:tabular-nums"></td>
       <td><input type="number" value="${p.de}" step="1" onchange="window.waccPeers[${i}].de=parseFloat(this.value)||0;waccRecalc()" style="width:80%;border:none;background:transparent;text-align:right;font-variant-numeric:tabular-nums"></td>
       <td style="text-align:right;color:var(--text3);font-variant-numeric:tabular-nums">${beta_u.toFixed(4)}</td>
@@ -2472,9 +2481,13 @@ async function waccFetchPeer(i){
       if(de!=null){peer.de=de; parts.push(`D/E=${de.toFixed(1)}%`);}
       else parts.push('D/E 실패');
       if(r0.as_of)asOf=r0.as_of;
+      // 폴백 메타 기록 (renderPeers에서 ⚠ 경고 표시)
+      peer.asOf=r0.as_of||null;
+      peer.tdSource=r0.td_source||null;
+      peer.mcSource=r0.mc_source||null;
     }
     waccRenderPeers(); waccRecalc();
-    const asOfTxt=asOf?` · D/E 기준 ${asOf}`:(valDateStr?` · D/E 현시점(과거데이터 미확보)`:'');
+    const asOfTxt = asOf ? ` · D/E 기준 ${asOf}` : (valDateStr ? ` · ⚠ D/E 현시점 폴백` : '');
     status.style.color='var(--green)'; status.innerHTML=`✓ ${peer.name}: ${parts.join(', ')}${asOfTxt}`;
   }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
 }
