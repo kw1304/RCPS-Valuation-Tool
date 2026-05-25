@@ -801,6 +801,15 @@ details.note-fold .note{margin-top:4px}
         </select>
       </div>
     </div>
+    <div class="row2" style="margin-bottom:8px">
+      <div class="field"><label>수익률 주기</label>
+        <select id="w_beta_freq">
+          <option value="daily">일별 (기본)</option>
+          <option value="weekly">주별 (Bloomberg 관행, 노이즈↓)</option>
+        </select>
+      </div>
+      <div class="field"></div>
+    </div>
     <table class="mini-table" id="w-peers-tbl">
       <thead><tr><th style="width:40%">유사기업</th><th>β_L</th><th>D/E (%)</th><th>β_U</th><th></th></tr></thead>
       <tbody id="w-peers-body"></tbody>
@@ -850,9 +859,35 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">③ 자기자본비용 (Ke) — CAPM</div>
     <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code></div>
     <div class="row2">
-      <div class="field"><label>사이즈 프리미엄 (%, 선택)</label><input type="number" id="w_size_p" value="0" step="0.1" oninput="waccRecalc()"></div>
-      <div class="field"><label>국가위험 프리미엄 (%, 선택)</label><input type="number" id="w_country_p" value="0" step="0.1" oninput="waccRecalc()"></div>
+      <div class="field"><label>사이즈 프리미엄 (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">규모↓</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="w_size_p" value="0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
+          <select onchange="if(this.value!==''){document.getElementById('w_size_p').value=this.value;waccRecalc();}" style="width:130px;flex-shrink:0">
+            <option value="">규모 선택…</option>
+            <option value="0">대기업 (5조+) 0%</option>
+            <option value="1.0">중견 (5천억~5조) 1.0%</option>
+            <option value="2.0">중소 (1천억~5천억) 2.0%</option>
+            <option value="3.0">소형 (~1천억) 3.0%</option>
+            <option value="4.5">마이크로 (&lt;500억) 4.5%</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>국가위험 프리미엄 CRP (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가↓</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="w_country_p" value="0" step="0.05" oninput="waccRecalc()" style="flex:1;min-width:0">
+          <select onchange="if(this.value!==''){document.getElementById('w_country_p').value=this.value;waccRecalc();}" style="width:130px;flex-shrink:0">
+            <option value="">국가 선택…</option>
+            <option value="0">미국·독일·일본 0%</option>
+            <option value="0.6">영국 0.6%</option>
+            <option value="0.7">중국 0.7%</option>
+            <option value="0.85">한국 (AA) 0.85%</option>
+            <option value="2.0">베트남·인니 2.0%</option>
+            <option value="3.5">신흥국 일반 3.5%</option>
+          </select>
+        </div>
+      </div>
     </div>
+    <details class="note-fold"><summary></summary><div class="note">출처: <b>Duff &amp; Phelps</b>(현 Kroll) Valuation Handbook(사이즈), <b>Damodaran</b> Country Risk Premium 표(CRP). 한국 평가에서 평가대상이 한국 기업이면 통상 CRP=0(이미 Rf에 국가위험 반영). 평가대상이 해외 진출국 기업이면 그 국가의 CRP 추가.</div></details>
     <div class="info-box" id="w-ke-box" style="margin-top:8px">
       <div style="font-size:.78rem;line-height:1.6">
         Rf <span id="w_disp_rf">3.00%</span> + β_L <span id="w_disp_beta">—</span> × MRP <span id="w_disp_mrp">6.00%</span>
@@ -2157,12 +2192,13 @@ async function waccAutoBeta(){
   const market=document.getElementById('w_market_idx').value;
   const lookback=parseInt(document.getElementById('w_beta_lookback').value)||2;
   const adjust=document.getElementById('w_beta_adjust').value;
+  const frequency=document.getElementById('w_beta_freq').value;
   const end=new Date(); const start=new Date(end); start.setFullYear(end.getFullYear()-lookback);
   const ymd=d=>d.toISOString().slice(0,10);
-  status.textContent=`회귀분석 중 (${market}, ${lookback}년, ${adjust})…`;
+  status.textContent=`회귀분석 중 (${market}, ${lookback}년, ${frequency==='weekly'?'주별':'일별'}, ${adjust})…`;
   try{
     const r=await fetch('/api/wacc/beta',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tickers:codes.map(x=>x.code),market,start:ymd(start),end:ymd(end),adjustment:adjust})});
+      body:JSON.stringify({tickers:codes.map(x=>x.code),market,start:ymd(start),end:ymd(end),adjustment:adjust,frequency})});
     const j=await r.json();
     if(j.status!=='ok'){status.style.color='var(--red)';status.textContent='오류: '+j.message;btn.disabled=false;return;}
     // 결과를 peer 표에 매핑
@@ -2180,7 +2216,7 @@ async function waccAutoBeta(){
     const failMsg=failN?`, 실패 ${failN}`:'';
     const ar2=j.results.filter(x=>x.r2!=null).reduce((s,x)=>s+x.r2,0)/(j.results.filter(x=>x.r2!=null).length||1);
     status.style.color='var(--green)';
-    status.innerHTML=`✓ ${okN}개 산정 완료${failMsg} · 평균 R² ${ar2.toFixed(3)} · ${adjust==='blume'?'Blume 보정':'Raw β'}`;
+    status.innerHTML=`✓ ${okN}개 산정 완료${failMsg} · ${frequency==='weekly'?'주별':'일별'} · 평균 R² ${ar2.toFixed(3)} · ${adjust==='blume'?'Blume 보정':'Raw β'}`;
   }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
   finally{btn.disabled=false;}
 }

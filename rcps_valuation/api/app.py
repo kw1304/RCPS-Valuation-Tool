@@ -1795,6 +1795,7 @@ def wacc_beta():
     start = data.get("start") or None
     end = data.get("end") or None
     adjust = data.get("adjustment", "raw")
+    frequency = (data.get("frequency") or "daily").lower()    # 'daily' or 'weekly'
 
     try:
         import FinanceDataReader as fdr
@@ -1825,8 +1826,20 @@ def wacc_beta():
                 raise ValueError("종목 관측치 부족 (<30)")
             t_map = dict(zip(t_dates, tc))
             common = sorted(set(m_map.keys()) & set(t_map.keys()))
-            if len(common) < 30:
-                raise ValueError(f"시장지수와 공통 거래일 부족 ({len(common)}<30)")
+            min_obs = 30
+            # 주별 옵션: ISO 주차별 마지막 거래일만 추출 (Friday close 관행 근사)
+            if frequency == "weekly":
+                from datetime import date as _dt
+                week_last = {}
+                for d in common:
+                    try:
+                        yr, wk, _ = _dt.fromisoformat(d).isocalendar()
+                        week_last[(yr, wk)] = d   # 후속 일자가 덮어씀 → 마지막 일
+                    except Exception:
+                        pass
+                common = sorted(week_last.values())
+            if len(common) < min_obs:
+                raise ValueError(f"{'주별' if frequency=='weekly' else '공통'} 관측치 부족 ({len(common)}<{min_obs})")
             mc = np.array([m_map[d] for d in common], dtype=float)
             tc_a = np.array([t_map[d] for d in common], dtype=float)
             m_r = np.diff(np.log(mc))
@@ -1853,6 +1866,7 @@ def wacc_beta():
         "status": "ok",
         "market": market,
         "adjustment": adjust,
+        "frequency": frequency,
         "start": start, "end": end,
         "results": results,
     })
