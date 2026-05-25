@@ -2118,8 +2118,11 @@ function waccRenderPeers(){
   const tax=(parseFloat(document.getElementById('w_tax')?.value)||25)/100;
   tb.innerHTML=window.waccPeers.map((p,i)=>{
     const beta_u=p.betaL/(1+(1-tax)*p.de/100);
-    // β 회귀 기간 + D/E 출처를 한 줄로 합쳐 표시 (감사 증적 — 평가기준일 매칭 가시화)
+    // 해석된 코드(티커) + β 회귀 기간 + D/E 출처를 한 줄로 합쳐 표시 (감사 증적)
     const metaParts=[];
+    if(p._code){
+      metaParts.push(`<b style="color:var(--accent);font-family:var(--mono,monospace)">${p._code}</b>`);
+    }
     if(p.betaStart && p.betaEnd){
       metaParts.push(`β ${p.betaStart}~${p.betaEnd}${p.betaFreq==='weekly'?' (주별)':''}${p.betaR2!=null?` R²=${p.betaR2}`:''}`);
     }
@@ -2665,6 +2668,7 @@ async function waccFetchPeer(i){
   }
   if(!code){status.style.color='var(--red)';status.textContent=`'${q}' 티커 해석 실패`;return;}
   if(resolvedName && !q.includes(code))peer.name=resolvedName+' ('+code+')';
+  peer._code=code;   // 해석된 코드 저장 (Enter 경로에서도 메타 표시·재조회에 사용)
   // 2) β와 D/E 병렬 조회 — 평가기준일(#valuation_date) 기준으로 회귀 종료일·재무제표 일치
   const valDateStr=document.getElementById('valuation_date')?.value || '';
   const market=document.getElementById('w_market_idx').value;
