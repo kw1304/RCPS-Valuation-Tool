@@ -859,11 +859,13 @@ details.note-fold .note{margin-top:4px}
       <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center;margin-left:auto"></span>
     </div>
     <div class="row3" style="margin-top:12px">
-      <div class="field"><label>평가대상 D/E (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">비상장은 유사기업 중앙값 권장</span></label>
-        <div style="display:flex;gap:6px">
-          <input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')" style="flex:1;min-width:0">
-          <button type="button" onclick="waccApplyPeerMedianDE()" title="유사기업 D/E 중앙값을 평가대상 D/E로 적용 (Hamada relever 표준 절차)" style="padding:0.3rem 0.55rem;font-size:0.7rem;background:#EDE9FE;color:#5B21B6;border:1px solid #DDD6FE;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">유사기업<br>중앙값↓</button>
+      <div class="field"><label>평가대상 D/E (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">본인 BS or 유사기업 중앙값</span></label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')" style="flex:1;min-width:60px">
+          <button type="button" onclick="waccApplySelfDE()" title="평가대상 본인 BS 장부가 D/E 적용. 평가대상이 산업과 크게 다른 자본구조면 권장." style="padding:0.3rem 0.5rem;font-size:0.66rem;background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">평가대상<br>본인↓</button>
+          <button type="button" onclick="waccApplyPeerMedianDE()" title="유사기업 D/E 중앙값 적용. 산업 자본구조가 안정적일 때 권장 (Damodaran 표준)." style="padding:0.3rem 0.5rem;font-size:0.66rem;background:#EDE9FE;color:#5B21B6;border:1px solid #DDD6FE;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">유사기업<br>중앙값↓</button>
         </div>
+        <div style="font-size:.62rem;color:var(--text3);margin-top:2px">감리 권장: 두 값 모두 산출 후 sensitivity 분석</div>
       </div>
       <div class="field"><label>법인세율 t (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가/구간↓</span></label>
         <div style="display:flex;gap:6px">
@@ -2112,6 +2114,48 @@ function waccRenderPeers(){
   }).join('');
 }
 function waccAddPeer(){window.waccPeers.push({name:'',betaL:1.0,de:50});waccRenderPeers();waccRecalc();}
+// 평가대상 본인 BS 장부가 D/E 적용. 상장이면 yfinance, 아니면 수동 prompt.
+async function waccApplySelfDE(){
+  const status=document.getElementById('w-beta-status');
+  const selfTicker=document.getElementById('self_ticker')?.value?.trim();
+  const vd=document.getElementById('valuation_date')?.value||'';
+  let d=null, e=null, src='수동';
+  if(selfTicker){
+    if(status){status.style.color='var(--text3)';status.textContent=`평가대상 ${selfTicker} BS 조회 중…`;}
+    try{
+      const r=await fetch('/api/wacc/de',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({tickers:[selfTicker],date:vd||null})});
+      const j=await r.json();
+      const r0=j.results?.[0]||{};
+      d=r0.total_debt; e=r0.stockholders_equity;
+      src=r0.td_source==='bs'?`yfinance BS ${r0.as_of}`:'yfinance 현시점';
+    }catch(ex){}
+  }
+  if(d==null||e==null){
+    const dStr=prompt('평가대상 부채(D) 장부가 — 단위: 백만원\n(단기차입금+유동성장기부채+사채+장기차입금 합계)','0');
+    if(dStr===null)return;
+    const eStr=prompt('평가대상 자기자본(E) 장부가 — 단위: 백만원\n(BS상 자기자본 합계)','0');
+    if(eStr===null)return;
+    d=parseFloat(dStr.replace(/,/g,''))*1e6;
+    e=parseFloat(eStr.replace(/,/g,''))*1e6;
+    src='수동입력 (백만원)';
+  }
+  if(!isFinite(d)||!isFinite(e)||e<=0){
+    if(status){status.style.color='var(--red)';status.textContent='D 또는 E 값이 유효하지 않습니다.';}
+    return;
+  }
+  const de=d/e*100;
+  const el=document.getElementById('w_de_target');
+  el.value=(Math.round(de*100)/100).toFixed(2);
+  waccSyncCap('de');
+  el.style.transition='none';el.style.background='#DCFCE7';
+  setTimeout(()=>{el.style.transition='background 1.2s ease';el.style.background='';},80);
+  if(status){
+    const fmt=v=>(v/1e8).toLocaleString('ko-KR',{maximumFractionDigits:0})+'억';
+    status.style.color='var(--green)';
+    status.innerHTML=`✓ 평가대상 본인 D/E ${de.toFixed(2)}% (D=${fmt(d)} / E=${fmt(e)}) · 출처: ${src}`;
+  }
+}
 // 비상장 평가대상: 유사기업 D/E 중앙값을 평가대상 D/E로 적용 (Hamada relever 표준)
 function waccApplyPeerMedianDE(){
   const status=document.getElementById('w-beta-status');
