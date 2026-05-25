@@ -17,7 +17,7 @@ from models.goldman_sachs import gs_rcps
 from models.monte_carlo import monte_carlo_rcps
 from sensitivity.analysis import sensitivity_analysis
 from output.report import generate_workpaper
-from output.exports import generate_dcf_xlsx, generate_wacc_xlsx, generate_bootstrap_xlsx
+from output.exports import generate_dcf_xlsx, generate_wacc_xlsx, generate_bootstrap_xlsx, generate_volatility_xlsx
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
 app = Flask(__name__, static_folder=FRONTEND_DIR)
@@ -2265,6 +2265,19 @@ def bootstrap_export():
             generate_bootstrap_xlsx(data, tmp.name)
         return send_file(tmp.name, as_attachment=True,
                          download_name=f"부트스트래핑_{data.get('valuation_date','')}.xlsx")
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)[:300]}), 200
+
+
+@app.route("/api/volatility/export", methods=["POST"])
+def volatility_export():
+    """변동성 산정 결과 Excel — 산정조건·유사기업σ·조회실패·원자료 시트."""
+    data = request.get_json(force=True) or {}
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            generate_volatility_xlsx(data, tmp.name)
+        return send_file(tmp.name, as_attachment=True,
+                         download_name=f"변동성평가_{data.get('valuation_date','')}.xlsx")
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)[:300]}), 200
 

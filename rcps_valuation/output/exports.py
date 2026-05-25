@@ -368,3 +368,122 @@ def generate_bootstrap_xlsx(data, output_path):
 
     wb.save(output_path)
     return output_path
+
+
+# ══════════════════════════════════════════════════════════════
+#  변동성 평가 상세 Excel
+# ══════════════════════════════════════════════════════════════
+def generate_volatility_xlsx(data, output_path):
+    """변동성 산정 결과 워크북. data:
+        {valuation_date, sigma_pct, method, trading_days, start, end,
+         outlier_info: {method, k, applied, reason},
+         per_ticker: [{ticker, name, sigma, sigma_pct, trading_days_used, n_obs, outlier, reason, marcap}],
+         failed: [{ticker, reason}],
+         raw: {dates, series: {ticker: [close,...]}}}"""
+    from openpyxl.utils import get_column_letter as _gcl
+    wb = Workbook()
+
+    # 1. 산정조건
+    ws = wb.active
+    ws.title = "1.산정조건"
+    for col, w in zip("ABCD", [28, 22, 28, 22]):
+        ws.column_dimensions[col].width = w
+    _title(ws, "변동성(σ) 산정 조건", 4)
+    _cell(ws, 2, 1, f"평가기준일: {data.get('valuation_date','')}", color="718096", size=9)
+    _cell(ws, 2, 3, f"작성일: {datetime.today().strftime('%Y-%m-%d')}", color="718096", size=9)
+    _section(ws, 4, "■ 산정 파라미터")
+    for i, h in enumerate(["항목", "값", "항목", "값"], 1):
+        _hdr(ws, 5, i, h)
+    mlabel = {"median": "중앙값", "mean": "단순평균", "cap_weighted": "시총가중"}.get(data.get("method", ""), data.get("method", ""))
+    rows = [
+        ("산정 시작일", data.get("start", "-"), "산정 종료일", data.get("end", "-")),
+        ("집계 방식", mlabel, "연 거래일 수", str(data.get("trading_days", "auto"))),
+    ]
+    oi = data.get("outlier_info") or {}
+    if oi.get("method") and oi.get("method") != "none":
+        ol_label = {"iqr": "IQR (Tukey)", "mad": "MAD"}.get(oi["method"], oi["method"])
+        ol_status = f"{ol_label} k={oi.get('k', '-')}× 적용됨" if oi.get("applied") else f"{ol_label} 미적용 ({oi.get('reason', '-')})"
+        rows.append(("이상치 필터", ol_status, "", ""))
+    for ri, row in enumerate(rows, 6):
+        bg = _ALT if ri % 2 == 0 else "FFFFFF"
+        for ci, v in enumerate(row, 1):
+            _cell(ws, ri, ci, v, bg=bg)
+    r0 = 6 + len(rows) + 2
+    _section(ws, r0, "■ 산출 결과")
+    _hdr(ws, r0 + 1, 1, "항목"); _hdr(ws, r0 + 1, 2, "값")
+    sig = data.get("sigma_pct", 0) or 0
+    per = data.get("per_ticker") or []
+    valid = [p for p in per if p.get("sigma") is not None]
+    used = [p for p in valid if not p.get("outlier")]
+    failed = data.get("failed") or []
+    out_rows = [
+        ("집계 변동성 σ (연율)", f"{sig:.2f}%"),
+        ("유효 종목 수", f"{len(valid)}개"),
+        ("사용 종목 수 (이상치 제외 후)", f"{len(used)}개"),
+        ("이상치 제외 종목", f"{len(valid) - len(used)}개"),
+        ("조회 실패 종목", f"{len(failed)}개"),
+    ]
+    for ri, (k, v) in enumerate(out_rows, r0 + 2):
+        bg = _LIGHT if ri == r0 + 2 else (_ALT if ri % 2 == 0 else "FFFFFF")
+        _cell(ws, ri, 1, k, bold=(ri == r0 + 2), bg=bg)
+        _cell(ws, ri, 2, v, bold=(ri == r0 + 2), bg=bg, color=_BLUE if ri == r0 + 2 else None)
+
+    # 2. 유사기업 σ
+    ws2 = wb.create_sheet("2.유사기업σ")
+    cols = ["A", "B", "C", "D", "E", "F", "G", "H"]
+    for col, w in zip(cols, [28, 14, 12, 14, 14, 14, 12, 28]):
+        ws2.column_dimensions[col].width = w
+    _title(ws2, "유사상장기업별 역사적 변동성 (일별 로그수익률 표준편차 × √연거래일)", 8)
+    for i, h in enumerate(["종목명", "코드", "σ (연율)", "σ_decimal", "연거래일", "관측치(일)", "이상치", "비고/제외사유"], 1):
+        _hdr(ws2, 3, i, h)
+    for ri, p in enumerate(per, 4):
+        bg = _ALT if ri % 2 == 0 else "FFFFFF"
+        ol_bg = "FEEBC8" if p.get("outlier") else bg
+        fail_bg = "FED7D7" if p.get("sigma") is None else bg
+        _cell(ws2, ri, 1, p.get("name") or "-", bg=fail_bg)
+        _cell(ws2, ri, 2, p.get("ticker") or "-", bg=fail_bg, align="center")
+        sg = p.get("sigma_pct")
+        if sg is None and p.get("sigma") is not None:
+            sg = p["sigma"] * 100
+        _cell(ws2, ri, 3, f"{sg:.2f}%" if sg is not None else "-", bg=ol_bg, align="right", bold=True)
+        _cell(ws2, ri, 4, f"{p['sigma']:.6f}" if p.get("sigma") is not None else "-", bg=fail_bg, align="right")
+        _cell(ws2, ri, 5, p.get("trading_days_used") or "-", bg=bg, align="center")
+        _cell(ws2, ri, 6, p.get("n_obs") or "-", bg=bg, align="center")
+        _cell(ws2, ri, 7, "이상치" if p.get("outlier") else "", bg=ol_bg, align="center", color="DC2626" if p.get("outlier") else None)
+        _cell(ws2, ri, 8, p.get("reason") or "", bg=fail_bg, color="718096", size=9)
+
+    # 3. 실패 종목 (있으면)
+    if failed:
+        ws3 = wb.create_sheet("3.조회실패")
+        for col, w in zip("AB", [20, 60]):
+            ws3.column_dimensions[col].width = w
+        _title(ws3, "조회 실패 종목 — 사유", 2)
+        _hdr(ws3, 3, 1, "코드"); _hdr(ws3, 3, 2, "사유")
+        for ri, f in enumerate(failed, 4):
+            bg = _ALT if ri % 2 == 0 else "FFFFFF"
+            _cell(ws3, ri, 1, f.get("ticker") or "-", bg=bg, align="center")
+            _cell(ws3, ri, 2, f.get("reason") or "-", bg=bg, color="DC2626")
+
+    # 4. 원자료 종가 (옵션)
+    raw = data.get("raw") or {}
+    dates = raw.get("dates") or []
+    series = raw.get("series") or {}
+    if dates and series:
+        ws4 = wb.create_sheet("4.원자료(종가)")
+        tickers = list(series.keys())
+        ws4.column_dimensions["A"].width = 12
+        for ci in range(2, len(tickers) + 2):
+            ws4.column_dimensions[_gcl(ci)].width = 14
+        _title(ws4, "원자료 — 일별 종가 (감사 증빙)", len(tickers) + 1)
+        _hdr(ws4, 3, 1, "날짜")
+        for ci, tk in enumerate(tickers, 2):
+            _hdr(ws4, 3, ci, tk)
+        for ri, d in enumerate(dates, 4):
+            bg = _ALT if ri % 2 == 0 else "FFFFFF"
+            _cell(ws4, ri, 1, d, bg=bg, align="center")
+            for ci, tk in enumerate(tickers, 2):
+                v = series[tk][ri - 4] if ri - 4 < len(series[tk]) else None
+                _cell(ws4, ri, ci, v if v is not None else "-", bg=bg, fmt="#,##0.##", align="right")
+
+    wb.save(output_path)
+    return output_path

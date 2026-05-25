@@ -1022,6 +1022,13 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-vol" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
+  <div style="display:flex;justify-content:flex-end;margin-bottom:-4px">
+    <button class="btn-dl" onclick="volDownloadXlsx()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      변동성 상세 Excel
+    </button>
+  </div>
+
   <div class="sec">
     <div class="sec-title">변동성 평가 <span class="badge-opt">유사기업 · 역사적</span></div>
     <div class="note">비상장 발행사의 변동성(σ)은 <b>유사상장기업의 역사적 변동성</b>으로 추정합니다. 산정기간은 <b>잔여만기 매칭</b>이 K-IFRS 감사 기본값입니다. 산출 후 <b>"RCPS 평가에 적용"</b>으로 변동성 입력칸에 반영됩니다.</div>
@@ -1539,6 +1546,26 @@ async function waccDownloadXlsx(){
     beta_agg: document.getElementById('w_beta_agg')?.value
   };
   await _xlsxDownload('/api/wacc/export', payload, `WACC상세_${vd||'now'}.xlsx`);
+}
+
+async function volDownloadXlsx(){
+  const j=window.volLastResult;
+  if(!j){alert('변동성 산출 결과가 없습니다. 먼저 "변동성 조회·산출"을 실행하세요.');return;}
+  const vd=document.getElementById('valuation_date')?.value||'';
+  // 원자료 (volLastRaw)가 있으면 함께 첨부
+  const raw=window.volLastRaw||null;
+  const payload={
+    valuation_date: vd,
+    sigma_pct: j.sigma_pct,
+    method: j.method,
+    trading_days: j.trading_days,
+    start: j.start, end: j.end,
+    outlier_info: j.outlier_info||{},
+    per_ticker: j.per_ticker||[],
+    failed: j.failed||[],
+    raw: raw
+  };
+  await _xlsxDownload('/api/volatility/export', payload, `변동성평가_${vd||'now'}.xlsx`);
 }
 
 async function bootDownloadXlsx(){
@@ -3126,6 +3153,7 @@ async function volRunCsv(){
 }
 function volRenderResult(j){
   window.volLastSigmaPct=j.sigma_pct;
+  window.volLastResult=j;  // Excel 다운로드용 캐시
   document.getElementById('vol-result').style.display='';
   document.getElementById('vol-sigma').textContent=j.sigma_pct.toFixed(2)+'%';
   const okN=j.per_ticker.filter(p=>p.sigma!=null).length;
