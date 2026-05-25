@@ -1330,6 +1330,41 @@ def volatility_search():
         for r in _yahoo_search(q):
             if r["code"] not in seen:
                 out.append(r); seen.add(r["code"])
+    # 통화 일관성·관련성 정렬:
+    # ① 이름이 query 로 시작하면 강한 가산점 (Toyota Motor Corp이 Toyota Tsusho 앞으로)
+    # ② ADR/예탁증서/DR/OTC는 후순위 — 본상장이 BS·시총 동일 통화 보장
+    #    예: "Toyota Motor Corp ADR"(TM, NYSE, USD) vs "TOYOTA MOTOR CORP"(7203.T, 도쿄, JPY)
+    # 주력 사업 descriptor — 글로벌 대형사가 흔히 갖는 corp suffix 직전 단어
+    _PRIMARY = {"motor","motors","industries","industrial","electronics","electric",
+                "financial","group","holdings","holding","bank","banking","energy",
+                "oil","gas","pharma","pharmaceutical","pharmaceuticals","semiconductor",
+                "technology","tech","chemical","chemicals","steel","life","health",
+                "healthcare","insurance","aerospace","aviation","airlines","automotive",
+                "communications","networks","systems","software","media","entertainment",
+                "telecom","mobile","retail","consumer","beverages","foods","food"}
+    def _rank(r):
+        nm = (r.get("name") or "").lower().strip()
+        market = (r.get("market") or "").upper()
+        # 감점 (큰 숫자 = 후순위)
+        penalty = 0
+        if "adr" in nm or " ads " in f" {nm} " or "depositary" in nm or "dep recpt" in nm or "_dr " in nm or nm.endswith("_dr") or " dr " in f" {nm} ":
+            penalty += 100
+        if market in {"OTC MARKETS", "PINK SHEETS", "PNK", "OTC"}:
+            penalty += 50
+        # 관련성 가산점 (작은 숫자 = 우선)
+        rel = 50
+        if nm.startswith(ql):           # 정확 시작 매칭
+            rel = 0
+        elif (" " + ql) in (" " + nm):  # 단어 경계 매칭
+            rel = 10
+        # query 바로 뒤가 주력 사업 descriptor면 대형 본사일 확률↑ (Toyota Motor vs Toyota Tsusho)
+        if rel == 0:
+            rest = nm[len(ql):].strip()
+            first_word = rest.split()[0].rstrip(",.;") if rest else ""
+            if first_word in _PRIMARY:
+                rel -= 5
+        return penalty + rel
+    out.sort(key=_rank)
     return jsonify({"status": "ok", "results": out})
 
 
