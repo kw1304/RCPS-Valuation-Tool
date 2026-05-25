@@ -493,9 +493,30 @@ def download():
             },
         }
 
+        # 이항트리 수집 (TF + GS) — 감사조서에 첨부
+        tree_steps_dl = min(int(data.get("tree_steps", 40) or 40), 60)
+        try:
+            tf_tree_res = tf_rcps(params, steps=tree_steps_dl, collect_tree=True, **dl_kw)
+            tf_tree_dl = tf_tree_res.get("tree")
+        except Exception:
+            tf_tree_dl = None
+        try:
+            gs_kw_dl = dict(dl_kw)
+            if data.get("gs_params"):
+                gp = data["gs_params"]
+                for k in ("enterprise_value", "net_debt", "common_shares", "rcps_shares"):
+                    v = _f(gp.get(k))
+                    if v:
+                        gs_kw_dl[k] = v
+            gs_tree_res = gs_rcps(params, steps=tree_steps_dl, collect_tree=True, **gs_kw_dl)
+            gs_tree_dl = gs_tree_res.get("tree")
+        except Exception:
+            gs_tree_dl = None
+
         tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
         tmp.close()
-        generate_workpaper(params, initial_adapted, subsequent, sens, tmp.name)
+        generate_workpaper(params, initial_adapted, subsequent, sens, tmp.name,
+                           tf_tree=tf_tree_dl, gs_tree=gs_tree_dl)
         return send_file(tmp.name, as_attachment=True,
                          download_name="RCPS_감사조서.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

@@ -4,7 +4,7 @@ from openpyxl.utils import get_column_letter
 from datetime import datetime
 
 
-def generate_workpaper(params, initial_result, subsequent_results, sensitivity_result, output_path):
+def generate_workpaper(params, initial_result, subsequent_results, sensitivity_result, output_path, tf_tree=None, gs_tree=None):
     wb = Workbook()
 
     ws1 = wb.active
@@ -14,15 +14,85 @@ def generate_workpaper(params, initial_result, subsequent_results, sensitivity_r
     ws2 = wb.create_sheet("2.평가결과")
     _write_valuation(ws2, initial_result)
 
-    if subsequent_results:
-        ws3 = wb.create_sheet("3.후속측정")
-        _write_subsequent(ws3, subsequent_results)
+    # 이항트리 시트 (TF/GS, collect_tree 결과 있을 때만)
+    if tf_tree and not tf_tree.get("error"):
+        ws_tf = wb.create_sheet("3.TF이항트리")
+        _write_tree(ws_tf, "TF (Tsiveriotis-Fernandes)", tf_tree)
+    if gs_tree and not gs_tree.get("error"):
+        ws_gs = wb.create_sheet("4.GS이항트리")
+        _write_tree(ws_gs, "GS (Goldman Sachs)", gs_tree)
 
-    ws4 = wb.create_sheet("4.민감도분석")
-    _write_sensitivity(ws4, sensitivity_result)
+    if subsequent_results:
+        ws_sub = wb.create_sheet("5.후속측정")
+        _write_subsequent(ws_sub, subsequent_results)
+
+    ws_sens = wb.create_sheet("6.민감도분석")
+    _write_sensitivity(ws_sens, sensitivity_result)
 
     wb.save(output_path)
     return output_path
+
+
+def _write_tree(ws, title, tree):
+    """이항트리 그리드 출력. tree = {stock, rcps_value, conv_intrinsic, decision, u, d, p, steps}"""
+    stock = tree.get("stock") or []
+    rcps  = tree.get("rcps_value") or []
+    conv  = tree.get("conv_intrinsic") or []
+    dec   = tree.get("decision") or []
+    n = len(stock)
+    if n == 0:
+        return
+    steps = tree.get("steps", n - 1)
+    u = tree.get("u"); d = tree.get("d"); p = tree.get("p")
+
+    # 타이틀
+    ws.row_dimensions[1].height = 32
+    t = ws.cell(row=1, column=1, value=f"이항트리 — {title}")
+    t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
+    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.alignment = Alignment(horizontal="center", vertical="center")
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=min(n + 1, 10))
+
+    # 트리 파라미터
+    ws.cell(row=2, column=1, value=f"steps={steps} | u={u} | d={d} | p={p if not isinstance(p,list) else 'curve'}").font = Font(name="맑은 고딕", size=9, color="718096")
+
+    # 컬럼 폭
+    for c in range(1, n + 2):
+        ws.column_dimensions[get_column_letter(c)].width = 14
+    ws.column_dimensions["A"].width = 18
+
+    # 4개 블록: 주가 / RCPS가치 / 전환내재 / 의사결정
+    def _block(start_row, label, grid, fmt):
+        r0 = start_row
+        c = ws.cell(row=r0, column=1, value=f"■ {label}")
+        c.font = Font(name="맑은 고딕", bold=True, size=11, color="1A365D")
+        # 헤더: 노드 j (0..steps)
+        _hdr(ws, r0 + 1, 1, "Step \\ j")
+        for j in range(n):
+            _hdr(ws, r0 + 1, j + 2, f"j={j}")
+        for i in range(n):
+            _hdr(ws, r0 + 2 + i, 1, f"i={i}")
+            row = grid[i] if i < len(grid) else []
+            for j in range(i + 1):
+                v = row[j] if j < len(row) else None
+                if v is None or v == "":
+                    _cell(ws, r0 + 2 + i, j + 2, "", bg="FFFFFF")
+                else:
+                    bg = "F7FAFC" if (i + j) % 2 == 0 else "FFFFFF"
+                    if fmt == "money":
+                        _cell(ws, r0 + 2 + i, j + 2, v, bg=bg, num_fmt="#,##0.00", align="right")
+                    elif fmt == "text":
+                        bg2 = {"전환": "C6F6D5", "상환": "FED7D7", "콜": "FEEBC8", "보유": bg}.get(v, bg)
+                        _cell(ws, r0 + 2 + i, j + 2, v, bg=bg2, align="center")
+                    else:
+                        _cell(ws, r0 + 2 + i, j + 2, v, bg=bg, align="right")
+        return r0 + 2 + n  # 다음 블록 시작 row 반환
+
+    next_row = _block(4, "주가 (S_{i,j})", stock, "money")
+    next_row = _block(next_row + 2, "RCPS 가치 (V_{i,j})", rcps, "money")
+    next_row = _block(next_row + 2, "전환 내재가치 (Conv intrinsic)", conv, "money")
+    if dec:
+        _block(next_row + 2, "의사결정 (Decision: 전환/상환/보유/콜)", dec, "text")
 
 
 def _cell(ws, row, col, value, bold=False, bg=None, num_fmt=None, align="left", color=None):

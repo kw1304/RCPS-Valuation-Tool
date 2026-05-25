@@ -763,6 +763,13 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-dcf" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
+  <div style="display:flex;justify-content:flex-end;margin-bottom:-4px">
+    <button class="btn-dl" onclick="dcfDownloadXlsx()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      DCF 상세 Excel
+    </button>
+  </div>
+
   <div class="dcf-assump">
     <div class="dcf-assump-hd">밸류에이션 가정</div>
     <div class="dcf-assump-grid" style="grid-template-columns:90px 90px 90px 1fr 1fr 1fr 1fr">
@@ -780,7 +787,6 @@ details.note-fold .note{margin-top:4px}
     <button class="btn-sm add" onclick="dcfAddYear()">+ 연도 추가</button>
     <button class="btn-sm del" onclick="dcfRemoveYear()">− 마지막 연도 제거</button>
     <div style="flex:1"></div>
-    <button class="btn-sm" onclick="dcfDownloadXlsx()" style="background:#DCFCE7;color:#166534;border-color:#BBF7D0">📥 DCF 상세 Excel</button>
     <div class="dcf-sp-badge" id="dcf-sp-badge"></div>
     <button class="btn-sm send" id="btn-send" style="display:none" onclick="sendToRCPS()">→ RCPS 평가에 적용</button>
   </div>
@@ -809,6 +815,13 @@ details.note-fold .note{margin-top:4px}
      WACC 산정 페이지 (CAPM + Hamada unlever/relever)
 ══════════════════════ -->
 <div class="page" id="page-wacc" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
+
+  <div style="display:flex;justify-content:flex-end;max-width:1100px;width:100%;margin:0 auto;margin-bottom:-4px">
+    <button class="btn-dl" onclick="waccDownloadXlsx()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      WACC 상세 Excel
+    </button>
+  </div>
 
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">WACC 상세 산정 <span class="badge-opt">DCF 할인율</span></div>
@@ -998,7 +1011,6 @@ details.note-fold .note{margin-top:4px}
       <div>WACC =</div>
       <div style="font-size:1.6rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums"><span id="w_wacc_out">—</span></div>
       <button class="btn-run" onclick="waccApplyToDcf()" style="padding:0.45rem 0.9rem">DCF 탭에 적용</button>
-      <button class="btn-run" onclick="waccDownloadXlsx()" style="padding:0.45rem 0.9rem;background:#DCFCE7;color:#166534;border-color:#BBF7D0">📥 WACC 상세 Excel</button>
     </div>
     <div class="note" id="w_wacc_formula">E/V × Ke + D/V × Kd × (1−t)</div>
   </div>
@@ -1112,6 +1124,13 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-boot" style="display:none">
 
+  <div style="display:flex;justify-content:flex-end;padding:0 1.2rem;margin-top:0.6rem;margin-bottom:-0.4rem">
+    <button class="btn-dl" onclick="bootDownloadXlsx()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      부트스트래핑 상세 Excel
+    </button>
+  </div>
+
   <!-- 금리 자동 구성: ECOS 국고채(Rf) + 이자율 파일(Rd) -->
   <div class="dcf-assump" style="flex-shrink:0">
     <div class="dcf-assump-hd">금리 자동 구성 (ECOS 국고채 Rf + 이자율 파일 Rd)</div>
@@ -1224,10 +1243,8 @@ details.note-fold .note{margin-top:4px}
 
   <!-- 이자율 DATA 시트 -->
   <div class="dcf-assump" style="flex-shrink:0;margin-top:10px" id="rate-data-panel">
-    <div class="dcf-assump-hd" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div class="dcf-assump-hd" style="display:flex;align-items:center;justify-content:space-between">
       <span>이자율 DATA (평가 노드 · 선도이자율 · BM 양식)</span>
-      <span style="flex:1"></span>
-      <button class="btn-sm" onclick="bootDownloadXlsx()" style="background:#DCFCE7;color:#166534;border-color:#BBF7D0">📥 부트스트래핑 상세 Excel</button>
       <span id="rate-data-stepinfo" style="font-weight:400;font-size:.72rem;color:var(--accent)">평가 단계 따름</span>
     </div>
     <div id="rate-data-caption" style="font-size:0.68rem;color:var(--text3);margin-bottom:8px;line-height:1.6"></div>
