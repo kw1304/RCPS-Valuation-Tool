@@ -1043,8 +1043,15 @@ def _llm_summarize(provider: str, api_key: str, model: str, prompt: str,
                     if attempt == 0 and 0 < delay <= 30:
                         time.sleep(delay + 1)
                         continue
-                    kind = ("분당 한도(잠시 후 자동 해소)" if delay and delay <= 60
-                            else "일일 한도 소진 추정 → PT 자정(한국 오후 5시경) 리셋 또는 다른 키/모델")
+                    # quotaId에 PerDay 포함 시 일일 한도, 그 외 delay로 판별
+                    is_daily = bool(qid and 'PerDay' in qid)
+                    is_minute = bool(qid and 'PerMinute' in qid)
+                    if is_daily:
+                        kind = "일일 한도 소진 → PT 자정(한국 오후 5시경) 리셋 / 다른 키·모델 사용 권장"
+                    elif is_minute or (delay and delay <= 60):
+                        kind = "분당 한도(잠시 후 자동 해소)"
+                    else:
+                        kind = "한도 초과 → 잠시 후 재시도 또는 다른 키·모델"
                     raise RuntimeError(
                         f"무료 한도 초과(429). 한도종류={qid or '미상'}, 권장대기={delay or '?'}초. {kind}.")
                 raise RuntimeError(f"Gemini API {he.code}: {detail[:250]}")
