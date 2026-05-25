@@ -2118,15 +2118,19 @@ function waccRenderPeers(){
   const tax=(parseFloat(document.getElementById('w_tax')?.value)||25)/100;
   tb.innerHTML=window.waccPeers.map((p,i)=>{
     const beta_u=p.betaL/(1+(1-tax)*p.de/100);
-    // D/E 출처 라벨: as_of(매칭된 BS 일자) 또는 ⚠ 폴백 경고
-    let deMeta='';
-    if(p.tdSource==='bs' && p.asOf){
-      deMeta=`<div style="font-size:.62rem;color:var(--text3);margin-top:2px">D/E 기준 ${p.asOf}</div>`;
-    } else if(p.tdSource==='info'){
-      deMeta=`<div style="font-size:.62rem;color:#B45309;margin-top:2px" title="평가기준일 BS 미확보 → 현시점 yfinance.info 값으로 폴백. 평가기준일 이후 자본구조 변동 시 부정확.">⚠ 현시점 폴백 (평가기준일 BS 미확보)</div>`;
-    } else if(p.mcSource==='info' && p.tdSource){
-      deMeta=`<div style="font-size:.62rem;color:#B45309;margin-top:2px" title="시총 현시점 폴백">⚠ 시총 현시점 폴백</div>`;
+    // β 회귀 기간 + D/E 출처를 한 줄로 합쳐 표시 (감사 증적 — 평가기준일 매칭 가시화)
+    const metaParts=[];
+    if(p.betaStart && p.betaEnd){
+      metaParts.push(`β ${p.betaStart}~${p.betaEnd}${p.betaFreq==='weekly'?' (주별)':''}${p.betaR2!=null?` R²=${p.betaR2}`:''}`);
     }
+    if(p.tdSource==='bs' && p.asOf){
+      metaParts.push(`D/E ${p.asOf}`);
+    } else if(p.tdSource==='info'){
+      metaParts.push(`<span style="color:#B45309" title="평가기준일 BS 미확보 → 현시점 yfinance.info 폴백">⚠ D/E 현시점 폴백</span>`);
+    } else if(p.mcSource==='info' && p.tdSource){
+      metaParts.push(`<span style="color:#B45309">⚠ 시총 현시점 폴백</span>`);
+    }
+    const deMeta=metaParts.length?`<div style="font-size:.62rem;color:var(--text3);margin-top:2px">${metaParts.join(' · ')}</div>`:'';
     return `<tr>
       <td><input value="${(p.name||'').replace(/"/g,'&quot;')}" onchange="window.waccPeers[${i}].name=this.value;window.waccPeers[${i}]._code=null" oninput="window.waccPeers[${i}]._code=null;waccPeerSearch(${i},this)" onfocus="waccPeerSearch(${i},this)" onblur="setTimeout(()=>waccHidePeerDrop(),200)" onkeydown="if(event.key==='Enter'){event.preventDefault();waccHidePeerDrop();window.waccPeers[${i}].name=this.value;waccFetchPeer(${i});}else if(event.key==='Escape'){waccHidePeerDrop();}" style="width:100%;border:none;background:transparent;font-size:.75rem;font-family:var(--sans)" placeholder="예: 코스맥스, toyota motor, AAPL (입력하면 후보 ↓)">${deMeta}</td>
       <td><input type="number" value="${p.betaL}" step="0.05" onchange="window.waccPeers[${i}].betaL=parseFloat(this.value)||0;waccRecalc()" style="width:80%;border:none;background:transparent;text-align:right;font-variant-numeric:tabular-nums"></td>
@@ -2682,8 +2686,15 @@ async function waccFetchPeer(i){
     const parts=[];
     if(bR.status==='ok' && bR.results[0] && bR.results[0].adjusted_beta!=null){
       peer.betaL=bR.results[0].adjusted_beta;
-      parts.push(`β=${peer.betaL} (R²=${bR.results[0].r2})`);
-    } else parts.push('β 실패');
+      // β 회귀 기간 메타 (renderPeers에서 표시)
+      peer.betaStart=bR.start||null;
+      peer.betaEnd=bR.end||null;
+      peer.betaR2=bR.results[0].r2;
+      peer.betaNObs=bR.results[0].n_obs;
+      peer.betaMarket=bR.market||null;
+      peer.betaFreq=bR.frequency||'daily';
+      parts.push(`β=${peer.betaL} (R²=${bR.results[0].r2}, n=${bR.results[0].n_obs}, ${bR.market})`);
+    } else {parts.push('β 실패'); peer.betaStart=null;peer.betaEnd=null;}
     let asOf=null;
     if(dR.status==='ok' && dR.results[0]){
       const r0=dR.results[0];
