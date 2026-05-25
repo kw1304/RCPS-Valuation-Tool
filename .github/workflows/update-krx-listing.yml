@@ -1,0 +1,53 @@
+name: Update KRX Listing CSV
+
+on:
+  schedule:
+    # 매주 월요일 00:00 UTC (한국 오전 9시 = 장 시작 시각)
+    - cron: '0 0 * * 1'
+  # 수동 실행도 가능 (GitHub Actions 탭에서 "Run workflow" 버튼)
+  workflow_dispatch:
+
+permissions:
+  contents: write  # 자동 커밋·푸시 권한
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install FinanceDataReader
+        run: pip install finance-datareader pandas
+
+      - name: Fetch KRX listing
+        run: |
+          python -c "
+          import FinanceDataReader as fdr
+          df = fdr.StockListing('KRX')
+          print(f'Fetched {len(df)} stocks')
+          df[['Code','Name','Market','Marcap']].to_csv(
+              'rcps_valuation/data/krx_listing.csv',
+              index=False, encoding='utf-8'
+          )
+          print('Saved: rcps_valuation/data/krx_listing.csv')
+          "
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --quiet rcps_valuation/data/krx_listing.csv || echo "changed=1" >> $GITHUB_OUTPUT
+
+      - name: Commit and push if changed
+        if: steps.diff.outputs.changed == '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rcps_valuation/data/krx_listing.csv
+          git commit -m "Auto-update KRX listing CSV (weekly cron)"
+          git push
