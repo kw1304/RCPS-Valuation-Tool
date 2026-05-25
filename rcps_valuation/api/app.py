@@ -1067,25 +1067,35 @@ def _llm_summarize(provider: str, api_key: str, model: str, prompt: str,
         is_vision = bool(pdf_bytes) and ("scout" in m.lower() or "maverick" in m.lower() or "vision" in m.lower())
         # 메시지 구성: 비전이면 이미지 첨부, 아니면 텍스트만
         if is_vision:
-            # PDF 페이지를 PNG 이미지로 변환 → base64 → image_url 데이터 URI
-            import fitz  # PyMuPDF
+            # PDF 페이지 → JPEG(메모리 절약) → base64. Render free 512MB 호환을 위해 페이지별 즉시 해제.
+            import fitz, gc  # PyMuPDF
+            from PIL import Image
+            from io import BytesIO
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
             content_parts = [{"type": "text", "text": prompt}]
-            max_pages = 5  # Groq vision은 한 요청당 이미지 5장까지 권장 (속도·토큰)
-            mat = fitz.Matrix(150/72.0, 150/72.0)  # DPI 150 (Vision 모델은 200~300 불필요)
+            max_pages = 3   # 512MB 한도 위해 3장으로 축소 (이전 5)
+            dpi = 110       # DPI 110 (이전 150) — 텍스트 인식 충분, 메모리 약 1/2
+            mat = fitz.Matrix(dpi/72.0, dpi/72.0)
             try:
                 for i, page in enumerate(doc):
                     if i >= max_pages:
                         break
                     pix = page.get_pixmap(matrix=mat)
-                    png_bytes = pix.tobytes("png")
-                    b64 = base64.b64encode(png_bytes).decode("ascii")
+                    # PNG 대신 JPEG (메모리·파일크기 1/4 수준). 텍스트 인식엔 충분
+                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                    buf = BytesIO()
+                    img.save(buf, format="JPEG", quality=70, optimize=True)
+                    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
                     content_parts.append({
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{b64}"}
+                        "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
                     })
+                    # 페이지별 메모리 즉시 해제
+                    del pix, img, buf
+                    gc.collect()
             finally:
                 doc.close()
+                gc.collect()
             messages = [{"role": "user", "content": content_parts}]
         else:
             messages = [{"role": "user", "content": prompt}]
