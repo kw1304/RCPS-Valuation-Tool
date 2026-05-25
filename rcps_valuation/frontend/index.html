@@ -743,14 +743,14 @@ details.note-fold .note{margin-top:4px}
 
   <div class="dcf-assump">
     <div class="dcf-assump-hd">밸류에이션 가정</div>
-    <div class="dcf-assump-grid">
+    <div class="dcf-assump-grid" style="grid-template-columns:90px 90px 90px 1fr 1fr 1fr 1fr">
       <div class="field"><label>WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
-      <div class="field"><label>영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"><div class="note" style="margin-top:3px">WACC 미만 권장</div></div>
+      <div class="field"><label>영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"></div>
       <div class="field"><label>기본 세율 (%)</label><input type="number" id="a_tax" value="25" step="0.5" oninput="dcfTaxFill()"></div>
-      <div class="field"><label>이자부부채 (원) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">차입금+리스</span></label><input type="text" id="a_nd" class="money" value="2,000,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label>이자부부채 (원)</label><input type="text" id="a_nd" class="money" value="2,000,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
       <div class="field"><label>총발행주식수 (주)</label><input type="text" id="a_shares" class="money" value="1,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
-      <div class="field"><label>비영업자산 (원) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">현금 전액 포함</span></label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
-      <div class="field"><label>비지배지분조정 (원) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">연결평가 시</span></label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label>비영업자산 (원)</label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label>비지배지분조정 (원)</label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
     </div>
     <details style="margin-top:10px" id="dcf-bs-helper-details">
       <summary style="font-size:.78rem;color:var(--text2);cursor:pointer;font-weight:600;padding:6px 0">BS 항목별 입력 헬퍼 — 이자부부채·비영업자산 자동 합산</summary>
