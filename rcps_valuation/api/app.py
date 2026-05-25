@@ -2085,6 +2085,23 @@ def wacc_de():
     return jsonify({"status": "ok", "results": results, "date": date_str})
 
 
+# ── 시작 시 종목목록 캐시 백그라운드 프리로드 ───────────────────────────
+# Render Singapore 리전에서 첫 peer 검색이 10~30초 걸리던 문제 해결.
+# 서버 import 시 별도 스레드로 _stock_listing() 호출 → 캐시 미리 채워둠.
+# UptimeRobot keep-alive로 인스턴스 깨어 있는 동안 캐시도 유지됨.
+def _preload_stock_listing():
+    try:
+        import time
+        t0 = time.time()
+        _stock_listing()
+        print(f"[preload] stock listing cached in {time.time()-t0:.1f}s", flush=True)
+    except Exception as e:
+        print(f"[preload] stock listing failed: {e}", flush=True)
+
+import threading as _threading
+_threading.Thread(target=_preload_stock_listing, daemon=True).start()
+
+
 if __name__ == "__main__":
     print("RCPS 평가툴 서버 시작: http://localhost:5000")
     app.run(debug=True, port=5000, host="0.0.0.0")
