@@ -1775,6 +1775,89 @@ def bdt_evaluate():
     return jsonify(out)
 
 
+# ══════════════════════════════════════════════════════════════════
+#  WACC 베타 자동 회귀산정 (CAPM)
+# ══════════════════════════════════════════════════════════════════
+@app.route("/api/wacc/beta", methods=["POST"])
+def wacc_beta():
+    """유사기업 베타 자동 산정 — 시장지수에 대한 단순선형회귀(OLS).
+
+    body: {tickers:[...], market:'KS11', start, end, adjustment:'raw'|'blume'}
+    """
+    from models.volatility import clean_closes
+    import numpy as np
+
+    data = request.get_json(force=True) or {}
+    tickers = [str(t).strip() for t in (data.get("tickers") or []) if str(t).strip()]
+    if not tickers:
+        return jsonify({"status": "error", "message": "종목이 비어있습니다."}), 200
+    market = (data.get("market") or "KS11").strip()
+    start = data.get("start") or None
+    end = data.get("end") or None
+    adjust = data.get("adjustment", "raw")
+
+    try:
+        import FinanceDataReader as fdr
+    except Exception:
+        return jsonify({"status": "error", "message": "FinanceDataReader 미설치"}), 200
+
+    # 시장지수 가격
+    try:
+        m_df = fdr.DataReader(market, start, end)
+        if m_df is None or m_df.empty or 'Close' not in m_df.columns:
+            raise ValueError("시장지수 조회 결과가 비어 있습니다")
+        m_dates = [d.strftime('%Y-%m-%d') for d in m_df.index]
+        m_closes = [float(x) for x in m_df['Close'].tolist()]
+        m_dates, m_closes, _ = clean_closes(m_dates, m_closes)
+        if len(m_closes) < 30:
+            raise ValueError("시장지수 관측치 부족")
+        m_map = dict(zip(m_dates, m_closes))
+    except Exception as e:
+        return jsonify({"status": "error",
+                        "message": f"시장지수({market}) 조회 실패: {str(e)[:150]}"}), 200
+
+    results = []
+    for code in tickers:
+        try:
+            dates, closes, _ = _fetch_price_series(code, start, end)
+            t_dates, tc, _ = clean_closes(dates, closes)
+            if len(tc) < 30:
+                raise ValueError("종목 관측치 부족 (<30)")
+            t_map = dict(zip(t_dates, tc))
+            common = sorted(set(m_map.keys()) & set(t_map.keys()))
+            if len(common) < 30:
+                raise ValueError(f"시장지수와 공통 거래일 부족 ({len(common)}<30)")
+            mc = np.array([m_map[d] for d in common], dtype=float)
+            tc_a = np.array([t_map[d] for d in common], dtype=float)
+            m_r = np.diff(np.log(mc))
+            t_r = np.diff(np.log(tc_a))
+            cov = float(np.cov(t_r, m_r, ddof=1)[0, 1])
+            var_m = float(np.var(m_r, ddof=1))
+            if var_m <= 0:
+                raise ValueError("시장 분산 0")
+            beta_raw = cov / var_m
+            corr = float(np.corrcoef(t_r, m_r)[0, 1])
+            r2 = corr * corr
+            beta_adj = 0.67 * beta_raw + 0.33 if adjust == "blume" else beta_raw
+            results.append({
+                "ticker": code,
+                "raw_beta": round(beta_raw, 4),
+                "adjusted_beta": round(beta_adj, 4),
+                "r2": round(r2, 4),
+                "n_obs": int(len(common) - 1),
+            })
+        except Exception as e:  # noqa: BLE001
+            results.append({"ticker": code, "error": str(e)[:150]})
+
+    return jsonify({
+        "status": "ok",
+        "market": market,
+        "adjustment": adjust,
+        "start": start, "end": end,
+        "results": results,
+    })
+
+
 if __name__ == "__main__":
     print("RCPS 평가툴 서버 시작: http://localhost:5000")
     app.run(debug=True, port=5000, host="0.0.0.0")

@@ -756,7 +756,19 @@ details.note-fold .note{margin-top:4px}
     <div class="row3">
       <div class="field"><label>무위험이자율 Rf (%)</label><input type="number" id="w_rf" value="3.0" step="0.05" oninput="waccRecalc()"></div>
       <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullRf()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 RF 곡선 10년물 → Rf</button></div>
-      <div class="field"><label>시장위험프리미엄 MRP (%)</label><input type="number" id="w_mrp" value="6.0" step="0.1" oninput="waccRecalc()"></div>
+      <div class="field"><label>시장위험프리미엄 MRP (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">권장값↓</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="w_mrp" value="6.0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
+          <select onchange="if(this.value){document.getElementById('w_mrp').value=this.value;waccRecalc();}" style="width:120px;flex-shrink:0">
+            <option value="">권장값…</option>
+            <option value="6.0">한국 6.0%</option>
+            <option value="6.5">한국(Damodaran)</option>
+            <option value="4.5">미국 4.5%</option>
+            <option value="5.5">일본 5.5%</option>
+            <option value="7.0">중국 7.0%</option>
+          </select>
+        </div>
+      </div>
     </div>
     <details class="note-fold"><summary></summary><div class="note">Rf: 일반적으로 <b>10년 만기 국고채 수익률</b>(현물). 평가기준일 마감값 사용. <br>MRP(Market Risk Premium, ERP): 한국 시장 5.5~7.5% 범위, 평가법인 보고서 통상 <b>6% 전후</b>(Damodaran·KIS Research 등 참고).</div></details>
   </div>
@@ -764,15 +776,56 @@ details.note-fold .note{margin-top:4px}
   <!-- ② 베타 (Hamada unlever/relever) -->
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">② 베타 산정 — Hamada Unlever / Re-lever</div>
-    <div class="note" style="margin-bottom:8px">유사상장기업의 <b>레버드 베타(β_L)</b>를 자본구조 영향 제거(unlever)해 자산 베타(β_U)로 만든 뒤, 평가대상의 자본구조로 다시 re-lever 합니다.<br>식: <code>β_U = β_L / (1 + (1−t)·D/E)</code> &nbsp; · &nbsp; <code>β_target_L = β_U × (1 + (1−t)·D/E_target)</code></div>
+    <div class="note" style="margin-bottom:8px">유사상장기업의 <b>레버드 베타(β_L)</b>를 자본구조 영향 제거(unlever)해 자산 베타(β_U)로 만든 뒤, 평가대상의 자본구조로 다시 re-lever 합니다.<br>식: <code>β_U = β_L / (1 + (1−t)·D/E)</code> &nbsp; · &nbsp; <code>β_target_L = β_U × (1 + (1−t)·D/E_target)</code><br>유사기업 칸에 <b>회사명·코드·해외티커</b> 입력 후 "베타 자동산정"을 누르면 시장지수 회귀로 β_L이 자동 채워집니다.</div>
+    <div class="row3" style="margin-bottom:8px">
+      <div class="field"><label>시장지수</label>
+        <select id="w_market_idx">
+          <option value="KS11">KOSPI</option>
+          <option value="KQ11">KOSDAQ</option>
+          <option value="DJI">Dow Jones</option>
+          <option value="IXIC">NASDAQ Composite</option>
+          <option value="US500">S&P 500</option>
+        </select>
+      </div>
+      <div class="field"><label>회귀 기간</label>
+        <select id="w_beta_lookback">
+          <option value="2">최근 2년 (권장)</option>
+          <option value="3">최근 3년</option>
+          <option value="5">최근 5년</option>
+        </select>
+      </div>
+      <div class="field"><label>베타 보정</label>
+        <select id="w_beta_adjust">
+          <option value="raw">Raw (원시 β)</option>
+          <option value="blume">Blume (0.67β + 0.33)</option>
+        </select>
+      </div>
+    </div>
     <table class="mini-table" id="w-peers-tbl">
       <thead><tr><th style="width:40%">유사기업</th><th>β_L</th><th>D/E (%)</th><th>β_U</th><th></th></tr></thead>
       <tbody id="w-peers-body"></tbody>
     </table>
-    <button class="btn-run" onclick="waccAddPeer()" style="margin-top:8px;padding:0.4rem 0.8rem">+ 유사기업 추가</button>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn-run" onclick="waccAddPeer()" style="padding:0.4rem 0.8rem;margin:0">+ 유사기업 추가</button>
+      <button class="btn-run" id="w-beta-run-btn" onclick="waccAutoBeta()" style="padding:0.4rem 0.8rem;margin:0;background:var(--text2)">📊 β_L 자동 회귀산정</button>
+      <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center"></span>
+    </div>
     <div class="row3" style="margin-top:12px">
       <div class="field"><label>평가대상 D/E (%)</label><input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')"></div>
-      <div class="field"><label>법인세율 t (%)</label><input type="number" id="w_tax" value="25" step="0.5" oninput="waccRecalc()"></div>
+      <div class="field"><label>법인세율 t (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가↓</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="w_tax" value="25" step="0.5" oninput="waccRecalc()" style="flex:1;min-width:0">
+          <select onchange="if(this.value){document.getElementById('w_tax').value=this.value;waccRecalc();}" style="width:108px;flex-shrink:0">
+            <option value="">국가 선택…</option>
+            <option value="25">한국 25%</option>
+            <option value="25">중국 25%</option>
+            <option value="21">미국 21%</option>
+            <option value="30">일본 30%</option>
+            <option value="25">독일 25%</option>
+            <option value="19">영국 19%</option>
+          </select>
+        </div>
+      </div>
       <div class="field"><label>집계 방식 (β_U)</label>
         <select id="w_beta_agg" onchange="waccRecalc()">
           <option value="median">중앙값 (권장)</option>
@@ -2067,6 +2120,60 @@ function waccRecalc(){
   document.getElementById('w_wacc_formula').innerHTML =
     `WACC = E/V <b>${(ev*100).toFixed(1)}%</b> × Ke <b>${(ke*100).toFixed(2)}%</b> + D/V <b>${(dv*100).toFixed(1)}%</b> × Kd <b>${(kd*100).toFixed(2)}%</b> × (1−t) <b>${((1-tax)*100).toFixed(1)}%</b> = <b style="color:var(--accent)">${(wacc*100).toFixed(2)}%</b>`;
   window._lastWacc = wacc;
+}
+async function waccAutoBeta(){
+  const btn=document.getElementById('w-beta-run-btn');
+  const status=document.getElementById('w-beta-status');
+  const peers=window.waccPeers.filter(p=>(p.name||'').trim());
+  if(!peers.length){status.style.color='var(--red)';status.textContent='유사기업 이름을 먼저 입력하세요.';return;}
+  btn.disabled=true; status.style.color='var(--text3)';
+  // 이름→코드 해석 (변동성 검색 재사용)
+  status.textContent='이름→티커 해석 중…';
+  const codes=[];
+  for(const p of peers){
+    const q=p.name.trim();
+    // 명확한 코드/티커는 그대로
+    if(/^\d{6}$/.test(q) || /\.[A-Za-z]{1,3}$/.test(q) || /^(sh|sz)\./i.test(q)){codes.push({peer:p,code:q});continue;}
+    try{
+      const r=await fetch('/api/volatility/search?q='+encodeURIComponent(q));
+      const j=await r.json();
+      if(j.status==='ok'&&j.results.length){codes.push({peer:p,code:j.results[0].code,resolvedName:j.results[0].name});}
+      else if(/^[A-Za-z][A-Za-z0-9.\-]{0,11}$/.test(q)){codes.push({peer:p,code:q.toUpperCase()});}
+      else{codes.push({peer:p,code:null});}
+    }catch(e){codes.push({peer:p,code:null});}
+  }
+  const unresolved=codes.filter(x=>!x.code).map(x=>x.peer.name);
+  if(unresolved.length){status.style.color='var(--red)';status.textContent='해석 실패: '+unresolved.join(', ');btn.disabled=false;return;}
+  // 시장지수·기간·보정
+  const market=document.getElementById('w_market_idx').value;
+  const lookback=parseInt(document.getElementById('w_beta_lookback').value)||2;
+  const adjust=document.getElementById('w_beta_adjust').value;
+  const end=new Date(); const start=new Date(end); start.setFullYear(end.getFullYear()-lookback);
+  const ymd=d=>d.toISOString().slice(0,10);
+  status.textContent=`회귀분석 중 (${market}, ${lookback}년, ${adjust})…`;
+  try{
+    const r=await fetch('/api/wacc/beta',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tickers:codes.map(x=>x.code),market,start:ymd(start),end:ymd(end),adjustment:adjust})});
+    const j=await r.json();
+    if(j.status!=='ok'){status.style.color='var(--red)';status.textContent='오류: '+j.message;btn.disabled=false;return;}
+    // 결과를 peer 표에 매핑
+    const byCode={};j.results.forEach(x=>byCode[x.ticker]=x);
+    let okN=0, failN=0;
+    codes.forEach(({peer,code,resolvedName})=>{
+      const res=byCode[code];
+      if(res && res.adjusted_beta!=null){
+        peer.betaL=res.adjusted_beta;
+        if(resolvedName && !peer.name.toLowerCase().includes(resolvedName.toLowerCase()))peer.name=resolvedName+' ('+code+')';
+        okN++;
+      } else failN++;
+    });
+    waccRenderPeers(); waccRecalc();
+    const failMsg=failN?`, 실패 ${failN}`:'';
+    const ar2=j.results.filter(x=>x.r2!=null).reduce((s,x)=>s+x.r2,0)/(j.results.filter(x=>x.r2!=null).length||1);
+    status.style.color='var(--green)';
+    status.innerHTML=`✓ ${okN}개 산정 완료${failMsg} · 평균 R² ${ar2.toFixed(3)} · ${adjust==='blume'?'Blume 보정':'Raw β'}`;
+  }catch(e){status.style.color='var(--red)';status.textContent='요청 실패: '+e.message;}
+  finally{btn.disabled=false;}
 }
 function waccApplyToDcf(){
   if(window._lastWacc==null){alert('WACC 산출 후 적용하세요.');return;}
