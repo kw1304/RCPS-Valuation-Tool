@@ -22,6 +22,28 @@ FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fronten
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 
 
+# ── HTTP Basic Auth (배포용) ─────────────────────────────────────────
+# 환경변수 APP_PASSWORD가 설정돼 있으면 모든 요청에 비밀번호 요구.
+# 비어 있으면(로컬 개발) auth 비활성화.
+from functools import wraps
+from flask import Response
+
+_AUTH_USER = os.environ.get("APP_USER", "admin")
+_AUTH_PASS = os.environ.get("APP_PASSWORD", "")  # 비워두면 auth 끔
+
+@app.before_request
+def _require_auth():
+    if not _AUTH_PASS:
+        return None  # 비밀번호 미설정 시 통과 (로컬)
+    auth = request.authorization
+    if auth and auth.username == _AUTH_USER and auth.password == _AUTH_PASS:
+        return None
+    return Response(
+        "Authentication required.", 401,
+        {"WWW-Authenticate": 'Basic realm="RCPS Valuation Tool"'}
+    )
+
+
 def _d(s):
     return date.fromisoformat(s) if s else None
 
