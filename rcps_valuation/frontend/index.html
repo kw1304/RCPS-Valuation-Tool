@@ -774,47 +774,6 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>비영업자산 (원)</label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
       <div class="field"><label>비지배지분조정 (원)</label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
     </div>
-    <details style="margin-top:10px" id="dcf-bs-helper-details">
-      <summary style="font-size:.78rem;color:var(--text2);cursor:pointer;font-weight:600;padding:6px 0">BS 항목별 입력 헬퍼 — 이자부부채·비영업자산 자동 합산</summary>
-      <div style="margin-top:6px;font-size:.66rem;color:#B45309;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;line-height:1.5">
-        ⚠ <b>이중계산 주의</b>: 회사 BS 표시 방식에 따라 항목이 중첩됩니다.<br>
-        • BS 본문에 "단기금융자산 24,513" 통합 표시 → <b>단기금융상품</b> 칸에만 입력. FVPL/FVOCI 비워둠.<br>
-        • BS·주석에 측정모형별 분리 표시 → <b>FVPL·FVOCI</b> 칸에 별도 입력. 단기/장기금융상품 칸엔 그 분리된 후 나머지(상각후원가 등)만 입력.<br>
-        • 단기·장기 대여금이 "기타금융자산"에 포함돼 있으면 한 곳에서만 입력.
-      </div>
-      <!-- 이자부부채 -->
-      <div style="margin-top:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem">
-        <div class="dcf-assump-hd" style="margin-bottom:0.7rem">
-          <span>이자부부채</span>
-        </div>
-        <div class="dcf-assump-grid bs-helper" data-target="a_nd">
-          <div class="field"><label>단기차입금</label><input type="text" class="money bs-d" data-k="d_short" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
-          <div class="field"><label>유동성장기부채</label><input type="text" class="money bs-d" data-k="d_curlt" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
-          <div class="field"><label>장기차입금</label><input type="text" class="money bs-d" data-k="d_long" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
-          <div class="field"><label>사채</label><input type="text" class="money bs-d" data-k="d_bond" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
-          <div class="field"><label>유동성리스부채</label><input type="text" class="money bs-d" data-k="d_curlease" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
-          <div class="field"><label>리스부채 (비유동)</label><input type="text" class="money bs-d" data-k="d_lease" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
-          <div class="field"><label>기타 이자부부채</label><input type="text" class="money bs-d" data-k="d_other" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('d')" onblur="mBlur(this,()=>dcfBsRecalc('d'))" value="0"></div>
-        </div>
-      </div>
-      <!-- 비영업자산 -->
-      <div style="margin-top:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem">
-        <div class="dcf-assump-hd" style="margin-bottom:0.7rem">
-          <span>비영업자산</span>
-        </div>
-        <div class="dcf-assump-grid bs-helper" data-target="a_nonop">
-          <div class="field"><label>현금및현금성자산</label><input type="text" class="money bs-n" data-k="n_cash" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>단기금융상품</label><input type="text" class="money bs-n" data-k="n_stinv" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>장기금융상품</label><input type="text" class="money bs-n" data-k="n_ltinv" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>FVPL 금융자산</label><input type="text" class="money bs-n" data-k="n_fvtpl" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>FVOCI 금융자산</label><input type="text" class="money bs-n" data-k="n_fvoci" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>단기대여금</label><input type="text" class="money bs-n" data-k="n_stloan" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>장기대여금</label><input type="text" class="money bs-n" data-k="n_ltloan" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>관계·공동기업투자</label><input type="text" class="money bs-n" data-k="n_assoc" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-          <div class="field"><label>투자부동산·기타</label><input type="text" class="money bs-n" data-k="n_other" onfocus="mFocus(this)" oninput="mInput(this);dcfBsRecalc('n')" onblur="mBlur(this,()=>dcfBsRecalc('n'))" value="0"></div>
-        </div>
-      </div>
-    </details>
   </div>
 
   <div class="dcf-actions">
@@ -2197,23 +2156,6 @@ function dcfCalc(){
     ].map(([k,v])=>`<tr><td style="text-align:left">${k}</td><td>${v}</td></tr>`).join('')}</tbody>`;
 }
 
-// BS 입력 헬퍼: 'd' (이자부부채) 또는 'n' (비영업자산) 항목 합계 → 상단 입력칸 자동 채움
-function dcfBsRecalc(kind){
-  const cls = kind==='d' ? 'bs-d' : 'bs-n';
-  const sumEl = document.getElementById(kind==='d' ? 'bs-d-sum' : 'bs-n-sum');
-  const target = document.getElementById(kind==='d' ? 'a_nd' : 'a_nonop');
-  let s = 0;
-  document.querySelectorAll('.' + cls).forEach(el => {
-    const v = parseFloat(el.dataset.v || el.value.replace(/[^0-9.-]/g,'')) || 0;
-    s += v;
-  });
-  if(sumEl) sumEl.textContent = Math.round(s).toLocaleString('ko-KR');
-  if(target){
-    target.dataset.v = s;
-    target.value = Math.round(s).toLocaleString('ko-KR');
-    dcfCalc();
-  }
-}
 function sendToRCPS(){
   const sp=parseInt(document.getElementById('btn-send').dataset.sp||0);if(!sp)return;
   setMoney('stock_price',sp);
