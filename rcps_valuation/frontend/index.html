@@ -771,7 +771,7 @@ details.note-fold .note{margin-top:4px}
     </table>
     <button class="btn-run" onclick="waccAddPeer()" style="margin-top:8px;padding:0.4rem 0.8rem">+ 유사기업 추가</button>
     <div class="row3" style="margin-top:12px">
-      <div class="field"><label>평가대상 D/E (%)</label><input type="number" id="w_de_target" value="50" step="1" oninput="waccRecalc()"></div>
+      <div class="field"><label>평가대상 D/E (%)</label><input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')"></div>
       <div class="field"><label>법인세율 t (%)</label><input type="number" id="w_tax" value="25" step="0.5" oninput="waccRecalc()"></div>
       <div class="field"><label>집계 방식 (β_U)</label>
         <select id="w_beta_agg" onchange="waccRecalc()">
@@ -815,8 +815,8 @@ details.note-fold .note{margin-top:4px}
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">⑤ 자본구조 (Target)</div>
     <div class="row2">
-      <div class="field"><label>자기자본 비중 E/V (%)</label><input type="number" id="w_ev" value="60" step="1" oninput="waccCapStruct('e')"></div>
-      <div class="field"><label>부채 비중 D/V (%)</label><input type="number" id="w_dv" value="40" step="1" oninput="waccCapStruct('d')"></div>
+      <div class="field"><label>자기자본 비중 E/V (%)</label><input type="number" id="w_ev" value="60" step="1" oninput="waccSyncCap('ev')"></div>
+      <div class="field"><label>부채 비중 D/V (%)</label><input type="number" id="w_dv" value="40" step="1" oninput="waccSyncCap('dv')"></div>
     </div>
     <details class="note-fold"><summary></summary><div class="note">목표 자본구조(Target) 또는 평가시점 실제 자본구조 사용. E/V + D/V = 100%. 위 ② 베타 D/E와 일관성 유지 권장.</div></details>
   </div>
@@ -1976,12 +1976,27 @@ function waccRenderPeers(){
   }).join('');
 }
 function waccAddPeer(){window.waccPeers.push({name:'',betaL:1.0,de:50});waccRenderPeers();waccRecalc();}
-function waccCapStruct(src){
-  // E/V·D/V 합 100% 유지
-  const ev=parseFloat(document.getElementById('w_ev').value)||0;
-  const dv=parseFloat(document.getElementById('w_dv').value)||0;
-  if(src==='e')document.getElementById('w_dv').value=Math.max(0,Math.min(100,100-ev));
-  else document.getElementById('w_ev').value=Math.max(0,Math.min(100,100-dv));
+// D/E ↔ D/V ↔ E/V 자동 연동: 변환식 D/V = (D/E)/(1+D/E), D/E = (D/V)/(1−D/V)
+function waccSyncCap(src){
+  const deEl=document.getElementById('w_de_target');
+  const evEl=document.getElementById('w_ev');
+  const dvEl=document.getElementById('w_dv');
+  const fmt=v=>(Math.round(v*100)/100).toFixed(2);
+  if(src==='de'){
+    const de=Math.max(0,parseFloat(deEl.value)||0)/100;
+    const dv=de/(1+de); const ev=1-dv;
+    dvEl.value=fmt(dv*100); evEl.value=fmt(ev*100);
+  } else if(src==='ev'){
+    let ev=Math.max(0.01,Math.min(99.99,parseFloat(evEl.value)||0))/100;
+    const dv=1-ev;
+    dvEl.value=fmt(dv*100);
+    deEl.value=fmt(dv/ev*100);
+  } else { // dv
+    let dv=Math.max(0.01,Math.min(99.99,parseFloat(dvEl.value)||0))/100;
+    const ev=1-dv;
+    evEl.value=fmt(ev*100);
+    deEl.value=fmt(dv/ev*100);
+  }
   waccRecalc();
 }
 function waccPullRf(){
