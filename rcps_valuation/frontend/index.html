@@ -812,17 +812,26 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div class="row3" style="margin-top:12px">
       <div class="field"><label>평가대상 D/E (%)</label><input type="number" id="w_de_target" value="66.67" step="1" oninput="waccSyncCap('de')"></div>
-      <div class="field"><label>법인세율 t (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가↓</span></label>
+      <div class="field"><label>법인세율 t (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">국가/구간↓</span></label>
         <div style="display:flex;gap:6px">
-          <input type="number" id="w_tax" value="25" step="0.5" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select onchange="if(this.value){document.getElementById('w_tax').value=this.value;waccRecalc();}" style="width:108px;flex-shrink:0">
-            <option value="">국가 선택…</option>
-            <option value="25">한국 25%</option>
-            <option value="25">중국 25%</option>
-            <option value="21">미국 21%</option>
-            <option value="30">일본 30%</option>
-            <option value="25">독일 25%</option>
-            <option value="19">영국 19%</option>
+          <input type="number" id="w_tax" value="22" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
+          <select onchange="if(this.value){document.getElementById('w_tax').value=this.value;waccRecalc();}" style="width:128px;flex-shrink:0">
+            <option value="">국가/구간…</option>
+            <optgroup label="한국 (지방세 10% 포함)">
+              <option value="22">한국 22% (관행)</option>
+              <option value="23.1">한국 23.1% (200~3000억)</option>
+              <option value="26.4">한국 26.4% (3000억+ 최고)</option>
+              <option value="9.9">한국 9.9% (2억 이하)</option>
+              <option value="20.9">한국 20.9% (2억~200억)</option>
+            </optgroup>
+            <optgroup label="해외 (합산 실효)">
+              <option value="25">미국 25% (연방+주)</option>
+              <option value="21">미국 21% (연방만)</option>
+              <option value="25">영국 25% (2023.4~)</option>
+              <option value="30">독일 30% (법인+영업세)</option>
+              <option value="30.6">일본 30.6% (도쿄)</option>
+              <option value="25">중국 25%</option>
+            </optgroup>
           </select>
         </div>
       </div>
