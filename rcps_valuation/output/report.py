@@ -160,21 +160,18 @@ def _write_bdt_cross(ws, bdt):
 
 
 def _write_tree(ws, title, tree, params=None):
-    """이항트리 — 가로(시간 → 진행) 팬아웃 레이아웃.
+    """이항트리 — 웹 화면과 동일 레이아웃.
 
-    레이아웃: 행 = j(위 j=N 부터 아래 j=0), 열 = step i (왼→오 진행).
-    상단 3개 블록은 한주 단위, 맨 아래 RCPS 공정가치는 총액(원) 그대로.
+    행 = j (0..N, down moves), 열 = step i (0..N).
+    가치 그리드는 RCPS 주식수로 나눠 한주(1RCPS) 기준 표시.
     """
-    stock = tree.get("stock") or []
-    rcps  = tree.get("rcps_value") or []
-    conv  = tree.get("conv_intrinsic") or []
-    dec   = tree.get("decision") or []
-    n = len(stock)
+    n = len(tree.get("stock") or [])
     if n == 0:
         return
-    N = n - 1  # 최대 step index
+    N = n - 1
     steps = tree.get("steps", N)
     u = tree.get("u"); d = tree.get("d"); p = tree.get("p")
+    rcps_shares = max(int(getattr(params, "rcps_shares", 0) or 0), 1) if params else 1
 
     # 타이틀
     ws.row_dimensions[1].height = 32
@@ -182,36 +179,66 @@ def _write_tree(ws, title, tree, params=None):
     t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
     t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
     t.alignment = Alignment(horizontal="center", vertical="center")
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=min(n + 1, 12))
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=min(n + 1, 14))
 
-    ws.cell(row=2, column=1, value=f"steps={steps} | u={u} | d={d} | p={p if not isinstance(p,list) else 'curve'}").font = Font(name="맑은 고딕", size=9, color="718096")
-    ws.cell(row=2, column=4, value="※ 상단 트리는 한주 단위(원/주), 맨 아래 RCPS 공정가치는 총액(원)").font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
+    p_str = "(커브모드)" if isinstance(p, list) else str(p)
+    info = f"steps={steps}  |  u={u}  |  d={d}  |  p={p_str}  |  RCPS 주식수={rcps_shares:,}주  |  ※ 가치 그리드는 1주(1RCPS) 기준"
+    c = ws.cell(row=2, column=1, value=info)
+    c.font = Font(name="맑은 고딕", size=9, color="718096")
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=min(n + 1, 14))
 
-    # 컬럼 폭: 라벨 + 각 step
+    # 컬럼 폭
     ws.column_dimensions["A"].width = 14
-    for c in range(2, n + 2):
-        ws.column_dimensions[get_column_letter(c)].width = 13
+    for col_i in range(2, n + 2):
+        ws.column_dimensions[get_column_letter(col_i)].width = 13
 
-    # rcps_shares (참고용) — V를 per-share 변환 시 사용. params 없으면 1
-    rcps_shares = max(int(getattr(params, "rcps_shares", 0) or 0), 1) if params else 1
+    # 그리드 정의 — 웹 화면(renderTreeGrids)과 동일 순서/라벨
+    is_tf = ("Tsiveriotis" in title) or ("TF" in title.upper())
+    if is_tf:
+        grids = [
+            ("stock",          "① 주가 트리 (원/주)"),
+            ("decision",       "의사결정"),
+            ("conv_intrinsic", "전환 내재가치 (원/주)"),
+            ("rcps_value",     "RCPS 가치 (원/주)"),
+            ("hold_value",     "보유가치 — 연속보유 (원/주)"),
+            ("equity_comp",    "지분가치 — 실현 (원/주)"),
+            ("bond_comp",      "채권가치 — 실현 (원/주)"),
+            ("equity_hold",    "지분 보유가치 (원/주)"),
+            ("bond_hold",      "채권 보유가치 (원/주)"),
+        ]
+    else:  # GS
+        grids = [
+            ("stock",          "① 주가 트리 (원/주)"),
+            ("decision",       "의사결정"),
+            ("conv_prob",      "전환확률"),
+            ("disc_factor",    "할인계수"),
+            ("conv_intrinsic", "전환 내재가치 (원/주)"),
+            ("rcps_value",     "RCPS 가치 (원/주)"),
+            ("hold_value",     "보유가치 — 연속보유 (원/주)"),
+        ]
 
-    def _block(start_row, label, grid, fmt, per_share_div=None, color_decision=False):
+    # per-share 변환 대상 (주가/확률/할인계수 제외)
+    VALUE_KEYS = {"conv_intrinsic", "rcps_value", "hold_value",
+                  "equity_comp", "bond_comp", "equity_hold", "bond_hold"}
+    # 주가는 모형에서 이미 per-share, 확률·할인계수는 단위 없음
+    # decision 은 텍스트
+
+    def _grid_block(start_row, key, label, grid):
         r0 = start_row
-        # 블록 헤더 (행 0)
         c = ws.cell(row=r0, column=1, value=f"■ {label}")
         c.font = Font(name="맑은 고딕", bold=True, size=11, color="1A365D")
-        # 헤더 행: step i (열 2..n+1)
-        _hdr(ws, r0 + 1, 1, "state \\ step")
-        for i_step in range(n):
-            _hdr(ws, r0 + 1, i_step + 2, f"i={i_step}")
-        # 데이터: 행 r0+2..r0+2+N (j=N → r0+2, j=0 → r0+2+N) — 상단에 ups 표시
+        # 헤더 행: step i (i=0..N)
+        _hdr(ws, r0 + 1, 1, "j \\ i")
+        for i_step in range(N + 1):
+            _hdr(ws, r0 + 1, i_step + 2, str(i_step))
+        # 데이터 행: j=0..N (위에서 아래로 j 증가, 웹 화면과 동일)
         for j in range(N + 1):
-            row_idx = r0 + 2 + (N - j)
-            _hdr(ws, row_idx, 1, f"j={j}")
+            row_idx = r0 + 2 + j
+            _hdr(ws, row_idx, 1, str(j))
             for i_step in range(N + 1):
                 col_idx = i_step + 2
                 if j > i_step:
-                    # 이 step에서 도달 불가
+                    _cell(ws, row_idx, col_idx, "", bg="F7FAFC")
                     continue
                 v = None
                 if i_step < len(grid):
@@ -221,28 +248,26 @@ def _write_tree(ws, title, tree, params=None):
                 if v is None or v == "":
                     _cell(ws, row_idx, col_idx, "", bg="F7FAFC")
                     continue
-                bg = "EBF8FF" if (j == i_step or j == 0) else ("F7FAFC" if (i_step + j) % 2 == 0 else "FFFFFF")
-                if fmt == "money":
-                    val = (float(v) / per_share_div) if per_share_div else float(v)
-                    _cell(ws, row_idx, col_idx, val, bg=bg, num_fmt="#,##0.00", align="right")
-                elif fmt == "money_total":
-                    _cell(ws, row_idx, col_idx, float(v), bg=bg, num_fmt="#,##0", align="right")
-                elif fmt == "text":
-                    if color_decision:
-                        bg2 = {"전환": "C6F6D5", "상환": "FED7D7", "콜": "FEEBC8", "보유": bg}.get(v, bg)
-                    else:
-                        bg2 = bg
+                bg = "F7FAFC" if (i_step + j) % 2 == 0 else "FFFFFF"
+                if key == "decision":
+                    bg2 = {"전환": "C6F6D5", "상환": "FED7D7", "콜": "FEEBC8", "보유": bg}.get(v, bg)
                     _cell(ws, row_idx, col_idx, v, bg=bg2, align="center")
+                elif key in ("conv_prob", "disc_factor"):
+                    _cell(ws, row_idx, col_idx, float(v), bg=bg, num_fmt="0.0000", align="right")
                 else:
-                    _cell(ws, row_idx, col_idx, v, bg=bg, align="right")
-        return r0 + 2 + N + 1  # 다음 블록 시작 row
+                    val = float(v)
+                    if key in VALUE_KEYS and rcps_shares > 1:
+                        val = val / rcps_shares
+                    fmt = "#,##0.00" if key == "stock" else "#,##0"
+                    _cell(ws, row_idx, col_idx, val, bg=bg, num_fmt=fmt, align="right")
+        return r0 + 2 + (N + 1)  # 다음 블록 시작 row
 
-    next_row = _block(4, "주가 (S, 원/주)", stock, "money")
-    next_row = _block(next_row + 2, "전환 내재가치 (max(S,K) 등, 원/주)", conv, "money")
-    if dec:
-        next_row = _block(next_row + 2, "의사결정 (전환=초록 / 상환=빨강 / 콜=주황 / 보유=기본)", dec, "text", color_decision=True)
-    # 맨 아래: RCPS 공정가치 총액 (V, 원) — per_share_div 없이 총액 그대로
-    _block(next_row + 2, "RCPS 공정가치 총액 (V, 원 — 사용자 요청: 총액만 트리로)", rcps, "money_total")
+    next_row = 4
+    for key, label in grids:
+        g = tree.get(key)
+        if not g:
+            continue
+        next_row = _grid_block(next_row, key, label, g) + 2
 
 
 def _cell(ws, row, col, value, bold=False, bg=None, num_fmt=None, align="left", color=None):
