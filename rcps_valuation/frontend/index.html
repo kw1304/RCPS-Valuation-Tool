@@ -862,7 +862,7 @@ details.note-fold .note{margin-top:4px}
   <!-- ③ 자기자본비용 Ke -->
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">③ 자기자본비용 (Ke) — CAPM</div>
-    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code></div>
+    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br>📅 <button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span></div>
     <div class="row2">
       <div class="field"><label>사이즈 프리미엄 (%, 선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">규모↓</span></label>
         <div style="display:flex;gap:6px">
@@ -2174,6 +2174,53 @@ function waccRecalc(){
   const disp=document.getElementById('w_val_date_disp');
   if(disp)disp.textContent=vd||'—';
 }
+// 평가기준일·평가대상 시총 기반 MRP·CRP·사이즈 프리미엄 자동 채움
+// MRP·CRP 값은 Damodaran "Country Risk Premium" 데이터(연도별 한국 기준 근사). 다른 국가/시점에 정확값 필요 시 수동 입력.
+const _ERP_KR={'2025':5.45,'2024':5.45,'2023':5.95,'2022':5.50,'2021':5.09,'2020':6.25,'2019':5.86};
+const _CRP_KR={'2025':0.65,'2024':0.85,'2023':0.95,'2022':1.10,'2021':0.85,'2020':1.05,'2019':0.80};
+function _sizePremiumFromMcap(mc){
+  // 한국 원화 시가총액 → 사이즈 프리미엄 (Duff & Phelps 통상 매핑, 원화 기준)
+  if(!mc || mc<=0)return null;
+  if(mc>=5e12)return 0;          // 5조+
+  if(mc>=5e11)return 1.0;        // 5천억~5조
+  if(mc>=1e11)return 2.0;        // 1천억~5천억
+  if(mc>=5e10)return 3.0;        // 500억~1천억
+  return 4.5;                     // <500억
+}
+async function waccAutoPremiums(){
+  const status=document.getElementById('w_prem_status');
+  const vd=document.getElementById('valuation_date')?.value;
+  if(!vd){status.style.color='var(--red)';status.textContent='평가기준일을 먼저 입력하세요.';return;}
+  const yr=vd.slice(0,4);
+  // MRP·CRP (한국 기준 Damodaran 연도별 테이블)
+  const mrp=_ERP_KR[yr]||6.0;
+  const crp=_CRP_KR[yr]||0.85;
+  document.getElementById('w_mrp').value=mrp;
+  document.getElementById('w_country_p').value=crp;
+  const parts=[`MRP=${mrp}%`,`CRP=${crp}%`];
+  // 사이즈 프리미엄 — 평가대상 #self_ticker 있으면 시총 조회해 매핑
+  const selfTicker=document.getElementById('self_ticker')?.value?.trim();
+  if(selfTicker){
+    status.style.color='var(--text3)';status.textContent='평가대상 시총 조회 중…';
+    try{
+      const r=await fetch('/api/wacc/de',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({tickers:[selfTicker],date:vd})});
+      const j=await r.json();
+      const r0=j.results?.[0]||{};
+      const mc=r0.market_cap;
+      const sp=_sizePremiumFromMcap(mc);
+      if(sp!==null){
+        document.getElementById('w_size_p').value=sp;
+        parts.push(`사이즈=${sp}% (시총 ${(mc/1e8).toLocaleString('ko-KR',{maximumFractionDigits:0})}억)`);
+      } else parts.push('사이즈: 시총 미확보');
+    }catch(e){parts.push('사이즈 조회 실패');}
+  } else {
+    parts.push('사이즈: 평가대상 종목 미입력');
+  }
+  waccRecalc();
+  status.style.color='var(--green)';status.innerHTML=`✓ ${yr}년 기준 · ${parts.join(' · ')}`;
+}
+
 // 종목명/코드 입력 + Enter → 해당 행만 β·D/E 동시 자동 채움
 async function waccFetchPeer(i){
   const peer=window.waccPeers[i]; if(!peer)return;
