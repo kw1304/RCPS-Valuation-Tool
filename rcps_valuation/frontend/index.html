@@ -780,6 +780,7 @@ details.note-fold .note{margin-top:4px}
     <button class="btn-sm add" onclick="dcfAddYear()">+ 연도 추가</button>
     <button class="btn-sm del" onclick="dcfRemoveYear()">− 마지막 연도 제거</button>
     <div style="flex:1"></div>
+    <button class="btn-sm" onclick="dcfDownloadXlsx()" style="background:#DCFCE7;color:#166534;border-color:#BBF7D0">📥 DCF 상세 Excel</button>
     <div class="dcf-sp-badge" id="dcf-sp-badge"></div>
     <button class="btn-sm send" id="btn-send" style="display:none" onclick="sendToRCPS()">→ RCPS 평가에 적용</button>
   </div>
@@ -997,6 +998,7 @@ details.note-fold .note{margin-top:4px}
       <div>WACC =</div>
       <div style="font-size:1.6rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums"><span id="w_wacc_out">—</span></div>
       <button class="btn-run" onclick="waccApplyToDcf()" style="padding:0.45rem 0.9rem">DCF 탭에 적용</button>
+      <button class="btn-run" onclick="waccDownloadXlsx()" style="padding:0.45rem 0.9rem;background:#DCFCE7;color:#166534;border-color:#BBF7D0">📥 WACC 상세 Excel</button>
     </div>
     <div class="note" id="w_wacc_formula">E/V × Ke + D/V × Kd × (1−t)</div>
   </div>
@@ -1222,8 +1224,10 @@ details.note-fold .note{margin-top:4px}
 
   <!-- 이자율 DATA 시트 -->
   <div class="dcf-assump" style="flex-shrink:0;margin-top:10px" id="rate-data-panel">
-    <div class="dcf-assump-hd" style="display:flex;align-items:center;justify-content:space-between">
+    <div class="dcf-assump-hd" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <span>이자율 DATA (평가 노드 · 선도이자율 · BM 양식)</span>
+      <span style="flex:1"></span>
+      <button class="btn-sm" onclick="bootDownloadXlsx()" style="background:#DCFCE7;color:#166534;border-color:#BBF7D0">📥 부트스트래핑 상세 Excel</button>
       <span id="rate-data-stepinfo" style="font-weight:400;font-size:.72rem;color:var(--accent)">평가 단계 따름</span>
     </div>
     <div id="rate-data-caption" style="font-size:0.68rem;color:var(--text3);margin-bottom:8px;line-height:1.6"></div>
@@ -1447,6 +1451,111 @@ async function downloadContractExcel(){
     a.download=`contract_summary_${today}.xlsx`;
     a.click(); URL.revokeObjectURL(a.href);
   }catch(e){alert('다운로드 실패: '+e.message);}
+}
+
+// 공통 다운로드 헬퍼
+async function _xlsxDownload(url, payload, filename){
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok)throw new Error('서버 오류 '+r.status);
+    const blob=await r.blob();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=filename;
+    a.click(); URL.revokeObjectURL(a.href);
+  }catch(e){alert('다운로드 실패: '+e.message);}
+}
+
+async function dcfDownloadXlsx(){
+  const vd=document.getElementById('valuation_date')?.value||'';
+  const payload={
+    valuation_date: vd,
+    wacc: (parseFloat(document.getElementById('a_wacc')?.value)||0)/100,
+    g: (parseFloat(document.getElementById('a_g')?.value)||0)/100,
+    tax: (parseFloat(document.getElementById('a_tax')?.value)||0)/100,
+    interest_debt: getMoney('a_nd'),
+    shares: getMoney('a_shares'),
+    non_op: getMoney('a_nonop'),
+    nci: getMoney('a_nci'),
+    years: (dcfYears||[]).map(y=>({revenue:y.revenue,ebit:y.ebit,tax:y.tax,da:y.da,capex:y.capex,dnwc:y.dnwc})),
+    result: (function(){
+      const w=(parseFloat(document.getElementById('a_wacc')?.value)||12)/100;
+      const g=(parseFloat(document.getElementById('a_g')?.value)||2)/100;
+      const yrs=dcfYears||[];
+      if(!yrs.length)return{};
+      const calc=yrs.map((y,i)=>{const n=y.ebit*(1-y.tax/100);const f=n+y.da-y.capex-y.dnwc;return{f, pv:f*Math.pow(1/(1+w),i+1)};});
+      const pvEx=calc.reduce((s,c)=>s+c.pv,0);
+      const lastF=calc[calc.length-1].f;
+      const tv=(w>g)?lastF*(1+g)/(w-g):0;
+      const pvTV=(w>g)?tv/Math.pow(1+w,yrs.length):0;
+      return {pv_explicit:pvEx, terminal_value:tv, pv_terminal:pvTV};
+    })()
+  };
+  await _xlsxDownload('/api/dcf/export', payload, `DCF상세_${vd||'now'}.xlsx`);
+}
+
+async function waccDownloadXlsx(){
+  const vd=document.getElementById('valuation_date')?.value||'';
+  const payload={
+    valuation_date: vd,
+    rf: (parseFloat(document.getElementById('w_rf')?.value)||0)/100,
+    mrp: (parseFloat(document.getElementById('w_mrp')?.value)||0)/100,
+    country_p: (parseFloat(document.getElementById('w_country_p')?.value)||0)/100,
+    size_p: (parseFloat(document.getElementById('w_size_p')?.value)||0)/100,
+    beta_target: parseFloat(document.getElementById('w_beta_out')?.textContent.replace(/[^\d.\-]/g,''))||0,
+    ke: (parseFloat(document.getElementById('w_ke_out')?.textContent)||0)/100,
+    tax: (parseFloat(document.getElementById('w_tax')?.value)||0)/100,
+    kd: (parseFloat(document.getElementById('w_kd')?.value)||0)/100,
+    kd_after: (parseFloat(document.getElementById('w_kd_after')?.value)||0)/100,
+    ev_pct: parseFloat(document.getElementById('w_ev')?.value)||0,
+    dv_pct: parseFloat(document.getElementById('w_dv')?.value)||0,
+    de_target: parseFloat(document.getElementById('w_de_target')?.value)||0,
+    wacc: (parseFloat(document.getElementById('w_wacc_out')?.textContent)||0)/100,
+    peers: (window.waccPeers||[]).filter(p=>p.name).map(p=>({
+      name: p.name, code: p._code||'',
+      beta_l: p.betaL, de: p.de,
+      beta_period: (p.betaStart&&p.betaEnd)?`${p.betaStart}~${p.betaEnd}`:'',
+      de_period: p.asOf||''
+    })),
+    market_idx: document.getElementById('w_market_idx')?.value,
+    beta_freq: document.getElementById('w_beta_freq')?.value,
+    beta_agg: document.getElementById('w_beta_agg')?.value
+  };
+  await _xlsxDownload('/api/wacc/export', payload, `WACC상세_${vd||'now'}.xlsx`);
+}
+
+async function bootDownloadXlsx(){
+  const vd=document.getElementById('valuation_date')?.value||'';
+  // 현재 화면 표시된 부트스트래핑 데이터 추출
+  const extractTable=(tbodyId)=>{
+    const tb=document.getElementById(tbodyId);
+    if(!tb)return[];
+    return Array.from(tb.rows).map(r=>Array.from(r.cells).map(c=>{
+      const inp=c.querySelector('input'); return inp?inp.value:c.textContent.trim();
+    }));
+  };
+  const rfIn=extractTable('brf-inp').map(r=>({n:r[0],year:r[1],ytm:parseFloat(r[2])||0}));
+  const rfMid=extractTable('brf-mid').map(r=>({year:r[0],period:r[1],rate:parseFloat(r[2])||0,dspot:parseFloat(r[3])||0,pvf:parseFloat(r[4])||0}));
+  const rfOut=extractTable('brf-out').map(r=>({year:r[0],d_spot_y:parseFloat(r[2])||0,c_spot_y:parseFloat(r[3])||0}));
+  const rdIn=extractTable('brd-inp').map(r=>({n:r[0],year:r[1],ytm:parseFloat(r[2])||0}));
+  const rdMid=extractTable('brd-mid').map(r=>({year:r[0],period:r[1],rate:parseFloat(r[2])||0,dspot:parseFloat(r[3])||0,pvf:parseFloat(r[4])||0}));
+  const rdOut=extractTable('brd-out').map(r=>({year:r[0],d_spot_y:parseFloat(r[2])||0,c_spot_y:parseFloat(r[3])||0}));
+  // 이자율 DATA 시트 추출
+  const rateData=Array.from(document.querySelectorAll('#rate-data-tbody tr')).map(tr=>{
+    const c=tr.cells;
+    if(!c||c.length<12)return null;
+    const num=(s)=>{const n=parseFloat((s||'').replace(/[%,]/g,''));return isNaN(n)?null:n/100;};
+    return {
+      node:c[0].textContent.trim(), date:c[1].textContent.trim(),
+      dt:parseFloat(c[2].textContent)||0, cum_dt:parseFloat(c[3].textContent)||0,
+      rf_dspot:num(c[4].textContent), rf_cspot:num(c[5].textContent), rf_cfwd:num(c[6].textContent),
+      rf_cdf:parseFloat(c[7].textContent)||null,
+      rd_dspot:num(c[8].textContent), rd_cspot:num(c[9].textContent), rd_cfwd:num(c[10].textContent),
+      rd_cdf:parseFloat(c[11].textContent)||null
+    };
+  }).filter(x=>x);
+  const payload={valuation_date:vd, rf_input:rfIn, rf_mid:rfMid, rf_out:rfOut, rd_input:rdIn, rd_mid:rdMid, rd_out:rdOut, rate_data:rateData};
+  await _xlsxDownload('/api/bootstrap/export', payload, `부트스트래핑_${vd||'now'}.xlsx`);
 }
 function fillValuationFromContract(){
   const s=window._contractSummary; if(!s)return;

@@ -17,6 +17,7 @@ from models.goldman_sachs import gs_rcps
 from models.monte_carlo import monte_carlo_rcps
 from sensitivity.analysis import sensitivity_analysis
 from output.report import generate_workpaper
+from output.exports import generate_dcf_xlsx, generate_wacc_xlsx, generate_bootstrap_xlsx
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
 app = Flask(__name__, static_folder=FRONTEND_DIR)
@@ -2203,6 +2204,48 @@ def _preload_stock_listing():
 
 import threading as _threading
 _threading.Thread(target=_preload_stock_listing, daemon=True).start()
+
+
+# ══════════════════════════════════════════════════════════════
+#  상세 Excel 다운로드 라우트 (DCF · WACC · 부트스트래핑)
+# ══════════════════════════════════════════════════════════════
+@app.route("/api/dcf/export", methods=["POST"])
+def dcf_export():
+    """DCF 상세 Excel — 가정·연도별 FCFF·평가결과 3 시트."""
+    data = request.get_json(force=True) or {}
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            generate_dcf_xlsx(data, tmp.name)
+        return send_file(tmp.name, as_attachment=True,
+                         download_name=f"DCF상세_{data.get('valuation_date','')}.xlsx")
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)[:300]}), 200
+
+
+@app.route("/api/wacc/export", methods=["POST"])
+def wacc_export():
+    """WACC 상세 Excel — WACC결과·CAPM_Ke·유사기업 3 시트."""
+    data = request.get_json(force=True) or {}
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            generate_wacc_xlsx(data, tmp.name)
+        return send_file(tmp.name, as_attachment=True,
+                         download_name=f"WACC상세_{data.get('valuation_date','')}.xlsx")
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)[:300]}), 200
+
+
+@app.route("/api/bootstrap/export", methods=["POST"])
+def bootstrap_export():
+    """부트스트래핑 곡선 Excel — Rf·Rd·이자율DATA 3 시트."""
+    data = request.get_json(force=True) or {}
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            generate_bootstrap_xlsx(data, tmp.name)
+        return send_file(tmp.name, as_attachment=True,
+                         download_name=f"부트스트래핑_{data.get('valuation_date','')}.xlsx")
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)[:300]}), 200
 
 
 if __name__ == "__main__":
