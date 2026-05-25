@@ -33,6 +33,9 @@ _AUTH_PASS = os.environ.get("APP_PASSWORD", "")  # 비워두면 auth 끔
 
 @app.before_request
 def _require_auth():
+    # 헬스체크 엔드포인트는 인증 면제 (UptimeRobot 등 keep-alive 핑용)
+    if request.path == "/healthz":
+        return None
     if not _AUTH_PASS:
         return None  # 비밀번호 미설정 시 통과 (로컬)
     auth = request.authorization
@@ -42,6 +45,12 @@ def _require_auth():
         "Authentication required.", 401,
         {"WWW-Authenticate": 'Basic realm="RCPS Valuation Tool"'}
     )
+
+
+@app.route("/healthz")
+def healthz():
+    """UptimeRobot 등 외부 모니터링 keep-alive 용. Render sleep 방지."""
+    return {"status": "ok"}, 200
 
 
 def _d(s):
