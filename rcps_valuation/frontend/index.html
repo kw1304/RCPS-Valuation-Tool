@@ -800,13 +800,27 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>시장위험프리미엄 MRP (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">권장값↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_mrp" value="6.0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select onchange="if(this.value){document.getElementById('w_mrp').value=this.value;waccRecalc();}" style="width:138px;flex-shrink:0" title="Mature Market ERP (선진국 기본). 국가 추가위험은 CRP 칸에 별도.">
-            <option value="">Mature ERP…</option>
-            <option value="4.23">2026 4.23%</option>
-            <option value="4.30">2025 4.30%</option>
-            <option value="4.60">2024 4.60%</option>
-            <option value="5.00">2023 5.00%</option>
-            <option value="4.40">2022 4.40%</option>
+          <select onchange="waccSetMrp(this.value)" style="width:148px;flex-shrink:0">
+            <option value="">권장값…</option>
+            <optgroup label="① Mature(CRP 분리)">
+              <option value="4.23|sep">2026 4.23%</option>
+              <option value="4.30|sep">2025 4.30%</option>
+              <option value="4.60|sep">2024 4.60%</option>
+              <option value="5.00|sep">2023 5.00%</option>
+              <option value="4.40|sep">2022 4.40%</option>
+            </optgroup>
+            <optgroup label="② 한국 Total(CRP=0)">
+              <option value="4.87|kr">2026 한국 4.87%</option>
+              <option value="5.10|kr">2025 한국 5.10%</option>
+              <option value="5.45|kr">2024 한국 5.45%</option>
+              <option value="5.95|kr">2023 한국 5.95%</option>
+              <option value="5.50|kr">2022 한국 5.50%</option>
+            </optgroup>
+            <optgroup label="② 기타 Total(CRP=0)">
+              <option value="4.23|usa">미국 4.23%</option>
+              <option value="5.30|jp">일본 5.30%</option>
+              <option value="7.50|cn">중국 7.50%</option>
+            </optgroup>
           </select>
         </div>
       </div>
@@ -2216,6 +2230,16 @@ function waccRecalc(){
   const disp=document.getElementById('w_val_date_disp');
   if(disp)disp.textContent=vd||'—';
 }
+// MRP 드롭다운: "4.23|sep"(Mature, CRP 분리) / "4.87|kr"(한국 Total, CRP=0) 형식 파싱
+function waccSetMrp(raw){
+  if(!raw)return;
+  const [val,mode]=raw.split('|');
+  document.getElementById('w_mrp').value=val;
+  // Total 모드면 CRP=0 (이중 계산 방지)
+  if(mode==='kr'||mode==='usa'||mode==='jp'||mode==='cn')document.getElementById('w_country_p').value=0;
+  waccRecalc();
+}
+
 // 글로벌 평가기준일 변경 시 RCPS 폼 디스플레이·WACC 표시 동기화 + 변동성 산정기간 재적용
 function onValDateChange(){
   const v=document.getElementById('valuation_date')?.value||'';
