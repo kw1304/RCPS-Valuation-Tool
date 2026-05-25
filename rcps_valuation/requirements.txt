@@ -6,3 +6,6 @@ pdfplumber
 finance-datareader
 baostock
 yfinance
+pytesseract
+PyMuPDF
+Pillow
