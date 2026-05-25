@@ -88,6 +88,12 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
 footer.legal{padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;line-height:1.4}
 footer.legal b{color:var(--text2);font-weight:600}
 footer.legal .right{text-align:right;flex:1;min-width:240px}
+.global-bar{padding:0.45rem 1.5rem;background:linear-gradient(90deg,#EFF6FF 0%,var(--bg2) 60%);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:.78rem;flex-shrink:0;flex-wrap:wrap}
+.global-bar label{font-weight:600;color:var(--text2);white-space:nowrap}
+.global-bar input[type="date"]{padding:0.32rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-family:var(--sans);background:#fff;color:var(--text);font-weight:600}
+.global-bar input[type="date"]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(49,130,246,.1)}
+.global-bar-hint{color:var(--text3);font-size:0.7rem;font-weight:400}
+@media (max-width:768px){.global-bar{padding:0.4rem 1rem}.global-bar-hint{font-size:0.65rem;flex-basis:100%}}
 
 /* ── 모바일 반응형 (≤768px 태블릿/스마트폰, ≤480px 좁은 폰) */
 @media (max-width:768px){
@@ -313,6 +319,12 @@ details.note-fold .note{margin-top:4px}
     <span class="hd-badge">K-IFRS 1109 · TF · GS · MC · DCF · Bootstrap</span>
   </div>
 </header>
+
+<div class="global-bar">
+  <label for="valuation_date">📅 평가기준일</label>
+  <input type="date" id="valuation_date" value="2024-12-31" onchange="onValDateChange()">
+  <span class="global-bar-hint">이 일자로 RCPS·DCF·WACC·변동성 평가의 모든 자동조회(Rf·Kd·β·D/E·MRP·CRP·사이즈·종가)가 기준이 됩니다</span>
+</div>
 
 <!-- ══════════════════════
      계약서 요약 페이지
@@ -581,7 +593,8 @@ details.note-fold .note{margin-top:4px}
   <div class="sec">
     <div class="sec-title">시장 데이터 <span class="badge-req">필수</span></div>
     <div class="row2">
-      <div class="field"><label>평가기준일</label><input type="date" id="valuation_date" value="2024-12-31"></div>
+      <div class="field"><label>평가기준일 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">상단 글로벌 설정</span></label>
+        <div id="rcps_valdate_disp" style="padding:0.52rem 0.75rem;background:var(--bg2);border:1.5px solid transparent;border-radius:9px;font-size:0.8rem;color:var(--text2);font-weight:600">2024-12-31</div></div>
       <div class="field"><label>주가 (원)</label><input type="text" id="stock_price" class="money" value="25,522" onfocus="mFocus(this)" onblur="mBlur(this)" oninput="mInput(this)"></div>
     </div>
     <div class="row2 field-row">
@@ -2174,6 +2187,16 @@ function waccRecalc(){
   const disp=document.getElementById('w_val_date_disp');
   if(disp)disp.textContent=vd||'—';
 }
+// 글로벌 평가기준일 변경 시 RCPS 폼 디스플레이·WACC 표시 동기화 + 변동성 산정기간 재적용
+function onValDateChange(){
+  const v=document.getElementById('valuation_date')?.value||'';
+  const rd=document.getElementById('rcps_valdate_disp'); if(rd)rd.textContent=v||'—';
+  const wd=document.getElementById('w_val_date_disp');   if(wd)wd.textContent=v||'—';
+  // 변동성 탭이 활성이면 잔여만기 매칭 다시 적용
+  if(typeof volApplyPreset==='function' && document.getElementById('vol_preset'))volApplyPreset();
+}
+document.addEventListener('DOMContentLoaded',onValDateChange);
+
 // 평가기준일·평가대상 시총 기반 MRP·CRP·사이즈 프리미엄 자동 채움
 // MRP·CRP 값은 Damodaran "Country Risk Premium" 데이터(연도별 한국 기준 근사). 다른 국가/시점에 정확값 필요 시 수동 입력.
 const _ERP_KR={'2025':5.45,'2024':5.45,'2023':5.95,'2022':5.50,'2021':5.09,'2020':6.25,'2019':5.86};
