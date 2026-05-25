@@ -1730,6 +1730,10 @@ async function runBdt(){
     // TF 결과와 비교
     const tf=(lastEvalResult&&lastEvalResult.result&&lastEvalResult.result.tf)||{};
     const tfBv=tf.bond_value, tfPv=tf.put_option_value, tfPbv=tf.put_bond_value;
+    // BDT 결과 캐시 (감사조서 Excel에 포함)
+    window._lastBdtCross={tf_bond:tfBv, tf_put:tfPv, tf_put_bond:tfPbv,
+                          bdt_bond:d.bond_value, bdt_put:d.put_option_value, bdt_put_bond:d.put_bond_value,
+                          rate_vol:d.rate_vol, n_steps:d.n_steps_used, dt:d.dt, put_step:d.put_step};
     const diff=(bdt,tfv)=>(bdt!=null&&tfv!=null&&tfv!==0)?`<span style="color:${Math.abs((bdt-tfv)/tfv)<0.02?'var(--text3)':'var(--accent)'};font-size:.68rem">Δ ${(((bdt-tfv)/tfv)*100).toFixed(2)}%</span>`:'';
     out.innerHTML=`
       <table class="dtable" style="margin-top:4px"><thead><tr><th>구성요소</th><th style="text-align:right">TF (주가트리)</th><th style="text-align:right">BDT (금리트리)</th><th style="text-align:center">차이</th></tr></thead><tbody>
@@ -1832,7 +1836,12 @@ async function run(){
 async function dlExcel(){
   if(!lastReq)return;showLoader('감사조서 Excel 생성 중...');
   try{
-    const res=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastReq)});
+    // 평가 결과(TF/GS/MC) + BDT 교차검증 데이터 함께 전송
+    const payload = Object.assign({}, lastReq, {
+      eval_result: lastEvalResult ? lastEvalResult.result : null,
+      bdt_cross: window._lastBdtCross || null
+    });
+    const res=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res.ok)throw new Error('다운로드 실패');
     const blob=await res.blob(),url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download='RCPS_공정가치_감사조서.xlsx';a.click();URL.revokeObjectURL(url);

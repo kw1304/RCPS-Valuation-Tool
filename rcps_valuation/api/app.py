@@ -493,8 +493,8 @@ def download():
             },
         }
 
-        # 이항트리 수집 (TF + GS) — 감사조서에 첨부
-        tree_steps_dl = min(int(data.get("tree_steps", 40) or 40), 60)
+        # 이항트리 수집 (TF + GS) — 감사조서에 첨부 (가로 팬아웃 시각화: 20 step 권장)
+        tree_steps_dl = min(int(data.get("tree_steps", 20) or 20), 40)
         try:
             tf_tree_res = tf_rcps(params, steps=tree_steps_dl, collect_tree=True, **dl_kw)
             tf_tree_dl = tf_tree_res.get("tree")
@@ -516,7 +516,9 @@ def download():
         tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
         tmp.close()
         generate_workpaper(params, initial_adapted, subsequent, sens, tmp.name,
-                           tf_tree=tf_tree_dl, gs_tree=gs_tree_dl)
+                           tf_tree=tf_tree_dl, gs_tree=gs_tree_dl,
+                           eval_result=data.get("eval_result"),
+                           bdt_cross=data.get("bdt_cross"))
         return send_file(tmp.name, as_attachment=True,
                          download_name="RCPS_감사조서.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
