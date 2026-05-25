@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: rcps-valuation-tool
+    runtime: docker
+    region: singapore
+    plan: free
+    rootDir: rcps_valuation
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_USER
+        value: admin
+      - key: APP_PASSWORD
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.9
+    healthCheckPath: /healthz
+    autoDeploy: true
