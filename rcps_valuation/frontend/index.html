@@ -384,7 +384,10 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>계약서 파일 (.pdf / .xlsx)</label><input type="file" id="contract-file" accept=".pdf,.xlsx,.xls"></div>
       <div class="field"><label>AI 제공자</label>
         <select id="contract-provider" onchange="onProviderChange()">
-          <option value="claude_cli" selected>Claude CLI (내 Claude 구독)</option>
+          <option value="gemini" selected>Gemini (Google · 무료 + 비전 OCR)</option>
+          <option value="anthropic">Claude API (Anthropic · 유료 + 비전 OCR)</option>
+          <option value="groq">Groq (무료 + 빠름 · 텍스트만)</option>
+          <option value="claude_cli">Claude CLI (로컬 PC 전용)</option>
         </select>
       </div>
     </div>
@@ -1323,18 +1326,45 @@ function switchPage(name,btn){
 
 /* ══ 계약서 요약 (AI) ══ */
 const _CONTRACT_MODELS={
+  gemini:[['gemini-2.0-flash','Gemini 2.0 Flash (권장·무료)'],['gemini-2.5-flash','Gemini 2.5 Flash'],['gemini-1.5-flash','Gemini 1.5 Flash (안정)'],['gemini-1.5-pro','Gemini 1.5 Pro']],
+  anthropic:[['claude-sonnet-4-5','Claude Sonnet 4.5 (권장)'],['claude-opus-4-5','Claude Opus 4.5 (정밀)'],['claude-3-5-sonnet-latest','Claude 3.5 Sonnet']],
+  groq:[['llama-3.3-70b-versatile','Llama 3.3 70B (권장)'],['llama-3.1-8b-instant','Llama 3.1 8B (빠름)']],
   claude_cli:[['sonnet','Claude Sonnet (권장)'],['opus','Claude Opus (정밀)'],['','기본(로그인 설정)']]
+};
+const _PROVIDER_INFO={
+  gemini: {
+    label: 'Gemini API 키',
+    placeholder: 'AIza... (https://aistudio.google.com/apikey 에서 무료 발급)',
+    help: '<b>Google Gemini</b> — 무료 (분당 15회, 일 1500회). PDF 직접 분석(스캔본 자동 OCR). 키 발급: <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com/apikey</a>'
+  },
+  anthropic: {
+    label: 'Anthropic API 키',
+    placeholder: 'sk-ant-... (https://console.anthropic.com 에서 발급)',
+    help: '<b>Anthropic Claude API</b> — 유료(약 $3-15/M tokens), 최고 품질. PDF 직접 분석(스캔본 자동 OCR). 키 발급: <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>'
+  },
+  groq: {
+    label: 'Groq API 키',
+    placeholder: 'gsk_... (https://console.groq.com 에서 무료 발급)',
+    help: '<b>Groq</b> — 무료, 매우 빠름. 단 <b>텍스트 PDF만</b> 가능(스캔본 OCR 불가). 키 발급: <a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a>'
+  },
+  claude_cli: {
+    label: 'API 키 (불필요)',
+    placeholder: 'Claude 구독 로그인 사용 — 키 없이',
+    help: '<b>로컬 PC 전용</b> — Claude Code CLI(구독) 호출. 클라우드 배포 서버에서는 사용 불가. PC 로컬 실행 시만 사용.'
+  }
 };
 function _curProvider(){return document.getElementById('contract-provider').value;}
 function onProviderChange(){
   const pv=_curProvider();
   const sel=document.getElementById('contract-model');
   sel.innerHTML=_CONTRACT_MODELS[pv].map((m,i)=>`<option value="${m[0]}"${i===0?' selected':''}>${m[1]}</option>`).join('');
+  const info=_PROVIDER_INFO[pv]||_PROVIDER_INFO.gemini;
   const lbl=document.getElementById('contract-key-label');
   const inp=document.getElementById('contract-apikey');
   const help=document.getElementById('contract-key-help');
-  lbl.textContent='API 키 (불필요)'; inp.placeholder='Claude 구독 로그인 사용 — 키 없이';
-  help.innerHTML='내 <b>Claude Code CLI</b>(Claude 구독)로 요약. 사전 준비: 독립형 Claude Code 설치 + 로그인 + <code>claude</code> 가 PATH에 있어야 함(또는 서버 환경변수 <code>CLAUDE_CLI_CMD</code>에 경로 지정). 텍스트 전용(스캔은 로컬 OCR). ※ 본문은 Anthropic 서버로 전송됨(로컬 아님).';
+  lbl.textContent=info.label;
+  inp.placeholder=info.placeholder;
+  if(help)help.innerHTML=info.help;
   inp.value=localStorage.getItem(pv+'_contract_key')||'';
 }
 function saveContractKey(){
