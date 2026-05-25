@@ -800,13 +800,13 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label>시장위험프리미엄 MRP (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">권장값↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_mrp" value="6.0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select onchange="if(this.value){document.getElementById('w_mrp').value=this.value;waccRecalc();}" style="width:120px;flex-shrink:0">
-            <option value="">권장값…</option>
-            <option value="6.0">한국 6.0%</option>
-            <option value="6.5">한국(Damodaran)</option>
-            <option value="4.5">미국 4.5%</option>
-            <option value="5.5">일본 5.5%</option>
-            <option value="7.0">중국 7.0%</option>
+          <select onchange="if(this.value){document.getElementById('w_mrp').value=this.value;waccRecalc();}" style="width:138px;flex-shrink:0" title="Mature Market ERP (선진국 기본). 국가 추가위험은 CRP 칸에 별도.">
+            <option value="">Mature ERP…</option>
+            <option value="4.23">2026 4.23%</option>
+            <option value="4.30">2025 4.30%</option>
+            <option value="4.60">2024 4.60%</option>
+            <option value="5.00">2023 5.00%</option>
+            <option value="4.40">2022 4.40%</option>
           </select>
         </div>
       </div>
@@ -2227,8 +2227,9 @@ function onValDateChange(){
 document.addEventListener('DOMContentLoaded',onValDateChange);
 
 // 평가기준일·평가대상 시총 기반 MRP·CRP·사이즈 프리미엄 자동 채움
-// 한국 ERP·CRP 연도별 근사값 (Damodaran 반기 업데이트 기준). 정확값은 pages.stern.nyu.edu/~adamodar/ctryprem 확인 권장.
-const _ERP_KR={'2026':4.87,'2025':5.10,'2024':5.45,'2023':5.95,'2022':5.50,'2021':5.10,'2020':6.25,'2019':5.86};
+// MRP = Mature Market ERP(선진국 기본), CRP = 한국 추가 위험. 합치면 Damodaran "한국 ERP" 값과 일치(중복 방지).
+// 연도별 근사값 (Damodaran 반기 업데이트 기준). 정확값은 pages.stern.nyu.edu/~adamodar/ctryprem 확인 권장.
+const _MATURE_ERP={'2026':4.23,'2025':4.30,'2024':4.60,'2023':5.00,'2022':4.40,'2021':4.25,'2020':5.20,'2019':5.06};
 const _CRP_KR={'2026':0.64,'2025':0.80,'2024':0.85,'2023':0.95,'2022':1.10,'2021':0.85,'2020':1.05,'2019':0.80};
 function _sizePremiumFromMcap(mc){
   // 한국 원화 시가총액 → 사이즈 프리미엄 (Duff & Phelps 통상 매핑, 원화 기준)
@@ -2244,12 +2245,12 @@ async function waccAutoPremiums(){
   const vd=document.getElementById('valuation_date')?.value;
   if(!vd){status.style.color='var(--red)';status.textContent='평가기준일을 먼저 입력하세요.';return;}
   const yr=vd.slice(0,4);
-  // MRP·CRP (한국 기준 Damodaran 연도별 테이블)
-  const mrp=_ERP_KR[yr]||6.0;
-  const crp=_CRP_KR[yr]||0.85;
+  // MRP = Mature Market ERP, CRP = 한국 추가 (분리해서 더해야 중복 없음)
+  const mrp=_MATURE_ERP[yr]||4.5;
+  const crp=_CRP_KR[yr]||0.80;
   document.getElementById('w_mrp').value=mrp;
   document.getElementById('w_country_p').value=crp;
-  const parts=[`MRP=${mrp}%`,`CRP=${crp}%`];
+  const parts=[`MRP=${mrp}%(선진국)`,`CRP=${crp}%(한국)`,`합산 ERP=${(mrp+crp).toFixed(2)}%`];
   // 사이즈 프리미엄 — 평가대상 #self_ticker 있으면 시총 조회해 매핑
   const selfTicker=document.getElementById('self_ticker')?.value?.trim();
   if(selfTicker){
