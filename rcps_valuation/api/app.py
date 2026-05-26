@@ -265,7 +265,7 @@ def evaluate():
         except Exception as e:
             gs = {"error": str(e)}
 
-        # ── GS 분해 (5803 방식): 채권·풋옵션은 모형 무관 공통값(TF 산출),
+        # ── GS 분해 (한국 평가실무 표준): 채권·풋옵션은 모형 무관 공통값(TF 산출),
         #     GS 전환권 = GS 총액 − 풋채권가치(=채권+풋)
         if (isinstance(gs, dict) and not gs.get("error")
                 and isinstance(tf, dict) and not tf.get("error")

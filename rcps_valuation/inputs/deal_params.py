@@ -26,7 +26,7 @@ class RCPSParams:
     # ── 풋옵션 (보유자 상환청구)
     put_start: Optional[date] = None     # 풋 행사 가능 시작일
     put_irr: float = 0.0                 # 행사가 산정 이자율/IRR (연율, 예: 0.075 = 7.5%)
-    # 행사가 방식(put_price_mode) — 5803 콜·풋 입력 방식과 동일 체계:
+    # 행사가 방식(put_price_mode) — 한국 RCPS 콜·풋 입력 방식과 동일 체계:
     #   "sp"            단리: face × (1 + r·t)
     #   "cp_y/cp_h/cp_q" 복리(연/반기/분기), 쿠폰 차감 X: face × (1 + r/m)^(m·t)
     #   "irr_y/irr_h/irr_q" 복리 IRR make-whole, 쿠폰 재투자가치 차감
@@ -37,7 +37,7 @@ class RCPSParams:
     put_price_mode: str = "irr"
     put_fixed_price: float = 0.0         # 고정 풋 행사가액 (정액, 발행금액 스케일)
     # make-whole 쿠폰 차감 기준:
-    #   "accrual"(기본, 5803 동일): 연 단위로 발생한 배당 권리를 매기 차감(실제 지급시점 무관)
+    #   "accrual"(기본, 한국 표준): 연 단위로 발생한 배당 권리를 매기 차감(실제 지급시점 무관)
     #   "actual": 실제 지급된 배당(누적성·첫지급연차 반영)만 차감 — 비누적 소멸분은 차감 안 함
     put_coupon_netting: str = "accrual"
     put_contract_ratio: float = 0.0      # contract 모드: 행사가 = face × 비율
@@ -246,7 +246,7 @@ class RCPSParams:
                         fixed_price: float, contract_ratio: float,
                         netting: str) -> float:
         """
-        행사가 산정 단일 엔진 — 풋·콜 공통. 5803 입력 방식 전부 지원:
+        행사가 산정 단일 엔진 — 풋·콜 공통. 한국 RCPS 입력 방식 전부 지원:
           fixed            정액
           contract         face × 비율
           sp               단리   face × (1 + r·t)
@@ -281,7 +281,7 @@ class RCPSParams:
                     if t_pay <= t + 1e-9:
                         fv_coupons += amt * (g ** (m * (t - t_pay)))
             else:
-                # accrual(기본, 5803 동일): 연 단위 발생 배당 권리를 매기 차감
+                # accrual(기본, 한국 표준): 연 단위 발생 배당 권리를 매기 차감
                 coupon_amount = face * self.coupon_rate * interval
                 j = 1
                 while j * interval <= t + 1e-9:
@@ -372,7 +372,7 @@ class RCPSParams:
         - target > maturity → steps+1 (절대 활성화 안 됨)
         - target ≤ valuation → 0 (즉시 활성)
         이전엔 4개 모듈이 truncate/round 혼용 → 풋 활성 시점 1스텝 어긋남.
-        round로 단일화 (자연스러운 의도 매칭, 5803 표준).
+        round로 단일화 (자연스러운 의도 매칭, 한국 표준).
         """
         if target is None:
             return steps

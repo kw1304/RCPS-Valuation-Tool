@@ -82,7 +82,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
     else:
         bond_pv = None
 
-    # ── 만기 페이오프 (패턴 A: 누적 우선배당 표준 — GS/5803 일치)
+    # ── 만기 페이오프 (패턴 A: 누적 우선배당 표준 — GS·한국실무 일치)
     # 결정 비교는 원금끼리(쿠폰 제외), 만기쿠폰은 결정 무관 양쪽 가산.
     # 전환자도 전환 직전까지 누적된 우선배당 청구권 보유, 전환 이후는 청구권 소멸.
     t_mat = steps * dt
@@ -107,7 +107,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         return 1.0
 
     def _diluted(i, j):
-        """전환 후 1주당 가격 (5803 표준 — 모든 RCPS 동시 전환 가정).
+        """전환 후 1주당 가격 (한국 평가실무 표준 — 모든 RCPS 동시 전환 가정).
         = (n_com·S + n_rcps·bond_pv[i]) / (n_com + n_rcps·N_new_per)
         분자: 기존 지분가치 + 전체 RCPS의 부채흡수(=n_rcps × 한 RCPS의 채권 PV)
         분모: 기존 보통주 + 전체 RCPS 전환 시 발행되는 신주 총수(=n_rcps × N_new_per)

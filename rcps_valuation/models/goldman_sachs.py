@@ -134,7 +134,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
                 return K / max(K_floor, S)
         return 1.0
 
-    # ── 희석주가: 전환 후 1주당 가격 (5803 표준 — 모든 RCPS 동시 전환 가정)
+    # ── 희석주가: 전환 후 1주당 가격 (한국 평가실무 표준 — 모든 RCPS 동시 전환 가정)
     # = (n_com·S + n_rcps·bond_pv) / (n_com + n_rcps·N_new_per)
     # 분자: 기존 지분 + 전체 RCPS 부채흡수, 분모: 기존 + 전체 신주
     # bond_pv는 per-RCPS, N_new_per = (face/K)·ratio (per RCPS).
@@ -180,13 +180,13 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     Br = [0.0] * (steps + 1)
 
     # 만기 초기화 (Pass 3와 동일 결정 규칙: cv vs 원금상환액 (쿠폰 미포함) 비교)
-    # 5803 컨벤션: 쿠폰은 결정 무관 지급 → 비교는 원금끼리, 양쪽 모두 쿠폰 가산
+    # 흡수형 컨벤션: 쿠폰은 결정 무관 지급 → 비교는 원금끼리, 양쪽 모두 쿠폰 가산
     _mat_principal_p1 = max(face, put_mat)
     _mat_coupon_p1 = coupon_cf.get(steps, 0)
     for j in range(steps + 1):
         ei = _conv_val(steps, j)
         if ei >= _mat_principal_p1:
-            # 전환: 지분 = cv, 채권 = 만기쿠폰 (5803 컨벤션 — 전환도 쿠폰 받음)
+            # 전환: 지분 = cv, 채권 = 만기쿠폰 (흡수형 컨벤션 — 전환도 쿠폰 받음)
             Er[j] = ei;  Br[j] = _mat_coupon_p1;  dec[steps][j] = 'c'
         else:
             Er[j] = 0.0; Br[j] = _mat_principal_p1 + _mat_coupon_p1;  dec[steps][j] = 'r'
@@ -277,7 +277,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     # ════════════════════════════════════════════════════
     # PASS 3: 블렌딩 할인계수 가치 산출
     # ════════════════════════════════════════════════════
-    # 5803 / Goldman-Sachs(1994) 표준 컨벤션 (검증으로 확정):
+    # Goldman-Sachs(1994) 표준 컨벤션 (검증으로 확정):
     #   자식 가지의 위험구조(cp[child])는 그 가지가 도달하는 미래의 실제 전환확률 →
     #   자식별로 다른 블렌딩 할인율 적용:
     #     df_up = exp(-(cp[i+1][j  ]·rf + (1-cp[i+1][j  ])·Kd)·dt)
@@ -304,7 +304,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
         _g_dec = [[_dec_map.get(dec[i][j], '') for j in range(i+1)]
                   for i in range(steps+1)]
 
-    # 만기 페이오프: max(원금상환, 전환) + 만기쿠폰 (5803: 쿠폰은 max 밖에서 가산)
+    # 만기 페이오프: max(원금상환, 전환) + 만기쿠폰 (한국 평가실무: 쿠폰은 max 밖에서 가산)
     _mat_principal = max(face, put_mat)
     _coup_mat = coupon_cf.get(steps, 0)
     V = [max(_conv_val(steps, j), _mat_principal) + _coup_mat for j in range(steps + 1)]
@@ -329,7 +329,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
 
         Vn = [0.0] * (i + 1)
         for j in range(i + 1):
-            # 자식 가지별 cp로 블렌딩 할인 (5803 표준 — 검증으로 골든값 잔차 회복)
+            # 자식 가지별 cp로 블렌딩 할인 (한국 평가실무 표준 — 검증으로 골든값 잔차 회복)
             df_up = _dfac_child(i + 1, j, i)
             df_dn = _dfac_child(i + 1, j + 1, i)
             hold = p_i * V[j] * df_up + q_i * V[j + 1] * df_dn
@@ -349,10 +349,10 @@ def gs_rcps(params: RCPSParams, steps: int = None,
                 intr = max(ei, rd_i)
             else:
                 intr = ei
-            # 5803 컨벤션: value = max(MAT, PUT, CON, TIME) + INT
+            # 흡수형 컨벤션: value = max(MAT, PUT, CON, TIME) + INT
             # (Pass3는 블렌딩 hold 값을 기반으로 결정 재산정 — Pass1과 동일 결정 규칙이
-            # 다른 hold 값에서 다른 결과를 낼 수 있음. 5803 ref 정합을 위해 Pass3
-            # 자체 결정 채택 — 8차 검증으로 확인: M14 변경은 5803 fv를 -5.5% 회귀시켰음)
+            # 다른 hold 값에서 다른 결과를 낼 수 있음. 한국 평가실무 정합을 위해 Pass3
+            # 자체 결정 채택 — 8차 검증으로 확인: M14 변경은 한국 평가실무 fv를 -5.5% 회귀시켰음)
             Vn[j] = max(intr, cont_hold) + coupon_cf.get(i, 0)
 
             if collect_tree:

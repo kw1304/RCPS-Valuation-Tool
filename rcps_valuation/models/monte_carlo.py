@@ -144,7 +144,7 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     coupon_cf = _coupon_schedule(params, n_steps, dt)
 
     # ── 만기 가치: 전환 vs 상환 → E/B 버킷 분리 ──
-    # 패턴 A(누적 우선배당 표준 — GS/5803 일치): 비교는 원금끼리, 만기쿠폰은
+    # 패턴 A(누적 우선배당 표준 — GS·한국실무 일치): 비교는 원금끼리, 만기쿠폰은
     # 결정 무관 양쪽 가산. 전환자도 만기 시점 누적 우선배당 청구권 보유.
     put_mat = params.put_exercise_price(n_steps * dt) if params.has_put else face
     mat_coupon = coupon_cf.get(n_steps, 0)

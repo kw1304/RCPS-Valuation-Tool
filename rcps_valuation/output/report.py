@@ -62,7 +62,7 @@ def _write_model_comparison(ws, eval_result, params):
         v = d.get(k) if isinstance(d, dict) else None
         return v if v not in (None, "", 0) or k.startswith("fair") else None
 
-    # 5803 방식: 채권·풋은 모형 무관 공통값(TF값) — GS·MC 모두 동일 사용
+    # 한국 평가실무 표준: 채권·풋은 모형 무관 공통값(TF값) — GS·MC 모두 동일 사용
     _bond = tf.get("bond_value")
     _put = tf.get("put_option_value")
     _putb = tf.get("put_bond_value")
@@ -90,12 +90,12 @@ def _write_model_comparison(ws, eval_result, params):
         _cell(ws, ri, 4, vmc if vmc is not None else "-", bg=bg, num_fmt="#,##0", align="right")
         _cell(ws, ri, 5, note, bg=bg, color="718096")
 
-    # TF 본래 2-component 분해 (5803 보고서 VE/VD와 동일 컨벤션) — 정합 자료
+    # TF 본래 2-component 분해 — Tsiveriotis-Fernandes(1998) 학술 분해
     tfE = tf.get("equity_component") if tf else None
     tfB = tf.get("bond_component") if tf else None
     if tfE is not None and tfB is not None:
         r2c = 10
-        ws.cell(row=r2c, column=1, value="■ TF 본래 2-component 분해 (5803 보고서 VE/VD)").font = \
+        ws.cell(row=r2c, column=1, value="■ TF 본래 2-component 분해 (Tsiveriotis-Fernandes 1998)").font = \
             Font(name="맑은 고딕", bold=True, size=10, color="0369A1")
         ws.merge_cells(start_row=r2c, start_column=1, end_row=r2c, end_column=5)
         for i, (k, v, note) in enumerate([

@@ -522,7 +522,7 @@ details.note-fold .note{margin-top:4px}
       <div class="row2" id="put-netting-row">
         <div class="field"><label for="put_coupon_netting">쿠폰 차감 기준</label>
           <select id="put_coupon_netting">
-            <option value="accrual" selected>발생주의 (연 단위 매기 차감, 5803)</option>
+            <option value="accrual" selected>발생주의 (연 단위 매기 차감)</option>
             <option value="actual">실제 지급분만 차감 (비누적 소멸분 제외)</option>
           </select>
         </div>
@@ -710,7 +710,7 @@ details.note-fold .note{margin-top:4px}
       <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
     </svg>
     <p>발행 조건을 입력하고 <strong>공정가치 산출</strong>을 눌러주세요.</p>
-    <small>기본값: 5803 샘플 — 발행 2023-09-21 / 만기 2028-09-21 / 전환가 29,986원</small>
+    <small>기본값: 발행 2023-09-21 / 만기 2028-09-21 / 전환가 29,986원</small>
   </div>
 
   <div id="result-wrap" style="display:none">
@@ -2081,25 +2081,25 @@ function renderRCPS(data){
       <div class="comp-card"><div class="cn">② 전환(지분) 성분 (E)</div><div class="cv">${fmtW(mcv)}</div><div class="cs">MC 2-component 지분측 성분 (래칫 리픽싱 반영)</div><div class="cpct">${pct(mcv,mcFv)}</div></div>
       <div class="comp-card total"><div class="cn">MC 공정가치 (Main) — Monte Carlo LSM &nbsp;|&nbsp; paths = ${mc?.n_paths||'—'}</div><div class="cv">${fmtW(mcFv)}</div><div class="cs">① ${fmtW(mbp)} + ② ${fmtW(mcv)} ${mc?.ci_lower!=null?`&nbsp;|&nbsp; 95% CI ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}`:''}</div></div>`;
   }else{
-    // TF 본래 2-component 분해 (E[0]/B[0]) — 5803 보고서 VE/VD와 동일 컨벤션
+    // TF 본래 2-component 분해 (E[0]/B[0]) — Tsiveriotis-Fernandes(1998) 원본
     const tfE=tf?.equity_component, tfB=tf?.bond_component;
     document.getElementById('comp-grid').innerHTML=`
       <div class="comp-card"><div class="cn">① 순채권가치 (Bond)</div><div class="cv">${fmtW(bv)}</div><div class="cs">전환·풋 미반영 순채권 현재가치 (Kd 할인)</div><div class="cpct">${pct(bv,tfFv)}</div></div>
       <div class="comp-card"><div class="cn">② 풋옵션가치 (Put)</div><div class="cv">${fmtW(pv)}</div><div class="cs">풋채권가치 − 순채권가치 = ${fmtW(tf?.put_bond_value)}</div><div class="cpct">${pct(pv,tfFv)}</div></div>
       <div class="comp-card"><div class="cn">③ 전환권가치 (Call)</div><div class="cv">${fmtW(cv)}</div><div class="cs">총 공정가치 − 풋채권가치 (TF 2-component 기반)</div><div class="cpct">${pct(cv,tfFv)}</div></div>
       <div class="comp-card total"><div class="cn">TF 공정가치 (Main 1) — Tsiveriotis-Fernandes &nbsp;|&nbsp; steps = ${tf?.steps||r.steps}</div><div class="cv">${fmtW(tfFv)}</div><div class="cs">① ${fmtW(bv)} + ② ${fmtW(pv)} + ③ ${fmtW(cv)}</div></div>`;
-    // TF 본래 2-component (VE/VD) — 5803 보고서 정합 자료
+    // TF 본래 2-component (VE/VD) — Tsiveriotis-Fernandes(1998) 학술 표준
     if(tfE!=null && tfB!=null){
       const tf2cEl = document.getElementById('tf-2comp');
       if(tf2cEl){
         tf2cEl.innerHTML = `<div style="margin-top:8px;padding:10px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;font-size:.74rem;line-height:1.65">
-          <b style="color:#0369A1">TF 본래 2-component 분해 (5803 보고서 VE/VD와 동일 컨벤션)</b>
+          <b style="color:#0369A1">TF 본래 2-component 분해 (Tsiveriotis-Fernandes 1998 학술 분해)</b>
           <table style="width:100%;margin-top:6px;font-size:.7rem;border-collapse:collapse">
             <tr><td style="padding:2px 4px">VE (지분 성분, E[0])</td><td style="text-align:right;padding:2px 4px">${fmtW(tfE)}</td><td style="padding:2px 4px;color:var(--text3)">전환 가능성 반영</td></tr>
             <tr><td style="padding:2px 4px">VD (채권 성분, B[0])</td><td style="text-align:right;padding:2px 4px">${fmtW(tfB)}</td><td style="padding:2px 4px;color:var(--text3)">만기상환·풋 보장</td></tr>
             <tr style="font-weight:600;background:#FFFFFF"><td style="padding:2px 4px">합계 = 공정가치</td><td style="text-align:right;padding:2px 4px">${fmtW(tfE+tfB)}</td><td style="padding:2px 4px"></td></tr>
           </table>
-          <div style="font-size:.66rem;color:var(--text3);margin-top:3px">※ Tsiveriotis-Fernandes(1998) 본래 분해. 위 ①②③(5803 흡수형 3-way)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점으로 재해석한 평가실무 컨벤션.</div>
+          <div style="font-size:.66rem;color:var(--text3);margin-top:3px">※ 위 ①②③(흡수형 3-way)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점, 본 2-way는 학술 분해. 평가법인 보고서마다 채택 컨벤션 상이.</div>
         </div>`;
       }
     }
