@@ -2710,22 +2710,51 @@ async function evFetchPeers(){
     const j = await r.json();
     if(j.status !== 'ok'){ host.innerHTML = `<span style="color:#DC2626">실패: ${j.message||'unknown'}</span>`; return; }
     window.evPeerData = j.peers || [];
+    // EBITDA 출처 라벨 — 일반인 친화 + K-IFRS 1113.93(d) input 출처 공시
+    const srcLabel = (s) => ({
+      'financials':            {txt:'연간',          color:'#059669', desc:'연간 재무제표 EBITDA 직접 항목'},
+      'quarterly_financials':  {txt:'분기',          color:'#0EA5E9', desc:'분기 재무제표 EBITDA 직접 항목'},
+      'quarterly_ttm':         {txt:'분기 TTM',      color:'#0EA5E9', desc:'직전 4분기 합산 연환산 (Trailing Twelve Months)'},
+      'quarterly_annualized':  {txt:'분기 연환산',   color:'#B45309', desc:'분기 부족 — 평균 × 4분기 환산 (보수적 추정)'},
+      'info':                  {txt:'TTM (현시점)',  color:'#B45309', desc:'yfinance.info trailing EBITDA — 평가기준일 매칭 X (fallback)'},
+    })[s] || {txt:s||'—', color:'var(--text3)', desc:''};
+
     let html = `<table style="width:100%;font-size:.7rem;border-collapse:collapse;background:#fff;border-radius:4px;overflow:hidden">
-      <thead><tr style="background:#E0F2FE"><th style="padding:4px 6px;text-align:left">입력</th><th style="padding:4px 6px;text-align:left">매칭 ticker</th><th style="padding:4px 6px;text-align:left">종목명</th><th style="padding:4px 6px;text-align:right">시총(억)</th><th style="padding:4px 6px;text-align:right">순차입(억)</th><th style="padding:4px 6px;text-align:right">EBITDA(억)</th><th style="padding:4px 6px;text-align:right">EV/EBITDA</th></tr></thead><tbody>`;
+      <thead><tr style="background:#E0F2FE">
+        <th style="padding:4px 6px;text-align:left">입력</th>
+        <th style="padding:4px 6px;text-align:left">매칭 ticker</th>
+        <th style="padding:4px 6px;text-align:left">종목명</th>
+        <th style="padding:4px 6px;text-align:right">시총(억)</th>
+        <th style="padding:4px 6px;text-align:right">순차입(억)</th>
+        <th style="padding:4px 6px;text-align:right">EBITDA(억)</th>
+        <th style="padding:4px 6px;text-align:left" title="EBITDA 출처와 산정 시점 (K-IFRS 1113.93(d) input 출처 공시)">EBITDA 출처</th>
+        <th style="padding:4px 6px;text-align:right">EV/EBITDA</th>
+      </tr></thead><tbody>`;
     j.peers.forEach(p => {
       const inputShow = p.input || p.ticker;
       if(p.error){
-        html += `<tr><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px">${p.ticker||'—'}</td><td colspan="5" style="padding:3px 6px;color:#DC2626">${p.error}</td></tr>`;
+        html += `<tr><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px">${p.ticker||'—'}</td><td colspan="6" style="padding:3px 6px;color:#DC2626">${p.error}</td></tr>`;
       }else{
         const mcEok = p.market_cap ? (p.market_cap/1e8).toFixed(0) : '—';
         const ndEok = p.net_debt != null ? (p.net_debt/1e8).toFixed(0) : '—';
         const ebEok = p.ebitda ? (p.ebitda/1e8).toFixed(0) : '—';
         const mult = p.ev_ebitda ? p.ev_ebitda.toFixed(2)+'배' : '—';
         const isValid = p.ev_ebitda && 0 < p.ev_ebitda && p.ev_ebitda < 100;
-        html += `<tr style="${isValid?'':'opacity:.5'}"><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px;color:var(--text3)">${p.ticker}</td><td style="padding:3px 6px">${p.name||''}</td><td style="padding:3px 6px;text-align:right">${mcEok}</td><td style="padding:3px 6px;text-align:right">${ndEok}</td><td style="padding:3px 6px;text-align:right">${ebEok}</td><td style="padding:3px 6px;text-align:right;font-weight:600">${mult}</td></tr>`;
+        const src = srcLabel(p.ebitda_source);
+        const periodTxt = p.ebitda_period ? `<span style="color:var(--text3);font-size:.62rem">(${p.ebitda_period})</span>` : '';
+        const srcHtml = `<span style="color:${src.color};font-weight:600" title="${src.desc}">${src.txt}</span> ${periodTxt}`;
+        html += `<tr style="${isValid?'':'opacity:.5'}"><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px;color:var(--text3)">${p.ticker}</td><td style="padding:3px 6px">${p.name||''}</td><td style="padding:3px 6px;text-align:right">${mcEok}</td><td style="padding:3px 6px;text-align:right">${ndEok}</td><td style="padding:3px 6px;text-align:right">${ebEok}</td><td style="padding:3px 6px">${srcHtml}</td><td style="padding:3px 6px;text-align:right;font-weight:600">${mult}</td></tr>`;
       }
     });
     html += `</tbody></table>`;
+    // EBITDA 출처 범례 (감사 워크페이퍼 추적성)
+    html += `<div style="font-size:.62rem;color:var(--text3);margin-top:4px;line-height:1.6;padding:4px 6px;background:#F9FAFB;border-radius:3px">
+      <b>EBITDA 출처 범례:</b>
+      <span style="color:#059669;font-weight:600">연간</span> = 연간 재무제표 EBITDA (가장 정확) ·
+      <span style="color:#0EA5E9;font-weight:600">분기 TTM</span> = 직전 4분기 합산 ·
+      <span style="color:#B45309;font-weight:600">분기 연환산</span> = 분기 부족 시 환산 추정 ·
+      <span style="color:#B45309;font-weight:600">TTM (현시점)</span> = 평가기준일 매칭 X (fallback)
+    </div>`;
     if(j.summary && j.summary.n_valid > 0){
       html += `<div style="font-size:.7rem;color:var(--text2);margin-top:6px"><b>유효 ${j.summary.n_valid}개</b> · 중앙값 <b>${j.summary.median.toFixed(2)}배</b> · 평균 <b>${j.summary.mean.toFixed(2)}배</b>${j.date?` · 기준일 ${j.date}`:' · 현시점'}</div>`;
     }
