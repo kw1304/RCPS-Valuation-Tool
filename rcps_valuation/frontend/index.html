@@ -288,9 +288,7 @@ details.note-fold .note{margin-top:4px}
 .ev-calc-search input:focus{border-color:var(--accent);background:#fff}
 .ev-calc-hint{font-size:.68rem;color:var(--text3);line-height:1.5}
 .ev-calc-opts{margin-bottom:8px;padding:8px 10px;background:var(--bg2);border-radius:8px}
-.ev-calc-opts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:.7rem}
-.ev-calc-opts-grid label{display:block;margin-bottom:3px;color:var(--text2)}
-.ev-calc-opts-grid select,.ev-calc-opts-grid input{width:100%}
+.ev-calc-opts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .ev-calc-result{padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:.72rem;line-height:1.6}
 
 .dcf-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -880,15 +878,15 @@ details.note-fold .note{margin-top:4px}
       <!-- ② 집계 방식 + 비유동성 할인 -->
       <div class="ev-calc-opts">
         <div class="ev-calc-opts-grid">
-          <div>
-            <label>집계 방식</label>
+          <div class="field">
+            <label for="ev-method">집계 방식</label>
             <select id="ev-method" onchange="evRecalc()">
               <option value="median" selected>중앙값 (권장 — 이상치 robust)</option>
               <option value="mean">평균</option>
             </select>
           </div>
-          <div>
-            <label title="비유동성 할인 (DLOM, Discount for Lack of Marketability):&#10;&#10;개념: K-IFRS 1113.B45 — 비상장은 거래 유동성 없어 같은 회사의 상장 가치보다 낮게 평가.&#10;&#10;범위: 실증 연구(FMV·Pluris·Mandelbaum 판례) 평균 약 25%, 사례별 0~50% 차이.&#10;개념 자체는 회계 표준 명문이나 정확한 할인율은 평가자 판단 영역.&#10;사례 근거를 워크페이퍼에 기록 권장.">비유동성 할인 DLOM (%) <span style="color:var(--text3);font-size:.6rem">— 실증 평균 ~25% (사례별 조정)</span></label>
+          <div class="field">
+            <label for="ev-dlom" title="비유동성 할인 (DLOM, Discount for Lack of Marketability):&#10;&#10;개념: K-IFRS 1113.B45 — 비상장은 거래 유동성 없어 같은 회사의 상장 가치보다 낮게 평가.&#10;&#10;범위: 실증 연구(FMV·Pluris·Mandelbaum 판례) 평균 약 25%, 사례별 0~50% 차이.&#10;개념 자체는 회계 표준 명문이나 정확한 할인율은 평가자 판단 영역.&#10;사례 근거를 워크페이퍼에 기록 권장.">비유동성 할인 DLOM (%) <span style="color:var(--text3);font-size:.6rem">— 실증 평균 ~25%</span></label>
             <input type="number" id="ev-dlom" value="25" min="0" max="50" step="5" oninput="evRecalc()">
           </div>
         </div>
