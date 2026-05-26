@@ -271,15 +271,12 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     # ════════════════════════════════════════════════════
     # PASS 3: 블렌딩 할인계수 가치 산출
     # ════════════════════════════════════════════════════
-    # dfac(child_i, j, period_idx):
-    #   c = cp[child_i][j]
-    #   return c*exp(-rf[period_idx]*dt) + (1-c)*(1/(1+kd[period_idx])^dt)
-    # 레퍼런스에서 bond_discrete=True 이므로 항상 discrete Kd 사용
-    # (GS 모형 정의상 본 pass 는 항상 discrete Kd 사용)
-    def _dfac(child_i, j, period_idx):
-        # 5803 방식: 금리를 블렌딩한 뒤 연속할인 exp(-(cp·rf+(1-cp)·Kd)·dt)
-        # (DF 블렌딩이 아니라 RATE 블렌딩 — Jensen 차이로 결과가 달라짐)
-        c = cp[child_i][j]
+    # 5803 / Goldman-Sachs(1994) 표준 컨벤션:
+    #   t시점 할인율 = cp[t](부모)로 rf와 Kd를 가중평균
+    #   exp(-(cp·rf + (1-cp)·Kd) · dt)
+    # 부모의 cp 하나로 두 자식 가지 모두 동일 할인 (단일 할인율 per period)
+    def _dfac_parent(parent_i, parent_j, period_idx):
+        c = cp[parent_i][parent_j]
         dr = c * _rf(period_idx) + (1.0 - c) * _kd(period_idx)
         return float(np.exp(-dr * dt))
 
@@ -323,9 +320,10 @@ def gs_rcps(params: RCPSParams, steps: int = None,
 
         Vn = [0.0] * (i + 1)
         for j in range(i + 1):
-            # 각 후행 노드에 자신의 df 적용 (쿠폰은 별도 Kd strip 으로 합산)
-            hold = (p_i * V[j]     * _dfac(i + 1, j,     i) +
-                    q_i * V[j + 1] * _dfac(i + 1, j + 1, i))
+            # 부모 노드(i, j)의 cp로 블렌딩한 단일 할인율로 두 자식 가지 동일 할인
+            # 5803 표준: t시점 할인율 = t시점 cp 기반 가중평균
+            df_parent = _dfac_parent(i, j, i)
+            hold = (p_i * V[j] + q_i * V[j + 1]) * df_parent
 
             # ── 발행자 콜 캡 (Pass 3)
             cont_hold = hold
@@ -345,10 +343,6 @@ def gs_rcps(params: RCPSParams, steps: int = None,
 
             if collect_tree:
                 S = _S(i, j)
-                # blended disc factor for this node leaving to children (period i)
-                df_u = _dfac(i + 1, j,     i)
-                df_d = _dfac(i + 1, j + 1, i)
-                blended_df = round((p_i * df_u + q_i * df_d) / 1.0, 6)
                 # 채권 내재가치 (즉시 풋 행사 시 받을 금액)
                 bond_intr_node = float(rd_i) if rd_i is not None else 0.0
                 _g_stock[i][j]    = round(S, 2)
@@ -357,7 +351,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
                 _g_bond_intr[i][j]= round(bond_intr_node, 2)
                 _g_dil[i][j]      = round(float(_diluted(i, j)) if use_dil else S, 2)
                 _g_cp[i][j]       = round(cp[i][j], 6)
-                _g_df[i][j]       = blended_df
+                _g_df[i][j]       = round(df_parent, 6)  # 부모 cp 기준 단일 할인율
                 _g_hold_val[i][j] = round(hold, 2)
 
         V = Vn
