@@ -826,10 +826,10 @@ details.note-fold .note{margin-top:4px}
         <option value="multiple">Exit Multiple (배수 적용)</option>
         <option value="weighted">두 방식 가중평균 (50:50)</option>
       </select>
-      <label id="a_exit_mult_wrap" style="font-size:.72rem;color:var(--text2);display:none;align-items:center;gap:4px" title="EV/EBITDA = 기업 전체 가치 ÷ 연 EBITDA. 'EBITDA 몇 년치를 회수해야 본전인가' 비율. 한국 비상장 통상 6~12배 (산업·성장성 따라).&#10;예: 마지막 해 EBITDA 30억 × 배수 8 = TV 240억.">
+      <label id="a_exit_mult_wrap" style="font-size:.72rem;color:var(--text2);display:none;align-items:center;gap:4px" title="EV/EBITDA = 기업 전체 가치 ÷ 연 EBITDA. 'EBITDA 몇 년치를 회수해야 본전인가' 비율.&#10;&#10;[한국 비상장 산출 절차]&#10;① 동종업계 상장사 5~10개 EV/EBITDA 중앙값&#10;② 최근 M&A 거래 사례 평균 (보통 상장 +10~30%)&#10;③ 가중평균 후 비유동성 할인 -20~30% 적용&#10;&#10;예) 상장사 중앙값 10배 → 비유동성 할인 -25% → 7.5배&#10;&#10;단순 임의값 입력은 K-IFRS 1113.93(d) input 출처 공시 의무 위반.&#10;비교회사 명단·M&A 사례·할인 근거를 워크페이퍼에 기록 필요.">
         EV/EBITDA 배수
         <input type="number" id="a_exit_mult" value="8" step="0.5" min="0" style="width:60px" oninput="dcfCalc()">
-        <span style="font-size:.62rem;color:var(--text3)">(통상 6~12배)</span>
+        <span style="font-size:.62rem;color:var(--text3)" title="한국 비상장 통상 6~12배. 마우스 오버 시 산출 절차 안내.">(통상 6~12배 ⓘ)</span>
       </label>
       <span id="a_tv_help" style="font-size:.68rem;color:#64748B">※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요</span>
     </div>
@@ -2330,40 +2330,60 @@ function renderRightsTimeline(p){
   const pPutVal = put ? pos(put) : null;
   const pCallVal = call ? pos(call) : null;
 
-  // 마커 HTML 생성 (라벨 1줄 — 압축)
-  const markerHtml = markers.map(m => {
-    const offset = SLOT_OFFSETS[m.slot] || 0;
-    const isAbove = offset < 0;
-    return `<div style="position:absolute;left:${m.pos}%;top:0;bottom:0;width:2px;background:${m.color};transform:translateX(-1px);z-index:2">
-      <div style="position:absolute;${isAbove?`top:${offset}px`:`bottom:${-offset}px`};left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.6rem;font-weight:600;color:${m.color};line-height:1.2;padding:1px 4px;background:rgba(255,255,255,.95);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.04)"><span>${m.label}</span> <span style="font-weight:400;color:var(--text3);font-size:.56rem">${m.date}</span></div>
-    </div>`;
+  // 동적 영역 높이: 슬롯별 라벨 배치 영역 계산
+  // 슬롯 0/2 = 위 (-26/-52), 슬롯 1/3 = 아래 (+26/+52)
+  const usedSlots = new Set(markers.map(m => m.slot || 0));
+  const topSlots = [0, 2].filter(s => usedSlots.has(s));
+  const botSlots = [1, 3].filter(s => usedSlots.has(s));
+  const TOP_AREA_H = topSlots.length ? (Math.max(...topSlots.map(s => Math.abs(SLOT_OFFSETS[s]))) + 8) : 8;
+  const BOT_AREA_H = botSlots.length ? (Math.max(...botSlots.map(s => Math.abs(SLOT_OFFSETS[s]))) + 8) : 8;
+
+  // 시간선 핵심 영역 (활성 구간 막대 영역)
+  const activeRows = (pConvVal != null ? 1 : 0) + (pPutVal != null ? 1 : 0) + (pCallVal != null ? 1 : 0);
+  const barH = 6, barGap = 4;
+  const CORE_H = 10 + activeRows * (barH + barGap);  // 메인 막대 8px + 활성 막대들
+
+  // ── 상단 라벨 영역: 위 슬롯 마커 라벨
+  // ── 가운데 시간선 코어: 회색 막대 + 활성 구간 막대 + 마커 점(세로선)
+  // ── 하단 라벨 영역: 아래 슬롯 마커 라벨
+  // 마커 라벨은 영역별로 분리해서 활성 막대 위에 안 떨어짐
+
+  const topLabels = markers.filter(m => SLOT_OFFSETS[m.slot] < 0).map(m => {
+    const offset = SLOT_OFFSETS[m.slot];  // 음수
+    // 상단 영역 안에서 마커의 baseline에서 위로 |offset|px (즉 영역 하단 - |offset|)
+    return `<div style="position:absolute;left:${m.pos}%;bottom:${Math.abs(offset)-22}px;transform:translateX(-50%);white-space:nowrap;font-size:.6rem;font-weight:600;color:${m.color};line-height:1.2;padding:1px 4px;background:rgba(255,255,255,.95);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.04)"><span>${m.label}</span> <span style="font-weight:400;color:var(--text3);font-size:.56rem">${m.date}</span></div>`;
   }).join('');
 
-  // 동적 높이: 슬롯 최대 offset에 따라 (압축)
-  const maxSlotIdx = Math.max(...markers.map(m => m.slot || 0));
-  const topPad = Math.abs(SLOT_OFFSETS[maxSlotIdx] || 0) + 16;
+  const botLabels = markers.filter(m => SLOT_OFFSETS[m.slot] >= 0).map(m => {
+    const offset = SLOT_OFFSETS[m.slot];  // 양수
+    return `<div style="position:absolute;left:${m.pos}%;top:${offset-22}px;transform:translateX(-50%);white-space:nowrap;font-size:.6rem;font-weight:600;color:${m.color};line-height:1.2;padding:1px 4px;background:rgba(255,255,255,.95);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.04)"><span>${m.label}</span> <span style="font-weight:400;color:var(--text3);font-size:.56rem">${m.date}</span></div>`;
+  }).join('');
 
-  // 활성 구간 막대 — 3줄 (전환·풋·콜)이 있을 때 추가 높이 계산
-  const activeRows = (pConvVal != null ? 1 : 0) + (pPutVal != null ? 1 : 0) + (pCallVal != null ? 1 : 0);
-  const barH = 6, barGap = 6;
-  const barAreaH = 8 + activeRows * (barH + barGap);  // 기본 8px + 활성 막대들
-  const boxH = topPad + barAreaH + topPad + 8;
+  // 마커 세로선 (코어 영역 안에만 그려서 상·하 라벨 영역에 영향 X)
+  const markerPoints = markers.map(m =>
+    `<div style="position:absolute;left:${m.pos}%;top:0;bottom:0;width:2px;background:${m.color};transform:translateX(-1px);z-index:2;opacity:.7"></div>`
+  ).join('');
 
   host.innerHTML = `
     <div class="info-box" style="padding:0.85rem 1.1rem">
-      <h4 style="margin-bottom:10px">계약 권리 활성 구간</h4>
-      <div style="position:relative;height:${boxH}px;margin:0 12px">
-        <div style="position:absolute;top:${topPad}px;left:0;right:0;height:8px;background:#E5E7EB;border-radius:2px" title="전체 기간"></div>
-        ${pConvVal != null ? `<div style="position:absolute;top:${topPad+10}px;left:${pConvVal}%;right:0;height:${barH}px;background:rgba(0,192,115,.45);border-radius:2px" title="전환 권리 활성"></div>
-          <div style="position:absolute;top:${topPad+10}px;right:8px;font-size:.58rem;color:#059669;font-weight:600;line-height:${barH}px">전환 활성 →</div>` : ''}
-        ${pPutVal != null ? `<div style="position:absolute;top:${topPad+10+barH+barGap}px;left:${pPutVal}%;right:0;height:${barH}px;background:rgba(255,159,0,.45);border-radius:2px" title="풋 권리 활성"></div>
-          <div style="position:absolute;top:${topPad+10+barH+barGap}px;right:8px;font-size:.58rem;color:#B45309;font-weight:600;line-height:${barH}px">풋 활성 →</div>` : ''}
-        ${pCallVal != null ? `<div style="position:absolute;top:${topPad+10+(barH+barGap)*2}px;left:${pCallVal}%;right:0;height:${barH}px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 권리 활성"></div>
-          <div style="position:absolute;top:${topPad+10+(barH+barGap)*2}px;right:8px;font-size:.58rem;color:#DC2626;font-weight:600;line-height:${barH}px">콜 활성 →</div>` : ''}
-        ${markerHtml}
+      <h4 style="margin-bottom:8px">계약 권리 활성 구간</h4>
+      <!-- 상단 라벨 영역 -->
+      <div style="position:relative;height:${TOP_AREA_H}px;margin:0 12px">${topLabels}</div>
+      <!-- 시간선 코어: 회색 막대 + 활성 막대 + 마커 세로선만 -->
+      <div style="position:relative;height:${CORE_H}px;margin:0 12px">
+        <div style="position:absolute;top:0;left:0;right:0;height:8px;background:#E5E7EB;border-radius:2px" title="전체 기간"></div>
+        ${pConvVal != null ? `<div style="position:absolute;top:${10}px;left:${pConvVal}%;right:0;height:${barH}px;background:rgba(0,192,115,.45);border-radius:2px" title="전환 권리 활성"></div>
+          <div style="position:absolute;top:${10}px;right:8px;font-size:.55rem;color:#059669;font-weight:600;line-height:${barH}px;pointer-events:none">전환 →</div>` : ''}
+        ${pPutVal != null ? `<div style="position:absolute;top:${10+barH+barGap}px;left:${pPutVal}%;right:0;height:${barH}px;background:rgba(255,159,0,.45);border-radius:2px" title="풋 권리 활성"></div>
+          <div style="position:absolute;top:${10+barH+barGap}px;right:8px;font-size:.55rem;color:#B45309;font-weight:600;line-height:${barH}px;pointer-events:none">풋 →</div>` : ''}
+        ${pCallVal != null ? `<div style="position:absolute;top:${10+(barH+barGap)*2}px;left:${pCallVal}%;right:0;height:${barH}px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 권리 활성"></div>
+          <div style="position:absolute;top:${10+(barH+barGap)*2}px;right:8px;font-size:.55rem;color:#DC2626;font-weight:600;line-height:${barH}px;pointer-events:none">콜 →</div>` : ''}
+        ${markerPoints}
       </div>
+      <!-- 하단 라벨 영역 -->
+      <div style="position:relative;height:${BOT_AREA_H}px;margin:0 12px">${botLabels}</div>
       <div style="font-size:.64rem;color:var(--text3);margin-top:4px;line-height:1.5">
-        ※ 회색 막대는 전체 평가기간(발행일~만기). 색상 막대는 각 권리의 활성 구간.
+        ※ 회색 막대 = 전체 평가기간 / 색상 막대 = 권리 활성 구간 / 세로 점선 = 시점 마커.
         평가기준일은 발행 후 <b>${((valDate-issue)/(365.25*24*3600*1000)).toFixed(2)}년</b>, 잔존 만기 <b>${((mat-valDate)/(365.25*24*3600*1000)).toFixed(2)}년</b>.
       </div>
     </div>`;
