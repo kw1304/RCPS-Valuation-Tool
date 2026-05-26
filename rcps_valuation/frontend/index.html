@@ -3750,7 +3750,54 @@ function volRenderResult(j){
     const sigma=j.sigma_pct/100;
     meta+=`<br>※ <b>변동성 추정 정확도</b> — 표준오차 약 ±${(avgSE*100).toFixed(2)}%p (종목별 평균). 95% 신뢰구간 약 <b>${((sigma-1.96*avgSE)*100).toFixed(2)}% ~ ${((sigma+1.96*avgSE)*100).toFixed(2)}%</b>`;
   }
-  meta+='<br>※ <b>기간 선택 가이드</b> — RCPS 잔존 만기에 가까운 기간으로 σ를 산정하세요. 예: 잔존 5년 → 시작일을 5년 전으로. 1년·3년·5년 기간 결과가 5%p 이상 다르면 가정 robustness 검토 권장.';
+  // basket trailing 비교 (1y/2y/3y/5y) — 한 화면에서 가정 robustness 확인
+  if(j.basket_trailings && j.basket_trailings.length){
+    // RCPS 잔존만기 산출 (rcps 평가 페이지의 issue/maturity 활용)
+    let rcpsT = null;
+    try {
+      const vd = new Date(document.getElementById('valuation_date')?.value);
+      const md = new Date(document.getElementById('maturity_date')?.value);
+      if(!isNaN(vd) && !isNaN(md)){
+        rcpsT = (md - vd) / (365.25 * 24 * 3600 * 1000);
+      }
+    } catch(_) {}
+    // 가장 근접한 기간 찾기
+    let closestY = null;
+    if(rcpsT && rcpsT > 0){
+      let minDiff = Infinity;
+      j.basket_trailings.forEach(t => {
+        if(t.sigma != null){
+          const diff = Math.abs(t.period_years - rcpsT);
+          if(diff < minDiff){ minDiff = diff; closestY = t.period_years; }
+        }
+      });
+    }
+    let trailHtml = `<div style="margin-top:8px;padding:8px 10px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px"><div style="font-size:.72rem;font-weight:700;color:#0369A1;margin-bottom:4px">기간별 σ 비교 ${rcpsT ? `(RCPS 잔존 ${rcpsT.toFixed(2)}년)` : ''}</div>`;
+    trailHtml += '<table style="width:100%;font-size:.7rem;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:2px 4px">기간</th><th style="text-align:right;padding:2px 4px">σ</th><th style="text-align:right;padding:2px 4px">종목 수</th><th style="text-align:left;padding:2px 4px;color:var(--text3)">비고</th></tr></thead><tbody>';
+    j.basket_trailings.forEach(t => {
+      const isClosest = (t.period_years === closestY);
+      const bg = isClosest ? 'background:#FEF3C7;font-weight:600' : '';
+      const note = isClosest ? '<span style="color:#92400E">⭐ RCPS 잔존 만기 근접</span>' : '';
+      if(t.sigma != null){
+        trailHtml += `<tr style="${bg}"><td style="padding:2px 4px">${t.period_years}년</td><td style="text-align:right;padding:2px 4px">${t.sigma_pct.toFixed(2)}%</td><td style="text-align:right;padding:2px 4px">${t.n_tickers}</td><td style="padding:2px 4px">${note}</td></tr>`;
+      } else {
+        trailHtml += `<tr><td style="padding:2px 4px">${t.period_years}년</td><td colspan="3" style="padding:2px 4px;color:var(--text3)">${t.reason||'—'}</td></tr>`;
+      }
+    });
+    trailHtml += '</tbody></table>';
+    // robustness 점검: 1y와 5y σ 차이 5%p 이상이면 경고
+    const sigs = j.basket_trailings.filter(t => t.sigma != null).map(t => t.sigma_pct);
+    if(sigs.length >= 2){
+      const range = Math.max(...sigs) - Math.min(...sigs);
+      if(range > 5){
+        trailHtml += `<div style="margin-top:4px;font-size:.66rem;color:#B45309">⚠ 기간별 σ 변동 ${range.toFixed(1)}%p — 5%p 초과. 가정 robustness 검토 권장</div>`;
+      } else {
+        trailHtml += `<div style="margin-top:4px;font-size:.66rem;color:#059669">✓ 기간별 σ 변동 ${range.toFixed(1)}%p — 안정적</div>`;
+      }
+    }
+    trailHtml += '</div>';
+    meta += trailHtml;
+  }
   meta+='<br>※ 자동조회 값은 시점마다 달라질 수 있으니, 감사 증빙용으로 원자료 CSV를 내보내 보관하세요.';
   document.getElementById('vol-meta').innerHTML=meta;
   document.getElementById('vol-export').style.display=window.volLastRaw?'':'none';

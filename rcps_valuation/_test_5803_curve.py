@@ -9,6 +9,8 @@ K-IFRS 13.62 / B40 "관측가능 input의 만기 매칭" 정합 검증.
 from inputs.deal_params import RCPSParams
 from datetime import date
 from models.tsiveriotis_fernandes import tf_rcps
+from models.goldman_sachs import gs_rcps
+from models.monte_carlo import monte_carlo_rcps
 from inputs.curves import spot_to_step_forwards
 
 # 5803 BOOT.csv C-SPOT (Y) — 연속 스팟 곡선 (실제 부트스트랩 결과)
@@ -88,6 +90,23 @@ print(f"    전환권가치 =         36,017,234,632")
 print(f"    공정가치   =        120,767,169,439")
 print()
 
+# ── GS·MC도 동일 곡선 적용해 정합 확인 ──
+print(f"[C] GS 모형 (부트스트랩 곡선, steps={steps})")
+r_gs = gs_rcps(p, steps=steps, rf_curve=rf_curve, kd_curve=kd_curve, bond_discrete=False)
+print(f"    공정가치   = {r_gs['fair_value']:>22,.0f}")
+if r_gs.get("bond_value") is not None:
+    print(f"    채권가치   = {r_gs.get('bond_value', 0):>22,.0f}")
+    print(f"    풋옵션가치 = {r_gs.get('put_option_value', 0):>22,.0f}")
+    print(f"    전환권가치 = {r_gs.get('conversion_value', 0):>22,.0f}")
+print()
+
+print(f"[D] MC 모형 (부트스트랩 곡선, n_paths=50000, steps={steps})")
+r_mc = monte_carlo_rcps(p, n_paths=50000, n_steps=steps, rf_curve=rf_curve, kd_curve=kd_curve)
+print(f"    공정가치   = {r_mc['fair_value']:>22,.0f}  (SE ±{r_mc.get('std_error', 0):,.0f})")
+print(f"    채권 성분(B) = {r_mc.get('bond_put_value', 0):>20,.0f}")
+print(f"    지분 성분(E) = {r_mc.get('conversion_value', 0):>20,.0f}")
+print()
+
 # ── 비교 분석 ──
 print("=" * 70)
 print("정합 분석")
@@ -106,3 +125,12 @@ print()
 print(f"flat Kd (B) vs 5803 ref:")
 print(f"    공정가치 차이: {r_flat['fair_value']-ref_fv:+,.0f} ({(r_flat['fair_value']-ref_fv)/ref_fv*100:+.2f}%)")
 print(f"    채권가치 차이: {r_flat['bond_value']-ref_bv:+,.0f} ({(r_flat['bond_value']-ref_bv)/ref_bv*100:+.2f}%)")
+print()
+print(f"GS (C) vs 5803 ref:")
+print(f"    공정가치 차이: {r_gs['fair_value']-ref_fv:+,.0f} ({(r_gs['fair_value']-ref_fv)/ref_fv*100:+.2f}%)")
+print(f"    TF 대비 차이:  {r_gs['fair_value']-r_curve['fair_value']:+,.0f} ({(r_gs['fair_value']-r_curve['fair_value'])/r_curve['fair_value']*100:+.2f}%)")
+print()
+print(f"MC (D) vs 5803 ref:")
+print(f"    공정가치 차이: {r_mc['fair_value']-ref_fv:+,.0f} ({(r_mc['fair_value']-ref_fv)/ref_fv*100:+.2f}%)")
+print(f"    TF 대비 차이:  {r_mc['fair_value']-r_curve['fair_value']:+,.0f} ({(r_mc['fair_value']-r_curve['fair_value'])/r_curve['fair_value']*100:+.2f}%)")
+print(f"    SE/fv:        {r_mc.get('std_error', 0)/r_mc['fair_value']*100:.3f}% (실무 권장 <0.5%)")

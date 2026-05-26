@@ -163,6 +163,60 @@ def _detect_outliers(per_ticker, method, k, min_n=5):
     return info
 
 
+def multiple_trailings(closes, dates, trailing_years=(1, 2, 3, 5),
+                       trading_days=252, log=True):
+    """동일 종가 시계열에서 여러 trailing 기간의 σ를 동시에 산출.
+
+    K-IFRS 1109 RCPS 평가에서 σ 산정 기간은 잔존만기에 가까울수록 정확
+    (Damodaran "Investment Valuation" 3e Ch.5). 1y/3y/5y σ 비교로
+    가정 robustness 확인 (5%p 이상 차이 시 평가자 판단 필요).
+
+    closes: 시간순 정제된 종가 리스트
+    dates: 동일 길이 ISO 날짜 리스트 (마지막 일자 기준 trailing 잘라냄)
+    trailing_years: 산출할 기간들 (년 단위)
+
+    Returns: [{"period_years", "n_obs", "sigma", "sigma_se", "ci95_low", "ci95_high"}, ...]
+    """
+    from datetime import date as _date
+    if not closes or not dates or len(closes) != len(dates):
+        return []
+    try:
+        end_date = _date.fromisoformat(str(dates[-1]))
+    except Exception:
+        return []
+    results = []
+    for y in trailing_years:
+        # trailing y년: end_date - y*365일 이후 데이터만 사용
+        cutoff_days = int(y * 365.25)
+        sub_dates, sub_closes = [], []
+        for d_str, c in zip(dates, closes):
+            try:
+                d = _date.fromisoformat(str(d_str))
+                if (end_date - d).days <= cutoff_days:
+                    sub_dates.append(d_str)
+                    sub_closes.append(c)
+            except Exception:
+                continue
+        if len(sub_closes) < 30:  # 최소 30거래일
+            results.append({"period_years": y, "n_obs": len(sub_closes) - 1 if sub_closes else 0,
+                           "sigma": None, "reason": "데이터 부족(<30 obs)"})
+            continue
+        try:
+            hv = historical_vol(sub_closes, trading_days=trading_days, log=log)
+            results.append({
+                "period_years": y,
+                "n_obs": hv["n_obs"],
+                "sigma": hv["sigma"],
+                "sigma_pct": round(hv["sigma"] * 100, 2),
+                "sigma_se": hv["sigma_se"],
+                "ci95_low": hv["ci95_low"],
+                "ci95_high": hv["ci95_high"],
+            })
+        except Exception as e:
+            results.append({"period_years": y, "sigma": None, "reason": str(e)[:80]})
+    return results
+
+
 def basket_volatility(series, trading_days=252, log=True, method="median",
                       outlier_method="none", outlier_k=None):
     """유사기업 바스켓 σ 산출 (편의 래퍼).
@@ -183,6 +237,10 @@ def basket_volatility(series, trading_days=252, log=True, method="median",
             else:
                 td = int(trading_days)
             hv = historical_vol(cc, trading_days=td, log=log)
+            # 다중 trailing 기간 σ 비교 (1y/2y/3y/5y) — 데이터 충분 시
+            trailings = multiple_trailings(cc, cleaned_dates,
+                                           trailing_years=(1, 2, 3, 5),
+                                           trading_days=td, log=log) if cleaned_dates else []
             per.append({
                 "ticker": tk,
                 "name": s.get("name", tk),
@@ -196,6 +254,7 @@ def basket_volatility(series, trading_days=252, log=True, method="median",
                 "trading_days_used": td,
                 "log_sigma": hv["log_sigma"],
                 "simple_sigma": hv["simple_sigma"],
+                "trailings": trailings,             # 1y/2y/3y/5y 비교
             })
             caps.append(s.get("cap"))
         except Exception as e:  # noqa: BLE001 — 종목별 실패는 스킵하고 사유 보존
@@ -218,5 +277,37 @@ def basket_volatility(series, trading_days=252, log=True, method="median",
         agg_err = None
     except Exception as e:  # noqa: BLE001
         agg, agg_err = None, str(e)
+
+    # ── 바스켓 수준 trailing 비교: 종목별 trailings의 동일 기간 σ를 method로 집계
+    basket_trailings = []
+    for y in (1, 2, 3, 5):
+        sigs = []
+        ses = []
+        for p in active_per:
+            tlist = p.get("trailings") or []
+            for t in tlist:
+                if t.get("period_years") == y and t.get("sigma") is not None:
+                    sigs.append(t["sigma"])
+                    ses.append(t.get("sigma_se", 0))
+                    break
+        if sigs:
+            import numpy as _np
+            arr = _np.asarray(sigs)
+            if method == "mean":
+                agg_y = float(_np.mean(arr))
+            else:  # default median (cap_weighted는 데이터 부족 시 fallback)
+                agg_y = float(_np.median(arr))
+            basket_trailings.append({
+                "period_years": y,
+                "sigma": agg_y,
+                "sigma_pct": round(agg_y * 100, 2),
+                "n_tickers": len(sigs),
+                "avg_se": float(_np.mean(ses)) if ses else None,
+            })
+        else:
+            basket_trailings.append({"period_years": y, "sigma": None,
+                                     "reason": "데이터 부족"})
+
     return {"sigma": agg, "method": method, "per_ticker": per,
-            "failed": failed, "error": agg_err, "outlier_info": outlier_info}
+            "failed": failed, "error": agg_err, "outlier_info": outlier_info,
+            "basket_trailings": basket_trailings}

@@ -16,6 +16,8 @@ from datetime import date
 from inputs.deal_params import RCPSParams
 from inputs.curves import spot_to_step_forwards
 from models.tsiveriotis_fernandes import tf_rcps
+from models.goldman_sachs import gs_rcps
+from models.monte_carlo import monte_carlo_rcps
 
 
 # 5803 BOOT.csv C-SPOT (Y) — 연속 스팟 곡선 (B- 등급 회사채)
@@ -112,3 +114,39 @@ def test_분해_항등식(result_5803_curve):
         "풋채권 = 채권 + 풋옵션 항등식 위배"
     # 공정가치 = 풋채권 + 전환권 (= 채권 + 풋옵션 + 전환권)
     assert abs(r["fair_value"] - total) <= 2, "공정가치 분해 항등식 위배"
+
+
+@pytest.fixture
+def all_models_5803():
+    """TF·GS·MC 3모형 5803 곡선 평가 결과."""
+    p = _params_5803()
+    steps = 120
+    rf_curve = spot_to_step_forwards(RF_SPOT, p.T, steps)
+    kd_curve = spot_to_step_forwards(RD_SPOT, p.T, steps)
+    return {
+        "tf": tf_rcps(p, steps=steps, rf_curve=rf_curve, kd_curve=kd_curve, bond_discrete=False),
+        "gs": gs_rcps(p, steps=steps, rf_curve=rf_curve, kd_curve=kd_curve, bond_discrete=False),
+        "mc": monte_carlo_rcps(p, n_paths=50000, n_steps=steps, rf_curve=rf_curve, kd_curve=kd_curve),
+    }
+
+
+def test_TF_5803_정합(all_models_5803):
+    """TF 모형은 5803 ref와 ±1% 이내 (메인 모형 — 가장 정확한 정합 요구)."""
+    diff_pct = (all_models_5803["tf"]["fair_value"] - REF["fair_value"]) / REF["fair_value"]
+    assert abs(diff_pct) < 0.01, f"TF 공정가치 차이 {diff_pct*100:.2f}% — 1% 초과"
+
+
+def test_MC_5803_정합(all_models_5803):
+    """MC 모형은 5803 ref와 ±2% 이내 (표본오차 고려)."""
+    diff_pct = (all_models_5803["mc"]["fair_value"] - REF["fair_value"]) / REF["fair_value"]
+    assert abs(diff_pct) < 0.02, f"MC 공정가치 차이 {diff_pct*100:.2f}% — 2% 초과"
+
+
+def test_GS_모형_차이_허용범위(all_models_5803):
+    """GS는 블렌딩 할인 모형이라 TF와 본질적 차이. 절대값 ±8% 이내 (모형 차이로 허용).
+
+    GS·TF 차이는 K-IFRS 13.93(g) Level 3 측정 불확실성 공시 대상.
+    회계 평가실무에서 GS·TF는 모두 사용 가능한 컨벤션 (보고서에 채택 모형 명시 필수).
+    """
+    gs_diff_from_tf = (all_models_5803["gs"]["fair_value"] - all_models_5803["tf"]["fair_value"]) / all_models_5803["tf"]["fair_value"]
+    assert abs(gs_diff_from_tf) < 0.08, f"GS·TF 모형 차이 {gs_diff_from_tf*100:.2f}% — 8% 초과 (가정·약정 차이 가능성)"

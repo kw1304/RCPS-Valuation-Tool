@@ -1814,6 +1814,7 @@ def volatility_eval():
         "per_ticker": result["per_ticker"],
         "failed": result["failed"],
         "outlier_info": result.get("outlier_info"),
+        "basket_trailings": result.get("basket_trailings"),  # 1y/2y/3y/5y σ 비교
         "raw": raw,
     })
 
