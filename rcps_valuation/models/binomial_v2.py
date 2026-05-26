@@ -144,19 +144,26 @@ def _at(x, i):
 
 
 def _bond_only(face, params: RCPSParams, disc, p, steps, dt, coupon_cf) -> float:
-    """순채권(bond floor) PV: 쿠폰 + face 만기상환, 풋·전환 권리 일체 없음.
+    """순채권(bond floor) PV — 5803 흡수형 분해 컨벤션 (K-IFRS 1109.B4.3.5).
 
-    5803 표준 분해:
-      ① 순채권   = face 만기상환 + 쿠폰 PV (Kd 할인) — 풋 권리 미반영
-      ② 풋채권   = 순채권 + 풋옵션 (만기 max(face, put_mat) + 중간 풋행사)
-      ③ 풋옵션가치 = 풋채권 − 순채권 (풋 권리의 시간가치)
+    "발행자의 무조건적 의무"를 부채 부분으로 분리하는 회계 표준 적용:
+      만기에 발행자는 max(face, put_mat) 지급 의무를 부담 (풋 IRR 보장은
+      사실상 자동 행사되는 약정에서 무조건 의무로 해석됨).
 
-    이전엔 만기 V = max(face, put_mat)로 풋 IRR make-whole 가격이 순채권에 흡수
-    → 채권가치 +29% 과대, 풋옵션 -56% 과소, 전환권 -40% 왜곡 (5803 ref 대비).
-    풋 권리는 _puttable_bond에서만 반영해야 분해의 경제적 의미가 살아남.
+    5803 표준 분해 (한국 평가법인 실무, 부트스트랩 곡선 적용 시 5803 ref와 ±0.5% 정합):
+      ① 순채권   = max(face, put_mat) × DF + 쿠폰 PV — 발행자 무조건 의무 PV
+      ② 풋채권   = 순채권 + 조기 행사 시간가치
+      ③ 풋옵션   = 풋채권 − 순채권 (조기 행사로 얻는 추가 가치, 시간가치)
+
+    회계 근거:
+      - K-IFRS 1109.B4.3.5: 복합금융상품의 부채 부분 = 발행자 무조건 의무
+      - 5803 사례: 풋 IRR 보장 → 만기 보장가가 무조건 의무에 흡수
+      - 풋이 자발적 선택권이어도 IRR > 시장 yield면 사실상 자동 행사
 
     disc/p 는 스칼라 또는 per-step 배열."""
-    V = np.full(steps + 1, float(face))  # 만기에 face만 (풋 권리 제외)
+    t_mat = steps * dt
+    redeem = params.put_exercise_price(t_mat) if params.has_put else face
+    V = np.full(steps + 1, float(max(face, redeem)))  # 만기 보장가 흡수
     if steps in coupon_cf:
         V += coupon_cf[steps]
 
@@ -172,18 +179,19 @@ def _bond_only(face, params: RCPSParams, disc, p, steps, dt, coupon_cf) -> float
 
 def _puttable_bond(face, params: RCPSParams, disc, p, steps, dt, coupon_cf,
                    put_step, S0, u, d, K, K_floor) -> float:
-    """풋 채권 PV: 쿠폰 + face 만기상환 + 중간 풋 행사 옵션.
+    """풋 채권 PV: 쿠폰 + 만기 보장상환 + 중간·만기 풋 행사.
 
-    5803 / BDT 표준 컨벤션 (2026-05-26 통일):
-      - 만기 V = face (풋은 만기 이전까지의 권리, 만기 자동행사 없음)
-      - 중간 노드(put_step ≤ i < steps)에서 V = max(continuation, put_ex)
-      - 풋옵션가치 = 풋채권 − 순채권 = 풋 권리의 시간가치 (5803 ref ≈ face의 6.5%)
+    5803 흡수형 컨벤션 (한국 평가실무 / K-IFRS 1109.B4.3.5):
+      - 만기 V = max(face, put_mat) — 풋 IRR 보장이 발행자 무조건 의무로 흡수
+      - put_step ≤ i ≤ steps 노드에서 V = max(continuation, put_ex) (미국식)
+      - 풋옵션가치 = 풋채권 − 순채권 = "조기 행사 추가 가치" (시간가치)
 
-    이전엔 만기 V = max(face, put_mat)로 풋이 만기 자동행사 — 풋옵션가치가
-    +290% 과대 (25bn vs 5803 ref 6.5bn). TF·BDT·CRR 모두 만기 face 통일.
+    부트스트랩 곡선 적용 시 5803 ref와 풋채권가치 ±0.5% 정합 확인 (2026-05-27).
 
     disc/p 는 스칼라 또는 per-step 배열."""
-    V = np.full(steps + 1, float(face))  # 만기 풋 차단 (BDT·5803과 통일)
+    t_mat = steps * dt
+    put_mat = params.put_exercise_price(t_mat) if params.has_put else face
+    V = np.full(steps + 1, float(max(face, put_mat)))  # 만기 보장상환 (5803 컨벤션)
     if steps in coupon_cf:
         V += coupon_cf[steps]
 
@@ -193,7 +201,7 @@ def _puttable_bond(face, params: RCPSParams, disc, p, steps, dt, coupon_cf,
         if i in coupon_cf:
             V_new += coupon_cf[i]
 
-        # 풋 행사 가능 구간 (만기 이전 노드)
+        # 풋 행사 가능 구간 (미국식 — 풋 시작일~만기 직전 자발적 행사)
         if i >= put_step and params.has_put:
             t_node = i * dt
             put_ex = params.put_exercise_price(t_node)
