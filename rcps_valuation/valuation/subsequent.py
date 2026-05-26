@@ -1,41 +1,10 @@
 from copy import deepcopy
-import numpy as np
 from inputs.deal_params import RCPSParams
+from inputs.curves import spot_to_step_forwards
 from models.tsiveriotis_fernandes import tf_rcps
 
-
-def _spot_to_step_forwards(spot_curve, T, steps):
-    """제로스팟(연속, t→z(t)) → 스텝별 forward rate.
-    잔존만기 T를 steps 칸으로 쪼개 각 구간 forward = (z₂·t₂ − z₁·t₁) / (t₂ − t₁) 산출.
-    spot_curve = [(t, z), ...] 또는 None."""
-    if not spot_curve:
-        return None
-    dt = T / steps
-    pts = sorted([(float(t), float(z)) for t, z in spot_curve])
-
-    def z_of(t):
-        # 평탄 외삽 + 선형 보간
-        if t <= pts[0][0]:
-            return pts[0][1]
-        if t >= pts[-1][0]:
-            return pts[-1][1]
-        for i in range(len(pts) - 1):
-            t0, z0 = pts[i]
-            t1, z1 = pts[i + 1]
-            if t0 <= t <= t1:
-                w = (t - t0) / (t1 - t0)
-                return z0 + w * (z1 - z0)
-        return pts[-1][1]
-
-    fwds = []
-    for i in range(steps):
-        t1, t2 = i * dt, (i + 1) * dt
-        if t1 == 0:
-            fwds.append(z_of(t2))  # 0→t2 구간 forward = z(t2)
-        else:
-            f = (z_of(t2) * t2 - z_of(t1) * t1) / (t2 - t1)
-            fwds.append(f)
-    return fwds
+# 모듈 내 별칭 — api/app.py와 동일 헬퍼 (단일 출처 inputs/curves.py)
+_spot_to_step_forwards = spot_to_step_forwards
 
 
 def subsequent_measurement(params: RCPSParams, reporting_dates: list, steps: int = None,

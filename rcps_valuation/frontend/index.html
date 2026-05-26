@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RCPS/DCF Valuation Tool · K-IFRS 1109</title>
+<title>웅계사's RCPS/DCF Valuation Tool · K-IFRS 1109</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -193,11 +193,11 @@ details.note-fold .note{margin-top:4px}
 .toolbar{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px}
 .eval-meta{font-size:0.7rem;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.38rem 0.8rem;letter-spacing:-0.01em}
 /* 헤더 통합 다운로드 버튼 — 헤더 자체가 페이지 스크롤과 무관(body overflow:hidden)하므로 항상 동일 위치 */
-.header-dl{display:none;align-items:center;gap:6px;padding:0.4rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em;white-space:nowrap;flex-shrink:0}
+.header-dl{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0.4rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:background 0.15s,color 0.15s,border-color 0.15s;letter-spacing:-0.01em;white-space:nowrap;flex-shrink:0;min-width:178px}
 .header-dl.show{display:inline-flex}
-.header-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent)}
-.header-dl:disabled{opacity:0.5;cursor:not-allowed;background:var(--bg2);border-color:var(--border);color:var(--text3)}
-@media (max-width:768px){.header-dl{padding:0.35rem 0.65rem;font-size:0.68rem} .header-dl .dl-label{display:none}}
+.header-dl:hover:not(:disabled){background:#EFF6FF;border-color:var(--accent);color:var(--accent)}
+.header-dl:disabled{opacity:0.45;cursor:not-allowed;background:var(--bg2);border-color:var(--border);color:var(--text3)}
+@media (max-width:768px){.header-dl{padding:0.35rem 0.65rem;font-size:0.68rem;min-width:0} .header-dl .dl-label{display:none}}
 /* WACC·계약서 등 페이지 내 .sec 영역 공통 max-width (인라인 중복 제거) */
 .sec-max{max-width:1100px;width:100%;margin:0 auto}
 
@@ -347,8 +347,8 @@ details.note-fold .note{margin-top:4px}
 
 <header>
   <div class="hd-title">
-    <h1>RCPS/DCF Valuation <span class="ac">Tool</span></h1>
-    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다. 단순 확인 목적으로 사용을 권장합니다.</p>
+    <h1><span class="ac">웅계사's</span> RCPS/DCF Valuation <span class="ac">Tool</span></h1>
+    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다.<br>단순 확인 목적으로 사용을 권장합니다.</p>
   </div>
   <div class="hd-right">
     <div class="header-groups">
@@ -724,12 +724,12 @@ details.note-fold .note{margin-top:4px}
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px">
         <h4 style="margin:0;font-size:.86rem;white-space:nowrap">BDT 풋채권 교차검증 <span style="font-weight:400;color:var(--text3);font-size:.72rem">(독립 금리트리 · TF와 분리)</span></h4>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          <label for="bdt_rate_vol" style="font-size:.78rem;color:var(--text2);white-space:nowrap;font-weight:500">금리 변동성 (%)</label>
-          <input type="number" id="bdt_rate_vol" value="15" step="0.5" min="0" style="width:70px;height:32px;padding:0 0.55rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-variant-numeric:tabular-nums;text-align:right;box-sizing:border-box">
+          <label for="bdt_rate_vol" style="font-size:.78rem;color:var(--text2);white-space:nowrap;font-weight:500" title="단기금리 로그 변동성 연환산. 한국 CD91 기준 통상 5~15% (안정기 5~8%, 변동기 10~15%)">금리 변동성 (%)</label>
+          <input type="number" id="bdt_rate_vol" value="10" step="0.5" min="0" style="width:70px;height:32px;padding:0 0.55rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-variant-numeric:tabular-nums;text-align:right;box-sizing:border-box">
           <button class="btn-sm add" id="bdt-run-btn" onclick="runBdt()" style="white-space:nowrap;height:32px">BDT 재평가</button>
         </div>
       </div>
-      <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용). "BDT 재평가" 버튼을 누르세요.</div>
+      <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용 · 공정가치 합산 제외). 일반채권가치는 σ에 거의 무관(시장 캘리브레이션)이며 풋옵션 가치만 σ에 민감. "BDT 재평가" 버튼을 누르세요.</div>
     </div>
     </div><!-- /.res-left -->
     <div class="res-right">
@@ -786,14 +786,21 @@ details.note-fold .note{margin-top:4px}
 
   <div class="dcf-assump">
     <div class="dcf-assump-hd">밸류에이션 가정</div>
-    <div class="dcf-assump-grid" style="grid-template-columns:minmax(90px,1fr) minmax(100px,1fr) minmax(90px,1fr) 1fr 1fr 1fr 1fr">
+    <div class="dcf-assump-grid" style="grid-template-columns:minmax(90px,1fr) minmax(100px,1fr) minmax(90px,1fr) 1fr 1fr 1fr 1fr 1fr">
       <div class="field"><label for="a_wacc">WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
-      <div class="field"><label for="a_g">영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"></div>
+      <div class="field"><label for="a_g" title="영구성장률. 일반적으로 명목 GDP 성장률(통상 3~4%) 이하 권장. WACC보다 작아야 함.">영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"></div>
       <div class="field"><label for="a_tax">기본 세율 (%)</label><input type="number" id="a_tax" value="25" step="0.5" oninput="dcfTaxFill()"></div>
-      <div class="field"><label for="a_nd">이자부부채 (원)</label><input type="text" id="a_nd" class="money" value="2,000,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label for="a_nd" title="순차입금 = 이자부부채 합계(차입금+리스부채) − 현금성자산. 양수 입력.">순차입금 (원)</label><input type="text" id="a_nd" class="money" value="2,000,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
       <div class="field"><label for="a_shares">총발행주식수 (주)</label><input type="text" id="a_shares" class="money" value="1,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
       <div class="field"><label for="a_nonop">비영업자산 (원)</label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label for="a_pref" title="다른 시리즈 우선주(RCPS·CB 등) 청산가치 합계. 본인 RCPS는 순환참조라 제외. 0이면 미적용.">기발행 우선주 (원)</label><input type="text" id="a_pref" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
       <div class="field"><label for="a_nci">비지배지분조정 (원)</label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:8px;align-items:center;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--text2);cursor:pointer" title="현금흐름이 연중 균등 발생 가정. 한국 평가법인 보고서 다수 채택. 활성 시 EV 약 4~6% 상승.">
+        <input type="checkbox" id="a_midyear" onchange="dcfCalc()"> Mid-year Convention
+      </label>
+      <span id="dcf-warn" style="font-size:.7rem;color:var(--amber);font-weight:600"></span>
     </div>
   </div>
 
@@ -1316,6 +1323,7 @@ function updateGlobalDl(name){
   const btn=document.getElementById('global-dl-btn');
   if(!btn)return;
   const map={
+    contract:{label:'계약서 요약 Excel',fn:'downloadContractExcel'},
     rcps:{label:'RCPS 상세 Excel',fn:'dlExcel'},
     dcf:{label:'DCF 상세 Excel',fn:'dcfDownloadXlsx'},
     wacc:{label:'WACC 상세 Excel',fn:'waccDownloadXlsx'},
@@ -1323,8 +1331,14 @@ function updateGlobalDl(name){
     boot:{label:'부트스트래핑 상세 Excel',fn:'bootDownloadXlsx'}
   };
   const cfg=map[name];
-  if(!cfg){btn.classList.remove('show');window.__dlFn=null;return;}
-  btn.classList.add('show');
+  btn.classList.add('show'); // 탭 시프트 방지 — 슬롯은 항상 유지
+  if(!cfg){
+    btn.querySelector('.dl-label').textContent='Excel 다운로드';
+    btn.disabled=true;
+    window.__dlFn=null;
+    return;
+  }
+  btn.disabled=false;
   btn.querySelector('.dl-label').textContent=cfg.label;
   window.__dlFn=window[cfg.fn]||function(){_toast('아직 평가 결과가 없습니다.',true);};
 }
@@ -2283,13 +2297,26 @@ function dcfCalc(){
   const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||12)/100;
   const g=(parseFloat(document.getElementById('a_g')?.value)||2)/100;
   const nd=getMoney('a_nd'),shares=getMoney('a_shares')||1,nonop=getMoney('a_nonop'),nci=getMoney('a_nci');
+  const pref=getMoney('a_pref')||0;  // 다른 시리즈 우선주 청산가치 (본인 RCPS는 순환참조 제외)
+  const midyear=document.getElementById('a_midyear')?.checked||false;
+  // 영구성장률 합리성 안내 (실무: 명목 GDP 3~4% 이하 권장. K-IFRS 강제 X — 경고만)
+  const warnEl=document.getElementById('dcf-warn');
+  if(warnEl){
+    const msgs=[];
+    if(g*100>3.5) msgs.push(`g=${(g*100).toFixed(1)}% — 명목 GDP 성장률(3~4%) 상회. 영구 가정 합리성 확인 필요`);
+    if(g<0) msgs.push(`g<0 — 영구 감소 가정. 사양산업에 한정 적합`);
+    if(wacc-g<0.02 && wacc>g) msgs.push(`WACC−g=${((wacc-g)*100).toFixed(1)}%p — 매우 작음. TV 민감도 매우 큼`);
+    warnEl.textContent=msgs.join(' · ');
+  }
   const calc=dcfYears.map((y,i)=>{
     const prev=i>0?dcfYears[i-1]:null;
     const rev_gr=prev&&prev.revenue?((y.revenue-prev.revenue)/prev.revenue*100):null;
     const ebit_mg=y.revenue?(y.ebit/y.revenue*100):null;
     const nopat=y.ebit*(1-y.tax/100);
     const fcff=nopat+y.da-y.capex-y.dnwc;
-    const disc=Math.pow(1/(1+wacc),i+1);
+    // mid-year convention: t=i+0.5 (연중 균등 발생), full-year: t=i+1 (연말 일시)
+    const t=midyear?(i+0.5):(i+1);
+    const disc=Math.pow(1/(1+wacc),t);
     const pvfcff=fcff*disc;
     return{rev_gr,ebit_mg,nopat,fcff,disc,pvfcff};
   });
@@ -2318,18 +2345,22 @@ function dcfCalc(){
   const pvEx=calc.reduce((s,c)=>s+c.pvfcff,0);
   const lastFCFF=calc[calc.length-1].fcff;
   const tv=lastFCFF*(1+g)/(wacc-g);
-  const pvTV=tv/Math.pow(1+wacc,dcfYears.length);
-  // EV = 명시기간 FCFF PV + TV PV (영업가치)
-  // Equity = EV + 비영업자산 − 이자부부채 − 비지배지분 (K-IFRS 평가실무, 평가보고서 p.50 정의 일치)
+  // TV 할인: mid-year면 t=N-0.5, full-year면 t=N (명시기간 종료 시점)
+  const tvT=midyear?(dcfYears.length-0.5):dcfYears.length;
+  const pvTV=tv/Math.pow(1+wacc,tvT);
+  // Equity Bridge (K-IFRS 평가실무):
+  //   = 영업가치 + 비영업자산 − 순차입금 − 다른시리즈 우선주 − 비지배지분
+  // 다른 시리즈 우선주(pref)는 보통주에 우선하는 청산권을 가지므로 보통주 가치에서 차감.
+  // 본인 RCPS는 순환참조라 제외(stock_price 산정 후 RCPS 평가에서 별도 인식).
   const opVal=pvEx+pvTV;
   const ev=opVal+nonop;
-  const equity=Math.max(opVal+nonop-nd-nci,0);
+  const equity=Math.max(opVal+nonop-nd-pref-nci,0);
   const sp=equity/shares;
   document.getElementById('dcf-result-wrap').style.display='block';
   document.getElementById('dcf-sum-grid').innerHTML=`
     <div class="dcf-scard"><div class="sn">명시적 FCF 현재가치</div><div class="sv">${fmtW(pvEx)}</div><div class="ss">예측기간 ${dcfYears.length}년 FCFF PV 합계</div></div>
     <div class="dcf-scard"><div class="sn">터미널 밸류 현재가치</div><div class="sv">${fmtW(pvTV)}</div><div class="ss">명목 TV ${fmtW(tv)} · TV/EV ${pct(pvTV,ev)}</div></div>
-    <div class="dcf-scard"><div class="sn">자기자본가치</div><div class="sv">${fmtW(equity)}</div><div class="ss">영업가치 ${fmtW(opVal)} + 비영업자산 ${fmtW(nonop)} − 이자부부채 ${fmtW(nd)}${nci?` − 비지배지분 ${fmtW(nci)}`:''}</div></div>
+    <div class="dcf-scard"><div class="sn">자기자본가치</div><div class="sv">${fmtW(equity)}</div><div class="ss">영업가치 ${fmtW(opVal)} + 비영업자산 ${fmtW(nonop)} − 순차입금 ${fmtW(nd)}${pref?` − 우선주 ${fmtW(pref)}`:''}${nci?` − 비지배지분 ${fmtW(nci)}`:''}</div></div>
     <div class="dcf-scard sp"><div class="sn">주당 내재가치</div><div class="sv">${fmtN(sp)}원</div><div class="ss">자기자본 ÷ ${fmtN(shares)}주</div></div>`;
   const badge=document.getElementById('dcf-sp-badge');
   badge.textContent=`산출 주가: ${fmtN(sp)}원`;badge.style.display='block';
@@ -2366,7 +2397,8 @@ function dcfCalc(){
       ['터미널 밸류 현재가치',fmtW(pvTV)],
       ['영업가치 (Operating Value)',`<strong style="color:var(--text)">${fmtW(opVal)}</strong>`],
       ['(+) 비영업자산',fmtW(nonop)],
-      ['(−) 이자부부채',fmtW(nd)],
+      ['(−) 순차입금',fmtW(nd)],
+      ['(−) 기발행 우선주',fmtW(pref)],
       ['(−) 비지배지분조정',fmtW(nci)],
       ['자기자본가치',`<strong style="color:var(--text)">${fmtW(equity)}</strong>`],
       ['주당 내재가치',`<strong style="color:var(--accent);font-size:14px">${fmtN(sp)}원</strong>`],

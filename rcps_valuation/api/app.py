@@ -64,63 +64,8 @@ def _f(v, default=None):
         return default
 
 
-def _spot_to_step_forwards(spot_pts, T, steps):
-    """
-    선형보간(linear-on-spot) + 평탄 외삽 → 스텝별 연속 forward rate.
-
-    spot_pts : list of [t_years, z_continuous_decimal]  (z = 연속 스팟)
-    T        : 총 기간(년),  steps : 등간격 스텝 수
-
-    - 연속 스팟 z(t)를 만기 사이 선형보간, 최단물 미만/최장물 초과는 평탄 외삽
-    - 스텝 i (t1=i·dt, t2=(i+1)·dt): f_i = (z(t2)·t2 − z(t1)·t1)/(t2−t1)
-    Returns list of length `steps`, or None on invalid input. Never raises.
-    """
-    try:
-        if not spot_pts or steps <= 0 or T <= 0:
-            return None
-        # parse and filter valid points (t > 0, z not None)
-        raw = []
-        for pt in spot_pts:
-            try:
-                t_yr, z_c = float(pt[0]), float(pt[1])
-                if t_yr is not None and z_c is not None and t_yr > 0:
-                    raw.append((t_yr, z_c))
-            except (TypeError, ValueError, IndexError):
-                continue
-        if not raw:
-            return None
-        raw.sort(key=lambda x: x[0])
-
-        t_last, z_last = raw[-1]
-
-        def zget(t):
-            """연속 스팟 선형보간(linear-on-spot) + 평탄 외삽(flat extrapolation)"""
-            if t <= raw[0][0]:
-                return raw[0][1]
-            if t >= t_last:
-                return z_last
-            for k in range(len(raw) - 1):
-                t0, z0 = raw[k]
-                t1, z1 = raw[k + 1]
-                if t0 <= t <= t1:
-                    w = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
-                    return z0 + w * (z1 - z0)
-            return z_last
-
-        dt = T / steps
-        out = []
-        for i in range(steps):
-            t1 = i * dt
-            t2 = (i + 1) * dt
-            za = zget(t1)
-            zb = zget(t2)
-            span = t2 - t1
-            # forward = (z2·t2 − z1·t1)/(t2−t1) ; t1=0 이면 f0 = z2
-            f_i = (zb * t2 - za * t1) / span if span > 0 else zb
-            out.append(f_i)
-        return out
-    except Exception:
-        return None
+from inputs.curves import spot_to_step_forwards as _spot_to_step_forwards
+# spot → 스텝별 forward 변환은 inputs/curves.py 단일 출처 사용 (TF·GS·MC·BDT·후속측정 공통)
 
 
 def parse_params(data: dict) -> RCPSParams:
@@ -2244,9 +2189,24 @@ def wacc_de():
                 mc = info.get('marketCap')
                 if mc is not None:
                     mc_source = 'info'
-            # D/E 산정
-            de_book = round(td / eq * 100, 2) if td and eq else (info.get('debtToEquity') if not date_str else None)
-            de_market = round(td / mc * 100, 2) if td and mc and mc > 0 else None
+            # D/E 산정 — peer set 내 비교가능성 보장:
+            # ① BS 조회 성공(td & eq)이면 계산값 사용, ② BS 폴백 시에도 동일 계산 시도,
+            # ③ 어느 한 쪽이라도 없으면 None (yfinance.info.debtToEquity 폴백 제거 —
+            #    info의 D/E는 부채 정의가 회사마다 달라 peer set 일관성 깨짐)
+            de_book = round(td / eq * 100, 2) if (td and eq) else None
+            de_market = round(td / mc * 100, 2) if (td and mc and mc > 0) else None
+            # 시점 mismatch 경고: BS 분기말과 시총 조회일 차이가 90일 초과 시 플래그
+            de_warn = None
+            try:
+                if period_end and mc_as_of:
+                    from datetime import date as _date
+                    bs_d = _date.fromisoformat(str(period_end)[:10])
+                    mc_d = _date.fromisoformat(str(mc_as_of)[:10])
+                    gap = abs((mc_d - bs_d).days)
+                    if gap > 90:
+                        de_warn = f"BS({period_end})와 시총조회일({mc_as_of}) 차이 {gap}일 — D/E 시점 mismatch 가능"
+            except Exception:
+                pass
 
             results.append({
                 "ticker": code,
@@ -2263,6 +2223,7 @@ def wacc_de():
                 "mc_as_of": mc_as_of,
                 "td_source": td_source,
                 "mc_source": mc_source,
+                "de_warn": de_warn,
                 "requested_date": date_str,
             })
         except Exception as e:  # noqa: BLE001

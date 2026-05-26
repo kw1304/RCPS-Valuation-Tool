@@ -89,21 +89,24 @@ def price_bond_on_bdt(r_tree: List[List[float]], dt: float, face: float,
     """BDT 트리 위 채권 후방귀납.
 
     coupon_schedule: {step: 지급액}.
-    put_schedule: {step: 풋 행사가}. 그 스텝에서 max(계속가치, 풋가). None=일반채권.
-    만기(step N)에서 V_N = max(face, put_schedule.get(N, face)) + coupon[N].
+    put_schedule: {step: 풋 행사가}. 그 스텝에서 max(계속가치+쿠폰, 풋가+쿠폰).
+        풋 행사 시에도 그 시점 cash 쿠폰은 결정 무관 보존 (패턴 A 일관).
+        만기(step N)는 풋 비활성 — 액면 상환만 (만기에 풋 자동행사 차단).
+    None=일반채권.
     """
     N = len(r_tree)
-    put_mat = (put_schedule or {}).get(N, face)
-    V = [max(face, put_mat) + coupon_schedule.get(N, 0.0)] * (N + 1)
+    # 만기는 풋 비활성: face + 만기쿠폰 (만기 풋가는 무시 — 풋은 만기 이전 권리)
+    V = [face + coupon_schedule.get(N, 0.0)] * (N + 1)
     for i in range(N - 1, -1, -1):
+        coup_i = coupon_schedule.get(i, 0.0)
         new_V = []
         for j in range(i + 1):
             disc = math.exp(-r_tree[i][j] * dt)
-            cont = disc * 0.5 * (V[j + 1] + V[j])
-            if i in coupon_schedule:
-                cont += coupon_schedule[i]
+            cont = disc * 0.5 * (V[j + 1] + V[j]) + coup_i
+            # 패턴 A: 풋 행사가 + 그 시점 cash 쿠폰 (보유 시 이미 coup_i 가산됨과 일관)
             if put_schedule and i in put_schedule:
-                cont = max(cont, put_schedule[i])
+                put_val = put_schedule[i] + coup_i
+                cont = max(cont, put_val)
             new_V.append(cont)
         V = new_V
     return float(V[0])
