@@ -126,7 +126,6 @@ footer.legal .right{text-align:right;flex:1;min-width:240px}
   .dcf-assump{flex-direction:column}
   .dcf-assump-grid{grid-template-columns:1fr 1fr !important;gap:6px}
   .tv-method-row{grid-template-columns:1fr 1fr;gap:8px}
-  .tv-method-row .tv-hint{grid-column:1/-1}
   /* DCF 가정 7열 한 줄 → 모바일은 2열로 자동 줄바꿈 */
   .global-bar{padding:0.4rem 0.8rem;font-size:.72rem}
   .global-bar-hint{font-size:0.62rem;flex-basis:100%;line-height:1.3}
@@ -275,9 +274,24 @@ details.note-fold .note{margin-top:4px}
 .dcf-assump-grid .field label{font-size:0.7rem}
 
 /* TV 산정 방식 — 입력 그리드와 시각적으로 통일 */
-.tv-method-row{display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(130px,1fr) 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.tv-method-row{display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(130px,1fr);gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .tv-method-row .field label{font-size:0.7rem}
-.tv-method-row .tv-hint{font-size:0.67rem;color:var(--text3);line-height:1.45;align-self:end;padding-bottom:0.1rem}
+.tv-method-row .tv-hint{grid-column:1/-1;font-size:0.67rem;color:var(--text3);line-height:1.45;padding-top:2px}
+
+/* EV/EBITDA 자동 산출 도구 박스 */
+.ev-calc-box{margin-top:8px;padding:12px 14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px}
+.ev-calc-box-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.ev-calc-box-hd h4{margin:0;font-size:.82rem;color:#0369A1;font-weight:700}
+.ev-calc-desc{font-size:.68rem;color:var(--text2);line-height:1.6;margin-bottom:10px}
+.ev-calc-search{display:flex;gap:6px;margin-bottom:6px}
+.ev-calc-search input{flex:1;font-size:.72rem;padding:0.45rem 0.7rem;background:var(--bg3);border:1.5px solid transparent;border-radius:8px;font-family:var(--sans);color:var(--text);outline:none}
+.ev-calc-search input:focus{border-color:var(--accent);background:#fff}
+.ev-calc-hint{font-size:.68rem;color:var(--text3);line-height:1.5}
+.ev-calc-opts{margin-bottom:8px;padding:8px 10px;background:var(--bg2);border-radius:8px}
+.ev-calc-opts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:.7rem}
+.ev-calc-opts-grid label{display:block;margin-bottom:3px;color:var(--text2)}
+.ev-calc-opts-grid select,.ev-calc-opts-grid input{width:100%}
+.ev-calc-result{padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:.72rem;line-height:1.6}
 
 .dcf-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .btn-sm{padding:0.42rem 0.9rem;border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all 0.15s;letter-spacing:-0.01em}
@@ -844,44 +858,44 @@ details.note-fold .note{margin-top:4px}
       <div class="tv-hint" id="a_tv_help">※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요</div>
     </div>
     <!-- EV/EBITDA 자동 산출 도구 — TV 설정방식 바로 아래 (동종업계 상장사 평균만 사용) -->
-    <div id="ev-calc-box" style="display:none;margin-top:8px;padding:12px 14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
-        <h4 style="margin:0;font-size:.82rem;color:#0369A1">EV/EBITDA 자동 산출 — 동종업계 상장사 평균</h4>
+    <div id="ev-calc-box" class="ev-calc-box" style="display:none">
+      <div class="ev-calc-box-hd">
+        <h4>EV/EBITDA 자동 산출 — 동종업계 상장사 평균</h4>
         <button class="btn-sm dl" onclick="evCalcToggle()">닫기</button>
       </div>
-      <div style="font-size:.68rem;color:var(--text2);line-height:1.6;margin-bottom:8px">
+      <div class="ev-calc-desc">
         평가기준일 기준으로 동종업계 상장사 EV/EBITDA를 자동 조회 후 집계(중앙값/평균)하고
         비유동성 할인을 적용해 최종 배수를 산출합니다.
       </div>
 
       <!-- ① 동종업계 상장사 조회 -->
       <div style="margin-bottom:10px">
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-          <input type="text" id="ev-peer-tickers" placeholder="회사명 또는 ticker 쉼표 구분 (예: 코스맥스, 삼성전자, 192820, AAPL)" style="flex:1;font-size:.72rem;padding:0.45rem 0.7rem;background:var(--bg3);border:1.5px solid transparent;border-radius:8px;font-family:var(--sans);color:var(--text);outline:none" onfocus="this.style.borderColor='var(--accent)';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='var(--bg3)'">
+        <div class="ev-calc-search">
+          <input type="text" id="ev-peer-tickers" placeholder="회사명 또는 ticker 쉼표 구분 (예: 코스맥스, 삼성전자, 192820, AAPL)">
           <button class="btn-sm add" onclick="evFetchPeers()">조회</button>
         </div>
-        <div id="ev-peer-result" style="font-size:.68rem;color:var(--text3)">한국 회사명·6자리 코드·해외 ticker 모두 인식. 평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용.</div>
+        <div id="ev-peer-result" class="ev-calc-hint">한국 회사명·6자리 코드·해외 ticker 모두 인식. 평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용.</div>
       </div>
 
       <!-- ② 집계 방식 + 비유동성 할인 -->
-      <div style="margin-bottom:8px;padding:8px 10px;background:#fff;border-radius:6px">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:.7rem">
+      <div class="ev-calc-opts">
+        <div class="ev-calc-opts-grid">
           <div>
             <label>집계 방식</label>
-            <select id="ev-method" onchange="evRecalc()" style="width:100%">
+            <select id="ev-method" onchange="evRecalc()">
               <option value="median" selected>중앙값 (권장 — 이상치 robust)</option>
               <option value="mean">평균</option>
             </select>
           </div>
           <div>
             <label title="비유동성 할인 (DLOM, Discount for Lack of Marketability):&#10;&#10;개념: K-IFRS 1113.B45 — 비상장은 거래 유동성 없어 같은 회사의 상장 가치보다 낮게 평가.&#10;&#10;범위: 실증 연구(FMV·Pluris·Mandelbaum 판례) 평균 약 25%, 사례별 0~50% 차이.&#10;개념 자체는 회계 표준 명문이나 정확한 할인율은 평가자 판단 영역.&#10;사례 근거를 워크페이퍼에 기록 권장.">비유동성 할인 DLOM (%) <span style="color:var(--text3);font-size:.6rem">— 실증 평균 ~25% (사례별 조정)</span></label>
-            <input type="number" id="ev-dlom" value="25" min="0" max="50" step="5" oninput="evRecalc()" style="width:100%">
+            <input type="number" id="ev-dlom" value="25" min="0" max="50" step="5" oninput="evRecalc()">
           </div>
         </div>
       </div>
 
       <!-- 결과 -->
-      <div id="ev-result" style="padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:.72rem">
+      <div id="ev-result" class="ev-calc-result">
         비교회사 ticker 입력 후 [조회] → 자동 산출됩니다.
       </div>
     </div>
@@ -2728,21 +2742,21 @@ async function evFetchPeers(){
       'info':                  {txt:'TTM (현시점)',  color:'#B45309', desc:'yfinance.info trailing EBITDA — 평가기준일 매칭 X (fallback)'},
     })[s] || {txt:s||'—', color:'var(--text3)', desc:''};
 
-    let html = `<table style="width:100%;font-size:.7rem;border-collapse:collapse;background:#fff;border-radius:4px;overflow:hidden">
-      <thead><tr style="background:#E0F2FE">
-        <th style="padding:4px 6px;text-align:left">입력</th>
-        <th style="padding:4px 6px;text-align:left">매칭 ticker</th>
-        <th style="padding:4px 6px;text-align:left">종목명</th>
-        <th style="padding:4px 6px;text-align:right">시총(억)</th>
-        <th style="padding:4px 6px;text-align:right">순차입(억)</th>
-        <th style="padding:4px 6px;text-align:right">EBITDA(억)</th>
-        <th style="padding:4px 6px;text-align:left" title="EBITDA 출처와 산정 시점 (K-IFRS 1113.93(d) input 출처 공시)">EBITDA 출처</th>
-        <th style="padding:4px 6px;text-align:right">EV/EBITDA</th>
+    let html = `<table style="width:100%;font-size:.68rem;border-collapse:collapse;background:var(--bg2);border-radius:6px;overflow:hidden;margin-top:4px">
+      <thead><tr style="background:#DBEAFE;color:var(--text)">
+        <th style="padding:5px 7px;text-align:left;font-weight:600">입력</th>
+        <th style="padding:5px 7px;text-align:left;font-weight:600">매칭 ticker</th>
+        <th style="padding:5px 7px;text-align:left;font-weight:600">종목명</th>
+        <th style="padding:5px 7px;text-align:right;font-weight:600">시총(억)</th>
+        <th style="padding:5px 7px;text-align:right;font-weight:600">순차입(억)</th>
+        <th style="padding:5px 7px;text-align:right;font-weight:600">EBITDA(억)</th>
+        <th style="padding:5px 7px;text-align:left;font-weight:600" title="EBITDA 출처와 산정 시점 (K-IFRS 1113.93(d) input 출처 공시)">EBITDA 출처</th>
+        <th style="padding:5px 7px;text-align:right;font-weight:600">EV/EBITDA</th>
       </tr></thead><tbody>`;
     j.peers.forEach(p => {
       const inputShow = p.input || p.ticker;
       if(p.error){
-        html += `<tr><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px">${p.ticker||'—'}</td><td colspan="6" style="padding:3px 6px;color:#DC2626">${p.error}</td></tr>`;
+        html += `<tr style="border-top:1px solid var(--border)"><td style="padding:4px 7px">${inputShow}</td><td style="padding:4px 7px">${p.ticker||'—'}</td><td colspan="6" style="padding:4px 7px;color:var(--red)">${p.error}</td></tr>`;
       }else{
         const mcEok = p.market_cap ? (p.market_cap/1e8).toFixed(0) : '—';
         const ndEok = p.net_debt != null ? (p.net_debt/1e8).toFixed(0) : '—';
@@ -2750,14 +2764,14 @@ async function evFetchPeers(){
         const mult = p.ev_ebitda ? p.ev_ebitda.toFixed(2)+'배' : '—';
         const isValid = p.ev_ebitda && 0 < p.ev_ebitda && p.ev_ebitda < 100;
         const src = srcLabel(p.ebitda_source);
-        const periodTxt = p.ebitda_period ? `<span style="color:var(--text3);font-size:.62rem">(${p.ebitda_period})</span>` : '';
+        const periodTxt = p.ebitda_period ? `<span style="color:var(--text3);font-size:.6rem">(${p.ebitda_period})</span>` : '';
         const srcHtml = `<span style="color:${src.color};font-weight:600" title="${src.desc}">${src.txt}</span> ${periodTxt}`;
-        html += `<tr style="${isValid?'':'opacity:.5'}"><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px;color:var(--text3)">${p.ticker}</td><td style="padding:3px 6px">${p.name||''}</td><td style="padding:3px 6px;text-align:right">${mcEok}</td><td style="padding:3px 6px;text-align:right">${ndEok}</td><td style="padding:3px 6px;text-align:right">${ebEok}</td><td style="padding:3px 6px">${srcHtml}</td><td style="padding:3px 6px;text-align:right;font-weight:600">${mult}</td></tr>`;
+        html += `<tr style="border-top:1px solid var(--border);${isValid?'':'opacity:.45'}"><td style="padding:4px 7px">${inputShow}</td><td style="padding:4px 7px;color:var(--text3)">${p.ticker}</td><td style="padding:4px 7px">${p.name||''}</td><td style="padding:4px 7px;text-align:right;font-variant-numeric:tabular-nums">${mcEok}</td><td style="padding:4px 7px;text-align:right;font-variant-numeric:tabular-nums">${ndEok}</td><td style="padding:4px 7px;text-align:right;font-variant-numeric:tabular-nums">${ebEok}</td><td style="padding:4px 7px">${srcHtml}</td><td style="padding:4px 7px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">${mult}</td></tr>`;
       }
     });
     html += `</tbody></table>`;
     // EBITDA 출처 범례 (감사 워크페이퍼 추적성)
-    html += `<div style="font-size:.62rem;color:var(--text3);margin-top:4px;line-height:1.6;padding:4px 6px;background:#F9FAFB;border-radius:3px">
+    html += `<div style="font-size:.61rem;color:var(--text3);margin-top:5px;line-height:1.65;padding:5px 7px;background:var(--bg3);border-radius:6px">
       <b>EBITDA 출처 범례:</b>
       <span style="color:#059669;font-weight:600">연간</span> = 연간 재무제표 EBITDA (가장 정확) ·
       <span style="color:#0EA5E9;font-weight:600">분기 TTM</span> = 직전 4분기 합산 ·
@@ -2765,7 +2779,7 @@ async function evFetchPeers(){
       <span style="color:#B45309;font-weight:600">TTM (현시점)</span> = 평가기준일 매칭 X (fallback)
     </div>`;
     if(j.summary && j.summary.n_valid > 0){
-      html += `<div style="font-size:.7rem;color:var(--text2);margin-top:6px"><b>유효 ${j.summary.n_valid}개</b> · 중앙값 <b>${j.summary.median.toFixed(2)}배</b> · 평균 <b>${j.summary.mean.toFixed(2)}배</b>${j.date?` · 기준일 ${j.date}`:' · 현시점'}</div>`;
+      html += `<div style="font-size:.7rem;color:var(--text2);margin-top:6px;font-weight:500"><b>유효 ${j.summary.n_valid}개</b> · 중앙값 <b>${j.summary.median.toFixed(2)}배</b> · 평균 <b>${j.summary.mean.toFixed(2)}배</b>${j.date?` · 기준일 ${j.date}`:' · 현시점'}</div>`;
     }
     host.innerHTML = html;
     evRecalc();
@@ -2810,7 +2824,7 @@ function evRecalc(){
           </div>
         </div>
         <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button onclick="document.getElementById('a_exit_mult').value=${finalMult.toFixed(2)};dcfCalc()" style="font-size:.74rem;padding:5px 14px;background:#0EA5E9;color:#fff;border:none;border-radius:4px;cursor:pointer">→ DCF에 ${finalMult.toFixed(2)}배 적용</button>
+          <button class="btn-sm send" onclick="document.getElementById('a_exit_mult').value=${finalMult.toFixed(2)};dcfCalc()">→ DCF에 ${finalMult.toFixed(2)}배 적용</button>
           <span style="font-size:.64rem;color:var(--text3)">K-IFRS 1113.93(d): 비교회사 명단·DLOM 근거를 워크페이퍼에 기록 필수</span>
         </div>`;
     }
@@ -2823,7 +2837,7 @@ function dcfTvMethodChange(){
   const wrap = document.getElementById('a_exit_mult_wrap');
   const help = document.getElementById('a_tv_help');
   if(wrap){
-    wrap.style.display = (m === 'gordon') ? 'none' : 'flex';
+    wrap.style.display = (m === 'gordon') ? 'none' : '';
   }
   if(help){
     if(m === 'gordon'){
