@@ -133,20 +133,23 @@ def gs_rcps(params: RCPSParams, steps: int = None,
         return 1.0
 
     # ── 희석주가: 전환 후 1주당 가격
+    # N_new = face/K_effective = 신규 발행 보통주 총수 = (face/K) × ratio
     # 전환 시 회사가치 = 기존지분(n_com·S) + 부채흡수(bond_pv TOTAL)
-    # 총 주식수 = n_com + n_rcps·ratio
+    # n_rcps × 1 가정 대신 face/K로 일반화 (face_per_RCPS != K 케이스 정확 처리)
     def _diluted(i, j):
         S = _S(i, j)
         r = _ratio(i, j)
-        return (S * n_com + bond_pv[i]) / (n_com + n_rcps * r)
+        N_new = (face / K) * r
+        return (S * n_com + bond_pv[i]) / (n_com + N_new)
 
-    # ── 전환가치 (희석 경로) — TOTAL 단위 (모든 RCPS 합산)
-    # per-share post × n_rcps × ratio = 전환 시 RCPS 보유자가 받는 총 가치
-    # (mat_redeem, _redeem, face 모두 TOTAL 단위 → 일관성 유지)
+    # ── 전환가치 (희석 경로) — TOTAL 단위
+    # per-share post × N_new = 전환 시 RCPS 보유자가 받는 총 가치
     def _conv_val_dil(i, j):
         if i < conv_step:
             return 0.0
-        return _diluted(i, j) * _ratio(i, j) * n_rcps
+        r = _ratio(i, j)
+        N_new = (face / K) * r
+        return _diluted(i, j) * N_new
 
     # ── 전환가치 (레거시 경로: (face/K_eff)*S)
     def _conv_val_leg(i, j):

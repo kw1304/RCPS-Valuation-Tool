@@ -101,19 +101,26 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         return 1.0
 
     def _diluted(i, j):
-        """전환 후 1주당 가격 = (n_com·S + bond_pv_total) / (n_com + n_rcps·ratio)
+        """전환 후 1주당 가격 = (n_com·S + bond_pv_total) / (n_com + N_new)
+        N_new = face/K_effective = 전환 시 신규 발행되는 보통주 총수
+              = (face/K) × ratio  (ratio = K/K_eff, 리픽싱 반영)
         bond_pv[i]는 TOTAL 채권 PV. 전환 시 회사가치 = 기존지분(n_com·S) + 부채흡수(bond_pv).
-        총 주식수 = n_com + n_rcps·ratio."""
+        n_rcps × 1 (1 RCPS = 1 주) 가정 대신 face/K로 일반화 →
+        face_per_RCPS != conv_price 케이스도 정확히 처리."""
         S = S0 * (u ** (i - j)) * (d_fac ** j)
         r = _ratio(i, j)
-        return (S * n_com + bond_pv[i]) / (n_com + n_rcps * r)
+        N_new = (face / K) * r
+        return (S * n_com + bond_pv[i]) / (n_com + N_new)
 
     def _conv_val_dil(i, j):
         """희석경로 전환가치 (TOTAL 단위, 모든 RCPS 합산).
-        per-share post × n_rcps × ratio = 전환 시 RCPS 보유자가 받는 총 가치."""
+        per-share post × N_new = 전환 시 RCPS 보유자가 받는 총 가치
+        N_new = face/K_effective (face·conv_price·refixing 기반, n_rcps 의존하지 않음)."""
         if i < conv_step:
             return 0.0
-        return _diluted(i, j) * _ratio(i, j) * n_rcps
+        r = _ratio(i, j)
+        N_new = (face / K) * r
+        return _diluted(i, j) * N_new
 
     # 단계별 rf/kd 조회
     def _rf(step_idx):
