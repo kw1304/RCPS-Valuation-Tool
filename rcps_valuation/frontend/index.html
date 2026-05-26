@@ -190,14 +190,15 @@ details.note-fold .note{margin-top:4px}
 .placeholder p{font-size:0.88rem;color:var(--text3);letter-spacing:-0.01em}
 .placeholder small{font-size:0.72rem;color:var(--text3)}
 
-.toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+/* 결과·페이지 툴바 — 스크롤 시에도 우상단 고정 (sticky) */
+.toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;margin:-8px 0 0}
 .eval-meta{font-size:0.7rem;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.38rem 0.8rem;letter-spacing:-0.01em}
-.btn-dl{display:flex;align-items:center;gap:5px;padding:0.42rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em}
-.btn-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent)}
+.btn-dl{display:flex;align-items:center;gap:5px;padding:0.42rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.btn-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent);box-shadow:0 2px 8px rgba(49,130,246,.15)}
 .btn-dl:disabled{opacity:0.5;cursor:not-allowed;background:var(--bg2);border-color:var(--border);color:var(--text3)}
-.btn-dl:disabled:hover{background:var(--bg2);border-color:var(--border);color:var(--text3)}
-/* 페이지 공통 툴바 — 다운로드 버튼 우상단 통일 (DCF·WACC·변동성·부트스트래핑) */
-.page-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;max-width:1100px;width:100%;margin:0 auto;padding:0;flex-wrap:wrap}
+.btn-dl:disabled:hover{background:var(--bg2);border-color:var(--border);color:var(--text3);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+/* 페이지 공통 툴바 — 다운로드 버튼 우상단 sticky (DCF·WACC·변동성·부트스트래핑 — RCPS와 동일 위치) */
+.page-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;max-width:1100px;width:100%;margin:0 auto;padding:8px 0;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:var(--bg)}
 
 /* 결과 패널 2단 컬럼 (감사 검증 워크플로우: 좌=공정가치+구성요소·BDT, 우=모형비교+탭) */
 .res-2col{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;align-items:start}
