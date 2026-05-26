@@ -960,7 +960,7 @@ details.note-fold .note{margin-top:4px}
   <!-- ③ 자기자본비용 Ke -->
   <div class="sec sec-max">
     <div class="sec-title">③ 자기자본비용 (Ke) — CAPM</div>
-    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br><button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.<br>사이즈 프리미엄: 시총(상장사) 또는 매출액(비상장 평가대상은 수동입력 권장) — Kroll Cost of Capital Navigator 8개 지표 중 가장 흔한 두 가지.</span></div>
+    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br><button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.<br>사이즈 프리미엄: Kroll Cost of Capital Navigator 기준 — 원본은 <b>USD 시총 10분위</b>. 본 툴은 <b>한국 KRW 시총 근사 매핑</b>(공정거래위원회 대기업·중견기업 구분과 유사). USD 환산 정밀 Kroll decile 필요 시 Kroll 원자료 참조.</span></div>
     <div class="row2" style="margin-bottom:8px">
       <div class="field"><label>사이즈 기준 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">자동 매핑 기준 지표</span></label>
         <select id="w_size_basis" onchange="waccToggleSizeManual()">
@@ -1180,6 +1180,11 @@ details.note-fold .note{margin-top:4px}
   </div>
 
   <!-- Rf / Rd 2-column 부트스트래핑 -->
+  <div class="note" style="margin:0 1.2rem 8px;background:#EFF6FF;border-left-color:var(--accent)">
+    <b>컨벤션:</b> 시장 YTM을 <b>par yield 근사</b>(액면가 거래 채권의 쿠폰)로 가정해 부트스트랩합니다.
+    한국 국고채는 대체로 액면 근처에서 거래되어 YTM ≈ par yield 근사가 합리적이며, KIS-Net 민평 회사채 yield curve도 동일한 par yield 기준으로 산정됩니다.
+    BBB 이하 신용등급은 액면 이탈 거래가 잦아 편향 가능성 — 평가조서에 컨벤션 명시 권장.
+  </div>
   <div class="boot-dual">
 
     <!-- Rf Section (반기, m=2) -->
@@ -2403,6 +2408,69 @@ function dcfCalc(){
       ['자기자본가치',`<strong style="color:var(--text)">${fmtW(equity)}</strong>`],
       ['주당 내재가치',`<strong style="color:var(--accent);font-size:14px">${fmtN(sp)}원</strong>`],
     ].map(([k,v])=>`<tr><td style="text-align:left">${k}</td><td>${v}</td></tr>`).join('')}</tbody>`;
+
+  // ── 민감도 매트릭스 (WACC × g) — K-IFRS 13.93(h)(i) Level 3 input 민감도 공시
+  dcfSensMatrix(dcfYears, calc, wacc, g, nonop, nd, pref, nci, shares, midyear);
+  // ── TV/EV 비중 경고 (70% 초과 노란색, 85% 초과 빨간색)
+  dcfTvWarn(pvTV, ev);
+  // ── EV/EBITDA implied cross-check
+  dcfMultipleCheck(ev, dcfYears, midyear);
+}
+
+function dcfSensMatrix(years, calc, wacc0, g0, nonop, nd, pref, nci, shares, midyear){
+  const waccs=[-2,-1,0,1,2].map(d=>wacc0+d/100);
+  const gs=[-1,-0.5,0,0.5,1].map(d=>g0+d/100);
+  const lastFCFF=calc[calc.length-1].fcff;
+  const pvEx_at=(wac)=>calc.reduce((s,c,i)=>{
+    const t=midyear?(i+0.5):(i+1);return s+c.fcff*Math.pow(1/(1+wac),t);
+  },0);
+  const tvT=midyear?(years.length-0.5):years.length;
+  const rows=gs.map(gv=>{
+    const cells=waccs.map(wac=>{
+      if(wac<=gv)return '<td style="background:#FEF2F2;color:var(--red)">N/A</td>';
+      const px=pvEx_at(wac);
+      const tv=lastFCFF*(1+gv)/(wac-gv);
+      const pvtv=tv/Math.pow(1+wac,tvT);
+      const eq=Math.max(px+pvtv+nonop-nd-pref-nci,0);
+      const spv=eq/shares;
+      const hl=(Math.abs(wac-wacc0)<1e-9 && Math.abs(gv-g0)<1e-9)?'background:#EFF6FF;font-weight:700;color:var(--accent)':'';
+      return `<td style="${hl}">${fmtN(spv)}</td>`;
+    }).join('');
+    return `<tr><td style="font-weight:600;color:var(--text2)">g=${(gv*100).toFixed(1)}%</td>${cells}</tr>`;
+  }).join('');
+  const wh=waccs.map(w=>`<th>WACC=${(w*100).toFixed(1)}%</th>`).join('');
+  let host=document.getElementById('dcf-sens');
+  if(!host){
+    const wrap=document.querySelector('#dcf-result-wrap');
+    host=document.createElement('div');host.id='dcf-sens';host.className='dcf-det';host.style.marginTop='12px';
+    wrap.appendChild(host);
+  }
+  host.innerHTML=`<h4>민감도: 주당가치 (WACC × g) <span style="font-weight:400;color:var(--text3);font-size:.72rem">— K-IFRS 13.93(h) Level 3 input 민감도</span></h4>
+    <table class="dtable" style="font-size:.72rem"><thead><tr><th></th>${wh}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function dcfTvWarn(pvTV, ev){
+  const r=ev>0?pvTV/ev:0;
+  let msg='',color='';
+  if(r>0.85){msg=`TV/EV ${(r*100).toFixed(0)}% — TV 의존 과도. 명시기간 연장 검토 권장`;color='var(--red)';}
+  else if(r>0.70){msg=`TV/EV ${(r*100).toFixed(0)}% — TV 의존 높음. 정상상태 가정 합리성 확인`;color='var(--amber)';}
+  const w=document.getElementById('dcf-warn');
+  if(w && msg){const prev=w.textContent;w.textContent=(prev?prev+' · ':'')+msg;w.style.color=color;}
+}
+
+function dcfMultipleCheck(ev, years, midyear){
+  const last=years[years.length-1];
+  const ebitda=(last.ebit||0)+(last.da||0);
+  if(ebitda<=0)return;
+  const mult=ev/ebitda;
+  let host=document.getElementById('dcf-mult');
+  if(!host){
+    const sens=document.getElementById('dcf-sens')||document.querySelector('#dcf-result-wrap');
+    host=document.createElement('div');host.id='dcf-mult';host.style.cssText='margin-top:8px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:.74rem;color:var(--text2)';
+    sens.parentNode.insertBefore(host,sens.nextSibling);
+  }
+  const flag=mult>=6 && mult<=12?' ✓ 한국 비상장 일반 범위(6~12x)':' ⚠ 범위 이탈 — 가정 재검토';
+  host.innerHTML=`Implied EV/EBITDA (마지막 연도): <b>${mult.toFixed(1)}x</b> <span style="color:var(--text3)">${flag}</span>`;
 }
 
 function sendToRCPS(){
@@ -3462,7 +3530,10 @@ function bBootstrap(allRows,m){
   const dt=1/m;
   const rows=allRows.filter(r=>r.t>0&&r.y>0).sort((a,b)=>a.t-b.t);
   if(!rows.length)return{midRows:[],outRows:[],dfs:{}};
-  const maxT=Math.min(rows[rows.length-1].t,20);
+  // 만기 cap: 20년 (한국 RCPS는 3~5년 주력. 30년 만기는 평탄 외삽이 부정확 → silent drop)
+  const inputMax=rows[rows.length-1].t;
+  const maxT=Math.min(inputMax,20);
+  if(inputMax>20 && typeof _toast==='function')_toast(`만기 20년 초과 입력(${inputMax}년) — 부트스트랩에서 제외됨`,'err');
   const dfs={};
   const midRows=[];
   let T=dt, step=1;
@@ -3554,7 +3625,18 @@ function bRenderSect(rows,m,inpId,midId,outId,tgtId,resId){
 
 function bRowUp(tbodyId,i,field,val){
   const arr=tbodyId==='brf-inp'?bootRfRows:bootRdRows;
-  arr[i][field]=parseFloat(val)||0;
+  const v=parseFloat(val);
+  if(isNaN(v)){arr[i][field]=0;bootRender();return;}
+  // 입력 검증: 음수 / 비정상 범위 거부 (K-IFRS 13 관측가능 input)
+  if(field==='t' && v<=0){_toast('만기는 양수여야 합니다','err');arr[i][field]=0;bootRender();return;}
+  if(field==='y' && v<0){_toast('YTM은 음수일 수 없습니다','err');arr[i][field]=0;bootRender();return;}
+  if(field==='y' && v>100){_toast('YTM은 %단위 입력 — 100% 초과 의심','err');}
+  arr[i][field]=v;
+  // 중복 만기 검사 (경고만, drop은 bBootstrap이 처리)
+  if(field==='t'){
+    const dup=arr.filter((r,k)=>k!==i && Math.abs(r.t-v)<1e-6).length;
+    if(dup>0)_toast(`만기 ${v}년 중복 입력`,'err');
+  }
   bootRender();
 }
 
