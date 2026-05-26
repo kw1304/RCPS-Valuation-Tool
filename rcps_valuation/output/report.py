@@ -209,13 +209,13 @@ def _write_tree(ws, title, tree, params=None):
             ("bond_hold",      "채권 보유가치 (원/주)"),
         ]
     else:  # GS
+        # GS는 단일 V로 후방귀납 (E/B 분리 없음, cp 가중 블렌딩 할인)
+        # → 별도 내재가치 그리드 불필요 (decision·rcps_value로 충분)
         grids = [
             ("stock",          "① 주가 트리 (원/주)"),
             ("decision",       "의사결정"),
             ("conv_prob",      "전환확률"),
             ("disc_factor",    "할인계수"),
-            ("conv_intrinsic", "전환 내재가치 — 즉시 전환 시 (원/주)"),
-            ("bond_intrinsic", "채권 내재가치 — 즉시 풋·만기상환 시 (원/주)"),
             ("rcps_value",     "RCPS 가치 — 의사결정 후 채택 (원/주)"),
             ("hold_value",     "보유가치 — 연속보유 (원/주)"),
         ]
