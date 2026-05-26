@@ -8,8 +8,11 @@ def generate_workpaper(params, initial_result, sensitivity_result, output_path,
                        tf_tree=None, gs_tree=None, eval_result=None, bdt_cross=None):
     wb = Workbook()
 
-    ws1 = wb.active
-    ws1.title = "1.발행조건"
+    ws0 = wb.active
+    ws0.title = "0.평가의견"
+    _write_executive_summary(ws0, params, initial_result, eval_result, sensitivity_result)
+
+    ws1 = wb.create_sheet("1.발행조건")
     _write_cover(ws1, params, initial_result)
 
     ws2 = wb.create_sheet("2.평가결과")
@@ -415,6 +418,190 @@ def _hdr(ws, row, col, value):
     side = Side(style="thin", color="FFFFFF")
     c.border = Border(left=side, right=side, top=side, bottom=side)
     return c
+
+
+def _write_executive_summary(ws, params, initial, eval_result, sensitivity):
+    """평가의견 표지 — 평가법인 보고서 1페이지 표준.
+
+    구성: 평가목적·기준일·대상 → 결과요약 → 평가절차 → 핵심가정 → 분해 → 이슈사항.
+    K-IFRS 1113.91 재현성·1113.93(d)(g) Level 3 공시 핵심 항목.
+    """
+    for col, w in zip("ABCDEFG", [4, 22, 18, 18, 18, 18, 4]):
+        ws.column_dimensions[col].width = w
+
+    # 제목
+    ws.row_dimensions[1].height = 38
+    t = ws.cell(row=1, column=2, value="RCPS 공정가치 평가의견")
+    t.font = Font(name="맑은 고딕", bold=True, size=16, color="FFFFFF")
+    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.alignment = Alignment(horizontal="center", vertical="center")
+    ws.merge_cells("B1:F1")
+
+    row = 3
+    # 1. 평가 개요
+    ws.cell(row=row, column=2, value="■ 평가 개요").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+    row += 1
+    overview = [
+        ("평가 대상", "상환전환우선주 (RCPS)"),
+        ("평가 기준일", str(params.valuation_date)),
+        ("발행일 / 만기일", f"{params.issue_date} ~ {params.maturity_date}"),
+        ("잔존 만기", f"{params.T:.3f}년"),
+        ("발행금액", f"{int(params.face_value):,}원"),
+        ("회계기준", "K-IFRS 1109 · 1113 (당기손익-공정가치 분류 전제)"),
+        ("평가목적", "재무제표 작성 목적 공정가치 측정"),
+    ]
+    for k, v in overview:
+        bg = "F7FAFC" if row % 2 == 0 else "FFFFFF"
+        _cell(ws, row, 2, k, bold=True, bg=bg)
+        _cell(ws, row, 3, v, bg=bg)
+        ws.merge_cells(start_row=row, start_column=3, end_row=row, end_column=6)
+        row += 1
+    row += 1
+
+    # 2. 평가 결과 (4모형 요약)
+    ws.cell(row=row, column=2, value="■ 평가 결과").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+    row += 1
+    # 모형별 fv
+    _hdr(ws, row, 2, "모형")
+    _hdr(ws, row, 3, "공정가치")
+    _hdr(ws, row, 4, "1주당 가치")
+    _hdr(ws, row, 5, "비고")
+    ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+    row += 1
+    tf = (eval_result or {}).get("tf") or {}
+    gs = (eval_result or {}).get("gs") or {}
+    mc = (eval_result or {}).get("mc") or {}
+    n_rcps = params.rcps_shares or 1
+    model_rows = [
+        ("TF (Tsiveriotis-Fernandes)", tf.get("fair_value"), "메인 — 채권·주식 분리 할인"),
+        ("GS (Goldman Sachs)", gs.get("fair_value"), "비교 — 블렌딩 할인"),
+        ("MC (Monte Carlo)", mc.get("fair_value"),
+         f"참고 — 경로 {mc.get('n_paths','-')}회"
+         + (f", 95% CI {int(mc.get('ci_lower',0)):,}~{int(mc.get('ci_upper',0)):,}원" if mc.get('ci_lower') else "")),
+    ]
+    for label, fv, note in model_rows:
+        bg = "EBF8FF" if "TF" in label else ("F7FAFC" if row % 2 == 0 else "FFFFFF")
+        bold = "TF" in label
+        _cell(ws, row, 2, label, bold=bold, bg=bg)
+        _cell(ws, row, 3, fv if fv else "-", bold=bold, bg=bg, num_fmt="#,##0", align="right")
+        per_share = (fv / n_rcps) if fv else None
+        _cell(ws, row, 4, per_share if per_share else "-", bold=bold, bg=bg, num_fmt="#,##0", align="right")
+        _cell(ws, row, 5, note, bg=bg, color="718096")
+        ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+        row += 1
+    row += 1
+
+    # 평가의견 한 줄
+    main_fv = tf.get("fair_value") or initial.get("fair_value")
+    if main_fv:
+        opinion = (
+            f"본 평가기준일 현재 평가 대상 RCPS의 공정가치는 "
+            f"₩{int(main_fv):,} (1주당 ₩{int(main_fv / n_rcps):,}) 으로 산정함."
+        )
+        c = ws.cell(row=row, column=2, value=opinion)
+        c.font = Font(name="맑은 고딕", bold=True, size=11, color="78350F")
+        c.fill = PatternFill(fill_type="solid", fgColor="FEF3C7")
+        c.alignment = Alignment(wrap_text=True, vertical="center")
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        ws.row_dimensions[row].height = 32
+        row += 2
+
+    # 3. 평가 절차
+    ws.cell(row=row, column=2, value="■ 평가 절차").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+    row += 1
+    steps_list = [
+        "① 발행조건 검증 — 약정서 기반 발행조건·전환·풋·콜 조항 입력값화",
+        "② 시장 데이터 수집 — 무위험이자율(국고채), 신용스프레드(부트스트랩 곡선), 변동성(유사기업 바스켓), 주가",
+        "③ 평가 모형 적용 — TF(메인) / GS(비교) / MC(참고) 3개 모형 동시 적용 (동일 단계·동일 곡선)",
+        "④ 분해 — 흡수형 분해(채권/풋옵션/전환권) 및 위험 분리 분해(지분/채권) 양쪽 산출",
+        "⑤ 민감도 분석 — 변동성·주가·신용스프레드·보장수익률·전환가액 가정 변동의 영향 측정",
+        "⑥ 결과 검증 — 모형 간 차이 자동 해석, BDT 풋채권 교차검증",
+    ]
+    for s in steps_list:
+        c = ws.cell(row=row, column=2, value=s)
+        c.font = Font(name="맑은 고딕", size=10)
+        c.alignment = Alignment(wrap_text=True, vertical="center")
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        ws.row_dimensions[row].height = 22
+        row += 1
+    row += 1
+
+    # 4. 핵심 가정
+    ws.cell(row=row, column=2, value="■ 핵심 가정").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+    row += 1
+    assumptions = [
+        ("주가 (S₀)", f"{int(params.stock_price):,}원", "비상장 시 DCF 산출 또는 직전 거래가"),
+        ("변동성 (σ)", f"{params.volatility*100:.2f}%", "유사기업 바스켓 역사적 변동성"),
+        ("무위험이자율 (Rf)", f"{params.risk_free_rate*100:.2f}%", "국고채 부트스트랩 곡선 (잔여 만기 매칭)"),
+        ("신용스프레드", f"{params.credit_spread*100:.2f}%", "신용등급별 회사채 YTM 부트스트랩"),
+        ("할인율 합계 (Kd)", f"{params.discount_rate*100:.2f}%", "Rf + 신용스프레드"),
+        ("전환가액", f"{int(params.conversion_price):,}원", "약정 기준 (리픽싱 반영 시 동적)"),
+        ("보장수익률 (IRR)", f"{params.put_irr*100:.2f}%" if params.put_irr else "—",
+         "풋 행사 시 보장 수익률"),
+    ]
+    for k, v, note in assumptions:
+        bg = "F7FAFC" if row % 2 == 0 else "FFFFFF"
+        _cell(ws, row, 2, k, bold=True, bg=bg)
+        _cell(ws, row, 3, v, bg=bg, align="right")
+        _cell(ws, row, 5, note, bg=bg, color="718096")
+        ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+        row += 1
+    row += 1
+
+    # 5. 분해 (메인 TF 기준)
+    if tf and tf.get("fair_value"):
+        ws.cell(row=row, column=2, value="■ 공정가치 분해 (TF 메인 기준)").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        row += 1
+        _hdr(ws, row, 2, "구성요소")
+        _hdr(ws, row, 3, "금액")
+        _hdr(ws, row, 4, "비중")
+        _hdr(ws, row, 5, "회계적 의미")
+        ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+        row += 1
+        decomp_rows = [
+            ("① 순채권가치", tf.get("bond_value"), "발행자 보장 의무 PV"),
+            ("② 풋옵션가치", tf.get("put_option_value"), "조기 상환 청구권 가치"),
+            ("③ 전환권가치", tf.get("conversion_value"), "주식 전환권 추가 가치"),
+        ]
+        for label, val, note in decomp_rows:
+            bg = "F7FAFC" if row % 2 == 0 else "FFFFFF"
+            _cell(ws, row, 2, label, bg=bg)
+            _cell(ws, row, 3, val if val else "-", bg=bg, num_fmt="#,##0", align="right")
+            pct_v = (val / main_fv * 100) if val and main_fv else 0
+            _cell(ws, row, 4, f"{pct_v:.1f}%", bg=bg, align="right")
+            _cell(ws, row, 5, note, bg=bg, color="718096")
+            ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+            row += 1
+        # 합계
+        bg = "EBF8FF"
+        _cell(ws, row, 2, "공정가치 합계", bold=True, bg=bg)
+        _cell(ws, row, 3, main_fv, bold=True, bg=bg, num_fmt="#,##0", align="right")
+        _cell(ws, row, 4, "100.0%", bold=True, bg=bg, align="right")
+        row += 2
+
+    # 6. 측정 불확실성 (K-IFRS 1113.93(g)·(h)(ii))
+    ws.cell(row=row, column=2, value="■ 측정 불확실성").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+    row += 1
+    uncertainty_notes = [
+        f"· 본 RCPS는 K-IFRS 1113 Level 3 공정가치 (시장에서 직접 관측 불가한 input 포함).",
+        f"· 모형 간 차이: TF와 GS는 할인 방식 차이로 결과가 갈림 — 자세한 내용은 모형비교 시트 참조.",
+        f"· 변동성·신용스프레드·전환가액 등 핵심 가정의 변동 시 공정가치 영향은 민감도 분석 시트 참조.",
+        f"· 평가일 시점 가정에 의존 — 후속 시점에서는 새 가정으로 재평가 필요.",
+    ]
+    for note in uncertainty_notes:
+        c = ws.cell(row=row, column=2, value=note)
+        c.font = Font(name="맑은 고딕", size=10, color="78350F")
+        c.fill = PatternFill(fill_type="solid", fgColor="FFFBEB")
+        c.alignment = Alignment(wrap_text=True, vertical="center")
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        ws.row_dimensions[row].height = 22
+        row += 1
 
 
 def _write_cover(ws, params, initial):

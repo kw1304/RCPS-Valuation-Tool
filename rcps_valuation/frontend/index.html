@@ -756,7 +756,11 @@ details.note-fold .note{margin-top:4px}
           <div class="chart-box"><h4>변동성 민감도</h4><div class="chart-wrap"><canvas id="c-vol"></canvas></div></div>
           <div class="chart-box"><h4>주가 민감도</h4><div class="chart-wrap"><canvas id="c-stk"></canvas></div></div>
         </div>
-        <div class="chart-box full"><h4>신용스프레드 민감도</h4><div class="chart-wrap"><canvas id="c-spd"></canvas></div></div>
+        <div class="chart-row">
+          <div class="chart-box"><h4>신용스프레드 민감도</h4><div class="chart-wrap"><canvas id="c-spd"></canvas></div></div>
+          <div class="chart-box"><h4>보장수익률(IRR) 민감도</h4><div class="chart-wrap"><canvas id="c-irr"></canvas></div></div>
+        </div>
+        <div class="chart-box full"><h4>전환가액 민감도</h4><div class="chart-wrap"><canvas id="c-conv"></canvas></div></div>
       </div>
       <div class="tab-content" id="tab-tree">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -2240,6 +2244,8 @@ function renderRCPS(data){
           tooltip:{callbacks:{label:ctx=>` ${ctx.raw>0?'+':''}${ctx.raw}%  |  ${fmtWs(d[ctx.dataIndex].fair_value)}`}}},
           scales:{y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#F2F4F6'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});}
     drawS('vol',s.volatility);drawS('stk',s.stock_price);drawS('spd',s.credit_spread);
+    if(s.put_irr && s.put_irr.length) drawS('irr',s.put_irr);
+    if(s.conversion_price && s.conversion_price.length) drawS('conv',s.conversion_price);
   }
 
   const tsLabel=r.term_structure_applied?' &nbsp;<span style="font-size:.68rem;font-weight:700;padding:.18rem .6rem;background:#EFF6FF;color:var(--accent);border-radius:100px;vertical-align:middle">term structure 적용</span>':'';
@@ -2501,6 +2507,22 @@ function dcfCellInput(el){
   dcfYears[parseInt(el.dataset.yr)][el.dataset.field]=parseFloat(el.dataset.v)||0;
 }
 
+/* 정상상태 보정 — 권장값 적용 후 재계산 */
+function dcfApplySS(field, idx, value){
+  if(!dcfYears[idx])return;
+  dcfYears[idx][field] = value;
+  // 입력 폼 동기화
+  const inpId = `dcf-${field}-${idx}`;
+  const el = document.getElementById(inpId);
+  if(el){
+    el.value = value.toLocaleString('ko-KR');
+    if(el.dataset) el.dataset.v = value;
+  }
+  // 테이블·결과 재렌더
+  if(typeof dcfRenderTable === 'function') dcfRenderTable();
+  dcfCalc();
+}
+
 function dcfCalc(){
   const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||12)/100;
   const g=(parseFloat(document.getElementById('a_g')?.value)||2)/100;
@@ -2522,20 +2544,22 @@ function dcfCalc(){
   // 3) 마지막 3개년 EBIT 마진 차이 2%p 이내  — 마진 안정
   // 4) 마지막 해 매출성장 ≈ g  — 영구 성장률에 안착
   const ssMsgs=[];
+  const lastIdx = dcfYears.length-1;
   if(dcfYears.length>=2){
-    const lastY=dcfYears[dcfYears.length-1];
+    const lastY=dcfYears[lastIdx];
     // 1. CapEx vs D&A
     if(lastY.da>0){
       const ratio=lastY.capex/lastY.da;
       const ideal=1+g;
       if(Math.abs(ratio-ideal)>ideal*0.3){
         const idealCapex = Math.round(lastY.da * ideal);
-        ssMsgs.push(`마지막 해 CapEx가 감가상각비의 ${ratio.toFixed(2)}배(권장 ${ideal.toFixed(2)}배) — ${ratio<ideal?'자산 축소':'영구 과투자'} 가정과 가까움. <b>보정 권장: 마지막 해 CapEx를 ${idealCapex.toLocaleString()}원 근처로</b>`);
+        ssMsgs.push(`마지막 해 CapEx가 감가상각비의 ${ratio.toFixed(2)}배(권장 ${ideal.toFixed(2)}배) — ${ratio<ideal?'자산 축소':'영구 과투자'} 가정과 가까움. <b>권장값 ${idealCapex.toLocaleString()}원</b> <button onclick="dcfApplySS('capex',${lastIdx},${idealCapex})" style="font-size:.62rem;padding:1px 6px;margin-left:4px;background:#0EA5E9;color:#fff;border:none;border-radius:3px;cursor:pointer">적용</button>`);
       }
     }
-    // 2. 매출 대비 운전자본 변동
+    // 2. 매출 대비 운전자본 변동 — 권장값: 매출 × g × 10% (실무 평균)
     if(lastY.revenue>0 && Math.abs(lastY.dnwc/lastY.revenue)>0.20){
-      ssMsgs.push(`마지막 해 운전자본 변동이 매출의 ${(lastY.dnwc/lastY.revenue*100).toFixed(1)}% — 20% 초과. 영구 가정과 어긋날 수 있음`);
+      const idealDnwc = Math.round(lastY.revenue * g * 0.10);
+      ssMsgs.push(`마지막 해 운전자본 변동이 매출의 ${(lastY.dnwc/lastY.revenue*100).toFixed(1)}% — 20% 초과. <b>권장값 ${idealDnwc.toLocaleString()}원</b> <button onclick="dcfApplySS('dnwc',${lastIdx},${idealDnwc})" style="font-size:.62rem;padding:1px 6px;margin-left:4px;background:#0EA5E9;color:#fff;border:none;border-radius:3px;cursor:pointer">적용</button>`);
     }
     // 3. EBIT 마진 안정 (최근 3년)
     if(dcfYears.length>=3){
