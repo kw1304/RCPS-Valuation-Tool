@@ -2197,6 +2197,8 @@ def wacc_de():
             beta_yahoo = info.get('beta')
             # 매출액 (사이즈 프리미엄 보조지표). info.totalRevenue 는 TTM(최근 4분기). 평가기준일 매칭은 약함.
             total_revenue = info.get('totalRevenue')
+            # 국가 코드 — 다국적 peer Hamada unlever에 국가별 세율 적용 (WACC M4)
+            country = info.get('country') or info.get('countryRegion') or None
 
             td = eq = mc = period_end = None
             td_source = mc_source = None
@@ -2258,6 +2260,7 @@ def wacc_de():
                 "market_cap": mc,
                 "total_revenue": total_revenue,
                 "yahoo_beta": beta_yahoo,
+                "country": country,         # 다국적 peer 국가별 세율 적용 (M4)
                 "as_of": period_end,
                 "mc_as_of": mc_as_of,
                 "td_source": td_source,

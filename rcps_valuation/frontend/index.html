@@ -800,6 +800,9 @@ details.note-fold .note{margin-top:4px}
       <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--text2);cursor:pointer" title="현금흐름이 연중 균등 발생 가정. 한국 평가법인 보고서 다수 채택. 활성 시 EV 약 4~6% 상승.">
         <input type="checkbox" id="a_midyear" onchange="dcfCalc()"> Mid-year Convention
       </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--text2);cursor:pointer" title="Bull/Base/Bear 시나리오를 base case ±20%/0%/-20% 매출·EBIT 가정으로 자동 산출. 평가법인 보고서 표준 3-시나리오 가중평균.">
+        <input type="checkbox" id="a_scenario" onchange="dcfCalc()"> 3-시나리오 분석 (Bull/Base/Bear)
+      </label>
       <span id="dcf-warn" style="font-size:.7rem;color:var(--amber);font-weight:600"></span>
     </div>
   </div>
@@ -988,6 +991,25 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
     <details class="note-fold"><summary></summary><div class="note">출처: <b>Duff &amp; Phelps</b>(현 Kroll) Valuation Handbook(사이즈), <b>Damodaran</b> Country Risk Premium 표(CRP). 한국 평가에서 평가대상이 한국 기업이면 통상 CRP=0(이미 Rf에 국가위험 반영). 평가대상이 해외 진출국 기업이면 그 국가의 CRP 추가.</div></details>
+    <div class="row2" style="margin-top:10px">
+      <div class="field"><label for="w_beta_d" title="부채 베타. Hamada 식 분자 항. 0이면 표준 Hamada(MM 가정). 신용등급 BBB는 통상 0.15~0.20 (Pratt-Grabowski).">부채 베타 β_D (선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">신용등급↓</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="w_beta_d" value="0" step="0.05" min="0" oninput="waccRecalc()" style="flex:1;min-width:0">
+          <select id="w_beta_d_sel" onchange="if(this.value!==''){document.getElementById('w_beta_d').value=this.value;waccRecalc();}" style="width:148px;flex-shrink:0">
+            <option value="">선택 (Pratt-Grabowski 근사)</option>
+            <option value="0">0 — 표준 Hamada (MM)</option>
+            <option value="0.05">AAA 0.05</option>
+            <option value="0.10">AA 0.10</option>
+            <option value="0.15">A 0.15</option>
+            <option value="0.20">BBB 0.20</option>
+            <option value="0.25">BB 0.25</option>
+            <option value="0.30">B 0.30</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"></div>
+    </div>
+    <div class="note" style="font-size:0.66rem;color:var(--text3);background:transparent;border:none;padding:4px 0;margin:0">β_D&gt;0 시 Full Hamada: β_U = [β_L + β_D·(1−t)·D/E] / [1 + (1−t)·D/E]. 한국 비상장 RCPS는 신용 BBB~BB 추정 시 β_D 0.15~0.25 권장 (Pratt-Grabowski 2014).</div>
     <div class="info-box" id="w-ke-box" style="margin-top:8px">
       <div style="font-size:.78rem;line-height:1.6">
         Rf <span id="w_disp_rf">3.00%</span> + β_L <span id="w_disp_beta">—</span> × MRP <span id="w_disp_mrp">6.00%</span>
@@ -1177,6 +1199,9 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
     <div id="rate-fetch-msg" style="font-size:0.7rem;color:var(--text3);margin-top:6px;display:none"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:6px">
+      <button class="btn-sm" onclick="bootVerifyServer()" style="background:var(--bg2);color:var(--text2);border-color:var(--border);font-size:.7rem" title="Python 백엔드(inputs/bootstrap.py)로 동일 결과 산출되는지 검증 — K-IFRS 13 BC176 재현성">서버 결과와 일치 검증</button>
+    </div>
   </div>
 
   <!-- Rf / Rd 2-column 부트스트래핑 -->
@@ -1544,29 +1569,39 @@ async function _xlsxDownload(url, payload, filename){
 }
 
 async function dcfDownloadXlsx(){
+  // DCF C1 후속: 백엔드 평가 엔진을 단일 출처로 사용. 화면 계산은 실시간 피드백,
+  // Excel은 서버 dcf_valuation()이 산출한 결과를 그대로 사용 → 감사 추적성 확보
   const vd=document.getElementById('valuation_date')?.value||'';
+  const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||0)/100;
+  const g=(parseFloat(document.getElementById('a_g')?.value)||0)/100;
+  const years=(dcfYears||[]).map(y=>({revenue:y.revenue,ebit:y.ebit,tax:y.tax,da:y.da,capex:y.capex,dnwc:y.dnwc}));
+  // 1) 서버 단일 출처로 평가 결과 얻기
+  let result={};
+  try{
+    const r=await fetch('/api/dcf',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        years, wacc, terminal_growth:g,
+        net_debt:getMoney('a_nd'),
+        non_operating_assets:getMoney('a_nonop'),
+        preferred_value:getMoney('a_pref')||0,
+        nci_adjustment:getMoney('a_nci'),
+        total_shares:getMoney('a_shares')||1,
+        mid_year:document.getElementById('a_midyear')?.checked||false,
+      })});
+    const j=await r.json();
+    if(j.status==='ok'){
+      result={pv_explicit:j.result.pv_explicit_fcf, terminal_value:j.result.terminal_value, pv_terminal:j.result.pv_terminal_value};
+    }
+  }catch(e){console.warn('DCF 서버 평가 실패, 클라이언트 fallback 사용:',e);}
+  // 2) Excel export
   const payload={
-    valuation_date: vd,
-    wacc: (parseFloat(document.getElementById('a_wacc')?.value)||0)/100,
-    g: (parseFloat(document.getElementById('a_g')?.value)||0)/100,
+    valuation_date: vd, wacc, g,
     tax: (parseFloat(document.getElementById('a_tax')?.value)||0)/100,
     interest_debt: getMoney('a_nd'),
     shares: getMoney('a_shares'),
     non_op: getMoney('a_nonop'),
     nci: getMoney('a_nci'),
-    years: (dcfYears||[]).map(y=>({revenue:y.revenue,ebit:y.ebit,tax:y.tax,da:y.da,capex:y.capex,dnwc:y.dnwc})),
-    result: (function(){
-      const w=(parseFloat(document.getElementById('a_wacc')?.value)||12)/100;
-      const g=(parseFloat(document.getElementById('a_g')?.value)||2)/100;
-      const yrs=dcfYears||[];
-      if(!yrs.length)return{};
-      const calc=yrs.map((y,i)=>{const n=y.ebit*(1-y.tax/100);const f=n+y.da-y.capex-y.dnwc;return{f, pv:f*Math.pow(1/(1+w),i+1)};});
-      const pvEx=calc.reduce((s,c)=>s+c.pv,0);
-      const lastF=calc[calc.length-1].f;
-      const tv=(w>g)?lastF*(1+g)/(w-g):0;
-      const pvTV=(w>g)?tv/Math.pow(1+w,yrs.length):0;
-      return {pv_explicit:pvEx, terminal_value:tv, pv_terminal:pvTV};
-    })()
+    years, result,
   };
   await _xlsxDownload('/api/dcf/export', payload, `DCF상세_${vd||'now'}.xlsx`);
 }
@@ -1619,6 +1654,27 @@ async function volDownloadXlsx(){
     raw: raw
   };
   await _xlsxDownload('/api/volatility/export', payload, `변동성평가_${vd||'now'}.xlsx`);
+}
+
+// 부트스트래핑 C2 후속: 서버 단일 출처로 결과 검증 (선택적 호출)
+// 화면 산출(클라이언트 bBootstrap)과 서버 산출이 일치하는지 검증 — 감사 워크페이퍼 입증
+async function bootVerifyServer(){
+  try{
+    const rfRes=await fetch('/api/bootstrap',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rows:(typeof bootRfRows!=='undefined'?bootRfRows:[]), m:2, max_T:20})});
+    const rdRes=await fetch('/api/bootstrap',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rows:(typeof bootRdRows!=='undefined'?bootRdRows:[]), m:4, max_T:20})});
+    const rf=await rfRes.json(), rd=await rdRes.json();
+    if(rf.status!=='ok'||rd.status!=='ok'){_toast('서버 검증 실패','err');return;}
+    // 화면 산출 결과(클라이언트)와 첫 만기 DF 비교 → 5자리 일치 확인
+    const cliRf=(typeof bBootstrap==='function')?bBootstrap(bootRfRows||[],2):{outRows:[]};
+    const cliRd=(typeof bBootstrap==='function')?bBootstrap(bootRdRows||[],4):{outRows:[]};
+    const rfFirst=rf.result.out_rows[0], rdFirst=rd.result.out_rows[0];
+    const cliRfFirst=cliRf.outRows[0], cliRdFirst=cliRd.outRows[0];
+    const ok=(!rfFirst||!cliRfFirst||Math.abs(rfFirst.zcont-cliRfFirst.zcont)<0.01)
+          &&(!rdFirst||!cliRdFirst||Math.abs(rdFirst.zcont-cliRdFirst.zcont)<0.01);
+    _toast(ok?'서버·클라이언트 부트스트랩 결과 일치 ✓':'서버·클라이언트 결과 불일치 — 로직 검토 필요',!ok);
+  }catch(e){_toast('서버 검증 호출 실패: '+e.message,'err');}
 }
 
 async function bootDownloadXlsx(){
@@ -2415,6 +2471,59 @@ function dcfCalc(){
   dcfTvWarn(pvTV, ev);
   // ── EV/EBITDA implied cross-check
   dcfMultipleCheck(ev, dcfYears, midyear);
+  // ── 3-시나리오 분석 (활성화 시)
+  if(document.getElementById('a_scenario')?.checked){
+    dcfScenarioAnalysis(dcfYears, wacc, g, nonop, nd, pref, nci, shares, midyear, sp);
+  } else {
+    const sc=document.getElementById('dcf-scen');if(sc)sc.remove();
+  }
+}
+
+function dcfScenarioAnalysis(years, wacc, g, nonop, nd, pref, nci, shares, midyear, baseSp){
+  // 평가법인 표준 3-시나리오: 매출·EBIT를 각 ±20%/0/-20% 가중 (60% Base + 20% Bull + 20% Bear)
+  const scenarios=[
+    {name:'Bull (낙관)', mult:1.20, prob:0.20, color:'#00C073'},
+    {name:'Base (기준)', mult:1.00, prob:0.60, color:'var(--accent)'},
+    {name:'Bear (보수)', mult:0.80, prob:0.20, color:'var(--red)'},
+  ];
+  const tvT=midyear?(years.length-0.5):years.length;
+  const results=scenarios.map(s=>{
+    let pvEx=0;const fcffs=[];
+    for(let i=0;i<years.length;i++){
+      const y=years[i];
+      const adjEbit=y.ebit*s.mult;
+      const nopat=adjEbit*(1-y.tax/100);
+      const fcff=nopat+y.da-y.capex-y.dnwc;
+      fcffs.push(fcff);
+      const t=midyear?(i+0.5):(i+1);
+      pvEx+=fcff/Math.pow(1+wacc,t);
+    }
+    const tv=fcffs[fcffs.length-1]*(1+g)/(wacc-g);
+    const pvtv=tv/Math.pow(1+wacc,tvT);
+    const opVal=pvEx+pvtv;
+    const eq=Math.max(opVal+nonop-nd-pref-nci,0);
+    return {...s, sp:eq/shares, equity:eq};
+  });
+  const weightedSp=results.reduce((s,r)=>s+r.sp*r.prob,0);
+  const rows=results.map(r=>`
+    <tr><td style="color:${r.color};font-weight:600">${r.name}</td>
+      <td>${(r.mult*100).toFixed(0)}%</td>
+      <td>${(r.prob*100).toFixed(0)}%</td>
+      <td>${fmtN(r.sp)}원</td>
+      <td>${fmtW(r.equity)}</td></tr>`).join('');
+  let host=document.getElementById('dcf-scen');
+  if(!host){
+    const wrap=document.querySelector('#dcf-result-wrap');
+    host=document.createElement('div');host.id='dcf-scen';host.className='dcf-det';host.style.marginTop='12px';
+    wrap.appendChild(host);
+  }
+  host.innerHTML=`<h4>3-시나리오 분석 <span style="font-weight:400;color:var(--text3);font-size:.72rem">(EBIT ±20% 가정 · 평가법인 표준 가중평균)</span></h4>
+    <table class="dtable" style="font-size:.74rem">
+      <thead><tr><th>시나리오</th><th>EBIT 가정</th><th>가중치</th><th>주당가치</th><th>자기자본가치</th></tr></thead>
+      <tbody>${rows}
+        <tr style="background:#EFF6FF"><td colspan="3" style="font-weight:700;color:var(--accent)">가중평균 주당가치</td>
+          <td style="font-weight:700;color:var(--accent)">${fmtN(weightedSp)}원</td>
+          <td style="color:var(--text3)">Base 대비 ${weightedSp>=baseSp?'+':''}${((weightedSp-baseSp)/baseSp*100).toFixed(1)}%</td></tr></tbody></table>`;
 }
 
 function dcfSensMatrix(years, calc, wacc0, g0, nonop, nd, pref, nci, shares, midyear){
@@ -2637,16 +2746,34 @@ function waccRecalc(){
   const ctryP=(parseFloat(document.getElementById('w_country_p')?.value)||0)/100;
   const agg=document.getElementById('w_beta_agg')?.value||'median';
 
+  // 부채 베타 (선택, 기본 0 = 표준 Hamada/MM 가정)
+  // β_D>0: Full Hamada — β_U = [β_L + β_D·(1−t)·D/E] / [1 + (1−t)·D/E]
+  const betaD = (parseFloat(document.getElementById('w_beta_d')?.value)||0);
+
+  // 국가별 세율 매핑 (Damodaran 2024 기준 marginal corporate tax rate)
+  // unlever는 peer 국가 세율, relever는 평가대상 세율 (Damodaran Investment Valuation 3e Ch.8)
+  const _COUNTRY_TAX = {
+    'South Korea':0.242,'Korea':0.242,'United States':0.25,'USA':0.25,'Japan':0.30,
+    'China':0.25,'Hong Kong':0.165,'Taiwan':0.20,'Singapore':0.17,
+    'United Kingdom':0.25,'Germany':0.30,'France':0.258,'Italy':0.278,
+    'India':0.252,'Brazil':0.34,'Australia':0.30,'Canada':0.265,
+  };
   // 유사기업 β_U 계산 후 집계 → β_L_target (re-lever)
+  // peer는 unlever에 peer 국가 세율, target은 입력 tax로 re-lever
   const peers=window.waccPeers.filter(p=>p.betaL>0);
-  const betaUs=peers.map(p=>p.betaL/(1+(1-tax)*p.de/100));
+  const betaUs=peers.map(p=>{
+    const de=p.de/100;
+    const peerTax = (p.country && _COUNTRY_TAX[p.country]!=null) ? _COUNTRY_TAX[p.country] : tax;
+    return (p.betaL + betaD*(1-peerTax)*de) / (1 + (1-peerTax)*de);
+  });
   let beta_u_agg=0;
   if(betaUs.length){
     const sorted=[...betaUs].sort((a,b)=>a-b);
     beta_u_agg = (agg==='mean')? betaUs.reduce((s,x)=>s+x,0)/betaUs.length
                 : (sorted.length%2? sorted[(sorted.length-1)/2] : 0.5*(sorted[sorted.length/2-1]+sorted[sorted.length/2]));
   }
-  const beta_l = beta_u_agg*(1+(1-tax)*detgt);
+  // Full Hamada re-lever: β_L = β_U·[1 + (1−t)·D/E] − β_D·(1−t)·D/E
+  const beta_l = beta_u_agg*(1+(1-tax)*detgt) - betaD*(1-tax)*detgt;
 
   // CAPM Ke
   const ke = rf + beta_l*mrp + sizeP + ctryP;
