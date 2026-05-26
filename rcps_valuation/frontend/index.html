@@ -194,6 +194,15 @@ details.note-fold .note{margin-top:4px}
 .eval-meta{font-size:0.7rem;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.38rem 0.8rem;letter-spacing:-0.01em}
 .btn-dl{display:flex;align-items:center;gap:5px;padding:0.42rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em}
 .btn-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent)}
+.btn-dl:disabled{opacity:0.5;cursor:not-allowed;background:var(--bg2);border-color:var(--border);color:var(--text3)}
+.btn-dl:disabled:hover{background:var(--bg2);border-color:var(--border);color:var(--text3)}
+/* 페이지 공통 툴바 — 다운로드 버튼 우상단 통일 (DCF·WACC·변동성·부트스트래핑) */
+.page-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;max-width:1100px;width:100%;margin:0 auto;padding:0;flex-wrap:wrap}
+
+/* 결과 패널 2단 컬럼 (감사 검증 워크플로우: 좌=공정가치+구성요소·BDT, 우=모형비교+탭) */
+.res-2col{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;align-items:start}
+.res-2col>.res-left,.res-2col>.res-right{display:flex;flex-direction:column;gap:10px;min-width:0}
+@media (max-width:1380px){.res-2col{grid-template-columns:1fr}}
 
 /* 컴포넌트 카드 */
 .comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:10px}
@@ -424,12 +433,12 @@ details.note-fold .note{margin-top:4px}
   <div class="sec">
     <div class="sec-title">기본 발행 조건 <span class="badge-req">필수</span></div>
     <div class="row2">
-      <div class="field"><label>발행일</label><input type="date" id="issue_date" value="2023-09-21"></div>
-      <div class="field"><label>만기일</label><input type="date" id="maturity_date" value="2028-09-21"></div>
+      <div class="field"><label for="issue_date">발행일</label><input type="date" id="issue_date" value="2023-09-21"></div>
+      <div class="field"><label for="maturity_date">만기일</label><input type="date" id="maturity_date" value="2028-09-21"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>발행금액 (원)</label><input type="text" id="face_value" class="money" value="114,299,975,108" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
-      <div class="field"><label>쿠폰 주기</label>
+      <div class="field"><label for="face_value">발행금액 (원)</label><input type="text" id="face_value" class="money" value="114,299,975,108" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
+      <div class="field"><label for="coupon_frequency">쿠폰 주기</label>
         <select id="coupon_frequency">
           <option value="none">없음 (만기일시)</option>
           <option value="annual" selected>연간</option>
@@ -439,32 +448,32 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
     <div class="row2">
-      <div class="field"><label>우선주 주식수 (주)</label><input type="text" id="rcps_shares" class="money" value="3,811,778" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
-      <div class="field"><label>주당 발행금액 (원/주)</label><input type="text" id="issue_price_per_share" value="" readonly style="background:var(--bg2);color:var(--text2)"></div>
+      <div class="field"><label for="rcps_shares">우선주 주식수 (주)</label><input type="text" id="rcps_shares" class="money" value="3,811,778" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
+      <div class="field"><label for="issue_price_per_share">주당 발행금액 (원/주)</label><input type="text" id="issue_price_per_share" value="" readonly style="background:var(--bg2);color:var(--text2)"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>우선배당률 (%/년)</label><input type="number" id="coupon_rate" value="2.0" step="0.1"></div>
-      <div class="field"><label>배당수익률 (%)</label><input type="number" id="dividend_yield" value="0" step="0.1"></div>
+      <div class="field"><label for="coupon_rate">우선배당률 (%/년)</label><input type="number" id="coupon_rate" value="2.0" step="0.1"></div>
+      <div class="field"><label for="dividend_yield">배당수익률 (%)</label><input type="number" id="dividend_yield" value="0" step="0.1"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>배당 누적성</label>
+      <div class="field"><label for="dividend_cumulative">배당 누적성</label>
         <select id="dividend_cumulative">
           <option value="1" selected>누적적 (미지급분 이월·합산)</option>
           <option value="0">비누적적 (미지급분 소멸)</option>
         </select>
       </div>
-      <div class="field"><label>첫 배당 지급 연차 (년)</label><input type="number" id="dividend_first_pay_year" value="0" step="1" min="0" title="배당가능이익 가정 시점. 0=첫 지급일부터 매기 지급. 예) 3 → 발행 3년차 첫 지급(누적이면 1~3년치 일괄)"></div>
+      <div class="field"><label for="dividend_first_pay_year">첫 배당 지급 연차 (년)</label><input type="number" id="dividend_first_pay_year" value="0" step="1" min="0" title="배당가능이익 가정 시점. 0=첫 지급일부터 매기 지급. 예) 3 → 발행 3년차 첫 지급(누적이면 1~3년치 일괄)"></div>
     </div>
   </div>
 
   <div class="sec">
     <div class="sec-title">전환 조건 <span class="badge-req">필수</span></div>
     <div class="row2">
-      <div class="field"><label>전환가액 (원/주)</label><input type="text" id="conversion_price" class="money" value="29,986" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
-      <div class="field"><label>전환 시작일</label><input type="date" id="conversion_start" value="2025-01-21"></div>
+      <div class="field"><label for="conversion_price">전환가액 (원/주)</label><input type="text" id="conversion_price" class="money" value="29,986" onfocus="mFocus(this)" onblur="mBlur(this,()=>recalcDerived())" oninput="mInput(this)"></div>
+      <div class="field"><label for="conversion_start">전환 시작일</label><input type="date" id="conversion_start" value="2025-01-21"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>전환비율 (주/우선주)</label><input type="text" id="conversion_ratio" value="" readonly style="background:var(--bg2);color:var(--text2)"></div>
+      <div class="field"><label for="conversion_ratio">전환비율 (주/우선주)</label><input type="text" id="conversion_ratio" value="" readonly style="background:var(--bg2);color:var(--text2)"></div>
       <div class="field"></div>
     </div>
   </div>
@@ -477,8 +486,8 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div id="put-fields" class="hidden">
       <div class="row2">
-        <div class="field"><label>행사 시작일</label><input type="date" id="put_start" value="2028-03-21"></div>
-        <div class="field"><label>행사가 방식</label>
+        <div class="field"><label for="put_start">행사 시작일</label><input type="date" id="put_start" value="2028-03-21"></div>
+        <div class="field"><label for="put_price_mode">행사가 방식</label>
           <select id="put_price_mode" onchange="togglePutMode()">
             <optgroup label="IRR make-whole (쿠폰 차감)">
               <option value="irr_y" selected>연복리 IRR</option>
@@ -497,12 +506,12 @@ details.note-fold .note{margin-top:4px}
         </div>
       </div>
       <div class="row2">
-        <div class="field" id="put-irr-field"><label id="put-rate-label">보장수익률 IRR (%)</label><input type="number" id="put_irr" value="7.5" step="0.1"></div>
-        <div class="field hidden" id="put-contract-field"><label>계약 행사가 비율 (×액면, 예 1.2)</label><input type="number" id="put_contract_ratio" value="0" step="0.01"></div>
-        <div class="field hidden" id="put-fixed-field"><label>고정 풋 행사가액 (원)</label><input type="text" class="money" id="put_fixed_price" value="0"></div>
+        <div class="field" id="put-irr-field"><label id="put-rate-label" for="put_irr">보장수익률 IRR (%)</label><input type="number" id="put_irr" value="7.5" step="0.1"></div>
+        <div class="field hidden" id="put-contract-field"><label for="put_contract_ratio">계약 행사가 비율 (×액면, 예 1.2)</label><input type="number" id="put_contract_ratio" value="0" step="0.01"></div>
+        <div class="field hidden" id="put-fixed-field"><label for="put_fixed_price">고정 풋 행사가액 (원)</label><input type="text" class="money" id="put_fixed_price" value="0"></div>
       </div>
       <div class="row2" id="put-netting-row">
-        <div class="field"><label>쿠폰 차감 기준</label>
+        <div class="field"><label for="put_coupon_netting">쿠폰 차감 기준</label>
           <select id="put_coupon_netting">
             <option value="accrual" selected>발생주의 (연 단위 매기 차감, 5803)</option>
             <option value="actual">실제 지급분만 차감 (비누적 소멸분 제외)</option>
@@ -522,8 +531,8 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div id="call-fields" class="hidden">
       <div class="row2">
-        <div class="field"><label>행사 시작일</label><input type="date" id="call_start" value=""></div>
-        <div class="field"><label>행사가 방식</label>
+        <div class="field"><label for="call_start">행사 시작일</label><input type="date" id="call_start" value=""></div>
+        <div class="field"><label for="call_price_mode">행사가 방식</label>
           <select id="call_price_mode" onchange="toggleCallMode()">
             <optgroup label="복리 (쿠폰 차감 X)">
               <option value="cp_y" selected>연복리</option>
@@ -542,12 +551,12 @@ details.note-fold .note{margin-top:4px}
         </div>
       </div>
       <div class="row2">
-        <div class="field" id="call-irr-field"><label id="call-rate-label">수의상환 이자율/IRR (%)</label><input type="number" id="call_irr" value="0" step="0.1"></div>
-        <div class="field hidden" id="call-contract-field"><label>계약 행사가 비율 (×액면)</label><input type="number" id="call_contract_ratio" value="0" step="0.01"></div>
-        <div class="field hidden" id="call-fixed-field"><label>고정 콜 행사가액 (원)</label><input type="text" class="money" id="call_fixed_price" value="0"></div>
+        <div class="field" id="call-irr-field"><label id="call-rate-label" for="call_irr">수의상환 이자율/IRR (%)</label><input type="number" id="call_irr" value="0" step="0.1"></div>
+        <div class="field hidden" id="call-contract-field"><label for="call_contract_ratio">계약 행사가 비율 (×액면)</label><input type="number" id="call_contract_ratio" value="0" step="0.01"></div>
+        <div class="field hidden" id="call-fixed-field"><label for="call_fixed_price">고정 콜 행사가액 (원)</label><input type="text" class="money" id="call_fixed_price" value="0"></div>
       </div>
       <div class="row2 hidden" id="call-netting-row">
-        <div class="field"><label>쿠폰 차감 기준</label>
+        <div class="field"><label for="call_coupon_netting">쿠폰 차감 기준</label>
           <select id="call_coupon_netting">
             <option value="accrual" selected>발생주의 (연 단위 매기 차감)</option>
             <option value="actual">실제 지급분만 차감</option>
@@ -567,9 +576,9 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div id="refixing-fields" class="hidden">
       <div class="row3">
-        <div class="field"><label>하한 (%)</label><input type="number" id="refixing_floor" value="70" step="1"></div>
-        <div class="field"><label>트리거 (%)</label><input type="number" id="refixing_trigger" value="90" step="1"></div>
-        <div class="field"><label>조정 주기</label>
+        <div class="field"><label for="refixing_floor">하한 (%)</label><input type="number" id="refixing_floor" value="70" step="1"></div>
+        <div class="field"><label for="refixing_trigger">트리거 (%)</label><input type="number" id="refixing_trigger" value="90" step="1"></div>
+        <div class="field"><label for="refixing_frequency">조정 주기</label>
           <select id="refixing_frequency">
             <option value="continuous">연속</option>
             <option value="quarterly">분기</option>
@@ -591,9 +600,9 @@ details.note-fold .note{margin-top:4px}
     <div class="toggle"><input type="checkbox" id="has_mandconv" onchange="togglePD('mandconv')"><label for="has_mandconv">강제전환 Knock-out</label></div>
     <div id="mandconv-fields" class="hidden">
       <div class="row3">
-        <div class="field"><label>배리어 (전환가 배수)</label><input type="number" id="mandatory_conv_barrier" value="2.00" step="0.10"></div>
-        <div class="field"><label>관측창 (스텝)</label><input type="number" id="mandatory_conv_window" value="1" step="1"></div>
-        <div class="field"><label>충족 횟수</label><input type="number" id="mandatory_conv_count" value="1" step="1"></div>
+        <div class="field"><label for="mandatory_conv_barrier">배리어 (전환가 배수)</label><input type="number" id="mandatory_conv_barrier" value="2.00" step="0.10"></div>
+        <div class="field"><label for="mandatory_conv_window">관측창 (스텝)</label><input type="number" id="mandatory_conv_window" value="1" step="1"></div>
+        <div class="field"><label for="mandatory_conv_count">충족 횟수</label><input type="number" id="mandatory_conv_count" value="1" step="1"></div>
       </div>
       <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 보통주로 강제전환(Knock-out). 충족 경로는 채권·풋이 소멸하고 전환가치로 확정됩니다.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 강제전환(<b>Parisian 배리어</b>) — 일시적 급등으로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).</div></details>
     </div>
@@ -602,9 +611,9 @@ details.note-fold .note{margin-top:4px}
     <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_softcall" onchange="togglePD('softcall')"><label for="has_softcall">소프트콜 배리어 (발행자 콜) <span class="dep-hint">· 콜옵션 필요</span></label></div>
     <div id="softcall-fields" class="hidden">
       <div class="row3 field-row">
-        <div class="field"><label>배리어 (×전환가)</label><input type="number" id="call_soft_barrier" value="1.30" step="0.05"></div>
-        <div class="field"><label>관측창 (스텝)</label><input type="number" id="call_soft_window" value="1" step="1"></div>
-        <div class="field"><label>충족 횟수</label><input type="number" id="call_soft_count" value="1" step="1"></div>
+        <div class="field"><label for="call_soft_barrier">배리어 (×전환가)</label><input type="number" id="call_soft_barrier" value="1.30" step="0.05"></div>
+        <div class="field"><label for="call_soft_window">관측창 (스텝)</label><input type="number" id="call_soft_window" value="1" step="1"></div>
+        <div class="field"><label for="call_soft_count">충족 횟수</label><input type="number" id="call_soft_count" value="1" step="1"></div>
       </div>
       <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 발행자 콜 활성.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 콜(<b>Parisian 배리어</b>) — 일시적 급등 스파이크로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).<br>콜 행사가는 위 콜옵션 설정(call_price_mode)을 사용.</div></details>
     </div>
@@ -613,7 +622,7 @@ details.note-fold .note{margin-top:4px}
     <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_putbarrier" onchange="togglePD('putbarrier')"><label for="has_putbarrier">배리어 풋 (down-and-in) <span class="dep-hint">· 풋옵션 필요</span></label></div>
     <div id="putbarrier-fields" class="hidden">
       <div class="row2">
-        <div class="field"><label>하단 배리어 (최초주가 S₀ 배수)</label><input type="number" id="put_barrier" value="0.50" step="0.05"></div>
+        <div class="field"><label for="put_barrier">하단 배리어 (최초주가 S₀ 배수)</label><input type="number" id="put_barrier" value="0.50" step="0.05"></div>
       </div>
       <details class="note-fold"><summary></summary><div class="note">주가가 S₀×배리어 이하를 한 번이라도 터치한 경로에서만 풋 행사 가능(knock-in).</div></details>
     </div>
@@ -628,7 +637,7 @@ details.note-fold .note{margin-top:4px}
     <div class="toggle" style="margin-top:6px"><input type="checkbox" id="has_vwap" onchange="togglePD('vwap')"><label for="has_vwap">VWAP 리픽싱 <span class="dep-hint">· 리픽싱 조항 필요</span></label></div>
     <div id="vwap-fields" class="hidden">
       <div class="row2">
-        <div class="field"><label>평균 구간 (스텝 수)</label><input type="number" id="refixing_vwap_window" value="20" step="1"></div>
+        <div class="field"><label for="refixing_vwap_window">평균 구간 (스텝 수)</label><input type="number" id="refixing_vwap_window" value="20" step="1"></div>
       </div>
       <details class="note-fold"><summary></summary><div class="note">리픽싱 트리거·새 전환가 산정 시 현재주가 대신 직전 N스텝 가중평균(VWAP)을 사용합니다.</div></details>
     </div>
@@ -645,20 +654,20 @@ details.note-fold .note{margin-top:4px}
     <div class="row2">
       <div class="field"><label>평가기준일 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">상단 글로벌 설정</span></label>
         <div id="rcps_valdate_disp" style="padding:0.52rem 0.75rem;background:var(--bg2);border:1.5px solid transparent;border-radius:9px;font-size:0.8rem;color:var(--text2);font-weight:600">2024-12-31</div></div>
-      <div class="field"><label>주가 (원)</label><input type="text" id="stock_price" class="money" value="25,522" onfocus="mFocus(this)" onblur="mBlur(this)" oninput="mInput(this)"></div>
+      <div class="field"><label for="stock_price">주가 (원)</label><input type="text" id="stock_price" class="money" value="25,522" onfocus="mFocus(this)" onblur="mBlur(this)" oninput="mInput(this)"></div>
     </div>
     <div class="row2 field-row">
-      <div class="field" style="position:relative"><label>상장기업 종목명/코드/티커 (선택)</label><input type="text" id="self_ticker" placeholder="예: 삼성전자 · 005930 · AAPL · 600519.SS" autocomplete="off"
+      <div class="field" style="position:relative"><label for="self_ticker">상장기업 종목명/코드/티커 (선택)</label><input type="text" id="self_ticker" placeholder="예: 삼성전자 · 005930 · AAPL · 600519.SS" autocomplete="off"
         oninput="selfSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();selfAddFirst();}">
         <div id="self-search-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:20;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.12)"></div></div>
       <div class="field"><button class="btn-run" onclick="fetchSelfPrice()" style="width:100%;padding:0.5rem">평가기준일 종가 조회 → S₀</button></div>
     </div>
     <div class="note" id="self-price-msg" style="display:none;margin-top:4px"></div>
     <div class="row1">
-      <div class="field"><label>변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
+      <div class="field"><label for="volatility">변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>스텝 수 (시간단계)</label>
+      <div class="field"><label for="steps">스텝 수 (시간단계)</label>
         <select id="steps">
           <option value="60">60 스텝</option>
           <option value="120" selected>120 스텝</option>
@@ -666,7 +675,7 @@ details.note-fold .note{margin-top:4px}
           <option value="weekly">주간 (자동, T×52)</option>
         </select>
       </div>
-      <div class="field"><label>MC 경로 수</label>
+      <div class="field"><label for="mc_paths">MC 경로 수</label>
         <select id="mc_paths">
           <option value="10000">10,000</option>
           <option value="30000">30,000</option>
@@ -699,12 +708,14 @@ details.note-fold .note{margin-top:4px}
       <div class="eval-meta" id="eval-info"></div>
       <button class="btn-dl" onclick="dlExcel()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        감사조서 Excel
+        RCPS 상세 Excel
       </button>
     </div>
+    <div class="res-2col">
+    <div class="res-left">
     <div class="comp-grid" id="comp-grid"></div>
-    <div class="info-box" id="decomp-table" style="display:none;margin:10px 0"></div>
-    <div class="info-box" id="bdt-cross" style="display:none;margin:10px 0">
+    <div class="info-box" id="decomp-table" style="display:none;margin:0"></div>
+    <div class="info-box" id="bdt-cross" style="display:none;margin:0">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px">
         <h4 style="margin:0;font-size:.86rem;white-space:nowrap">BDT 풋채권 교차검증 <span style="font-weight:400;color:var(--text3);font-size:.72rem">(독립 금리트리 · TF와 분리)</span></h4>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -715,6 +726,8 @@ details.note-fold .note{margin-top:4px}
       </div>
       <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용). "BDT 재평가" 버튼을 누르세요.</div>
     </div>
+    </div><!-- /.res-left -->
+    <div class="res-right">
     <div class="model-row" id="model-row"></div>
     <div class="tabs">
       <div class="tab-bar">
@@ -753,6 +766,8 @@ details.note-fold .note{margin-top:4px}
         <div id="tree-grids"></div>
       </div>
     </div>
+    </div><!-- /.res-right -->
+    </div><!-- /.res-2col -->
   </div>
 </section>
 </div><!-- /page-rcps -->
@@ -763,7 +778,7 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-dcf" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
-  <div style="display:flex;justify-content:flex-end;margin-bottom:-4px">
+  <div class="page-toolbar">
     <button class="btn-dl" onclick="dcfDownloadXlsx()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       DCF 상세 Excel
@@ -773,13 +788,13 @@ details.note-fold .note{margin-top:4px}
   <div class="dcf-assump">
     <div class="dcf-assump-hd">밸류에이션 가정</div>
     <div class="dcf-assump-grid" style="grid-template-columns:90px 90px 90px 1fr 1fr 1fr 1fr">
-      <div class="field"><label>WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
-      <div class="field"><label>영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"></div>
-      <div class="field"><label>기본 세율 (%)</label><input type="number" id="a_tax" value="25" step="0.5" oninput="dcfTaxFill()"></div>
-      <div class="field"><label>이자부부채 (원)</label><input type="text" id="a_nd" class="money" value="2,000,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
-      <div class="field"><label>총발행주식수 (주)</label><input type="text" id="a_shares" class="money" value="1,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
-      <div class="field"><label>비영업자산 (원)</label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
-      <div class="field"><label>비지배지분조정 (원)</label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label for="a_wacc">WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
+      <div class="field"><label for="a_g">영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"></div>
+      <div class="field"><label for="a_tax">기본 세율 (%)</label><input type="number" id="a_tax" value="25" step="0.5" oninput="dcfTaxFill()"></div>
+      <div class="field"><label for="a_nd">이자부부채 (원)</label><input type="text" id="a_nd" class="money" value="2,000,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label for="a_shares">총발행주식수 (주)</label><input type="text" id="a_shares" class="money" value="1,000,000" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label for="a_nonop">비영업자산 (원)</label><input type="text" id="a_nonop" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
+      <div class="field"><label for="a_nci">비지배지분조정 (원)</label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
     </div>
   </div>
 
@@ -816,7 +831,7 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-wacc" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
-  <div style="display:flex;justify-content:flex-end;max-width:1100px;width:100%;margin:0 auto;margin-bottom:-4px">
+  <div class="page-toolbar">
     <button class="btn-dl" onclick="waccDownloadXlsx()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       WACC 상세 Excel
@@ -832,7 +847,7 @@ details.note-fold .note{margin-top:4px}
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">① 무위험이자율 (Rf) · 시장위험프리미엄 (MRP)</div>
     <div class="row3">
-      <div class="field"><label>무위험이자율 Rf (%)</label><input type="number" id="w_rf" value="3.0" step="0.05" oninput="waccRecalc()"></div>
+      <div class="field"><label for="w_rf">무위험이자율 Rf (%)</label><input type="number" id="w_rf" value="3.0" step="0.05" oninput="waccRecalc()"></div>
       <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullRf()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 Rf 곡선 10년물 → Rf</button></div>
       <div class="field"><label>시장위험프리미엄 MRP (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">권장값↓</span></label>
         <div style="display:flex;gap:6px">
@@ -879,14 +894,14 @@ details.note-fold .note{margin-top:4px}
           </optgroup>
         </select>
       </div>
-      <div class="field"><label>회귀 기간</label>
+      <div class="field"><label for="w_beta_lookback">회귀 기간</label>
         <select id="w_beta_lookback">
           <option value="2">최근 2년 (권장)</option>
           <option value="3">최근 3년</option>
           <option value="5">최근 5년</option>
         </select>
       </div>
-      <div class="field"><label>베타 보정</label>
+      <div class="field"><label for="w_beta_adjust">베타 보정</label>
         <select id="w_beta_adjust">
           <option value="raw">Raw (원시 β)</option>
           <option value="blume">Blume (0.67β + 0.33)</option>
@@ -894,13 +909,13 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
     <div class="row2" style="margin-bottom:8px">
-      <div class="field"><label>수익률 주기</label>
+      <div class="field"><label for="w_beta_freq">수익률 주기</label>
         <select id="w_beta_freq">
           <option value="daily">일별 (기본)</option>
           <option value="weekly">주별 (Bloomberg 관행, 노이즈↓)</option>
         </select>
       </div>
-      <div class="field"><label>D/E 기준</label>
+      <div class="field"><label for="w_de_basis">D/E 기준</label>
         <select id="w_de_basis">
           <option value="market">시가총액 기준 D/E (D_book/MV) — 권장</option>
           <option value="book">장부가 기준 D/E (D_book/E_book) — Yahoo 기본</option>
@@ -933,7 +948,7 @@ details.note-fold .note{margin-top:4px}
           <select id="w_tax_sel" onchange="if(this.value){document.getElementById('w_tax').value=this.value;waccRecalc();}" style="width:148px;flex-shrink:0"></select>
         </div>
       </div>
-      <div class="field"><label>집계 방식 (β_U)</label>
+      <div class="field"><label for="w_beta_agg">집계 방식 (β_U)</label>
         <select id="w_beta_agg" onchange="waccRecalc()">
           <option value="median">중앙값 (권장)</option>
           <option value="mean">단순평균</option>
@@ -987,9 +1002,9 @@ details.note-fold .note{margin-top:4px}
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">④ 타인자본비용 (Kd)</div>
     <div class="row3">
-      <div class="field"><label>세전 Kd (%)</label><input type="number" id="w_kd" value="5.0" step="0.05" oninput="waccRecalc()"></div>
+      <div class="field"><label for="w_kd">세전 Kd (%)</label><input type="number" id="w_kd" value="5.0" step="0.05" oninput="waccRecalc()"></div>
       <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullKd()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 Rd 곡선 5년물 → Kd</button></div>
-      <div class="field"><label>세후 Kd</label><input type="text" id="w_kd_after" readonly></div>
+      <div class="field"><label for="w_kd_after">세후 Kd</label><input type="text" id="w_kd_after" readonly></div>
     </div>
     <details class="note-fold"><summary></summary><div class="note">Kd는 회사채 등급별 yield(예: KIS-NET 민평표) 또는 재무제표상 가중평균 차입금리. 세후 Kd = Kd × (1 − t).<br><b>Rf 10년 vs Kd 5년 만기 차이:</b> Rf는 CAPM 표준상 장기 자기자본위험을 반영해 10년 국고채를, Kd는 한국 회사채 일반발행 평균만기(3~5년)에 맞춰 5년 민평을 사용 — 한국 평가사 관행. 평가대상 부채구조 만기가 길면 Rd 10년물로 보간해 입력 권장.</div></details>
   </div>
@@ -998,8 +1013,8 @@ details.note-fold .note{margin-top:4px}
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">⑤ 자본구조 (Target)</div>
     <div class="row2">
-      <div class="field"><label>자기자본 비중 E/V (%)</label><input type="number" id="w_ev" value="60" step="1" oninput="waccSyncCap('ev')"></div>
-      <div class="field"><label>부채 비중 D/V (%)</label><input type="number" id="w_dv" value="40" step="1" oninput="waccSyncCap('dv')"></div>
+      <div class="field"><label for="w_ev">자기자본 비중 E/V (%)</label><input type="number" id="w_ev" value="60" step="1" oninput="waccSyncCap('ev')"></div>
+      <div class="field"><label for="w_dv">부채 비중 D/V (%)</label><input type="number" id="w_dv" value="40" step="1" oninput="waccSyncCap('dv')"></div>
     </div>
     <details class="note-fold"><summary></summary><div class="note">목표 자본구조(Target) 또는 평가시점 실제 자본구조 사용. E/V + D/V = 100%. 위 ② 베타 D/E와 일관성 유지 권장.</div></details>
   </div>
@@ -1022,7 +1037,7 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-vol" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
-  <div style="display:flex;justify-content:flex-end;margin-bottom:-4px">
+  <div class="page-toolbar">
     <button class="btn-dl" onclick="volDownloadXlsx()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       변동성 상세 Excel
@@ -1037,9 +1052,9 @@ details.note-fold .note{margin-top:4px}
   <div class="sec">
     <div class="sec-title">산정 조건</div>
     <div class="row3">
-      <div class="field"><label>시작일</label><input type="date" id="vol_start"></div>
-      <div class="field"><label>종료일</label><input type="date" id="vol_end"></div>
-      <div class="field"><label>산정기간 프리셋</label>
+      <div class="field"><label for="vol_start">시작일</label><input type="date" id="vol_start"></div>
+      <div class="field"><label for="vol_end">종료일</label><input type="date" id="vol_end"></div>
+      <div class="field"><label for="vol_preset">산정기간 프리셋</label>
         <select id="vol_preset" onchange="volApplyPreset()">
           <option value="match">잔여만기 매칭</option>
           <option value="1">최근 1년</option>
@@ -1049,7 +1064,7 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
     <div class="row3">
-      <div class="field"><label>연 거래일 수 산정</label>
+      <div class="field"><label for="vol_tdmode">연 거래일 수 산정</label>
         <select id="vol_tdmode" onchange="volTdModeChange()">
           <option value="auto">자동 (시계열 실측, 권장)</option>
           <option value="252">252 (국제 관행)</option>
@@ -1057,15 +1072,15 @@ details.note-fold .note{margin-top:4px}
           <option value="custom">직접 입력</option>
         </select>
       </div>
-      <div class="field" id="vol-tdays-field" style="display:none"><label>연 거래일 수</label><input type="number" id="vol_tradingdays" value="252" step="1"></div>
-      <div class="field"><label>집계 방식</label>
+      <div class="field" id="vol-tdays-field" style="display:none"><label for="vol_tradingdays">연 거래일 수</label><input type="number" id="vol_tradingdays" value="252" step="1"></div>
+      <div class="field"><label for="vol_method">집계 방식</label>
         <select id="vol_method">
           <option value="median">중앙값 (권장)</option>
           <option value="mean">단순평균</option>
           <option value="cap_weighted">시총가중</option>
         </select>
       </div>
-      <div class="field"><label>이상치 제거 (유사기업 σ)</label>
+      <div class="field"><label for="vol_outlier">이상치 제거 (유사기업 σ)</label>
         <select id="vol_outlier" onchange="volOutlierChange()">
           <option value="none">없음 (기본)</option>
           <option value="iqr">IQR (Tukey k·IQR)</option>
@@ -1073,7 +1088,7 @@ details.note-fold .note{margin-top:4px}
         </select>
       </div>
       <div class="field" id="vol-outlier-k-field" style="display:none"><label>임계 배수 k <span style="color:var(--text3);font-weight:400">(기본 IQR 1.5 · MAD 3.0)</span></label><input type="number" id="vol_outlier_k" value="1.5" step="0.1" min="0.1"></div>
-      <div class="field"><label>데이터 소스</label>
+      <div class="field"><label for="vol_source">데이터 소스</label>
         <select id="vol_source" onchange="volToggleSource()">
           <option value="auto">자동조회 (KRX+해외)</option>
           <option value="csv">CSV 업로드</option>
@@ -1131,7 +1146,7 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-boot" style="display:none">
 
-  <div style="display:flex;justify-content:flex-end;padding:0 1.2rem;margin-top:0.6rem;margin-bottom:-0.4rem">
+  <div class="page-toolbar" style="padding:0.6rem 1.2rem 0;max-width:none">
     <button class="btn-dl" onclick="bootDownloadXlsx()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       부트스트래핑 상세 Excel
