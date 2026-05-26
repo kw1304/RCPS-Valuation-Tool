@@ -131,15 +131,34 @@ def index():
 
 @app.route("/api/dcf", methods=["POST"])
 def dcf():
+    """단일 평가 엔진(`inputs.dcf.dcf_valuation`) 호출 — 프론트·Excel 공통 출처.
+    두 가지 모드:
+      (A) years: [{revenue, ebit, da, capex, dnwc, tax}, ...] — 1차 입력
+      (B) fcf_projections: [float, ...] — 사전 계산된 FCFF (legacy)
+    """
     try:
+        from inputs.dcf import DCFYear
         data = request.json
+        years_raw = data.get("years") or []
+        years = [DCFYear(
+            revenue=float(y.get("revenue", 0)),
+            ebit=float(y.get("ebit", 0)),
+            da=float(y.get("da", 0)),
+            capex=float(y.get("capex", 0)),
+            dnwc=float(y.get("dnwc", 0)),
+            tax=float(y.get("tax", 25)),
+        ) for y in years_raw]
         params = DCFParams(
-            fcf_projections=[float(x) for x in data["fcf_projections"]],
+            years=years,
+            fcf_projections=[float(x) for x in (data.get("fcf_projections") or [])],
             wacc=float(data["wacc"]),
             terminal_growth=float(data.get("terminal_growth", 0.02)),
             net_debt=float(data.get("net_debt", 0)),
-            total_shares=float(data.get("total_shares", 1)),
             non_operating_assets=float(data.get("non_operating_assets", 0)),
+            preferred_value=float(data.get("preferred_value", 0)),
+            nci_adjustment=float(data.get("nci_adjustment", 0)),
+            total_shares=float(data.get("total_shares", 1)),
+            mid_year=bool(data.get("mid_year", False)),
         )
         result = dcf_valuation(params)
         return jsonify({"status": "ok", "result": result})
