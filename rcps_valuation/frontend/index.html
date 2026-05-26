@@ -746,6 +746,7 @@ details.note-fold .note{margin-top:4px}
       </div>
       <div class="tab-content active" id="tab-params">
         <div class="info-grid" id="info-grid"></div>
+        <div id="rights-timeline" style="margin-top:10px"></div>
         <div class="chart-row">
           <div class="chart-box"><h4>공정가치 구성</h4><div class="chart-wrap"><canvas id="c-comp"></canvas></div></div>
           <div class="chart-box"><h4>모델별 비교</h4><div class="chart-wrap"><canvas id="c-models"></canvas></div></div>
@@ -1075,7 +1076,8 @@ details.note-fold .note{margin-top:4px}
       <button class="btn-run" onclick="waccApplyToDcf()" style="padding:0.45rem 0.9rem">DCF 탭에 적용</button>
     </div>
     <div class="note" id="w_wacc_formula">E/V × Ke + D/V × Kd × (1−t)</div>
-    <div style="font-size:.66rem;color:var(--text3);margin-top:4px;line-height:1.55">
+    <div id="w_wacc_steps" style="margin-top:14px"></div>
+    <div style="font-size:.66rem;color:var(--text3);margin-top:8px;line-height:1.55">
       ※ MRP·CRP 출처: <b>Damodaran Country Risk Premium</b> (2026-01 update, pages.stern.nyu.edu/~adamodar/ctryprem) · 사이즈 프리미엄 출처: <b>Kroll Valuation Handbook</b> (2025-06 update)<br>
       ※ 평가기준일이 위 update 시점과 6개월 이상 차이나면 원본 사이트에서 최신값 확인 권장
     </div>
@@ -1308,6 +1310,19 @@ details.note-fold .note{margin-top:4px}
     </div>
 
   </div><!-- /boot-dual -->
+
+  <!-- 입력 YTM vs 산출 spot 비교 차트 -->
+  <div class="dcf-assump" style="flex-shrink:0;margin-top:10px">
+    <div class="dcf-assump-hd">입력 YTM vs 산출 Spot Rate 비교</div>
+    <div style="font-size:.68rem;color:var(--text3);margin-bottom:8px;line-height:1.5">
+      파란 점선(입력 YTM) → 빨간 실선(부트스트랩 산출 spot)로 변환된 곡선 형상 비교.
+      두 곡선의 차이가 클수록 만기별 신용·기간 프리미엄 효과가 큽니다.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="height:240px"><canvas id="c-boot-rf"></canvas></div>
+      <div style="height:240px"><canvas id="c-boot-rd"></canvas></div>
+    </div>
+  </div>
 
   <!-- 이자율 DATA 시트 -->
   <div class="dcf-assump" style="flex-shrink:0;margin-top:10px" id="rate-data-panel">
@@ -2221,6 +2236,8 @@ function renderRCPS(data){
       <tr><td>상승/하락계수 u/d</td><td>${(r.u||0).toFixed(5)} / ${(r.d||0).toFixed(5)}</td></tr>
     </table></div>`;
 
+  renderRightsTimeline(p);
+
   dc('comp');
   const compLabels=r.mc_only?['채권+풋+상환(B)','전환 성분(E)']:['순채권','풋옵션','전환권(콜)'];
   const compData=r.mc_only?[mc?.bond_put_value,mc?.conversion_value]:[bv,pv,cv];
@@ -2255,6 +2272,65 @@ function renderRCPS(data){
   const tsLabel=r.term_structure_applied?' &nbsp;<span style="font-size:.68rem;font-weight:700;padding:.18rem .6rem;background:#EFF6FF;color:var(--accent);border-radius:100px;vertical-align:middle">term structure 적용</span>':'';
   document.getElementById('eval-info').innerHTML=`평가기준일 ${lastReq.params.valuation_date}  ·  잔존 ${r.time_to_maturity?.toFixed(3)||'?'}년  ·  Steps ${r.steps}`+tsLabel;
 
+}
+
+/* 계약 권리 시간선 — 발행일~만기 가로축에 전환·풋·콜·평가기준일 표시 */
+function renderRightsTimeline(p){
+  const host = document.getElementById('rights-timeline');
+  if(!host)return;
+  const issue = new Date(p.issue_date);
+  const mat = new Date(p.maturity_date);
+  if(isNaN(issue) || isNaN(mat) || mat <= issue){host.innerHTML=''; return;}
+  const valDate = new Date(p.valuation_date);
+  const conv = p.conversion_start ? new Date(p.conversion_start) : null;
+  const put = p.put_start ? new Date(p.put_start) : null;
+  const call = p.call_start ? new Date(p.call_start) : null;
+  const totalMs = mat - issue;
+  const pos = (d) => d ? Math.max(0, Math.min(100, ((d - issue) / totalMs) * 100)) : null;
+
+  // 시간선 위에 마커·구간 표시
+  const pVal = pos(valDate);
+  const pConv = pos(conv);
+  const pPut = pos(put);
+  const pCall = pos(call);
+
+  // 활성 구간 (해당 시점 ~ 만기) — 우상향 음영
+  const activeBar = (color, label, startPos) => startPos != null
+    ? `<div title="${label}" style="position:absolute;left:${startPos}%;right:0;height:8px;background:${color};opacity:.5;border-radius:2px"></div>`
+    : '';
+
+  // 마커 (점 + 라벨 + 날짜)
+  const fmtD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const marker = (p, label, dateStr, color, labelAbove=true) => {
+    if(p == null) return '';
+    return `<div style="position:absolute;left:${p}%;top:0;bottom:0;width:2px;background:${color};transform:translateX(-1px)">
+      <div style="position:absolute;${labelAbove?'top:-32px':'bottom:-32px'};left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.62rem;font-weight:600;color:${color}">${label}<br><span style="font-weight:400;color:var(--text3)">${dateStr}</span></div>
+    </div>`;
+  };
+
+  host.innerHTML = `
+    <div class="info-box" style="padding:1.1rem 1.3rem">
+      <h4 style="margin-bottom:14px">계약 권리 활성 구간</h4>
+      <div style="position:relative;height:120px;margin:30px 12px 30px 12px">
+        <!-- 활성 구간 막대 (transparent overlay) -->
+        <div style="position:absolute;top:30px;left:0;right:0;height:8px;background:#E5E7EB;border-radius:2px" title="전체 기간"></div>
+        ${pConv != null ? `<div style="position:absolute;top:42px;left:${pConv}%;right:${100-100}%;height:6px;background:rgba(0,192,115,.45);border-radius:2px" title="전환 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#059669;font-weight:600">전환 권리 활성 →</div></div>` : ''}
+        ${pPut != null ? `<div style="position:absolute;top:50px;left:${pPut}%;right:0;height:6px;background:rgba(255,159,0,.45);border-radius:2px" title="풋 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#B45309;font-weight:600">풋 권리 활성 →</div></div>` : ''}
+        ${pCall != null ? `<div style="position:absolute;top:58px;left:${pCall}%;right:0;height:6px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#DC2626;font-weight:600">콜 권리 활성 →</div></div>` : ''}
+
+        <!-- 시점 마커 -->
+        ${marker(0, '발행일', fmtD(issue), '#475569', true)}
+        ${marker(100, '만기일', fmtD(mat), '#475569', true)}
+        ${marker(pVal, '평가기준일', fmtD(valDate), '#0EA5E9', false)}
+        ${pConv != null && pConv > 5 && pConv < 95 ? marker(pConv, '전환 시작', fmtD(conv), '#059669', false) : ''}
+        ${pPut != null && pPut > 5 && pPut < 95 ? marker(pPut, '풋 시작', fmtD(put), '#B45309', false) : ''}
+        ${pCall != null && pCall > 5 && pCall < 95 ? marker(pCall, '콜 시작', fmtD(call), '#DC2626', false) : ''}
+      </div>
+      <div style="font-size:.66rem;color:var(--text3);margin-top:8px;line-height:1.5">
+        ※ 회색 막대는 전체 평가기간(발행일~만기). 색상 막대는 각 권리의 활성 구간(시작일~만기).
+        평가기준일은 ${pVal != null ? `발행 후 ${((valDate-issue)/(365.25*24*3600*1000)).toFixed(2)}년 시점이며, 잔존 만기는 ${((mat-valDate)/(365.25*24*3600*1000)).toFixed(2)}년` : '—'}입니다.
+      </div>
+    </div>`;
 }
 
 function tabSwitch(name,btn){
@@ -3124,6 +3200,25 @@ function waccRecalc(){
   document.getElementById('w_wacc_out').textContent = (wacc*100).toFixed(2)+'%';
   document.getElementById('w_wacc_formula').innerHTML =
     `WACC = E/V <b>${(ev*100).toFixed(1)}%</b> × Ke <b>${(ke*100).toFixed(2)}%</b> + D/V <b>${(dv*100).toFixed(1)}%</b> × Kd <b>${(kd*100).toFixed(2)}%</b> × (1−t) <b>${((1-tax)*100).toFixed(1)}%</b> = <b style="color:var(--accent)">${(wacc*100).toFixed(2)}%</b>`;
+  // ── 단계별 산출 과정 (K-IFRS 1113.93(d) input 출처 공시 보조)
+  const stepsEl = document.getElementById('w_wacc_steps');
+  if(stepsEl){
+    const stepBox = (n, title, formula, result, color) =>
+      `<div style="flex:1;min-width:180px;padding:8px 10px;background:#fff;border-left:3px solid ${color};border-radius:4px;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)">
+        <div style="font-size:.68rem;color:var(--text3);margin-bottom:3px">단계 ${n}. ${title}</div>
+        <div style="font-size:.7rem;color:var(--text2);line-height:1.5">${formula}</div>
+        <div style="font-size:.92rem;font-weight:700;color:${color};margin-top:3px">${result}</div>
+      </div>`;
+    stepsEl.innerHTML = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:stretch">
+        ${stepBox(1, '자기자본비용 Ke 산정', `Rf <b>${(rf*100).toFixed(2)}%</b> + β <b>${beta_l.toFixed(3)}</b> × MRP <b>${(mrp*100).toFixed(2)}%</b>${sizeP?` + 사이즈 <b>${(sizeP*100).toFixed(2)}%</b>`:''}${ctryP?` + 국가 <b>${(ctryP*100).toFixed(2)}%</b>`:''}`, `${(ke*100).toFixed(2)}%`, '#0EA5E9')}
+        ${stepBox(2, '타인자본비용 (세후) Kd×(1−t)', `Kd <b>${(kd*100).toFixed(2)}%</b> × (1 − 세율 <b>${(tax*100).toFixed(1)}%</b>)`, `${(kd_after*100).toFixed(2)}%`, '#FF9F00')}
+        ${stepBox(3, 'WACC 가중평균', `Ke × E/V <b>${(ev*100).toFixed(0)}%</b> + Kd_after × D/V <b>${(dv*100).toFixed(0)}%</b>`, `${(wacc*100).toFixed(2)}%`, 'var(--accent)')}
+      </div>
+      <div style="font-size:.66rem;color:var(--text3);margin-top:6px;line-height:1.5">
+        ※ CAPM 기반 자기자본비용 + Modigliani-Miller 세후 가중평균. K-IFRS 1113.93(d) 평가 input 출처 공시 항목.
+      </div>`;
+  }
   // peer/β_D 관련 일반인 친화 경고 표시
   const cwEl = document.getElementById('w-country-warn');
   if(cwEl){
@@ -4281,6 +4376,41 @@ function bootRender(){
   window.bootRfSpot=_bootSpotCurve(bootRfRows,2);
   window.bootRdSpot=_bootSpotCurve(bootRdRows,4);
   renderRateData();
+  renderBootCharts();
+}
+
+/* 부트스트랩 입력 YTM vs 산출 spot 비교 차트 */
+function renderBootCharts(){
+  function draw(canvasId, inputRows, spotPts, title, color){
+    const el = document.getElementById(canvasId);
+    if(!el) return;
+    const inputData = (inputRows||[]).filter(r=>r.t>0&&r.y!=null).map(r=>({x:r.t, y:r.y}));
+    const spotData = (spotPts||[]).map(p=>({x:p[0], y:p[1]*100}));
+    dc(canvasId);
+    CH[canvasId] = new Chart(el.getContext('2d'), {
+      type:'line',
+      data:{
+        datasets:[
+          {label:'입력 YTM (%)', data:inputData, borderColor:'#3182F6', borderDash:[6,4], backgroundColor:'rgba(49,130,246,.08)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#3182F6', tension:0, showLine:true},
+          {label:'산출 spot rate (%, 연속복리)', data:spotData, borderColor:'#DC2626', backgroundColor:'rgba(220,38,38,.04)', borderWidth:2, pointRadius:0, tension:0.1, showLine:true},
+        ],
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          title:{display:true,text:title,font:{size:11,weight:'600'},color:'#374151'},
+          legend:{position:'top',labels:{font:{size:10}, boxWidth:12, padding:6}},
+          tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)}% @ T=${ctx.parsed.x.toFixed(2)}년`}},
+        },
+        scales:{
+          x:{type:'linear',title:{display:true,text:'만기 (년)',font:{size:10}},ticks:{font:{size:9}},grid:{color:'#F2F4F6'}},
+          y:{title:{display:true,text:'이자율 (%)',font:{size:10}},ticks:{callback:v=>v.toFixed(1)+'%',font:{size:9}},grid:{color:'#F2F4F6'}},
+        },
+      },
+    });
+  }
+  draw('c-boot-rf', bootRfRows, window.bootRfSpot, 'Rf (무위험이자율)', '#3182F6');
+  draw('c-boot-rd', bootRdRows, window.bootRdSpot, 'Rd (이자부부채 yield)', '#DC2626');
 }
 
 function bRfAdd(){
