@@ -302,10 +302,11 @@ def evaluate():
                 gs.update(_mc_required_marker)
                 gs["fair_value"] = None
 
-        # ── 민감도 (TF 기준) — 본 평가와 동일한 곡선 사용 (base fv 일치)
+        # ── 민감도 (TF 기준) — 본 평가와 동일한 step·동일 곡선 사용 (base fv 정확 일치)
+        # K-IFRS 13.93(h)(ii): 민감도 base와 본 평가는 동일 가정 기반이어야 의미
         try:
             sens = sensitivity_analysis(
-                params, steps=min(steps_used, 60),
+                params, steps=steps_used,
                 rf_curve=rf_curve, kd_curve=kd_curve)
         except Exception as e:
             sens = {"error": str(e)}
@@ -549,7 +550,7 @@ def download():
             dl_kw["rf_curve"] = dl_rf_curve
             dl_kw["kd_curve"] = dl_kd_curve
         result = tf_rcps(params, steps=dl_steps_used, **dl_kw)
-        sens = sensitivity_analysis(params, steps=min(dl_steps_used, 60),
+        sens = sensitivity_analysis(params, steps=dl_steps_used,
                                     rf_curve=dl_rf_curve, kd_curve=dl_kd_curve)
 
         # 이항 파라미터 (u/d/p) — 조서 모델정보용

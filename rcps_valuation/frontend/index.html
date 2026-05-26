@@ -720,6 +720,7 @@ details.note-fold .note{margin-top:4px}
     <div class="res-2col">
     <div class="res-left">
     <div class="comp-grid" id="comp-grid"></div>
+    <div id="tf-2comp"></div>
     <div class="info-box" id="decomp-table" style="display:none;margin:0"></div>
     <div class="info-box" id="bdt-cross" style="display:none;margin:0">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px">
@@ -742,6 +743,7 @@ details.note-fold .note{margin-top:4px}
         <button class="tab-btn active" onclick="tabSwitch('params',this)">입력 요약</button>
         <button class="tab-btn" onclick="tabSwitch('sensitivity',this)">민감도 분석</button>
         <button class="tab-btn" onclick="tabSwitch('tree',this)">이항트리</button>
+        <button class="tab-btn" onclick="tabSwitch('attribution',this)">후속측정 비교</button>
       </div>
       <div class="tab-content active" id="tab-params">
         <div class="info-grid" id="info-grid"></div>
@@ -773,6 +775,22 @@ details.note-fold .note{margin-top:4px}
           <span id="tree-status" style="font-size:.74rem;color:var(--text3)"></span>
         </div>
         <div id="tree-grids"></div>
+      </div>
+      <div class="tab-content" id="tab-attribution">
+        <div style="padding:10px 0;font-size:.8rem;color:var(--text2);line-height:1.6">
+          <b>후속측정 평가손익 분해 (K-IFRS 1109.B5.1.1)</b><br>
+          현재 평가는 위 화면의 입력값으로 자동. <b>직전 평가의 입력값</b>을 아래에 채우면
+          ① 주가효과 ② 변동성효과 ③ 금리효과 ④ 시간경과효과 ⑤ 상호작용 5개 요인으로 공정가치 변동(Δfv)을 분해합니다.
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">
+          <div class="field"><label for="prev_val_date" style="font-size:.7rem">직전 평가기준일</label><input type="date" id="prev_val_date" style="width:100%"></div>
+          <div class="field"><label for="prev_stock_price" style="font-size:.7rem">직전 주가(원)</label><input type="text" id="prev_stock_price" class="money" placeholder="예: 25,000" style="width:100%"></div>
+          <div class="field"><label for="prev_volatility" style="font-size:.7rem">직전 변동성(%)</label><input type="number" id="prev_volatility" step="0.1" placeholder="예: 50" style="width:100%"></div>
+          <div class="field"><label for="prev_rf" style="font-size:.7rem">직전 무위험이자율(%)</label><input type="number" id="prev_rf" step="0.01" placeholder="예: 2.7" style="width:100%"></div>
+          <div class="field"><label for="prev_cs" style="font-size:.7rem">직전 신용스프레드(%)</label><input type="number" id="prev_cs" step="0.1" placeholder="예: 10.5" style="width:100%"></div>
+        </div>
+        <button class="btn-run" onclick="runAttribution()" style="font-size:.8rem;padding:6px 14px">분해 실행</button>
+        <div id="attribution-result" style="margin-top:14px"></div>
       </div>
     </div>
     </div><!-- /.res-right -->
@@ -2080,11 +2098,28 @@ function renderRCPS(data){
       <div class="comp-card"><div class="cn">② 전환(지분) 성분 (E)</div><div class="cv">${fmtW(mcv)}</div><div class="cs">MC 2-component 지분측 성분 (래칫 리픽싱 반영)</div><div class="cpct">${pct(mcv,mcFv)}</div></div>
       <div class="comp-card total"><div class="cn">MC 공정가치 (Main) — Monte Carlo LSM &nbsp;|&nbsp; paths = ${mc?.n_paths||'—'}</div><div class="cv">${fmtW(mcFv)}</div><div class="cs">① ${fmtW(mbp)} + ② ${fmtW(mcv)} ${mc?.ci_lower!=null?`&nbsp;|&nbsp; 95% CI ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}`:''}</div></div>`;
   }else{
+    // TF 본래 2-component 분해 (E[0]/B[0]) — 5803 보고서 VE/VD와 동일 컨벤션
+    const tfE=tf?.equity_component, tfB=tf?.bond_component;
     document.getElementById('comp-grid').innerHTML=`
       <div class="comp-card"><div class="cn">① 순채권가치 (Bond)</div><div class="cv">${fmtW(bv)}</div><div class="cs">전환·풋 미반영 순채권 현재가치 (Kd 할인)</div><div class="cpct">${pct(bv,tfFv)}</div></div>
       <div class="comp-card"><div class="cn">② 풋옵션가치 (Put)</div><div class="cv">${fmtW(pv)}</div><div class="cs">풋채권가치 − 순채권가치 = ${fmtW(tf?.put_bond_value)}</div><div class="cpct">${pct(pv,tfFv)}</div></div>
       <div class="comp-card"><div class="cn">③ 전환권가치 (Call)</div><div class="cv">${fmtW(cv)}</div><div class="cs">총 공정가치 − 풋채권가치 (TF 2-component 기반)</div><div class="cpct">${pct(cv,tfFv)}</div></div>
       <div class="comp-card total"><div class="cn">TF 공정가치 (Main 1) — Tsiveriotis-Fernandes &nbsp;|&nbsp; steps = ${tf?.steps||r.steps}</div><div class="cv">${fmtW(tfFv)}</div><div class="cs">① ${fmtW(bv)} + ② ${fmtW(pv)} + ③ ${fmtW(cv)}</div></div>`;
+    // TF 본래 2-component (VE/VD) — 5803 보고서 정합 자료
+    if(tfE!=null && tfB!=null){
+      const tf2cEl = document.getElementById('tf-2comp');
+      if(tf2cEl){
+        tf2cEl.innerHTML = `<div style="margin-top:8px;padding:10px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;font-size:.74rem;line-height:1.65">
+          <b style="color:#0369A1">TF 본래 2-component 분해 (5803 보고서 VE/VD와 동일 컨벤션)</b>
+          <table style="width:100%;margin-top:6px;font-size:.7rem;border-collapse:collapse">
+            <tr><td style="padding:2px 4px">VE (지분 성분, E[0])</td><td style="text-align:right;padding:2px 4px">${fmtW(tfE)}</td><td style="padding:2px 4px;color:var(--text3)">전환 가능성 반영</td></tr>
+            <tr><td style="padding:2px 4px">VD (채권 성분, B[0])</td><td style="text-align:right;padding:2px 4px">${fmtW(tfB)}</td><td style="padding:2px 4px;color:var(--text3)">만기상환·풋 보장</td></tr>
+            <tr style="font-weight:600;background:#FFFFFF"><td style="padding:2px 4px">합계 = 공정가치</td><td style="text-align:right;padding:2px 4px">${fmtW(tfE+tfB)}</td><td style="padding:2px 4px"></td></tr>
+          </table>
+          <div style="font-size:.66rem;color:var(--text3);margin-top:3px">※ Tsiveriotis-Fernandes(1998) 본래 분해. 위 ①②③(5803 흡수형 3-way)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점으로 재해석한 평가실무 컨벤션.</div>
+        </div>`;
+      }
+    }
   }
 
   // ── TF vs GS 구성요소 분해 비교 (채권·풋옵션은 모형 무관 공통, 전환권만 상이) ──
@@ -2133,9 +2168,10 @@ function renderRCPS(data){
     const notes=[];
     if(tfFv && gsFv){
       const d=gsFv-tfFv, dp=Math.abs(d)/tfFv*100;
+      const dpSign = d/tfFv*100;  // 부호 있는 차이율
       if(dp<1.0)notes.push(`<b style="color:#059669">✓</b> TF·GS 거의 일치 (${d>=0?'+':''}${Math.round(d).toLocaleString()}원, ${dp.toFixed(2)}%) — 두 모형 결과가 같은 자릿수, 공정가치 신뢰도 양호`);
-      else if(dp<3.0)notes.push(`TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dp.toFixed(2)}%) — TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩. 두 모형의 <b>구조 차이로 통상 수준</b>의 차이`);
-      else notes.push(`<b style="color:#B45309">⚠</b> TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dp.toFixed(2)}%) — 차이가 다소 큼. 콜·풋·강제전환 같은 옵션 권리가 활성화된 약정일 가능성`);
+      else if(dp<6.0)notes.push(`TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩. <b>5803 보고서도 동일한 -4.7% 차이</b>(모형 구조 차이로 정상 범위)`);
+      else notes.push(`<b style="color:#B45309">⚠</b> TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — 차이가 매우 큼(±6% 초과). 콜·풋·강제전환 약정 활성 또는 가정 검토 필요`);
     }
     if(mcFv && tfFv && mc?.ci_lower!=null && mc?.ci_upper!=null){
       if(tfFv>=mc.ci_lower && tfFv<=mc.ci_upper)
@@ -2225,6 +2261,62 @@ function tabSwitch(name,btn){
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-'+name)?.classList.add('active');
+}
+
+/* ══ 후속측정 attribution — K-IFRS 1109.B5.1.1 4-factor 분해 ══ */
+async function runAttribution(){
+  if(!lastReq){alert('먼저 RCPS 평가를 실행하세요.');return;}
+  const out = document.getElementById('attribution-result');
+  out.innerHTML = '<span style="color:var(--text3)">분석 중...</span>';
+  // 직전 입력값 검증
+  const prevDate = document.getElementById('prev_val_date').value;
+  const prevSP = getMoney('prev_stock_price');
+  const prevVol = parseFloat(document.getElementById('prev_volatility').value);
+  const prevRf = parseFloat(document.getElementById('prev_rf').value);
+  const prevCs = parseFloat(document.getElementById('prev_cs').value);
+  if(!prevDate || !prevSP || isNaN(prevVol) || isNaN(prevRf) || isNaN(prevCs)){
+    out.innerHTML = '<span style="color:var(--red)">5개 직전 입력값 모두 채워주세요.</span>';
+    return;
+  }
+  // 현재 입력값 (lastReq.params)
+  const currParams = lastReq.params;
+  const prevParams = Object.assign({}, currParams, {
+    valuation_date: prevDate,
+    stock_price: prevSP,
+    volatility: prevVol/100,
+    risk_free_rate: prevRf/100,
+    credit_spread: prevCs/100,
+  });
+  try{
+    const r = await fetch('/api/subsequent_attribution', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prev: prevParams, curr: currParams, steps: lastReq.steps})
+    });
+    const j = await r.json();
+    if(j.status !== 'ok'){ out.innerHTML = `<span style="color:var(--red)">실패: ${j.message||'unknown'}</span>`; return; }
+    const e = j.effects;
+    const totalEffects = e.stock_price + e.volatility + e.interest_rates + e.time_decay;
+    const interaction = e.interaction;
+    out.innerHTML = `
+      <div style="padding:14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px">
+        <div style="font-size:.85rem;font-weight:700;color:#0369A1;margin-bottom:6px">평가손익 변동 분해 결과</div>
+        <div style="font-size:.78rem;margin-bottom:8px">
+          <b>직전 공정가치 ${fmtW(j.fv_prev)}</b> → <b>현재 공정가치 ${fmtW(j.fv_curr)}</b><br>
+          <span style="color:${j.change>=0?'#059669':'#DC2626'};font-weight:700">Δfv = ${j.change>=0?'+':''}${fmtW(j.change)} (${j.change_pct>=0?'+':''}${j.change_pct}%)</span>
+        </div>
+        <table class="dtable" style="font-size:.78rem"><thead><tr><th>요인</th><th style="text-align:right">효과</th><th style="text-align:right">비중</th><th>해석</th></tr></thead><tbody>
+          <tr><td>① 주가효과 (ΔS)</td><td style="text-align:right;color:${e.stock_price>=0?'#059669':'#DC2626'}">${e.stock_price>=0?'+':''}${fmtW(e.stock_price)}</td><td style="text-align:right">${pct(Math.abs(e.stock_price), Math.abs(totalEffects))}</td><td style="color:var(--text3)">주가 ${prevSP.toLocaleString()} → ${currParams.stock_price.toLocaleString()}</td></tr>
+          <tr><td>② 변동성효과 (Δσ)</td><td style="text-align:right;color:${e.volatility>=0?'#059669':'#DC2626'}">${e.volatility>=0?'+':''}${fmtW(e.volatility)}</td><td style="text-align:right">${pct(Math.abs(e.volatility), Math.abs(totalEffects))}</td><td style="color:var(--text3)">σ ${prevVol.toFixed(1)}% → ${(currParams.volatility*100).toFixed(1)}%</td></tr>
+          <tr><td>③ 금리효과 (Δr+Δcs)</td><td style="text-align:right;color:${e.interest_rates>=0?'#059669':'#DC2626'}">${e.interest_rates>=0?'+':''}${fmtW(e.interest_rates)}</td><td style="text-align:right">${pct(Math.abs(e.interest_rates), Math.abs(totalEffects))}</td><td style="color:var(--text3)">Rf ${prevRf}% → ${(currParams.risk_free_rate*100).toFixed(2)}% / cs ${prevCs}% → ${(currParams.credit_spread*100).toFixed(2)}%</td></tr>
+          <tr><td>④ 시간경과 (ΔT, theta)</td><td style="text-align:right;color:${e.time_decay>=0?'#059669':'#DC2626'}">${e.time_decay>=0?'+':''}${fmtW(e.time_decay)}</td><td style="text-align:right">${pct(Math.abs(e.time_decay), Math.abs(totalEffects))}</td><td style="color:var(--text3)">평가일 ${prevDate} → ${currParams.valuation_date}</td></tr>
+          <tr style="background:#FEF3C7"><td>⑤ 상호작용 (잔차)</td><td style="text-align:right">${interaction>=0?'+':''}${fmtW(interaction)}</td><td style="text-align:right">${pct(Math.abs(interaction), Math.abs(totalEffects))}</td><td style="color:var(--text3)">요인 간 결합 효과 (통상 |Δfv|의 5% 이내)</td></tr>
+          <tr style="font-weight:700;background:var(--bg2)"><td>합계</td><td style="text-align:right">${fmtW(j.change)}</td><td colspan="2" style="text-align:left;color:var(--text3)">= 실제 Δfv (정합 확인)</td></tr>
+        </tbody></table>
+        <div style="font-size:.7rem;color:var(--text3);margin-top:6px">${j.interpretation||''}</div>
+      </div>`;
+  }catch(err){
+    out.innerHTML = `<span style="color:var(--red)">요청 실패: ${err.message}</span>`;
+  }
 }
 
 /* ══ 이항트리 시트 뷰 ══ */
@@ -2359,9 +2451,14 @@ function renderTreeGrids(){
           let bg = '';
           let display = '';
           if(key==='decision'){
-            if(val==='전환') bg='background:#DCFCE7';
-            else if(val==='상환') bg='background:#FEF3C7';
-            else if(val==='보유') bg='background:#F2F4F6';
+            // 6단계 색상: 전환·만기상환·풋상환·콜상환·강제전환KO·보유
+            if(val==='전환') bg='background:#DCFCE7';                  // 녹: 보유자 전환
+            else if(val==='만기상환') bg='background:#FED7AA';          // 주: 만기 보장 상환
+            else if(val==='풋상환') bg='background:#FEF3C7';            // 노: 보유자 풋
+            else if(val==='콜상환') bg='background:#FECACA';            // 적: 발행자 콜
+            else if(val==='강제전환' || val==='KO') bg='background:#A7F3D0'; // 청록: KO
+            else if(val==='보유') bg='background:#F2F4F6';              // 회: 보유
+            else if(val==='상환') bg='background:#FEF3C7';              // 호환: 기존 "상환"
             display = val||'';
           } else if(typeof val==='number'){
             const shown = VALUE_KEYS.has(key) ? val/divisor : val;   // 가치 그리드만 1주 기준
@@ -2496,7 +2593,8 @@ function dcfCalc(){
       const ratio=lastY.capex/lastY.da;
       const ideal=1+g;
       if(Math.abs(ratio-ideal)>ideal*0.3){
-        ssMsgs.push(`마지막 해 CapEx가 감가상각비의 ${ratio.toFixed(2)}배(권장 ${ideal.toFixed(2)}배) — ${ratio<ideal?'자산 축소':'영구 과투자'} 가정과 가까움`);
+        const idealCapex = Math.round(lastY.da * ideal);
+        ssMsgs.push(`마지막 해 CapEx가 감가상각비의 ${ratio.toFixed(2)}배(권장 ${ideal.toFixed(2)}배) — ${ratio<ideal?'자산 축소':'영구 과투자'} 가정과 가까움. <b>보정 권장: 마지막 해 CapEx를 ${idealCapex.toLocaleString()}원 근처로</b>`);
       }
     }
     // 2. 매출 대비 운전자본 변동
@@ -2827,7 +2925,15 @@ function waccRenderPeers(){
       metaParts.push(`<b style="color:var(--accent);font-family:var(--mono,monospace)">${p._code}</b>`);
     }
     if(p.betaStart && p.betaEnd){
-      metaParts.push(`β ${p.betaStart}~${p.betaEnd}${p.betaFreq==='weekly'?' (주별)':''}${p.betaR2!=null?` R²=${p.betaR2}`:''}`);
+      // R² 색상: <0.10 적색(신뢰도 매우 낮음), 0.10~0.30 황색(보통), >0.30 녹색(합리적)
+      let r2Html = '';
+      if(p.betaR2 != null){
+        const r2 = parseFloat(p.betaR2);
+        const color = r2 < 0.10 ? '#DC2626' : (r2 < 0.30 ? '#B45309' : '#059669');
+        const label = r2 < 0.10 ? ' (낮음)' : (r2 < 0.30 ? ' (보통)' : ' (합리적)');
+        r2Html = ` <span style="color:${color}" title="R²<0.10 신뢰도 낮음(시장으로 설명력 약함) / 0.10~0.30 보통 / >0.30 합리적. Damodaran 표준.">R²=${p.betaR2}${label}</span>`;
+      }
+      metaParts.push(`β ${p.betaStart}~${p.betaEnd}${p.betaFreq==='weekly'?' (주별)':''}${r2Html}`);
     }
     if(p.tdSource==='bs' && p.asOf){
       metaParts.push(`D/E ${p.asOf}`);

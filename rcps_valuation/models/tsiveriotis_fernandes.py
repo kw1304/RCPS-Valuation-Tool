@@ -195,7 +195,8 @@ def tf_rcps(params: RCPSParams, steps: int = None,
             _g_conv[steps][j]  = round(cv, 2)
             _g_bond_intr[steps][j] = round(float(mat_redeem), 2)  # 만기 상환 내재가치
             _g_dil[steps][j]   = round(float(_diluted(steps, j)) if use_dil else S_T, 2)
-            _g_dec[steps][j]   = "전환" if cv >= mat_principal else "상환"
+            # 6단계 라벨: 만기는 "전환" 또는 "만기상환" (풋·콜·KO는 만기 이전)
+            _g_dec[steps][j]   = "전환" if cv >= mat_principal else "만기상환"
 
     # ── 역방향 귀납
     for i in range(steps - 1, -1, -1):
@@ -269,7 +270,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
                         _g_conv[i][j]  = round(cv, 2)
                         _g_bond_intr[i][j] = round(bond_intr_node, 2)
                         _g_dil[i][j]   = round(float(_diluted(i, j)) if use_dil else S, 2)
-                        _g_dec[i][j]   = "상환"
+                        _g_dec[i][j]   = "풋상환"
                     continue
 
             if i >= conv_step and (cv + coup) > cont_tot:
@@ -280,7 +281,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
             else:
                 E_new[j] = cont_E; B_new[j] = cont_B
                 if collect_tree:
-                    _g_dec[i][j] = "콜" if (call_active and i >= call_step and
+                    _g_dec[i][j] = "콜상환" if (call_active and i >= call_step and
                                               params.call_exercise_price(t_node) < V_hold) else "보유"
 
             if collect_tree:

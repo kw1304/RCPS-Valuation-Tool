@@ -90,8 +90,30 @@ def _write_model_comparison(ws, eval_result, params):
         _cell(ws, ri, 4, vmc if vmc is not None else "-", bg=bg, num_fmt="#,##0", align="right")
         _cell(ws, ri, 5, note, bg=bg, color="718096")
 
+    # TF 본래 2-component 분해 (5803 보고서 VE/VD와 동일 컨벤션) — 정합 자료
+    tfE = tf.get("equity_component") if tf else None
+    tfB = tf.get("bond_component") if tf else None
+    if tfE is not None and tfB is not None:
+        r2c = 10
+        ws.cell(row=r2c, column=1, value="■ TF 본래 2-component 분해 (5803 보고서 VE/VD)").font = \
+            Font(name="맑은 고딕", bold=True, size=10, color="0369A1")
+        ws.merge_cells(start_row=r2c, start_column=1, end_row=r2c, end_column=5)
+        for i, (k, v, note) in enumerate([
+            ("VE (지분 성분, E[0])", tfE, "전환 가능성 반영"),
+            ("VD (채권 성분, B[0])", tfB, "만기상환·풋 보장"),
+            ("합계", tfE + tfB, "= TF 공정가치"),
+        ], r2c + 1):
+            bg = "F0F9FF" if i == r2c + 3 else "FFFFFF"
+            _cell(ws, i, 1, k, bg=bg, bold=(i == r2c + 3))
+            _cell(ws, i, 2, v, bg=bg, num_fmt="#,##0", align="right", bold=(i == r2c + 3))
+            _cell(ws, i, 5, note, bg=bg, color="718096")
+        ws.cell(row=r2c + 4, column=1,
+                value="※ Tsiveriotis-Fernandes(1998) 본래 분해. 위 3-way(채권/풋옵션/전환권)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점.")\
+            .font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
+        ws.merge_cells(start_row=r2c + 4, start_column=1, end_row=r2c + 4, end_column=5)
+
     # 모형 메타정보
-    r0 = 10
+    r0 = 16  # 2-comp 블록 다음 (이전 10에서 16으로 밀림)
     ws.cell(row=r0, column=1, value="■ 모형 가정·메타").font = Font(name="맑은 고딕", bold=True, size=11)
     metas = [
         ("이항 트리 단계", str(eval_result.get("steps", "-"))),
@@ -521,3 +543,11 @@ def _write_sensitivity(ws, sensitivity):
 
     offset = max(len(sensitivity["volatility"]), len(sensitivity["stock_price"])) + 7
     _sens_block(offset, 1, "신용스프레드 민감도", sensitivity["credit_spread"], "신용스프레드")
+    # 보장수익률(IRR) 민감도 — RCPS 핵심 가정 (있을 때만)
+    irr_data = sensitivity.get("put_irr", [])
+    conv_data = sensitivity.get("conversion_price", [])
+    next_offset = offset + len(sensitivity["credit_spread"]) + 4
+    if irr_data:
+        _sens_block(next_offset, 1, "보장수익률(IRR) 민감도", irr_data, "IRR")
+    if conv_data:
+        _sens_block(next_offset, 5, "전환가액 민감도", conv_data, "전환가(원)")

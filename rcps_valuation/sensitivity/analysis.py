@@ -92,10 +92,43 @@ def sensitivity_analysis(params: RCPSParams, steps: int = None,
                 "change_pct": round((fv - base_fv) / base_fv * 100, 2),
             })
 
+    # 보장수익률(put_irr) 민감도: ±2%p (1%p 간격) — RCPS 핵심 가정
+    # 누적 IRR 보장이 발행자 무조건 의무라 가치 결정자
+    irr_results = []
+    if params.put_irr and params.put_irr > 0:
+        for delta in np.arange(-0.02, 0.021, 0.01):
+            p = deepcopy(params)
+            p.put_irr = max(round(params.put_irr + delta, 4), 0.001)
+            fv = calc(p)
+            if fv:
+                irr_results.append({
+                    "label": f"{p.put_irr*100:.1f}%",
+                    "value": round(p.put_irr, 4),
+                    "fair_value": fv,
+                    "change_pct": round((fv - base_fv) / base_fv * 100, 2),
+                })
+
+    # 전환가액(conversion_price) 민감도: ±30% (10% 간격) — 전환권 ITM/OTM 가치
+    conv_results = []
+    if params.conversion_price and params.conversion_price > 0:
+        for delta in np.arange(-0.30, 0.31, 0.10):
+            p = deepcopy(params)
+            p.conversion_price = max(round(params.conversion_price * (1 + delta), 0), 1)
+            fv = calc(p)
+            if fv:
+                conv_results.append({
+                    "label": f"{int(p.conversion_price):,}",
+                    "value": p.conversion_price,
+                    "fair_value": fv,
+                    "change_pct": round((fv - base_fv) / base_fv * 100, 2),
+                })
+
     return {
         "base_fair_value": round(base_fv),
         "volatility": vol_results,
         "stock_price": stock_results,
         "credit_spread": spread_results,
+        "put_irr": irr_results,
+        "conversion_price": conv_results,
         "curve_applied": bool(rf_curve and kd_curve),
     }
