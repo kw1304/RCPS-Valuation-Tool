@@ -1,0 +1,29 @@
+# 에스트래픽 계정별 원장 GL 매핑
+#
+# 더존 iCUBE 방식 추출본.
+# 차변/대변이 별개 컬럼으로 제공되는 분리 방식(split_columns).
+
+mappings:
+  entry_no: "전표번호"
+  entry_date: "회계일자"
+  posting_date: "작성일자"
+  posting_time: null
+  user_id: "작성사원"
+  user_name: "작성사원명"
+  account_code: "계정코드"
+  account_name: "계정명"
+  debit_amount: "차변"
+  credit_amount: "대변"
+  description: "적요"
+  counterparty: "거래처"
+  entry_type: "전표유형코드"
+  dept_code: "C/C코드"
+
+# 금액 단위: 원
+amount_unit: "원"
+
+# 계정코드 zero-pad: 에스트래픽 5자리
+account_code_pad: 5
+
+# 차대변 형식: 차변/대변 분리 컬럼
+dr_cr_format: "split_columns"
