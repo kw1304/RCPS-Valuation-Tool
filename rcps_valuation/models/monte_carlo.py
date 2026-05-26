@@ -118,8 +118,10 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
 
     # ── 만기 가치: 전환 vs 상환 → E/B 버킷 분리 ──
     # 풋이 유효일 때만 풋 행사가 적용
+    # TF/GS와 동일하게 만기 쿠폰을 상환 측에 포함 (전환 시는 쿠폰 포기 — TF 컨벤션)
     put_mat = params.put_exercise_price(n_steps * dt) if params.has_put else face
-    redeem_T = max(face, put_mat)
+    mat_coupon = coupon_cf.get(n_steps, 0)
+    redeem_T = max(face, put_mat) + mat_coupon
     conv_T = (face / K_path[:, -1]) * S[:, -1]
     # 만기 강제전환(KO): 배리어 충족 경로는 무조건 전환
     if has_mand:

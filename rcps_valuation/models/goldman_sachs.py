@@ -176,14 +176,17 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     Er = [0.0] * (steps + 1)
     Br = [0.0] * (steps + 1)
 
-    # 만기 초기화
+    # 만기 초기화 (Pass 3와 동일 결정 규칙: cv vs 원금상환액 (쿠폰 미포함) 비교)
+    # 5803 컨벤션: 쿠폰은 결정 무관 지급 → 비교는 원금끼리, 양쪽 모두 쿠폰 가산
+    _mat_principal_p1 = max(face, put_mat)
+    _mat_coupon_p1 = coupon_cf.get(steps, 0)
     for j in range(steps + 1):
         ei = _conv_val(steps, j)
-        rd = mat_redeem
-        if ei >= rd:
-            Er[j] = ei;  Br[j] = 0.0;  dec[steps][j] = 'c'
+        if ei >= _mat_principal_p1:
+            # 전환: 지분 = cv, 채권 = 만기쿠폰 (5803 컨벤션 — 전환도 쿠폰 받음)
+            Er[j] = ei;  Br[j] = _mat_coupon_p1;  dec[steps][j] = 'c'
         else:
-            Er[j] = 0.0; Br[j] = rd;   dec[steps][j] = 'r'
+            Er[j] = 0.0; Br[j] = _mat_principal_p1 + _mat_coupon_p1;  dec[steps][j] = 'r'
 
     # 역방향 귀납
     for i in range(steps - 1, -1, -1):
@@ -393,11 +396,13 @@ def gs_rcps(params: RCPSParams, steps: int = None,
 
 
 def _eff_K(S, K, K_floor, params, step, steps):
+    """리픽싱 시 유효 전환가. _ratio()와 동일 컨벤션: 주가 ≤ 트리거가에서 발동.
+    한국 RCPS 약정 표준 '주가가 트리거 이하' (≤)."""
     if not params.refixing or K <= 0:
         return K
     if not params.is_refixing_date(step, steps):
         return K
-    if params.refixing_trigger and S < K * params.refixing_trigger:
+    if params.refixing_trigger and S <= K * params.refixing_trigger:
         return max(K_floor, S)
     return K
 

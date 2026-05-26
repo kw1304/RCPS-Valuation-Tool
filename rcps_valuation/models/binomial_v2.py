@@ -297,11 +297,13 @@ def _full_rcps_tf(face, params: RCPSParams, r_f, Kd, q, steps, dt,
 
 
 def _eff_K(S, K, K_floor, params: RCPSParams, step: int, steps: int) -> float:
+    """리픽싱 시 유효 전환가. _ratio()와 동일 컨벤션: 주가 ≤ 트리거가에서 발동.
+    한국 RCPS 약정 표준 '주가가 트리거 이하' (≤)."""
     if not params.refixing or K <= 0:
         return K
     if not params.is_refixing_date(step, steps):
         return K
-    if params.refixing_trigger and S < K * params.refixing_trigger:
+    if params.refixing_trigger and S <= K * params.refixing_trigger:
         return max(K_floor, S)
     return K
 
