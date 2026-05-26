@@ -129,6 +129,26 @@ def index():
     return send_from_directory(FRONTEND_DIR, "index.html")
 
 
+@app.route("/api/bootstrap", methods=["POST"])
+def bootstrap_route():
+    """이자율 부트스트래핑 — par yield bond bootstrap (서버측 단일 출처).
+    프론트가 결과를 직접 표시하거나, 자동 테스트가 호출해 검증 가능.
+
+    Request: {"rows": [{"t", "y"}, ...], "m": 2|4, "max_T": 20}
+    Response: {mid_rows, out_rows, dfs, warning, input_max, max_T_used}
+    """
+    try:
+        from inputs.bootstrap import bootstrap_par_yield
+        data = request.json or {}
+        rows = data.get("rows", [])
+        m = int(data.get("m", 2))
+        max_T = float(data.get("max_T", 20.0))
+        result = bootstrap_par_yield(rows, m=m, max_T=max_T)
+        return jsonify({"status": "ok", "result": result})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
 @app.route("/api/dcf", methods=["POST"])
 def dcf():
     """단일 평가 엔진(`inputs.dcf.dcf_valuation`) 호출 — 프론트·Excel 공통 출처.
