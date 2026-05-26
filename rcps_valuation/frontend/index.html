@@ -743,7 +743,6 @@ details.note-fold .note{margin-top:4px}
         <button class="tab-btn active" onclick="tabSwitch('params',this)">입력 요약</button>
         <button class="tab-btn" onclick="tabSwitch('sensitivity',this)">민감도 분석</button>
         <button class="tab-btn" onclick="tabSwitch('tree',this)">이항트리</button>
-        <button class="tab-btn" onclick="tabSwitch('attribution',this)">후속측정 비교</button>
       </div>
       <div class="tab-content active" id="tab-params">
         <div class="info-grid" id="info-grid"></div>
@@ -775,22 +774,6 @@ details.note-fold .note{margin-top:4px}
           <span id="tree-status" style="font-size:.74rem;color:var(--text3)"></span>
         </div>
         <div id="tree-grids"></div>
-      </div>
-      <div class="tab-content" id="tab-attribution">
-        <div style="padding:10px 0;font-size:.8rem;color:var(--text2);line-height:1.6">
-          <b>후속측정 평가손익 분해 (K-IFRS 1109.B5.1.1)</b><br>
-          현재 평가는 위 화면의 입력값으로 자동. <b>직전 평가의 입력값</b>을 아래에 채우면
-          ① 주가효과 ② 변동성효과 ③ 금리효과 ④ 시간경과효과 ⑤ 상호작용 5개 요인으로 공정가치 변동(Δfv)을 분해합니다.
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">
-          <div class="field"><label for="prev_val_date" style="font-size:.7rem">직전 평가기준일</label><input type="date" id="prev_val_date" style="width:100%"></div>
-          <div class="field"><label for="prev_stock_price" style="font-size:.7rem">직전 주가(원)</label><input type="text" id="prev_stock_price" class="money" placeholder="예: 25,000" style="width:100%"></div>
-          <div class="field"><label for="prev_volatility" style="font-size:.7rem">직전 변동성(%)</label><input type="number" id="prev_volatility" step="0.1" placeholder="예: 50" style="width:100%"></div>
-          <div class="field"><label for="prev_rf" style="font-size:.7rem">직전 무위험이자율(%)</label><input type="number" id="prev_rf" step="0.01" placeholder="예: 2.7" style="width:100%"></div>
-          <div class="field"><label for="prev_cs" style="font-size:.7rem">직전 신용스프레드(%)</label><input type="number" id="prev_cs" step="0.1" placeholder="예: 10.5" style="width:100%"></div>
-        </div>
-        <button class="btn-run" onclick="runAttribution()" style="font-size:.8rem;padding:6px 14px">분해 실행</button>
-        <div id="attribution-result" style="margin-top:14px"></div>
       </div>
     </div>
     </div><!-- /.res-right -->
@@ -2168,9 +2151,9 @@ function renderRCPS(data){
     const notes=[];
     if(tfFv && gsFv){
       const d=gsFv-tfFv, dp=Math.abs(d)/tfFv*100;
-      const dpSign = d/tfFv*100;  // 부호 있는 차이율
+      const dpSign = d/tfFv*100;
       if(dp<1.0)notes.push(`<b style="color:#059669">✓</b> TF·GS 거의 일치 (${d>=0?'+':''}${Math.round(d).toLocaleString()}원, ${dp.toFixed(2)}%) — 두 모형 결과가 같은 자릿수, 공정가치 신뢰도 양호`);
-      else if(dp<6.0)notes.push(`TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩. <b>5803 보고서도 동일한 -4.7% 차이</b>(모형 구조 차이로 정상 범위)`);
+      else if(dp<6.0)notes.push(`TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — TF와 GS는 본질적으로 할인 가정 차이로 인해 결과가 갈림`);
       else notes.push(`<b style="color:#B45309">⚠</b> TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — 차이가 매우 큼(±6% 초과). 콜·풋·강제전환 약정 활성 또는 가정 검토 필요`);
     }
     if(mcFv && tfFv && mc?.ci_lower!=null && mc?.ci_upper!=null){
@@ -2263,61 +2246,6 @@ function tabSwitch(name,btn){
   document.getElementById('tab-'+name)?.classList.add('active');
 }
 
-/* ══ 후속측정 attribution — K-IFRS 1109.B5.1.1 4-factor 분해 ══ */
-async function runAttribution(){
-  if(!lastReq){alert('먼저 RCPS 평가를 실행하세요.');return;}
-  const out = document.getElementById('attribution-result');
-  out.innerHTML = '<span style="color:var(--text3)">분석 중...</span>';
-  // 직전 입력값 검증
-  const prevDate = document.getElementById('prev_val_date').value;
-  const prevSP = getMoney('prev_stock_price');
-  const prevVol = parseFloat(document.getElementById('prev_volatility').value);
-  const prevRf = parseFloat(document.getElementById('prev_rf').value);
-  const prevCs = parseFloat(document.getElementById('prev_cs').value);
-  if(!prevDate || !prevSP || isNaN(prevVol) || isNaN(prevRf) || isNaN(prevCs)){
-    out.innerHTML = '<span style="color:var(--red)">5개 직전 입력값 모두 채워주세요.</span>';
-    return;
-  }
-  // 현재 입력값 (lastReq.params)
-  const currParams = lastReq.params;
-  const prevParams = Object.assign({}, currParams, {
-    valuation_date: prevDate,
-    stock_price: prevSP,
-    volatility: prevVol/100,
-    risk_free_rate: prevRf/100,
-    credit_spread: prevCs/100,
-  });
-  try{
-    const r = await fetch('/api/subsequent_attribution', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({prev: prevParams, curr: currParams, steps: lastReq.steps})
-    });
-    const j = await r.json();
-    if(j.status !== 'ok'){ out.innerHTML = `<span style="color:var(--red)">실패: ${j.message||'unknown'}</span>`; return; }
-    const e = j.effects;
-    const totalEffects = e.stock_price + e.volatility + e.interest_rates + e.time_decay;
-    const interaction = e.interaction;
-    out.innerHTML = `
-      <div style="padding:14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px">
-        <div style="font-size:.85rem;font-weight:700;color:#0369A1;margin-bottom:6px">평가손익 변동 분해 결과</div>
-        <div style="font-size:.78rem;margin-bottom:8px">
-          <b>직전 공정가치 ${fmtW(j.fv_prev)}</b> → <b>현재 공정가치 ${fmtW(j.fv_curr)}</b><br>
-          <span style="color:${j.change>=0?'#059669':'#DC2626'};font-weight:700">Δfv = ${j.change>=0?'+':''}${fmtW(j.change)} (${j.change_pct>=0?'+':''}${j.change_pct}%)</span>
-        </div>
-        <table class="dtable" style="font-size:.78rem"><thead><tr><th>요인</th><th style="text-align:right">효과</th><th style="text-align:right">비중</th><th>해석</th></tr></thead><tbody>
-          <tr><td>① 주가효과 (ΔS)</td><td style="text-align:right;color:${e.stock_price>=0?'#059669':'#DC2626'}">${e.stock_price>=0?'+':''}${fmtW(e.stock_price)}</td><td style="text-align:right">${pct(Math.abs(e.stock_price), Math.abs(totalEffects))}</td><td style="color:var(--text3)">주가 ${prevSP.toLocaleString()} → ${currParams.stock_price.toLocaleString()}</td></tr>
-          <tr><td>② 변동성효과 (Δσ)</td><td style="text-align:right;color:${e.volatility>=0?'#059669':'#DC2626'}">${e.volatility>=0?'+':''}${fmtW(e.volatility)}</td><td style="text-align:right">${pct(Math.abs(e.volatility), Math.abs(totalEffects))}</td><td style="color:var(--text3)">σ ${prevVol.toFixed(1)}% → ${(currParams.volatility*100).toFixed(1)}%</td></tr>
-          <tr><td>③ 금리효과 (Δr+Δcs)</td><td style="text-align:right;color:${e.interest_rates>=0?'#059669':'#DC2626'}">${e.interest_rates>=0?'+':''}${fmtW(e.interest_rates)}</td><td style="text-align:right">${pct(Math.abs(e.interest_rates), Math.abs(totalEffects))}</td><td style="color:var(--text3)">Rf ${prevRf}% → ${(currParams.risk_free_rate*100).toFixed(2)}% / cs ${prevCs}% → ${(currParams.credit_spread*100).toFixed(2)}%</td></tr>
-          <tr><td>④ 시간경과 (ΔT, theta)</td><td style="text-align:right;color:${e.time_decay>=0?'#059669':'#DC2626'}">${e.time_decay>=0?'+':''}${fmtW(e.time_decay)}</td><td style="text-align:right">${pct(Math.abs(e.time_decay), Math.abs(totalEffects))}</td><td style="color:var(--text3)">평가일 ${prevDate} → ${currParams.valuation_date}</td></tr>
-          <tr style="background:#FEF3C7"><td>⑤ 상호작용 (잔차)</td><td style="text-align:right">${interaction>=0?'+':''}${fmtW(interaction)}</td><td style="text-align:right">${pct(Math.abs(interaction), Math.abs(totalEffects))}</td><td style="color:var(--text3)">요인 간 결합 효과 (통상 |Δfv|의 5% 이내)</td></tr>
-          <tr style="font-weight:700;background:var(--bg2)"><td>합계</td><td style="text-align:right">${fmtW(j.change)}</td><td colspan="2" style="text-align:left;color:var(--text3)">= 실제 Δfv (정합 확인)</td></tr>
-        </tbody></table>
-        <div style="font-size:.7rem;color:var(--text3);margin-top:6px">${j.interpretation||''}</div>
-      </div>`;
-  }catch(err){
-    out.innerHTML = `<span style="color:var(--red)">요청 실패: ${err.message}</span>`;
-  }
-}
 
 /* ══ 이항트리 시트 뷰 ══ */
 async function loadTree(){
