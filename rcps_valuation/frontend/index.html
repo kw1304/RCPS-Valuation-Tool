@@ -125,6 +125,8 @@ footer.legal .right{text-align:right;flex:1;min-width:240px}
   .row2,.row3{grid-template-columns:1fr;gap:5px}
   .dcf-assump{flex-direction:column}
   .dcf-assump-grid{grid-template-columns:1fr 1fr !important;gap:6px}
+  .tv-method-row{grid-template-columns:1fr 1fr;gap:8px}
+  .tv-method-row .tv-hint{grid-column:1/-1}
   /* DCF 가정 7열 한 줄 → 모바일은 2열로 자동 줄바꿈 */
   .global-bar{padding:0.4rem 0.8rem;font-size:.72rem}
   .global-bar-hint{font-size:0.62rem;flex-basis:100%;line-height:1.3}
@@ -150,6 +152,7 @@ footer.legal .right{text-align:right;flex:1;min-width:240px}
   .sec-title{font-size:0.72rem}
   /* 더 좁은 폰: dcf 가정도 1열 */
   .dcf-assump-grid{grid-template-columns:1fr !important}
+  .tv-method-row{grid-template-columns:1fr !important}
   .dcf-sum-grid{grid-template-columns:1fr !important}
   .chart-wrap{height:200px !important}
 }
@@ -271,6 +274,11 @@ details.note-fold .note{margin-top:4px}
 .dcf-assump-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
 .dcf-assump-grid .field label{font-size:0.7rem}
 
+/* TV 산정 방식 — 입력 그리드와 시각적으로 통일 */
+.tv-method-row{display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(130px,1fr) 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.tv-method-row .field label{font-size:0.7rem}
+.tv-method-row .tv-hint{font-size:0.67rem;color:var(--text3);line-height:1.45;align-self:end;padding-bottom:0.1rem}
+
 .dcf-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .btn-sm{padding:0.42rem 0.9rem;border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all 0.15s;letter-spacing:-0.01em}
 .btn-sm.add{background:#EFF6FF;color:var(--accent);border-color:#BFDBFE}
@@ -278,6 +286,10 @@ details.note-fold .note{margin-top:4px}
 .btn-sm.del{background:#FEF2F2;color:var(--red);border-color:#FECACA}
 .btn-sm.send{background:var(--green);color:#fff}
 .btn-sm.send:hover{background:#00A862}
+.btn-sm.dl{background:var(--bg2);color:var(--text2);border-color:var(--border)}
+.btn-sm.dl:hover{background:var(--bg3);border-color:var(--text3)}
+.btn-sm.pull{background:#EDE9FE;color:#5B21B6;border-color:#DDD6FE}
+.btn-sm.pull:hover{background:#DDD6FE}
 .dcf-sp-badge{font-size:0.78rem;color:var(--accent);font-weight:700;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:0.38rem 0.85rem;display:none;letter-spacing:-0.01em}
 
 .dcf-table-wrap{background:var(--bg2);border-radius:14px;border:1px solid var(--border);overflow:auto;min-height:560px;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.06)}
@@ -321,7 +333,7 @@ details.note-fold .note{margin-top:4px}
 #page-boot{flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.2rem;gap:10px}
 .boot-dual{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
 .boot-sect{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.boot-sect-hd{background:var(--accent);color:#fff;text-align:center;font-weight:800;padding:.5rem 1rem;font-size:.78rem;letter-spacing:.04em;flex-shrink:0}
+.boot-sect-hd{background:var(--accent);color:#fff;text-align:center;font-weight:800;padding:.5rem 1rem;font-size:.78rem;letter-spacing:-0.01em;flex-shrink:0}
 .boot-sect-body{display:flex;overflow-x:auto;overflow-y:auto;max-height:580px;align-items:flex-start}
 .boot-col{flex-shrink:0;border-right:1px solid #DBEAFE}
 .bst{border-collapse:collapse;font-size:.685rem}
@@ -413,8 +425,8 @@ details.note-fold .note{margin-top:4px}
       </div>
     </div>
     <div class="row2">
-      <div class="field" style="display:flex;align-items:flex-end;gap:8px">
-        <button class="btn-run" id="contract-btn" onclick="parseContract()" style="margin:0">▶ 요약 생성</button>
+      <div class="field" style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn-run" id="contract-btn" onclick="parseContract()">▶ 요약 생성</button>
         <span id="contract-status" style="font-size:.78rem;color:var(--text3)"></span>
       </div>
       <div class="field"></div>
@@ -423,7 +435,7 @@ details.note-fold .note{margin-top:4px}
     <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
       <div style="font-weight:600;font-size:.84rem;margin-bottom:4px">또는 — 내 Claude Code 구독으로 무료 요약</div>
       <div class="note" style="margin-bottom:6px">① Claude Code에 <b>"이 계약서 요약해서 contract_summary.json으로 저장해줘"</b> 라고 요청(PDF 경로/첨부) → ② 아래 버튼으로 불러오기. <b>API 키·비용 불필요</b>, 기밀은 내 Claude 안에서 처리.</div>
-      <button class="btn-dl" onclick="loadContractFromFile()" style="margin:0">
+      <button class="btn-sm dl" onclick="loadContractFromFile()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Claude Code 요약 불러오기
       </button>
@@ -775,10 +787,7 @@ details.note-fold .note{margin-top:4px}
           <span style="font-size:.68rem;color:var(--text3)" title="CRR(단일 Kd)·MC(경로) 트리는 시각화 대상에서 제외 — 메인 분해는 TF가 단일 출처">TF·GS만 시각화</span>
           <span style="font-size:.8rem;font-weight:600;color:var(--text2);margin-left:8px">단계:</span>
           <span id="tree-steps-label" style="font-size:.8rem;font-weight:600;color:var(--accent)">평가 설정 따름</span>
-          <button onclick="loadTree()"
-                  style="font-size:.78rem;padding:3px 10px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">
-            트리 생성 / 새로고침
-          </button>
+          <button class="btn-sm add" onclick="loadTree()">트리 생성 / 새로고침</button>
           <span style="font-size:.72rem;color:var(--text3)">노드 많으면 중간 생략, 끝노드까지 표시</span>
           <span id="tree-status" style="font-size:.74rem;color:var(--text3)"></span>
         </div>
@@ -799,7 +808,7 @@ details.note-fold .note{margin-top:4px}
 
   <div class="dcf-assump">
     <div class="dcf-assump-hd">밸류에이션 가정</div>
-    <div class="dcf-assump-grid" style="grid-template-columns:minmax(90px,1fr) minmax(100px,1fr) minmax(90px,1fr) 1fr 1fr 1fr 1fr 1fr">
+    <div class="dcf-assump-grid" style="grid-template-columns:minmax(110px,1fr) minmax(120px,1fr) minmax(100px,1fr) minmax(100px,1fr) minmax(100px,1fr) 1fr 1fr 1fr">
       <div class="field"><label for="a_wacc">WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
       <div class="field"><label for="a_g" title="영구성장률. 일반적으로 명목 GDP 성장률(통상 3~4%) 이하 권장. WACC보다 작아야 함.">영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"></div>
       <div class="field"><label for="a_tax">기본 세율 (%)</label><input type="number" id="a_tax" value="25" step="0.5" oninput="dcfTaxFill()"></div>
@@ -816,25 +825,29 @@ details.note-fold .note{margin-top:4px}
       <span id="dcf-warn" style="font-size:.7rem;color:var(--amber);font-weight:600"></span>
     </div>
     <div id="dcf-steady" style="margin-top:6px;font-size:.72rem;line-height:1.5"></div>
-    <div style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px">
-      <span style="font-size:.72rem;font-weight:700;color:#0369A1">잔존가치(TV) 산정 방식:</span>
-      <select id="a_tv_method" onchange="dcfTvMethodChange()" title="Gordon: 마지막 FCFF가 영구히 g%씩 성장 가정. Multiple: 마지막 EBITDA × 배수. Weighted: 두 방식 50:50 가중.">
-        <option value="gordon" selected>Gordon (영구 성장 가정)</option>
-        <option value="multiple">Exit Multiple (배수 적용)</option>
-        <option value="weighted">두 방식 가중평균 (50:50)</option>
-      </select>
-      <label id="a_exit_mult_wrap" style="font-size:.72rem;color:var(--text2);display:none;align-items:center;gap:4px" title="EV/EBITDA = 기업 전체 가치 ÷ 연 EBITDA. 'EBITDA 몇 년치를 회수해야 본전인가' 비율.&#10;&#10;[산출 절차 (참고)]&#10;① 동종업계 상장사 EV/EBITDA 집계 (중앙값 또는 평균)&#10;② 비유동성 할인 적용 (K-IFRS 1113.B45)&#10;&#10;K-IFRS 1113.93(d) input 출처 공시 의무 — 비교회사 명단·할인 근거를 워크페이퍼에 기록.">
-        EV/EBITDA 배수
-        <input type="number" id="a_exit_mult" value="8" step="0.5" min="0" style="width:60px" oninput="dcfCalc()">
-        <button type="button" onclick="evCalcToggle()" style="font-size:.62rem;padding:2px 8px;background:#0EA5E9;color:#fff;border:none;border-radius:3px;cursor:pointer">자동 산출 도구</button>
-      </label>
-      <span id="a_tv_help" style="font-size:.68rem;color:#64748B">※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요</span>
+    <div class="tv-method-row">
+      <div class="field">
+        <label for="a_tv_method">잔존가치(TV) 산정 방식</label>
+        <select id="a_tv_method" onchange="dcfTvMethodChange()" title="Gordon: 마지막 FCFF가 영구히 g%씩 성장 가정. Multiple: 마지막 EBITDA × 배수. Weighted: 두 방식 50:50 가중.">
+          <option value="gordon" selected>Gordon (영구 성장 가정)</option>
+          <option value="multiple">Exit Multiple (배수 적용)</option>
+          <option value="weighted">두 방식 가중평균 (50:50)</option>
+        </select>
+      </div>
+      <div class="field" id="a_exit_mult_wrap" style="display:none" title="EV/EBITDA = 기업 전체 가치 ÷ 연 EBITDA. 'EBITDA 몇 년치를 회수해야 본전인가' 비율.&#10;&#10;[산출 절차 (참고)]&#10;① 동종업계 상장사 EV/EBITDA 집계 (중앙값 또는 평균)&#10;② 비유동성 할인 적용 (K-IFRS 1113.B45)&#10;&#10;K-IFRS 1113.93(d) input 출처 공시 의무 — 비교회사 명단·할인 근거를 워크페이퍼에 기록.">
+        <label for="a_exit_mult">EV/EBITDA 배수</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" id="a_exit_mult" value="8" step="0.5" min="0" oninput="dcfCalc()" style="flex:1;min-width:0">
+          <button type="button" class="btn-sm add" onclick="evCalcToggle()" style="white-space:nowrap;flex-shrink:0">자동 산출</button>
+        </div>
+      </div>
+      <div class="tv-hint" id="a_tv_help">※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요</div>
     </div>
     <!-- EV/EBITDA 자동 산출 도구 — TV 설정방식 바로 아래 (동종업계 상장사 평균만 사용) -->
     <div id="ev-calc-box" style="display:none;margin-top:8px;padding:12px 14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
         <h4 style="margin:0;font-size:.82rem;color:#0369A1">EV/EBITDA 자동 산출 — 동종업계 상장사 평균</h4>
-        <button onclick="evCalcToggle()" style="font-size:.68rem;padding:2px 8px;background:#fff;color:var(--text2);border:1px solid var(--border);border-radius:3px;cursor:pointer">닫기</button>
+        <button class="btn-sm dl" onclick="evCalcToggle()">닫기</button>
       </div>
       <div style="font-size:.68rem;color:var(--text2);line-height:1.6;margin-bottom:8px">
         평가기준일 기준으로 동종업계 상장사 EV/EBITDA를 자동 조회 후 집계(중앙값/평균)하고
@@ -844,8 +857,8 @@ details.note-fold .note{margin-top:4px}
       <!-- ① 동종업계 상장사 조회 -->
       <div style="margin-bottom:10px">
         <div style="display:flex;gap:6px;margin-bottom:6px">
-          <input type="text" id="ev-peer-tickers" placeholder="회사명 또는 ticker 쉼표 구분 (예: 코스맥스, 삼성전자, 192820, AAPL)" style="flex:1;font-size:.72rem;padding:4px 8px">
-          <button onclick="evFetchPeers()" style="font-size:.72rem;padding:4px 12px;background:#0EA5E9;color:#fff;border:none;border-radius:4px;cursor:pointer">조회</button>
+          <input type="text" id="ev-peer-tickers" placeholder="회사명 또는 ticker 쉼표 구분 (예: 코스맥스, 삼성전자, 192820, AAPL)" style="flex:1;font-size:.72rem;padding:0.45rem 0.7rem;background:var(--bg3);border:1.5px solid transparent;border-radius:8px;font-family:var(--sans);color:var(--text);outline:none" onfocus="this.style.borderColor='var(--accent)';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='var(--bg3)'">
+          <button class="btn-sm add" onclick="evFetchPeers()">조회</button>
         </div>
         <div id="ev-peer-result" style="font-size:.68rem;color:var(--text3)">한국 회사명·6자리 코드·해외 ticker 모두 인식. 평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용.</div>
       </div>
@@ -917,7 +930,7 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">① 무위험이자율 (Rf) · 시장위험프리미엄 (MRP)</div>
     <div class="row3">
       <div class="field"><label for="w_rf">무위험이자율 Rf (%)</label><input type="number" id="w_rf" value="3.0" step="0.05" oninput="waccRecalc()"></div>
-      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullRf()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 Rf 곡선 10년물 → Rf</button></div>
+      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-sm pull" onclick="waccPullRf()" style="width:100%;white-space:nowrap">부트스트랩 Rf 곡선 10년물 → Rf</button></div>
       <div class="field"><label>시장위험프리미엄 MRP (%) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">권장값↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_mrp" value="6.0" step="0.1" oninput="waccRecalc()" style="flex:1;min-width:0">
@@ -999,7 +1012,7 @@ details.note-fold .note{margin-top:4px}
       <div id="w-peer-search-drop" style="display:none;position:absolute;z-index:50;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:280px"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn-run" onclick="waccAddPeer()" style="padding:0.4rem 0.8rem;margin:0">+ 유사기업 추가</button>
+      <button class="btn-sm add" onclick="waccAddPeer()">+ 유사기업 추가</button>
       <span style="font-size:.7rem;color:var(--text3)">유사기업 칸에 회사명·코드 입력 후 <b>Enter</b> → β·D/E 자동</span>
       <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center;margin-left:auto"></span>
     </div>
@@ -1091,7 +1104,7 @@ details.note-fold .note{margin-top:4px}
     <div class="sec-title">④ 타인자본비용 (Kd)</div>
     <div class="row3">
       <div class="field"><label for="w_kd">세전 Kd (%)</label><input type="number" id="w_kd" value="5.0" step="0.05" oninput="waccRecalc()"></div>
-      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-run" onclick="waccPullKd()" style="margin:0;width:100%;padding:0.5rem">부트스트랩 Rd 곡선 5년물 → Kd</button></div>
+      <div class="field" style="display:flex;align-items:flex-end"><button class="btn-sm pull" onclick="waccPullKd()" style="width:100%;white-space:nowrap">부트스트랩 Rd 곡선 5년물 → Kd</button></div>
       <div class="field"><label for="w_kd_after">세후 Kd</label><input type="text" id="w_kd_after" readonly></div>
     </div>
     <details class="note-fold"><summary></summary><div class="note">Kd는 회사채 등급별 yield(예: KIS-NET 민평표) 또는 재무제표상 가중평균 차입금리. 세후 Kd = Kd × (1 − t).<br><b>Rf 10년 vs Kd 5년 만기 차이:</b> Rf는 CAPM 표준상 장기 자기자본위험을 반영해 10년 국고채를, Kd는 한국 회사채 일반발행 평균만기(3~5년)에 맞춰 5년 민평을 사용 — 한국 평가사 관행. 평가대상 부채구조 만기가 길면 Rd 10년물로 보간해 입력 권장.</div></details>
@@ -1202,7 +1215,7 @@ details.note-fold .note{margin-top:4px}
       <tbody id="vol-basket-body"></tbody>
     </table>
     <div class="note" id="vol-basket-empty" style="margin-top:6px">위 검색창에서 유사상장기업을 추가하세요.</div>
-    <button class="btn-run" id="vol-run" onclick="volRun()" style="margin-top:10px;max-width:200px">변동성 조회·산출</button>
+    <button class="btn-run" id="vol-run" onclick="volRun()" style="margin-top:10px">변동성 조회·산출</button>
   </div>
 
   <!-- CSV 업로드 -->
@@ -1221,7 +1234,7 @@ details.note-fold .note{margin-top:4px}
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
       <div>집계 변동성 σ = <span id="vol-sigma" style="font-size:1.6rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums">—</span></div>
       <button class="btn-run" id="vol-apply" onclick="volApplyToRcps()" style="padding:0.45rem 0.9rem">RCPS 평가에 적용</button>
-      <button class="btn-sm" id="vol-export" onclick="volExportCsv()" style="background:var(--bg2);color:var(--text2);border-color:var(--border)">원자료 CSV 내보내기</button>
+      <button class="btn-sm dl" id="vol-export" onclick="volExportCsv()">원자료 CSV 내보내기</button>
     </div>
     <div class="note" id="vol-meta" style="margin-top:8px"></div>
   </div>
