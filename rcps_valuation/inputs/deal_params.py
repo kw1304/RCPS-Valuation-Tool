@@ -302,23 +302,40 @@ class RCPSParams:
         return self.discount_rate
 
     def is_refixing_date(self, step: int, steps: int) -> bool:
-        if not self.refixing:
+        """리픽싱 발동 노드 판정.
+        - continuous: 모든 step (i>0)
+        - quarterly/semi-annual/annual: 해당 주기의 정수배 step에서만 1회 발동
+        - i=0 (평가시점) 또는 i>=steps (만기 도달 후)는 발동 안 함
+        - 이전 코드는 ±dt 윈도우로 분기 경계 양옆 발동 → 분기당 2회 발동 버그
+        """
+        if not self.refixing or step <= 0 or step >= steps:
             return False
         freq = self.refixing_frequency
         if freq == "continuous":
             return True
-        dt = self.T / steps
-        t = step * dt
-        if freq == "quarterly":
-            interval = 0.25
-        elif freq == "semi-annual":
-            interval = 0.5
-        elif freq == "annual":
-            interval = 1.0
-        else:
+        interval = {"quarterly": 0.25, "semi-annual": 0.5, "annual": 1.0}.get(freq)
+        if interval is None:
             return True
-        rem = t % interval
-        return rem < dt or (interval - rem) < dt
+        # 주기 단위 step 간격 (반올림 정수)
+        interval_steps = max(1, round(interval * steps / self.T))
+        return (step % interval_steps) == 0
+
+    def date_to_step(self, target, steps: int) -> int:
+        """이벤트 일자 → 트리 step 인덱스 변환 (모형 간 통일 컨벤션 — round).
+        - target=None → steps (활성화 없음)
+        - target > maturity → steps+1 (절대 활성화 안 됨)
+        - target ≤ valuation → 0 (즉시 활성)
+        이전엔 4개 모듈이 truncate/round 혼용 → 풋 활성 시점 1스텝 어긋남.
+        round로 단일화 (자연스러운 의도 매칭, 5803 표준).
+        """
+        if target is None:
+            return steps
+        if target > self.maturity_date:
+            return steps + 1
+        days = (target - self.valuation_date).days
+        if days <= 0:
+            return 0
+        return min(int(round(days / (self.T * 365) * steps)), steps)
 
 
 def _interp_rate(curve: List[Tuple[float, float]], t: float) -> float:

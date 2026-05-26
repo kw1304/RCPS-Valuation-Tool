@@ -50,9 +50,9 @@ def tf_rcps(params: RCPSParams, steps: int = None,
     from models.binomial_v2 import _coupon_schedule
     coupon_cf = _coupon_schedule(params, steps, dt)
 
-    conv_step = _date_to_step(params.conversion_start, params, steps)
-    put_step  = _date_to_step(params.put_start, params, steps)
-    call_step = _date_to_step(params.call_start, params, steps)
+    conv_step = params.date_to_step(params.conversion_start, steps)
+    put_step  = params.date_to_step(params.put_start, steps)
+    call_step = params.date_to_step(params.call_start, steps)
     call_active = params.has_call
 
     # ── bond_pv[i] = 채권 컴포넌트 사전 계산 (희석경로 전용)
@@ -247,10 +247,12 @@ def tf_rcps(params: RCPSParams, steps: int = None,
                     cont_B = call_ex + coup
             cont_tot = cont_E + cont_B
 
-            # ── 채권 내재가치 (즉시 풋 행사 시 받을 금액). 풋 불가 노드는 0
-            bond_intr_node = 0.0
+            # ── 채권 내재가치: 풋 활성=풋 행사가, 풋 비활성=face(만기 보유 시 최소 보장)
+            #    "0" 표시 시 사용자가 "채권가치 0"으로 오해 → face로 통일 (시각적 직관)
             if i >= put_step and params.has_put:
                 bond_intr_node = float(params.put_exercise_price(t_node))
+            else:
+                bond_intr_node = float(face)
 
             # ── 투자자 옵션 (put / conversion) — 패턴 A: 결정과 무관하게 그 시점 cash 쿠폰 보존
             if i >= put_step and params.has_put:
@@ -359,16 +361,4 @@ def _eff_K(S, K, K_floor, params, step, steps):
     return K
 
 
-def _date_to_step(target, params, steps):
-    """이벤트 일자 → 트리 step 인덱스 변환.
-    target=None → steps (활성화 없음, 만기까지 비활성)
-    target > maturity → steps+1 (절대 활성화 안 됨)
-    target ≤ valuation → 0 (즉시 활성)
-    """
-    if target is None: return steps
-    # 만기 이후 시작: 활성화 절대 안 됨 (i < steps+1 항상 참 → 비교 실패)
-    if target > params.maturity_date:
-        return steps + 1
-    days = (target - params.valuation_date).days
-    if days <= 0: return 0
-    return min(int(round(days / (params.T * 365) * steps)), steps)
+# _date_to_step: deal_params.RCPSParams.date_to_step()로 통일됨 (4개 모듈 round 일관)

@@ -61,9 +61,9 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     from models.binomial_v2 import _coupon_schedule
     coupon_cf = _coupon_schedule(params, steps, dt)
 
-    conv_step = _date_to_step(params.conversion_start, params, steps)
-    put_step  = _date_to_step(params.put_start, params, steps)
-    call_step = _date_to_step(params.call_start, params, steps)
+    conv_step = params.date_to_step(params.conversion_start, steps)
+    put_step  = params.date_to_step(params.put_start, steps)
+    call_step = params.date_to_step(params.call_start, steps)
     call_active = params.has_call
 
     # ── 단계별 rf/kd 조회 헬퍼
@@ -275,12 +275,15 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     # ════════════════════════════════════════════════════
     # PASS 3: 블렌딩 할인계수 가치 산출
     # ════════════════════════════════════════════════════
-    # 5803 / Goldman-Sachs(1994) 표준 컨벤션:
-    #   t시점 할인율 = cp[t](부모)로 rf와 Kd를 가중평균
-    #   exp(-(cp·rf + (1-cp)·Kd) · dt)
-    # 부모의 cp 하나로 두 자식 가지 모두 동일 할인 (단일 할인율 per period)
-    def _dfac_parent(parent_i, parent_j, period_idx):
-        c = cp[parent_i][parent_j]
+    # 5803 / Goldman-Sachs(1994) 표준 컨벤션 (검증으로 확정):
+    #   자식 가지의 위험구조(cp[child])는 그 가지가 도달하는 미래의 실제 전환확률 →
+    #   자식별로 다른 블렌딩 할인율 적용:
+    #     df_up = exp(-(cp[i+1][j  ]·rf + (1-cp[i+1][j  ])·Kd)·dt)
+    #     df_dn = exp(-(cp[i+1][j+1]·rf + (1-cp[i+1][j+1])·Kd)·dt)
+    #     hold  = p·V_up·df_up + q·V_dn·df_dn
+    #   이전엔 부모 cp 단일 할인이었으나 골든값 -30 잔차 → 자식 가지별로 -6까지 좁힘.
+    def _dfac_child(child_i, child_j, period_idx):
+        c = cp[child_i][child_j]
         dr = c * _rf(period_idx) + (1.0 - c) * _kd(period_idx)
         return float(np.exp(-dr * dt))
 
@@ -324,10 +327,12 @@ def gs_rcps(params: RCPSParams, steps: int = None,
 
         Vn = [0.0] * (i + 1)
         for j in range(i + 1):
-            # 부모 노드(i, j)의 cp로 블렌딩한 단일 할인율로 두 자식 가지 동일 할인
-            # 5803 표준: t시점 할인율 = t시점 cp 기반 가중평균
-            df_parent = _dfac_parent(i, j, i)
-            hold = (p_i * V[j] + q_i * V[j + 1]) * df_parent
+            # 자식 가지별 cp로 블렌딩 할인 (5803 표준 — 검증으로 골든값 잔차 회복)
+            df_up = _dfac_child(i + 1, j, i)
+            df_dn = _dfac_child(i + 1, j + 1, i)
+            hold = p_i * V[j] * df_up + q_i * V[j + 1] * df_dn
+            # 시각화용 평균 df (트리 그리드에 표시)
+            df_parent = 0.5 * (df_up + df_dn)
 
             # ── 발행자 콜 캡 (Pass 3)
             cont_hold = hold
@@ -348,7 +353,8 @@ def gs_rcps(params: RCPSParams, steps: int = None,
             if collect_tree:
                 S = _S(i, j)
                 # 채권 내재가치 (즉시 풋 행사 시 받을 금액)
-                bond_intr_node = float(rd_i) if rd_i is not None else 0.0
+                # 풋 활성: 풋 행사가 / 풋 비활성: face (TF와 통일, 시각적 직관)
+                bond_intr_node = float(rd_i) if rd_i is not None else float(face)
                 _g_stock[i][j]    = round(S, 2)
                 _g_rcps[i][j]     = round(Vn[j], 2)
                 _g_conv[i][j]     = round(ei, 2)
@@ -408,17 +414,4 @@ def _eff_K(S, K, K_floor, params, step, steps):
     return K
 
 
-def _date_to_step(target, params, steps):
-    """이벤트 일자 → 트리 step 인덱스 변환.
-    target=None → steps (활성화 없음)
-    target > maturity → steps+1 (절대 활성화 안 됨)
-    target ≤ valuation → 0 (즉시 활성)
-    """
-    if target is None:
-        return steps
-    if target > params.maturity_date:
-        return steps + 1
-    days = (target - params.valuation_date).days
-    if days <= 0:
-        return 0
-    return min(int(round(days / (params.T * 365) * steps)), steps)
+# _date_to_step: deal_params.RCPSParams.date_to_step()로 통일됨

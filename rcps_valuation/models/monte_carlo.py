@@ -91,8 +91,8 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
             else:
                 K_path[:, t] = np.where(trig, prop, float(K))
 
-    conv_step = _date_to_step(params.conversion_start, params, n_steps)
-    put_step  = _date_to_step(params.put_start, params, n_steps)
+    conv_step = params.date_to_step(params.conversion_start, n_steps)
+    put_step  = params.date_to_step(params.put_start, n_steps)
 
     # ── 경로의존 배리어 사전계산 (Parisian: window 중 count회 충족) ──
     def _parisian(cond, window, count):
@@ -237,10 +237,4 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     }
 
 
-def _date_to_step(target, params, steps):
-    if target is None: return steps
-    if target > params.maturity_date:
-        return steps + 1  # 만기 이후 시작 → 활성화 안 됨
-    days = (target - params.valuation_date).days
-    if days <= 0: return 0
-    return min(int(days / (params.T * 365) * steps), steps)
+# _date_to_step: deal_params.RCPSParams.date_to_step()로 통일됨 (이전 truncate → round)

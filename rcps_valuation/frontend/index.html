@@ -759,6 +759,7 @@ details.note-fold .note{margin-top:4px}
           <span style="font-size:.8rem;font-weight:600;color:var(--text2)">모델:</span>
           <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" id="tree-model-tf" value="tf" checked onchange="renderTreeGrids()"> TF</label>
           <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" id="tree-model-gs" value="gs" onchange="renderTreeGrids()"> GS</label>
+          <span style="font-size:.68rem;color:var(--text3)" title="CRR(단일 Kd)·MC(경로) 트리는 시각화 대상에서 제외 — 메인 분해는 TF가 단일 출처">TF·GS만 시각화</span>
           <span style="font-size:.8rem;font-weight:600;color:var(--text2);margin-left:8px">단계:</span>
           <span id="tree-steps-label" style="font-size:.8rem;font-weight:600;color:var(--accent)">평가 설정 따름</span>
           <button onclick="loadTree()"

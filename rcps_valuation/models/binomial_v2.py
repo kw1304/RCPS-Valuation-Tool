@@ -43,8 +43,8 @@ def rcps_binomial(params: RCPSParams, steps: int = None) -> dict:
 
     # ── 스텝별 사전 계산: 쿠폰, 전환·풋 가능 여부
     coupon_cf = _coupon_schedule(params, steps, dt)      # step→쿠폰 금액
-    conv_step = _date_to_step(params.conversion_start, params, steps)
-    put_step  = _date_to_step(params.put_start, params, steps)
+    conv_step = params.date_to_step(params.conversion_start, steps)
+    put_step  = params.date_to_step(params.put_start, steps)
 
     # ── 주가 트리 (말단 노드)
     S_terminal = np.array([S0 * (u ** (steps - j)) * (d ** j) for j in range(steps + 1)])
@@ -308,12 +308,4 @@ def _eff_K(S, K, K_floor, params: RCPSParams, step: int, steps: int) -> float:
     return K
 
 
-def _date_to_step(target, params: RCPSParams, steps: int) -> int:
-    if target is None:
-        return steps  # 해당 없으면 만기 이후
-    if target > params.maturity_date:
-        return steps + 1  # 만기 이후 시작 → 절대 활성화 안 됨
-    days = (target - params.valuation_date).days
-    if days <= 0:
-        return 0
-    return min(int(days / (params.T * 365) * steps), steps)
+# _date_to_step: deal_params.RCPSParams.date_to_step()로 통일됨 (이전 truncate → round)
