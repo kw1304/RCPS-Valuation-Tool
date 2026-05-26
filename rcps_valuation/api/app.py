@@ -2317,6 +2317,194 @@ _threading.Thread(target=_preload_stock_listing, daemon=True).start()
 
 
 # ══════════════════════════════════════════════════════════════
+#  EV/EBITDA 자동 조회 (yfinance) — 비상장 RCPS DCF Exit Multiple 산출 보조
+# ══════════════════════════════════════════════════════════════
+def _find_ebitda_at(ticker_obj, target_date_str):
+    """target_date 이하 가장 가까운 period의 EBITDA 추출. 분기 우선, 없으면 연간."""
+    try:
+        import pandas as pd
+    except Exception:
+        return None
+    target = pd.Timestamp(target_date_str)
+    for fin_attr in ('quarterly_financials', 'financials'):
+        fin = getattr(ticker_obj, fin_attr, None)
+        if fin is None or fin.empty:
+            continue
+        # EBITDA 직접 찾기
+        ebitda_row = None
+        for key in ('EBITDA', 'Normalized EBITDA'):
+            if key in fin.index:
+                ebitda_row = key; break
+        # EBITDA 없으면 영업이익 + 감가상각비로 계산
+        if ebitda_row is None:
+            op_inc = None; dep = None
+            for k in ('Operating Income', 'EBIT'):
+                if k in fin.index: op_inc = k; break
+            for k in ('Reconciled Depreciation', 'Depreciation', 'Depreciation And Amortization'):
+                if k in fin.index: dep = k; break
+            if op_inc is None: continue
+        # 가장 가까운 period
+        valid_cols = []
+        for c in fin.columns:
+            try:
+                if pd.Timestamp(c) <= target:
+                    if ebitda_row:
+                        if pd.notna(fin.loc[ebitda_row, c]):
+                            valid_cols.append((c, float(fin.loc[ebitda_row, c])))
+                    else:
+                        oi = fin.loc[op_inc, c] if op_inc in fin.index else None
+                        dp = fin.loc[dep, c] if dep and dep in fin.index else 0
+                        if pd.notna(oi):
+                            valid_cols.append((c, float(oi) + (float(dp) if pd.notna(dp) else 0)))
+            except Exception:
+                continue
+        if not valid_cols:
+            continue
+        best = max(valid_cols, key=lambda x: x[0])
+        # 분기 데이터는 4개 분기 합산 (TTM)으로 연환산
+        if fin_attr == 'quarterly_financials':
+            ttm_cols = [v for c, v in valid_cols if (target - pd.Timestamp(c)).days <= 400]
+            if len(ttm_cols) >= 4:
+                return (str(best[0].date()), sum(ttm_cols[:4]), 'quarterly_ttm')
+            elif ttm_cols:
+                return (str(best[0].date()), sum(ttm_cols) * (4.0 / len(ttm_cols)), 'quarterly_annualized')
+        return (str(best[0].date()), best[1], fin_attr)
+    return None
+
+
+@app.route("/api/dcf/peer_multiples", methods=["POST"])
+def dcf_peer_multiples():
+    """비교회사 EV/EBITDA 자동 산출 (평가기준일 기준).
+
+    EV = 시총 + 순차입금 (단순화: 총차입금 − 현금)
+    EBITDA = 직접 항목 우선, 없으면 영업이익 + 감가상각비
+    배수 = EV / EBITDA
+
+    body: {tickers:[...], date:'YYYY-MM-DD' (선택)}
+    """
+    data = request.get_json(force=True) or {}
+    tickers = [str(t).strip() for t in (data.get("tickers") or []) if str(t).strip()]
+    if not tickers:
+        return jsonify({"status": "error", "message": "종목이 비어있습니다."}), 200
+    date_str = (data.get("date") or "").strip() or None
+    try:
+        import yfinance as yf
+        import pandas as pd
+    except Exception:
+        return jsonify({"status": "error", "message": "yfinance/pandas 미설치"}), 200
+
+    listing_map = {}
+    try:
+        for r in _stock_listing():
+            listing_map[r["code"]] = r["market"]
+    except Exception:
+        pass
+
+    results = []
+    for code in tickers:
+        ysym = _to_yahoo_symbol(code, listing_map)
+        try:
+            t = yf.Ticker(ysym)
+            info = t.info or {}
+            name = info.get('shortName') or info.get('longName') or code
+
+            # 1) 시총·순차입금 (date 매칭 또는 현시점)
+            mc = info.get('marketCap')
+            net_debt = None
+            period_end = None
+            if date_str:
+                bs = _find_bs_at(t, date_str)
+                if bs:
+                    period_end, td, _eq = bs
+                    # 현금 추출
+                    cash = None
+                    try:
+                        for bs_attr in ('quarterly_balance_sheet', 'balance_sheet'):
+                            bs_df = getattr(t, bs_attr, None)
+                            if bs_df is None or bs_df.empty: continue
+                            for cash_row in ('Cash And Cash Equivalents', 'Cash Cash Equivalents And Short Term Investments'):
+                                if cash_row in bs_df.index:
+                                    col = pd.Timestamp(period_end)
+                                    if col in bs_df.columns and pd.notna(bs_df.loc[cash_row, col]):
+                                        cash = float(bs_df.loc[cash_row, col]); break
+                            if cash is not None: break
+                    except Exception: pass
+                    net_debt = td - (cash or 0)
+                # 평가기준일 종가 × 발행주식수로 시총 재계산
+                try:
+                    import FinanceDataReader as fdr
+                    px = fdr.DataReader(code, date_str, date_str)
+                    if not px.empty:
+                        close = float(px['Close'].iloc[-1])
+                        shares = info.get('sharesOutstanding')
+                        if shares:
+                            mc = close * shares
+                except Exception:
+                    pass
+            else:
+                # 현시점: info에서 직접
+                td_info = info.get('totalDebt')
+                cash_info = info.get('totalCash')
+                if td_info is not None:
+                    net_debt = td_info - (cash_info or 0)
+
+            # 2) EBITDA
+            ebitda = None
+            ebitda_period = None
+            ebitda_source = None
+            if date_str:
+                eb = _find_ebitda_at(t, date_str)
+                if eb:
+                    ebitda_period, ebitda, ebitda_source = eb
+            if ebitda is None:
+                # 현시점 fallback
+                ebitda = info.get('ebitda')
+                ebitda_source = 'info'
+
+            # 3) EV·배수 산출
+            ev = None; multiple = None
+            if mc is not None and net_debt is not None:
+                ev = mc + net_debt
+            if ev is not None and ebitda and ebitda > 0:
+                multiple = ev / ebitda
+
+            results.append({
+                "ticker": code,
+                "name": name,
+                "market_cap": mc,
+                "net_debt": net_debt,
+                "ebitda": ebitda,
+                "ebitda_period": ebitda_period,
+                "ebitda_source": ebitda_source,
+                "enterprise_value": ev,
+                "ev_ebitda": multiple,
+                "period_end": period_end,
+            })
+        except Exception as e:
+            results.append({"ticker": code, "error": str(e)[:150]})
+
+    # 통계 (정상값만)
+    valid_multiples = [r["ev_ebitda"] for r in results if r.get("ev_ebitda") and 0 < r["ev_ebitda"] < 100]
+    median = None; mean = None
+    if valid_multiples:
+        s = sorted(valid_multiples)
+        n = len(s)
+        median = s[n//2] if n % 2 else (s[n//2-1] + s[n//2]) / 2
+        mean = sum(s) / n
+
+    return jsonify({
+        "status": "ok",
+        "date": date_str,
+        "peers": results,
+        "summary": {
+            "n_valid": len(valid_multiples),
+            "median": median,
+            "mean": mean,
+        },
+    })
+
+
+# ══════════════════════════════════════════════════════════════
 #  상세 Excel 다운로드 라우트 (DCF · WACC · 부트스트래핑)
 # ══════════════════════════════════════════════════════════════
 @app.route("/api/dcf/export", methods=["POST"])
