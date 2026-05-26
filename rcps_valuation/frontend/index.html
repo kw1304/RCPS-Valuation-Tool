@@ -2081,26 +2081,34 @@ function renderRCPS(data){
       <div class="comp-card"><div class="cn">② 전환(지분) 성분 (E)</div><div class="cv">${fmtW(mcv)}</div><div class="cs">MC 2-component 지분측 성분 (래칫 리픽싱 반영)</div><div class="cpct">${pct(mcv,mcFv)}</div></div>
       <div class="comp-card total"><div class="cn">MC 공정가치 (Main) — Monte Carlo LSM &nbsp;|&nbsp; paths = ${mc?.n_paths||'—'}</div><div class="cv">${fmtW(mcFv)}</div><div class="cs">① ${fmtW(mbp)} + ② ${fmtW(mcv)} ${mc?.ci_lower!=null?`&nbsp;|&nbsp; 95% CI ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}`:''}</div></div>`;
   }else{
-    // TF 본래 2-component 분해 (E[0]/B[0]) — Tsiveriotis-Fernandes(1998) 원본
+    // 메인 3-way 분해 (한국 평가실무 표준)
     const tfE=tf?.equity_component, tfB=tf?.bond_component;
     document.getElementById('comp-grid').innerHTML=`
-      <div class="comp-card"><div class="cn">① 순채권가치 (Bond)</div><div class="cv">${fmtW(bv)}</div><div class="cs">전환·풋 미반영 순채권 현재가치 (Kd 할인)</div><div class="cpct">${pct(bv,tfFv)}</div></div>
-      <div class="comp-card"><div class="cn">② 풋옵션가치 (Put)</div><div class="cv">${fmtW(pv)}</div><div class="cs">풋채권가치 − 순채권가치 = ${fmtW(tf?.put_bond_value)}</div><div class="cpct">${pct(pv,tfFv)}</div></div>
-      <div class="comp-card"><div class="cn">③ 전환권가치 (Call)</div><div class="cv">${fmtW(cv)}</div><div class="cs">총 공정가치 − 풋채권가치 (TF 2-component 기반)</div><div class="cpct">${pct(cv,tfFv)}</div></div>
-      <div class="comp-card total"><div class="cn">TF 공정가치 (Main 1) — Tsiveriotis-Fernandes &nbsp;|&nbsp; steps = ${tf?.steps||r.steps}</div><div class="cv">${fmtW(tfFv)}</div><div class="cs">① ${fmtW(bv)} + ② ${fmtW(pv)} + ③ ${fmtW(cv)}</div></div>`;
-    // TF 본래 2-component (VE/VD) — Tsiveriotis-Fernandes(1998) 학술 표준
+      <div class="comp-card"><div class="cn">① 순채권가치</div><div class="cv">${fmtW(bv)}</div><div class="cs">발행자가 만기에 보장한 금액의 현재가치<br><span style="color:var(--text3);font-size:.66rem">전환·풋 권리가 없다고 가정한 가상 채권</span></div><div class="cpct">${pct(bv,tfFv)}</div></div>
+      <div class="comp-card"><div class="cn">② 풋옵션가치</div><div class="cv">${fmtW(pv)}</div><div class="cs">만기 전에 상환 청구할 권리의 가치<br><span style="color:var(--text3);font-size:.66rem">풋채권 ${fmtWs(tf?.put_bond_value)} − 순채권 ${fmtWs(bv)}</span></div><div class="cpct">${pct(pv,tfFv)}</div></div>
+      <div class="comp-card"><div class="cn">③ 전환권가치</div><div class="cv">${fmtW(cv)}</div><div class="cs">주식으로 바꿀 권리가 가져다주는 추가 가치<br><span style="color:var(--text3);font-size:.66rem">공정가치 − 풋채권 (보장 위에 얹어지는 옵션 가치)</span></div><div class="cpct">${pct(cv,tfFv)}</div></div>
+      <div class="comp-card total"><div class="cn">TF 공정가치 — Tsiveriotis-Fernandes &nbsp;|&nbsp; steps = ${tf?.steps||r.steps}</div><div class="cv">${fmtW(tfFv)}</div><div class="cs">① ${fmtW(bv)} + ② ${fmtW(pv)} + ③ ${fmtW(cv)}</div></div>`;
+    // 보조: 위험 분리 2-way 분해 (전환경로 vs 비전환경로)
     if(tfE!=null && tfB!=null){
       const tf2cEl = document.getElementById('tf-2comp');
       if(tf2cEl){
-        tf2cEl.innerHTML = `<div style="margin-top:8px;padding:10px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;font-size:.74rem;line-height:1.65">
-          <b style="color:#0369A1">TF 본래 2-component 분해 (Tsiveriotis-Fernandes 1998 학술 분해)</b>
-          <table style="width:100%;margin-top:6px;font-size:.7rem;border-collapse:collapse">
-            <tr><td style="padding:2px 4px">VE (지분 성분, E[0])</td><td style="text-align:right;padding:2px 4px">${fmtW(tfE)}</td><td style="padding:2px 4px;color:var(--text3)">전환 가능성 반영</td></tr>
-            <tr><td style="padding:2px 4px">VD (채권 성분, B[0])</td><td style="text-align:right;padding:2px 4px">${fmtW(tfB)}</td><td style="padding:2px 4px;color:var(--text3)">만기상환·풋 보장</td></tr>
-            <tr style="font-weight:600;background:#FFFFFF"><td style="padding:2px 4px">합계 = 공정가치</td><td style="text-align:right;padding:2px 4px">${fmtW(tfE+tfB)}</td><td style="padding:2px 4px"></td></tr>
+        tf2cEl.innerHTML = `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.78rem;font-weight:600;color:#0369A1;padding:6px 0">▸ 위험 분리 분해 보기 (지분/채권 2-성분)</summary>
+        <div style="padding:10px 12px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;font-size:.74rem;line-height:1.65">
+          <div style="font-size:.7rem;color:var(--text2);margin-bottom:6px">
+            위 ①②③은 <b>"발행자 보장 + 보유자 옵션"</b>으로 쪼갠 분해이고,<br>
+            아래는 <b>"전환되는 경로 vs 끝까지 보유한 경로"</b>로 쪼갠 분해입니다. 합계는 같습니다.
+          </div>
+          <table style="width:100%;margin-top:6px;font-size:.72rem;border-collapse:collapse">
+            <tr><td style="padding:3px 4px"><b>지분 부분</b><br><span style="font-size:.65rem;color:var(--text3)">전환되는 경로에서 받는 주식가치 (무위험이자율로 할인)</span></td><td style="text-align:right;padding:3px 4px;font-weight:600">${fmtW(tfE)}</td></tr>
+            <tr><td style="padding:3px 4px"><b>채권 부분</b><br><span style="font-size:.65rem;color:var(--text3)">끝까지 보유 시 받는 채권가치 (신용조정 할인율로 할인)</span></td><td style="text-align:right;padding:3px 4px;font-weight:600">${fmtW(tfB)}</td></tr>
+            <tr style="background:#FFFFFF"><td style="padding:3px 4px;font-weight:700">합계 = 공정가치</td><td style="text-align:right;padding:3px 4px;font-weight:700">${fmtW(tfE+tfB)}</td></tr>
           </table>
-          <div style="font-size:.66rem;color:var(--text3);margin-top:3px">※ 위 ①②③(흡수형 3-way)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점, 본 2-way는 학술 분해. 평가법인 보고서마다 채택 컨벤션 상이.</div>
-        </div>`;
+          <div style="font-size:.66rem;color:var(--text3);margin-top:6px;line-height:1.5">
+            <b>지분 부분(${fmtWs(tfE)}) ≠ 전환권가치(${fmtWs(cv)})</b>인 이유:<br>
+            지분 부분은 "전환 시 받는 주식 가치 전체"를 포함하지만, 전환권가치는 "발행자 보장(채권+풋) 위에 추가로 받는 부분"만 잡습니다.
+            전환 시 받는 주식 가치 중 "원래 보장된 부분"이 한쪽은 지분 부분에, 한쪽은 채권+풋옵션에 들어갑니다.
+          </div>
+        </div></details>`;
       }
     }
   }
