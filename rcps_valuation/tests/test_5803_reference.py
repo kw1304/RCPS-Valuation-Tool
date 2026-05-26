@@ -36,13 +36,18 @@ RD_SPOT = [
     (4.25, 0.20964), (4.5, 0.21124), (4.75, 0.21292), (5.0, 0.21470),
 ]
 
-# 5803 reference 분해 (보고서 명시값)
+# 5803 reference (보고서 TF 시트 명시값 — TF/T&F Without Call 분해)
 REF = {
-    "fair_value":       120_767_169_439,
+    "fair_value":       120_767_169_439,   # TF 모형 공정가치 (5803 TF Without Call)
     "bond_value":        78_262_381_242,
     "put_option_value":   6_487_553_563,
     "put_bond_value":    84_749_934_805,
     "conversion_value":  36_017_234_632,
+}
+
+# 5803 reference (보고서 GS 시트 명시값 — GS Without Call)
+REF_GS = {
+    "fair_value":       115_103_574_039,   # GS 모형 공정가치 (5803 GS Without Call)
 }
 
 
@@ -142,11 +147,25 @@ def test_MC_5803_정합(all_models_5803):
     assert abs(diff_pct) < 0.02, f"MC 공정가치 차이 {diff_pct*100:.2f}% — 2% 초과"
 
 
-def test_GS_모형_차이_허용범위(all_models_5803):
-    """GS는 블렌딩 할인 모형이라 TF와 본질적 차이. 절대값 ±8% 이내 (모형 차이로 허용).
+def test_GS_5803_정합(all_models_5803):
+    """GS 모형은 5803 GS 시트 ref와 ±1% 이내 정합.
 
-    GS·TF 차이는 K-IFRS 13.93(g) Level 3 측정 불확실성 공시 대상.
-    회계 평가실무에서 GS·TF는 모두 사용 가능한 컨벤션 (보고서에 채택 모형 명시 필수).
+    이전에 GS를 5803 TF ref(120.77bn)와 비교한 게 잘못된 기준이었음 (2026-05-27).
+    5803 보고서는 TF·GS 두 모형 모두 산출 — 각 모형별로 별도 ref 비교가 정확.
     """
-    gs_diff_from_tf = (all_models_5803["gs"]["fair_value"] - all_models_5803["tf"]["fair_value"]) / all_models_5803["tf"]["fair_value"]
-    assert abs(gs_diff_from_tf) < 0.08, f"GS·TF 모형 차이 {gs_diff_from_tf*100:.2f}% — 8% 초과 (가정·약정 차이 가능성)"
+    gs_fv = all_models_5803["gs"]["fair_value"]
+    diff_pct = (gs_fv - REF_GS["fair_value"]) / REF_GS["fair_value"]
+    assert abs(diff_pct) < 0.01, f"GS 공정가치 차이 {diff_pct*100:.2f}% — 1% 초과 (5803 GS ref 115.10bn 대비)"
+
+
+def test_TF_GS_모형_차이_합리적(all_models_5803):
+    """GS·TF 차이는 모형 구조(블렌딩 vs 분리할인)에서 발생.
+
+    5803 보고서: TF 120.77bn − GS 115.10bn = -4.7% (5803도 동일 차이 인정).
+    K-IFRS 13.93(g) Level 3 측정 불확실성 공시 대상.
+    """
+    diff = (all_models_5803["gs"]["fair_value"] - all_models_5803["tf"]["fair_value"]) / all_models_5803["tf"]["fair_value"]
+    # 우리 모델: -5.22%, 5803: -4.7% → ±1.5%p 이내면 정합
+    expected_diff = -0.047  # 5803 보고서의 TF·GS 차이
+    assert abs(diff - expected_diff) < 0.015, \
+        f"TF·GS 모형 차이 {diff*100:.2f}% — 5803 보고서 차이({expected_diff*100:.2f}%) 대비 ±1.5%p 초과"
