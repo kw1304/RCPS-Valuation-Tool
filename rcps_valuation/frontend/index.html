@@ -2288,47 +2288,83 @@ function renderRightsTimeline(p){
   const totalMs = mat - issue;
   const pos = (d) => d ? Math.max(0, Math.min(100, ((d - issue) / totalMs) * 100)) : null;
 
-  // 시간선 위에 마커·구간 표시
-  const pVal = pos(valDate);
-  const pConv = pos(conv);
-  const pPut = pos(put);
-  const pCall = pos(call);
-
-  // 활성 구간 (해당 시점 ~ 만기) — 우상향 음영
-  const activeBar = (color, label, startPos) => startPos != null
-    ? `<div title="${label}" style="position:absolute;left:${startPos}%;right:0;height:8px;background:${color};opacity:.5;border-radius:2px"></div>`
-    : '';
-
-  // 마커 (점 + 라벨 + 날짜)
   const fmtD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  const marker = (p, label, dateStr, color, labelAbove=true) => {
-    if(p == null) return '';
-    return `<div style="position:absolute;left:${p}%;top:0;bottom:0;width:2px;background:${color};transform:translateX(-1px)">
-      <div style="position:absolute;${labelAbove?'top:-32px':'bottom:-32px'};left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.62rem;font-weight:600;color:${color}">${label}<br><span style="font-weight:400;color:var(--text3)">${dateStr}</span></div>
+
+  // ── 마커 리스트 구성
+  const allMarkers = [
+    {pos: 0,             label: '발행일',      date: fmtD(issue),    color: '#475569'},
+    {pos: pos(valDate),  label: '평가기준일',  date: fmtD(valDate),  color: '#0EA5E9'},
+    pConv = null,  // placeholder, 아래에서 갱신
+    {pos: 100,           label: '만기일',      date: fmtD(mat),      color: '#475569'},
+  ].filter(m => m && m.pos != null);
+  // 위 코드 단순화 — 직접 배열 빌드
+  const markers = [];
+  markers.push({pos: 0, label: '발행일', date: fmtD(issue), color: '#475569'});
+  if(pos(valDate) != null) markers.push({pos: pos(valDate), label: '평가기준일', date: fmtD(valDate), color: '#0EA5E9'});
+  if(conv && pos(conv) != null && pos(conv) > 1 && pos(conv) < 99)
+    markers.push({pos: pos(conv), label: '전환 시작', date: fmtD(conv), color: '#059669'});
+  if(put && pos(put) != null && pos(put) > 1 && pos(put) < 99)
+    markers.push({pos: pos(put), label: '풋 시작', date: fmtD(put), color: '#B45309'});
+  if(call && pos(call) != null && pos(call) > 1 && pos(call) < 99)
+    markers.push({pos: pos(call), label: '콜 시작', date: fmtD(call), color: '#DC2626'});
+  markers.push({pos: 100, label: '만기일', date: fmtD(mat), color: '#475569'});
+
+  // 위치 순 정렬
+  markers.sort((a, b) => a.pos - b.pos);
+
+  // ── 라벨 슬롯 자동 할당 (zigzag) — 인접 거리 < THRESHOLD(%)이면 슬롯을 위·아래·더 위/아래로 분산
+  const THRESHOLD = 8;  // 가까운 마커 임계값 (%)
+  const SLOT_OFFSETS = [-38, 38, -64, 64, -90, 90];  // 위·아래 교차로 점점 멀리
+  markers[0].slot = 0;  // 첫 마커: 위쪽 가까이
+  for(let i = 1; i < markers.length; i++){
+    let chosen = 0;
+    // 앞선 마커들과 비교해 너무 가까우면 다른 슬롯 시도
+    for(let s = 0; s < SLOT_OFFSETS.length; s++){
+      let conflict = false;
+      for(let j = 0; j < i; j++){
+        if(Math.abs(markers[i].pos - markers[j].pos) < THRESHOLD && markers[j].slot === s){
+          conflict = true; break;
+        }
+      }
+      if(!conflict){chosen = s; break;}
+    }
+    markers[i].slot = chosen;
+  }
+
+  // ── 활성 구간 막대 위치 — 라벨 영역과 충돌 안 하게 중앙 배치
+  const pConvVal = conv ? pos(conv) : null;
+  const pPutVal = put ? pos(put) : null;
+  const pCallVal = call ? pos(call) : null;
+
+  // 마커 HTML 생성
+  const markerHtml = markers.map(m => {
+    const offset = SLOT_OFFSETS[m.slot] || 0;
+    const isAbove = offset < 0;
+    return `<div style="position:absolute;left:${m.pos}%;top:0;bottom:0;width:2px;background:${m.color};transform:translateX(-1px);z-index:2">
+      <div style="position:absolute;${isAbove?`top:${offset}px`:`bottom:${-offset}px`};left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.62rem;font-weight:600;color:${m.color};line-height:1.3;padding:1px 3px;background:rgba(255,255,255,.92);border-radius:2px">${m.label}<br><span style="font-weight:400;color:var(--text3)">${m.date}</span></div>
     </div>`;
-  };
+  }).join('');
+
+  // 동적 높이: 슬롯 최대 offset에 따라
+  const maxSlot = Math.max(...markers.map(m => m.slot || 0));
+  const topPad = Math.abs(SLOT_OFFSETS[maxSlot] || 0) + 20;
 
   host.innerHTML = `
     <div class="info-box" style="padding:1.1rem 1.3rem">
       <h4 style="margin-bottom:14px">계약 권리 활성 구간</h4>
-      <div style="position:relative;height:120px;margin:30px 12px 30px 12px">
-        <!-- 활성 구간 막대 (transparent overlay) -->
-        <div style="position:absolute;top:30px;left:0;right:0;height:8px;background:#E5E7EB;border-radius:2px" title="전체 기간"></div>
-        ${pConv != null ? `<div style="position:absolute;top:42px;left:${pConv}%;right:${100-100}%;height:6px;background:rgba(0,192,115,.45);border-radius:2px" title="전환 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#059669;font-weight:600">전환 권리 활성 →</div></div>` : ''}
-        ${pPut != null ? `<div style="position:absolute;top:50px;left:${pPut}%;right:0;height:6px;background:rgba(255,159,0,.45);border-radius:2px" title="풋 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#B45309;font-weight:600">풋 권리 활성 →</div></div>` : ''}
-        ${pCall != null ? `<div style="position:absolute;top:58px;left:${pCall}%;right:0;height:6px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#DC2626;font-weight:600">콜 권리 활성 →</div></div>` : ''}
-
-        <!-- 시점 마커 -->
-        ${marker(0, '발행일', fmtD(issue), '#475569', true)}
-        ${marker(100, '만기일', fmtD(mat), '#475569', true)}
-        ${marker(pVal, '평가기준일', fmtD(valDate), '#0EA5E9', false)}
-        ${pConv != null && pConv > 5 && pConv < 95 ? marker(pConv, '전환 시작', fmtD(conv), '#059669', false) : ''}
-        ${pPut != null && pPut > 5 && pPut < 95 ? marker(pPut, '풋 시작', fmtD(put), '#B45309', false) : ''}
-        ${pCall != null && pCall > 5 && pCall < 95 ? marker(pCall, '콜 시작', fmtD(call), '#DC2626', false) : ''}
+      <div style="position:relative;height:${topPad * 2 + 40}px;margin:0 12px">
+        <!-- 활성 구간 막대들 (중앙 정렬) -->
+        <div style="position:absolute;top:${topPad}px;left:0;right:0;height:8px;background:#E5E7EB;border-radius:2px" title="전체 기간"></div>
+        ${pConvVal != null ? `<div style="position:absolute;top:${topPad+12}px;left:${pConvVal}%;right:0;height:6px;background:rgba(0,192,115,.45);border-radius:2px" title="전환 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#059669;font-weight:600">전환 권리 활성 →</div></div>` : ''}
+        ${pPutVal != null ? `<div style="position:absolute;top:${topPad+20}px;left:${pPutVal}%;right:0;height:6px;background:rgba(255,159,0,.45);border-radius:2px" title="풋 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#B45309;font-weight:600">풋 권리 활성 →</div></div>` : ''}
+        ${pCallVal != null ? `<div style="position:absolute;top:${topPad+28}px;left:${pCallVal}%;right:0;height:6px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#DC2626;font-weight:600">콜 권리 활성 →</div></div>` : ''}
+        <!-- 시점 마커 (라벨 자동 분산) -->
+        ${markerHtml}
       </div>
       <div style="font-size:.66rem;color:var(--text3);margin-top:8px;line-height:1.5">
         ※ 회색 막대는 전체 평가기간(발행일~만기). 색상 막대는 각 권리의 활성 구간(시작일~만기).
-        평가기준일은 ${pVal != null ? `발행 후 ${((valDate-issue)/(365.25*24*3600*1000)).toFixed(2)}년 시점이며, 잔존 만기는 ${((mat-valDate)/(365.25*24*3600*1000)).toFixed(2)}년` : '—'}입니다.
+        가까운 시점의 라벨은 위·아래로 자동 분산되어 표시됩니다.
+        평가기준일은 발행 후 ${((valDate-issue)/(365.25*24*3600*1000)).toFixed(2)}년 시점이며, 잔존 만기는 ${((mat-valDate)/(365.25*24*3600*1000)).toFixed(2)}년입니다.
       </div>
     </div>`;
 }
