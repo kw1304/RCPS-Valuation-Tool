@@ -752,15 +752,19 @@ details.note-fold .note{margin-top:4px}
         </div>
       </div>
       <div class="tab-content" id="tab-sensitivity">
-        <div class="chart-row">
-          <div class="chart-box"><h4>변동성 민감도</h4><div class="chart-wrap"><canvas id="c-vol"></canvas></div></div>
-          <div class="chart-box"><h4>주가 민감도</h4><div class="chart-wrap"><canvas id="c-stk"></canvas></div></div>
+        <div style="font-size:.72rem;color:var(--text3);padding:6px 0;margin-bottom:4px">
+          각 차트는 <b>현재 평가 가정 기준 ±변동</b>에 따른 공정가치 변동률(%)을 보여줍니다.
+          가정 그 자체의 값이 아니라 <b>현재값으로부터의 변동 폭</b>임을 유의하세요.
         </div>
         <div class="chart-row">
-          <div class="chart-box"><h4>신용스프레드 민감도</h4><div class="chart-wrap"><canvas id="c-spd"></canvas></div></div>
-          <div class="chart-box"><h4>보장수익률(IRR) 민감도</h4><div class="chart-wrap"><canvas id="c-irr"></canvas></div></div>
+          <div class="chart-box"><h4>변동성 민감도 <span style="font-weight:400;color:var(--text3);font-size:.72rem">— σ ±30%p 변동 (10%p 간격)</span></h4><div class="chart-wrap"><canvas id="c-vol"></canvas></div></div>
+          <div class="chart-box"><h4>주가 민감도 <span style="font-weight:400;color:var(--text3);font-size:.72rem">— S₀ ±30% 변동 (10% 간격)</span></h4><div class="chart-wrap"><canvas id="c-stk"></canvas></div></div>
         </div>
-        <div class="chart-box full"><h4>전환가액 민감도</h4><div class="chart-wrap"><canvas id="c-conv"></canvas></div></div>
+        <div class="chart-row">
+          <div class="chart-box"><h4>신용스프레드 민감도 <span style="font-weight:400;color:var(--text3);font-size:.72rem">— cs ±5%p 변동 (1%p 간격)</span></h4><div class="chart-wrap"><canvas id="c-spd"></canvas></div></div>
+          <div class="chart-box"><h4>보장수익률(풋 IRR) 민감도 <span style="font-weight:400;color:var(--text3);font-size:.72rem">— IRR ±2%p 변동 (1%p 간격)</span></h4><div class="chart-wrap"><canvas id="c-irr"></canvas></div></div>
+        </div>
+        <div class="chart-box full"><h4>전환가액 민감도 <span style="font-weight:400;color:var(--text3);font-size:.72rem">— K ±30% 변동 (10% 간격)</span></h4><div class="chart-wrap"><canvas id="c-conv"></canvas></div></div>
       </div>
       <div class="tab-content" id="tab-tree">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -2709,7 +2713,7 @@ function dcfCalc(){
       ['주당 내재가치',`<strong style="color:var(--accent);font-size:14px">${fmtN(sp)}원</strong>`],
     ].map(([k,v])=>`<tr><td style="text-align:left">${k}</td><td>${v}</td></tr>`).join('')}</tbody>`;
 
-  // ── 민감도 매트릭스 (WACC × g) — K-IFRS 13.93(h)(i) Level 3 input 민감도 공시
+  // ── 민감도 매트릭스 (WACC × g) — K-IFRS 1113.93(h)(i) 수준 3 input 민감도 공시
   dcfSensMatrix(dcfYears, calc, wacc, g, nonop, nd, pref, nci, shares, midyear);
   // ── TV/EV 비중 경고 (70% 초과 노란색, 85% 초과 빨간색)
   dcfTvWarn(pvTV, ev);
@@ -2798,7 +2802,7 @@ function dcfSensMatrix(years, calc, wacc0, g0, nonop, nd, pref, nci, shares, mid
     host=document.createElement('div');host.id='dcf-sens';host.className='dcf-det';host.style.marginTop='12px';
     wrap.appendChild(host);
   }
-  host.innerHTML=`<h4>민감도: 주당가치 (WACC × g) <span style="font-weight:400;color:var(--text3);font-size:.72rem">— K-IFRS 13.93(h) Level 3 input 민감도</span></h4>
+  host.innerHTML=`<h4>민감도: 주당가치 (WACC × g) <span style="font-weight:400;color:var(--text3);font-size:.72rem">— K-IFRS 1113.93(h) 수준 3 input 민감도</span></h4>
     <table class="dtable" style="font-size:.72rem"><thead><tr><th></th>${wh}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 

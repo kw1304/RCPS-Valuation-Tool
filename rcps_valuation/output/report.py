@@ -150,7 +150,7 @@ def _interpret_model_diff(tf: dict, gs: dict, mc: dict) -> list:
     """TF/GS/MC 결과 차이를 일반인 친화적 한 줄 해설로 자동 생성.
 
     감사인이 "왜 TF·GS·MC 결과가 다른가?"에 즉답 가능하도록 자동 주석.
-    K-IFRS 13.93(g) Level 3 측정 불확실성 공시 보조.
+    K-IFRS 1113.93(g) 수준 3 측정 불확실성 공시 보조.
     """
     notes = []
     tf_fv = tf.get("fair_value") if tf and not tf.get("error") else None
@@ -424,7 +424,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity):
     """평가의견 표지 — 평가법인 보고서 1페이지 표준.
 
     구성: 평가목적·기준일·대상 → 결과요약 → 평가절차 → 핵심가정 → 분해 → 이슈사항.
-    K-IFRS 1113.91 재현성·1113.93(d)(g) Level 3 공시 핵심 항목.
+    K-IFRS 1113.91 재현성·1113.93(d)(g) 수준 3 공시 핵심 항목.
     """
     for col, w in zip("ABCDEFG", [4, 22, 18, 18, 18, 18, 4]):
         ws.column_dimensions[col].width = w
@@ -589,7 +589,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity):
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
     row += 1
     uncertainty_notes = [
-        f"· 본 RCPS는 K-IFRS 1113 Level 3 공정가치 (시장에서 직접 관측 불가한 input 포함).",
+        f"· 본 RCPS는 K-IFRS 1113 수준 3 공정가치 (시장에서 직접 관측 불가한 input 포함).",
         f"· 모형 간 차이: TF와 GS는 할인 방식 차이로 결과가 갈림 — 자세한 내용은 모형비교 시트 참조.",
         f"· 변동성·신용스프레드·전환가액 등 핵심 가정의 변동 시 공정가치 영향은 민감도 분석 시트 참조.",
         f"· 평가일 시점 가정에 의존 — 후속 시점에서는 새 가정으로 재평가 필요.",

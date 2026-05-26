@@ -1,6 +1,6 @@
 """민감도 분석 — 가정을 조금씩 흔들었을 때 공정가치 변동.
 
-K-IFRS 13.93(h)(ii) Level 3 unobservable input 민감도 공시.
+K-IFRS 1113.93(h)(ii) 수준 3 unobservable input 민감도 공시.
 본 평가와 같은 곡선·같은 단계를 써야 base fv가 일치합니다.
 """
 from copy import deepcopy
