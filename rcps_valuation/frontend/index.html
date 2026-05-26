@@ -866,13 +866,15 @@ details.note-fold .note{margin-top:4px}
         비유동성 할인을 적용해 최종 배수를 산출합니다.
       </div>
 
-      <!-- ① 동종업계 상장사 조회 -->
+      <!-- ① 동종업계 상장사 조회 — 행별 입력 -->
       <div style="margin-bottom:10px">
-        <div class="ev-calc-search">
-          <input type="text" id="ev-peer-tickers" placeholder="회사명 또는 ticker 쉼표 구분 (예: 코스맥스, 삼성전자, 192820, AAPL)">
-          <button class="btn-sm add" onclick="evFetchPeers()">조회</button>
+        <div id="ev-peer-rows" style="margin-bottom:6px"></div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn-sm add" onclick="evPeerAdd()">+ 비교회사 추가</button>
+          <button class="btn-sm add" onclick="evFetchPeers()" style="background:#0EA5E9;color:#fff">전체 조회</button>
+          <span style="font-size:.64rem;color:var(--text3)">회사명·6자리 코드·해외 ticker 모두 인식</span>
         </div>
-        <div id="ev-peer-result" class="ev-calc-hint">한국 회사명·6자리 코드·해외 ticker 모두 인식. 평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용.</div>
+        <div id="ev-peer-result" class="ev-calc-hint" style="margin-top:6px">평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용.</div>
       </div>
 
       <!-- ② 집계 방식 + 비유동성 할인 -->
@@ -2709,17 +2711,41 @@ function dcfCellInput(el){
 
 /* ══ EV/EBITDA 자동 산출 도구 — 동종업계 상장사 평균만 사용 ══ */
 window.evPeerData = [];
+window.evPeerRows = ['', '', '', '', ''];  // 기본 5개 빈 행
 
 function evCalcToggle(){
   const box = document.getElementById('ev-calc-box');
   if(!box) return;
   box.style.display = (box.style.display === 'none') ? 'block' : 'none';
+  if(box.style.display === 'block') evRenderRows();
+}
+
+function evRenderRows(){
+  const host = document.getElementById('ev-peer-rows');
+  if(!host) return;
+  host.innerHTML = window.evPeerRows.map((v, i) =>
+    `<div style="display:flex;gap:6px;margin-bottom:3px;align-items:center">
+      <span style="font-size:.66rem;color:var(--text3);width:18px;text-align:right">${i+1}.</span>
+      <input type="text" placeholder="회사명 또는 ticker (예: 코스맥스, 192820, AAPL)" value="${(v||'').replace(/"/g,'&quot;')}" oninput="window.evPeerRows[${i}]=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault();evFetchPeers();}" style="flex:1;font-size:.72rem;padding:3px 6px">
+      <button onclick="evPeerRemove(${i})" style="font-size:.62rem;padding:2px 7px;background:#FEE2E2;color:#991B1B;border:none;border-radius:3px;cursor:pointer">×</button>
+    </div>`
+  ).join('');
+}
+
+function evPeerAdd(){
+  window.evPeerRows.push('');
+  evRenderRows();
+}
+
+function evPeerRemove(idx){
+  if(window.evPeerRows.length <= 1){ window.evPeerRows[0] = ''; }
+  else { window.evPeerRows.splice(idx, 1); }
+  evRenderRows();
 }
 
 async function evFetchPeers(){
-  const raw = document.getElementById('ev-peer-tickers').value || '';
-  const tickers = raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
-  if(!tickers.length){ alert('비교회사 ticker를 입력하세요.'); return; }
+  const tickers = window.evPeerRows.map(s => (s||'').trim()).filter(Boolean);
+  if(!tickers.length){ alert('비교회사를 1개 이상 입력하세요.'); return; }
   const valDate = document.getElementById('valuation_date')?.value || '';
   const host = document.getElementById('ev-peer-result');
   host.innerHTML = '<span style="color:var(--text3)">조회 중...</span>';
