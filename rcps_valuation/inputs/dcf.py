@@ -79,96 +79,41 @@ def _compute_fcff_list(params: DCFParams) -> List[float]:
 
 
 def _steady_state_check(params: DCFParams) -> dict:
-    """정상상태(steady state) 4조건 점검.
+    """정상상태(steady state) 점검.
 
-    TV 적용 전 마지막 명시연도가 영구 성장 가능 상태인지 검증
-    (McKinsey Valuation 7e Ch.10 / Damodaran DCF Valuation):
-      1. CapEx ≈ D&A × (1+g)         — 유지·성장 CapEx 균형
-      2. ΔWC ∝ 매출 × g              — 운전자본 변동이 매출성장 비례
-      3. EBIT 마진 안정              — 마지막 3개년 마진 변동 ±2%p 이내
-      4. 매출성장 ≈ g                — 명시기간 말 성장률 = TV 성장률
+    개념 자체는 McKinsey Valuation Ch.10 / Damodaran DCF Valuation 표준이나,
+    구체적 정량 임계값(마진 2%p·매출성장 3%p·CapEx 30% 등)이 학술·표준에 명시
+    되지 않아 임계값 기반 경고를 제거함 (2026-05-27).
+
+    참고용 비율만 반환 (사용자 판단으로 활용).
     """
     if not params.years or len(params.years) < 2:
         return {"applicable": False, "reason": "연도별 입력 부족"}
 
     last = params.years[-1]
     g = params.terminal_growth
-    checks = []
-    warnings_msg = []
 
-    # 1. CapEx / D&A 비율
-    capex_da_ratio = None
-    if last.da > 0:
-        capex_da_ratio = last.capex / last.da
-        ideal = 1.0 + g
-        tol = 0.30  # ±30% 허용 (실무 통상치)
-        ok = abs(capex_da_ratio - ideal) <= ideal * tol
-        checks.append({
-            "name": "CapEx vs 감가상각비",
-            "current": round(capex_da_ratio, 2),
-            "ideal": round(ideal, 2),
-            "ok": ok,
-            "hint": "마지막 해의 CapEx가 감가상각비의 (1+성장률)배 정도여야 정상. 너무 작으면 자산이 줄어드는 가정, 너무 크면 영구 과투자.",
-        })
-        if not ok:
-            warnings_msg.append(f"CapEx/D&A = {capex_da_ratio:.2f} (권장 ≈ {ideal:.2f}) — 영구성장 가정과 어긋남")
-
-    # 2. ΔWC / (매출×g) 비율 — 매출성장 비례 여부
-    wc_to_rev_g_ratio = None
-    if last.revenue > 0 and g > 0:
-        expected_dnwc = last.revenue * g * 0.10  # 운전자본 ≈ 매출의 10% (실무 평균)
-        wc_to_rev_g_ratio = last.dnwc / expected_dnwc if expected_dnwc != 0 else None
-        ok = (last.dnwc >= 0 and last.dnwc <= last.revenue * 0.20)
-        checks.append({
-            "name": "운전자본 변동",
-            "current": last.dnwc,
-            "ok": ok,
-            "hint": "마지막 해 운전자본 변동이 매출×성장률에 비례해야 정상. 매출의 20% 초과는 비정상.",
-        })
-        if not ok:
-            warnings_msg.append("운전자본 변동이 매출 대비 과도 — 정상상태 의심")
-
-    # 3. EBIT 마진 안정 (마지막 3개년)
+    # 참고 지표만 산출 (절대 임계값 기반 ok/fail 판단 X)
+    capex_da_ratio = (last.capex / last.da) if last.da > 0 else None
     margin_volatility_pct = None
     if len(params.years) >= 3:
-        margins = []
-        for y in params.years[-3:]:
-            if y.revenue > 0:
-                margins.append(y.ebit / y.revenue * 100)
+        margins = [y.ebit / y.revenue * 100 for y in params.years[-3:] if y.revenue > 0]
         if len(margins) >= 2:
             margin_volatility_pct = max(margins) - min(margins)
-            ok = margin_volatility_pct <= 2.0  # ±2%p 이내
-            checks.append({
-                "name": "EBIT 마진 안정",
-                "current": round(margin_volatility_pct, 2),
-                "ok": ok,
-                "hint": "마지막 3개년 EBIT 마진 차이가 2%p 이내여야 정상상태. 들쭉날쭉하면 영구 가치 추정 부정확.",
-            })
-            if not ok:
-                warnings_msg.append(f"마지막 3개년 EBIT 마진 변동 {margin_volatility_pct:.1f}%p — 정상상태 의심")
-
-    # 4. 매출성장 ≈ g
     rev_growth_last = None
-    if len(params.years) >= 2 and params.years[-2].revenue > 0:
+    if params.years[-2].revenue > 0:
         rev_growth_last = (last.revenue / params.years[-2].revenue) - 1.0
-        diff = abs(rev_growth_last - g)
-        ok = diff <= 0.03  # ±3%p 이내
-        checks.append({
-            "name": "매출성장 vs 영구성장률",
-            "current": f"{rev_growth_last*100:.1f}%",
-            "ideal": f"{g*100:.1f}%",
-            "ok": ok,
-            "hint": "마지막 해 매출성장률이 영구성장률(g)에 가까워야 자연스러운 안착. 차이가 3%p 넘으면 의심.",
-        })
-        if not ok:
-            warnings_msg.append(f"마지막 해 매출성장 {rev_growth_last*100:.1f}% vs g {g*100:.1f}% — 정상상태 의심")
 
     return {
         "applicable": True,
-        "checks": checks,
-        "warnings": warnings_msg,
-        "passed_count": sum(1 for c in checks if c.get("ok")),
-        "total_count": len(checks),
+        "capex_da_ratio": round(capex_da_ratio, 3) if capex_da_ratio is not None else None,
+        "capex_da_ideal_ref": round(1.0 + g, 3),  # 참고용
+        "margin_volatility_pct": round(margin_volatility_pct, 2) if margin_volatility_pct is not None else None,
+        "last_revenue_growth_pct": round(rev_growth_last * 100, 2) if rev_growth_last is not None else None,
+        "terminal_growth_pct": round(g * 100, 2),
+        "warnings": [],   # 임계값 기반 경고 제거
+        "passed_count": None,  # 절대 기준 없으므로 제거
+        "total_count": None,
     }
 
 

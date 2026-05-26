@@ -826,11 +826,10 @@ details.note-fold .note{margin-top:4px}
         <option value="multiple">Exit Multiple (배수 적용)</option>
         <option value="weighted">두 방식 가중평균 (50:50)</option>
       </select>
-      <label id="a_exit_mult_wrap" style="font-size:.72rem;color:var(--text2);display:none;align-items:center;gap:4px" title="EV/EBITDA = 기업 전체 가치 ÷ 연 EBITDA. 'EBITDA 몇 년치를 회수해야 본전인가' 비율.&#10;&#10;[한국 비상장 산출 절차]&#10;① 동종업계 상장사 5~10개 EV/EBITDA 중앙값&#10;② 최근 M&A 거래 사례 평균 (보통 상장 +10~30%)&#10;③ 가중평균 후 비유동성 할인 -20~30% 적용&#10;&#10;예) 상장사 중앙값 10배 → 비유동성 할인 -25% → 7.5배&#10;&#10;단순 임의값 입력은 K-IFRS 1113.93(d) input 출처 공시 의무 위반.&#10;비교회사 명단·M&A 사례·할인 근거를 워크페이퍼에 기록 필요.">
+      <label id="a_exit_mult_wrap" style="font-size:.72rem;color:var(--text2);display:none;align-items:center;gap:4px" title="EV/EBITDA = 기업 전체 가치 ÷ 연 EBITDA. 'EBITDA 몇 년치를 회수해야 본전인가' 비율.&#10;&#10;[산출 절차 (참고)]&#10;① 동종업계 상장사 EV/EBITDA 집계 (중앙값 또는 평균)&#10;② 비유동성 할인 적용 (K-IFRS 1113.B45)&#10;&#10;K-IFRS 1113.93(d) input 출처 공시 의무 — 비교회사 명단·할인 근거를 워크페이퍼에 기록.">
         EV/EBITDA 배수
         <input type="number" id="a_exit_mult" value="8" step="0.5" min="0" style="width:60px" oninput="dcfCalc()">
         <button type="button" onclick="evCalcToggle()" style="font-size:.62rem;padding:2px 8px;background:#0EA5E9;color:#fff;border:none;border-radius:3px;cursor:pointer">자동 산출 도구</button>
-        <span style="font-size:.62rem;color:var(--text3)" title="한국 비상장 통상 6~12배. 마우스 오버 시 산출 절차 안내.">(통상 6~12배 ⓘ)</span>
       </label>
       <span id="a_tv_help" style="font-size:.68rem;color:#64748B">※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요</span>
     </div>
@@ -2828,89 +2827,21 @@ function dcfTvMethodChange(){
   dcfCalc();
 }
 
-/* 정상상태 보정 — 권장값 적용 후 재계산 */
-function dcfApplySS(field, idx, value){
-  if(!dcfYears[idx])return;
-  dcfYears[idx][field] = value;
-  // 입력 폼 동기화
-  const inpId = `dcf-${field}-${idx}`;
-  const el = document.getElementById(inpId);
-  if(el){
-    el.value = value.toLocaleString('ko-KR');
-    if(el.dataset) el.dataset.v = value;
-  }
-  // 테이블·결과 재렌더
-  if(typeof dcfRenderTable === 'function') dcfRenderTable();
-  dcfCalc();
-}
-
 function dcfCalc(){
   const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||12)/100;
   const g=(parseFloat(document.getElementById('a_g')?.value)||2)/100;
   const nd=getMoney('a_nd'),shares=getMoney('a_shares')||1,nonop=getMoney('a_nonop'),nci=getMoney('a_nci');
   const pref=getMoney('a_pref')||0;  // 다른 시리즈 우선주 청산가치 (본인 RCPS는 순환참조 제외)
   const midyear=document.getElementById('a_midyear')?.checked||false;
-  // 영구성장률 합리성 안내 (실무: 명목 GDP 3~4% 이하 권장. K-IFRS 강제 X — 경고만)
+  // 영구성장률 합리성 안내 — 학술 정량 임계값 없어 제거 (2026-05-27)
   const warnEl=document.getElementById('dcf-warn');
-  if(warnEl){
-    const msgs=[];
-    if(g*100>3.5) msgs.push(`g=${(g*100).toFixed(1)}% — 명목 GDP 성장률(3~4%) 상회. 영구 가정 합리성 확인 필요`);
-    if(g<0) msgs.push(`g<0 — 영구 감소 가정. 사양산업에 한정 적합`);
-    if(wacc-g<0.02 && wacc>g) msgs.push(`WACC−g=${((wacc-g)*100).toFixed(1)}%p — 매우 작음. TV 민감도 매우 큼`);
-    warnEl.textContent=msgs.join(' · ');
-  }
-  // 정상상태(steady state) 4조건 점검 — TV 가정의 합리성 (일반인 친화 안내)
-  // 1) 마지막 해 CapEx ≈ D&A × (1+g)  — 자산 유지·성장 균형
-  // 2) 운전자본 변동이 매출의 20% 이내  — 영구 가정과 모순 없게
-  // 3) 마지막 3개년 EBIT 마진 차이 2%p 이내  — 마진 안정
-  // 4) 마지막 해 매출성장 ≈ g  — 영구 성장률에 안착
-  const ssMsgs=[];
-  const lastIdx = dcfYears.length-1;
-  if(dcfYears.length>=2){
-    const lastY=dcfYears[lastIdx];
-    // 1. CapEx vs D&A
-    if(lastY.da>0){
-      const ratio=lastY.capex/lastY.da;
-      const ideal=1+g;
-      if(Math.abs(ratio-ideal)>ideal*0.3){
-        const idealCapex = Math.round(lastY.da * ideal);
-        ssMsgs.push(`마지막 해 CapEx가 감가상각비의 ${ratio.toFixed(2)}배(권장 ${ideal.toFixed(2)}배) — ${ratio<ideal?'자산 축소':'영구 과투자'} 가정과 가까움. <b>권장값 ${idealCapex.toLocaleString()}원</b> <button onclick="dcfApplySS('capex',${lastIdx},${idealCapex})" style="font-size:.62rem;padding:1px 6px;margin-left:4px;background:#0EA5E9;color:#fff;border:none;border-radius:3px;cursor:pointer">적용</button>`);
-      }
-    }
-    // 2. 매출 대비 운전자본 변동 — 권장값: 매출 × g × 10% (실무 평균)
-    if(lastY.revenue>0 && Math.abs(lastY.dnwc/lastY.revenue)>0.20){
-      const idealDnwc = Math.round(lastY.revenue * g * 0.10);
-      ssMsgs.push(`마지막 해 운전자본 변동이 매출의 ${(lastY.dnwc/lastY.revenue*100).toFixed(1)}% — 20% 초과. <b>권장값 ${idealDnwc.toLocaleString()}원</b> <button onclick="dcfApplySS('dnwc',${lastIdx},${idealDnwc})" style="font-size:.62rem;padding:1px 6px;margin-left:4px;background:#0EA5E9;color:#fff;border:none;border-radius:3px;cursor:pointer">적용</button>`);
-    }
-    // 3. EBIT 마진 안정 (최근 3년)
-    if(dcfYears.length>=3){
-      const margins=dcfYears.slice(-3).filter(y=>y.revenue>0).map(y=>y.ebit/y.revenue*100);
-      if(margins.length>=2){
-        const range=Math.max(...margins)-Math.min(...margins);
-        if(range>2){
-          ssMsgs.push(`마지막 3개년 EBIT 마진 변동폭 ${range.toFixed(1)}%p — 마진이 들쭉날쭉(권장 2%p 이내). 영구 가치 추정 불안정`);
-        }
-      }
-    }
-    // 4. 마지막 해 매출성장 vs g
-    const prevY=dcfYears[dcfYears.length-2];
-    if(prevY.revenue>0){
-      const revG=(lastY.revenue/prevY.revenue-1);
-      if(Math.abs(revG-g)>0.03){
-        ssMsgs.push(`마지막 해 매출성장 ${(revG*100).toFixed(1)}% vs 영구성장률 ${(g*100).toFixed(1)}% — 차이 3%p 초과. 영구상태로의 안착이 부자연스러움`);
-      }
-    }
-  }
+  if(warnEl) warnEl.textContent = '';
+  // 정상상태 4조건 점검: 학술·표준에 정량 임계값 명시 없어 제거 (2026-05-27)
+  // 점검 개념 자체는 McKinsey/Damodaran 표준이나, 구체 임계값(2%p·3%p·20% 등)이
+  // 임의 추정이라 사용자가 워크페이퍼에 인용하기 부적절.
   const ssEl=document.getElementById('dcf-steady');
   if(ssEl){
-    if(ssMsgs.length===0 && dcfYears.length>=2){
-      ssEl.innerHTML=`<span style="color:#059669">✓ 영구가치(TV) 가정의 4가지 합리성 점검 통과</span>`;
-    }else if(ssMsgs.length>0){
-      ssEl.innerHTML=`<div style="color:#B45309;font-weight:600;margin-bottom:3px">⚠ 영구가치 가정 점검 — ${ssMsgs.length}건 주의</div>`+
-        ssMsgs.map(m=>`<div style="color:var(--text2);font-size:.68rem;padding-left:8px">· ${m}</div>`).join('');
-    }else{
-      ssEl.innerHTML='';
-    }
+    ssEl.innerHTML = '';
   }
   const calc=dcfYears.map((y,i)=>{
     const prev=i>0?dcfYears[i-1]:null;
@@ -3124,12 +3055,8 @@ function dcfSensMatrix(years, calc, wacc0, g0, nonop, nd, pref, nci, shares, mid
 }
 
 function dcfTvWarn(pvTV, ev){
-  const r=ev>0?pvTV/ev:0;
-  let msg='',color='';
-  if(r>0.85){msg=`TV/EV ${(r*100).toFixed(0)}% — TV 의존 과도. 명시기간 연장 검토 권장`;color='var(--red)';}
-  else if(r>0.70){msg=`TV/EV ${(r*100).toFixed(0)}% — TV 의존 높음. 정상상태 가정 합리성 확인`;color='var(--amber)';}
-  const w=document.getElementById('dcf-warn');
-  if(w && msg){const prev=w.textContent;w.textContent=(prev?prev+' · ':'')+msg;w.style.color=color;}
+  // TV/EV 비중 임계값 (70%·85%) 학술·표준 명시 없어 제거 (2026-05-27)
+  // 비중 자체는 결과 카드에 정보로만 표시 (경고 X)
 }
 
 function dcfMultipleCheck(ev, years, midyear){
@@ -3143,8 +3070,8 @@ function dcfMultipleCheck(ev, years, midyear){
     host=document.createElement('div');host.id='dcf-mult';host.style.cssText='margin-top:8px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:.74rem;color:var(--text2)';
     sens.parentNode.insertBefore(host,sens.nextSibling);
   }
-  const flag=mult>=6 && mult<=12?' ✓ 한국 비상장 일반 범위(6~12x)':' ⚠ 범위 이탈 — 가정 재검토';
-  host.innerHTML=`Implied EV/EBITDA (마지막 연도): <b>${mult.toFixed(1)}x</b> <span style="color:var(--text3)">${flag}</span>`;
+  // 6~12배 임계값은 학술·표준 출처 없어 단순 값만 표시 (2026-05-27)
+  host.innerHTML=`Implied EV/EBITDA (마지막 연도): <b>${mult.toFixed(1)}x</b>`;
 }
 
 async function sendToRCPS(){
