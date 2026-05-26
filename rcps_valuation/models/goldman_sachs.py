@@ -300,9 +300,20 @@ def gs_rcps(params: RCPSParams, steps: int = None,
         _g_df       = [[0.0]*(i+1) for i in range(steps+1)]
         _g_hold_val = [[0.0]*(i+1) for i in range(steps+1)]  # 총 보유가치 (terminal=0)
         # decision grid: map dec codes to Korean labels
-        _dec_map = {'c': '전환', 'r': '상환', 'h': '보유', 'l': '콜'}
-        _g_dec = [[_dec_map.get(dec[i][j], '') for j in range(i+1)]
-                  for i in range(steps+1)]
+        # TF와 통일 6단계: 'r'을 위치에 따라 만기상환/풋상환 분리
+        # (i==steps: 만기상환, i<steps: 풋상환 — put_step 이상에서만 'r' 발생)
+        def _label(i, j):
+            code = dec[i][j]
+            if code == 'c':
+                return '전환'
+            if code == 'r':
+                return '만기상환' if i == steps else '풋상환'
+            if code == 'l':
+                return '콜상환'
+            if code == 'h':
+                return '보유'
+            return ''
+        _g_dec = [[_label(i, j) for j in range(i+1)] for i in range(steps+1)]
 
     # 만기 페이오프: max(원금상환, 전환) + 만기쿠폰 (한국 평가실무: 쿠폰은 max 밖에서 가산)
     _mat_principal = max(face, put_mat)

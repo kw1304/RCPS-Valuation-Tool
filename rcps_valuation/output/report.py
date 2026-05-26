@@ -358,8 +358,18 @@ def _write_tree(ws, title, tree, params=None):
                     continue
                 bg = "F7FAFC" if (i_step + j) % 2 == 0 else "FFFFFF"
                 if key == "decision":
-                    # 웹 화면(renderTreeGrids)과 동일 색상
-                    bg2 = {"전환": "DCFCE7", "상환": "FEF3C7", "콜": "FEEBC8", "보유": "F2F4F6"}.get(v, bg)
+                    # 웹 화면(renderTreeGrids)과 동일 6단계 색상
+                    bg2 = {
+                        "전환":     "DCFCE7",   # 녹: 보유자 전환
+                        "만기상환": "FED7AA",   # 주: 만기 보장 상환
+                        "풋상환":   "FEF3C7",   # 노: 보유자 풋
+                        "콜상환":   "FECACA",   # 적: 발행자 콜
+                        "강제전환": "A7F3D0",   # 청록: KO
+                        "보유":     "F2F4F6",   # 회: 보유
+                        # 호환 (기존 4단계 라벨)
+                        "상환":     "FEF3C7",
+                        "콜":       "FEEBC8",
+                    }.get(v, bg)
                     _cell(ws, row_idx, col_off, v, bg=bg2, align="center")
                 elif key in ("conv_prob", "disc_factor"):
                     _cell(ws, row_idx, col_off, float(v), bg=bg, num_fmt="0.0000", align="right")

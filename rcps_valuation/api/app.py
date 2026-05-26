@@ -355,7 +355,8 @@ def tree():
             if rs:
                 params.rcps_shares = rs
 
-        # tree step count: caller-supplied (up to 520) or default monthly capped at 120
+        # tree step — 메인 평가(/api/evaluate)와 동일 default 사용
+        # (caller-supplied 우선, 미입력 시 max(round(T*12), 12) cap 520)
         tree_steps = data.get("steps")
         if tree_steps is not None:
             try:
@@ -363,8 +364,8 @@ def tree():
             except (TypeError, ValueError):
                 tree_steps = None
         if not tree_steps:
-            tree_steps = min(round(params.T * 12), 120)
-            tree_steps = max(1, tree_steps)
+            tree_steps = max(int(round(params.T * 12)), 12)
+            tree_steps = max(1, min(tree_steps, 520))
 
         # ── 선도이자율 커브 (term structure, optional)
         tree_rf_curve = None
