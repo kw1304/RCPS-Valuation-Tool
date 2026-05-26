@@ -834,6 +834,48 @@ details.note-fold .note{margin-top:4px}
       </label>
       <span id="a_tv_help" style="font-size:.68rem;color:#64748B">※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요</span>
     </div>
+    <!-- EV/EBITDA 자동 산출 도구 — TV 설정방식 바로 아래 (동종업계 상장사 평균만 사용) -->
+    <div id="ev-calc-box" style="display:none;margin-top:8px;padding:12px 14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+        <h4 style="margin:0;font-size:.82rem;color:#0369A1">EV/EBITDA 자동 산출 — 동종업계 상장사 평균</h4>
+        <button onclick="evCalcToggle()" style="font-size:.68rem;padding:2px 8px;background:#fff;color:var(--text2);border:1px solid var(--border);border-radius:3px;cursor:pointer">닫기</button>
+      </div>
+      <div style="font-size:.68rem;color:var(--text2);line-height:1.6;margin-bottom:8px">
+        평가기준일 기준으로 동종업계 상장사 EV/EBITDA를 자동 조회 후 집계(중앙값/평균)하고
+        비유동성 할인을 적용해 최종 배수를 산출합니다.
+      </div>
+
+      <!-- ① 동종업계 상장사 조회 -->
+      <div style="margin-bottom:10px">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" id="ev-peer-tickers" placeholder="비교회사 ticker 5~10개 쉼표 구분 (예: 005930, 000660, AAPL)" style="flex:1;font-size:.72rem;padding:4px 8px">
+          <button onclick="evFetchPeers()" style="font-size:.72rem;padding:4px 12px;background:#0EA5E9;color:#fff;border:none;border-radius:4px;cursor:pointer">조회</button>
+        </div>
+        <div id="ev-peer-result" style="font-size:.68rem;color:var(--text3)">평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용. 평가기준일이 비어있으면 현시점 데이터.</div>
+      </div>
+
+      <!-- ② 집계 방식 + 비유동성 할인 -->
+      <div style="margin-bottom:8px;padding:8px 10px;background:#fff;border-radius:6px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:.7rem">
+          <div>
+            <label>집계 방식</label>
+            <select id="ev-method" onchange="evRecalc()" style="width:100%">
+              <option value="median" selected>중앙값 (권장 — 이상치 robust)</option>
+              <option value="mean">평균</option>
+            </select>
+          </div>
+          <div>
+            <label title="비유동성 할인 (DLOM): 비상장은 거래 유동성 없어 상장사 배수보다 낮게 평가. K-IFRS 1113.B45.">비유동성 할인 DLOM (%)</label>
+            <input type="number" id="ev-dlom" value="25" min="0" max="50" step="5" oninput="evRecalc()" style="width:100%">
+          </div>
+        </div>
+      </div>
+
+      <!-- 결과 -->
+      <div id="ev-result" style="padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:.72rem">
+        비교회사 ticker 입력 후 [조회] → 자동 산출됩니다.
+      </div>
+    </div>
   </div>
 
   <div class="dcf-actions">
@@ -846,65 +888,6 @@ details.note-fold .note{margin-top:4px}
 
   <div class="dcf-table-wrap">
     <table class="dcf-proj" id="dcf-proj-table"></table>
-  </div>
-
-  <!-- EV/EBITDA 자동 산출 도구 (Exit Multiple용) -->
-  <div id="ev-calc-box" style="display:none;margin:10px 0;padding:14px 16px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
-      <h4 style="margin:0;font-size:.85rem;color:#0369A1">EV/EBITDA 자동 산출 도구 — 한국 비상장 평가실무 4단계</h4>
-      <button onclick="evCalcToggle()" style="font-size:.7rem;padding:3px 8px;background:#fff;color:var(--text2);border:1px solid var(--border);border-radius:3px;cursor:pointer">닫기</button>
-    </div>
-    <div style="font-size:.7rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
-      평가기준일을 기준으로 ① 동종업계 상장사 EV/EBITDA(자동 조회), ② 최근 M&A 거래(수동 입력), 가중평균 후 비유동성 할인을 적용해 최종 배수를 산출합니다.
-    </div>
-
-    <!-- ① 동종업계 상장사 (자동) -->
-    <div style="margin-bottom:14px">
-      <div style="font-weight:600;color:#0369A1;font-size:.78rem;margin-bottom:6px">① 동종업계 상장사 (yfinance 자동 조회)</div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input type="text" id="ev-peer-tickers" placeholder="비교회사 ticker 5~10개 쉼표 구분 (예: 005930, 000660, AAPL)" style="flex:1;font-size:.74rem;padding:4px 8px">
-        <button onclick="evFetchPeers()" style="font-size:.74rem;padding:4px 12px;background:#0EA5E9;color:#fff;border:none;border-radius:4px;cursor:pointer">조회</button>
-      </div>
-      <div id="ev-peer-result" style="font-size:.7rem;color:var(--text3)">평가기준일이 비어있으면 현시점 데이터로 조회. 분기 재무제표 기준 EBITDA(TTM) 사용.</div>
-    </div>
-
-    <!-- ② M&A 거래 (수동) -->
-    <div style="margin-bottom:14px">
-      <div style="font-weight:600;color:#0369A1;font-size:.78rem;margin-bottom:6px">② 최근 M&A 거래 사례 (수동 입력) — 자동화 불가, 거래정보지·평가법인 DB 참고</div>
-      <div id="ev-ma-rows"></div>
-      <button onclick="evMaAdd()" style="font-size:.7rem;padding:3px 10px;background:#fff;color:var(--text2);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-top:4px">+ 거래 추가</button>
-    </div>
-
-    <!-- ③ 가중평균 + 할인 -->
-    <div style="margin-bottom:10px;padding:10px;background:#fff;border-radius:6px">
-      <div style="font-weight:600;color:#0369A1;font-size:.78rem;margin-bottom:8px">③ 가중평균 + 비유동성 할인</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;font-size:.72rem">
-        <div>
-          <label>상장사 비중 (%)</label>
-          <input type="number" id="ev-weight-comp" value="40" min="0" max="100" step="5" oninput="evRecalc()" style="width:100%">
-        </div>
-        <div>
-          <label>M&A 거래 비중 (%)</label>
-          <input type="number" id="ev-weight-ma" value="60" min="0" max="100" step="5" oninput="evRecalc()" style="width:100%">
-        </div>
-        <div>
-          <label title="비유동성 할인 (DLOM): 비상장은 거래 유동성 없어 상장사 배수보다 낮게 평가. K-IFRS 1113.B45.">비유동성 할인 (%)</label>
-          <input type="number" id="ev-dlom" value="25" min="0" max="50" step="5" oninput="evRecalc()" style="width:100%">
-        </div>
-        <div>
-          <label>집계 방식</label>
-          <select id="ev-method" onchange="evRecalc()" style="width:100%">
-            <option value="median" selected>중앙값</option>
-            <option value="mean">평균</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- 결과 -->
-    <div id="ev-result" style="padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:.74rem">
-      각 항목을 채우면 최종 EV/EBITDA 배수가 자동 산출됩니다.
-    </div>
   </div>
 
   <div id="dcf-result-wrap" style="display:none">
@@ -2703,33 +2686,13 @@ function dcfCellInput(el){
   dcfYears[parseInt(el.dataset.yr)][el.dataset.field]=parseFloat(el.dataset.v)||0;
 }
 
-/* ══ EV/EBITDA 자동 산출 도구 ══ */
-window.evPeerData = [];   // 자동 조회된 상장사 EV/EBITDA
-window.evMaRows = [{name:'',multiple:''},{name:'',multiple:''},{name:'',multiple:''}];
+/* ══ EV/EBITDA 자동 산출 도구 — 동종업계 상장사 평균만 사용 ══ */
+window.evPeerData = [];
 
 function evCalcToggle(){
   const box = document.getElementById('ev-calc-box');
   if(!box) return;
   box.style.display = (box.style.display === 'none') ? 'block' : 'none';
-  if(box.style.display === 'block') evRenderMa();
-}
-
-function evRenderMa(){
-  const host = document.getElementById('ev-ma-rows');
-  if(!host) return;
-  host.innerHTML = window.evMaRows.map((r, i) =>
-    `<div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
-      <input type="text" placeholder="회사명·거래 설명 (예: ABC社 2023-08 인수)" value="${r.name||''}" oninput="window.evMaRows[${i}].name=this.value" style="flex:2;font-size:.72rem;padding:3px 6px">
-      <input type="number" placeholder="배수" value="${r.multiple||''}" step="0.1" min="0" oninput="window.evMaRows[${i}].multiple=parseFloat(this.value)||null;evRecalc()" style="width:80px;font-size:.72rem;padding:3px 6px;text-align:right">
-      <span style="font-size:.7rem;color:var(--text3)">배</span>
-      <button onclick="window.evMaRows.splice(${i},1);evRenderMa();evRecalc()" style="font-size:.65rem;padding:2px 6px;background:#FEE2E2;color:#991B1B;border:none;border-radius:3px;cursor:pointer">×</button>
-    </div>`
-  ).join('');
-}
-
-function evMaAdd(){
-  window.evMaRows.push({name:'', multiple:''});
-  evRenderMa();
 }
 
 async function evFetchPeers(){
@@ -2773,12 +2736,10 @@ async function evFetchPeers(){
 }
 
 function evRecalc(){
-  const wComp = parseFloat(document.getElementById('ev-weight-comp')?.value)||0;
-  const wMa = parseFloat(document.getElementById('ev-weight-ma')?.value)||0;
   const dlom = parseFloat(document.getElementById('ev-dlom')?.value)||0;
   const method = document.getElementById('ev-method')?.value || 'median';
 
-  // 상장사 배수 집계
+  // 상장사 배수 집계 (이상치 제외: 0 < x < 100)
   const compMults = (window.evPeerData||[]).map(p => p.ev_ebitda).filter(v => v && 0 < v && v < 100);
   let compAgg = null;
   if(compMults.length){
@@ -2788,46 +2749,30 @@ function evRecalc(){
       ? (n%2 ? s[(n-1)/2] : (s[n/2-1]+s[n/2])/2)
       : s.reduce((a,b)=>a+b,0)/n;
   }
-  // M&A 배수 집계
-  const maMults = window.evMaRows.map(r => r.multiple).filter(v => v && v > 0 && v < 100);
-  let maAgg = null;
-  if(maMults.length){
-    const s = [...maMults].sort((a,b)=>a-b);
-    const n = s.length;
-    maAgg = (method === 'median')
-      ? (n%2 ? s[(n-1)/2] : (s[n/2-1]+s[n/2])/2)
-      : s.reduce((a,b)=>a+b,0)/n;
-  }
-
-  // 가중평균
-  let weighted = null;
-  if(compAgg != null && maAgg != null){
-    const wSum = wComp + wMa;
-    weighted = wSum > 0 ? (compAgg*wComp + maAgg*wMa)/wSum : null;
-  } else if(compAgg != null) {
-    weighted = compAgg;
-  } else if(maAgg != null) {
-    weighted = maAgg;
-  }
 
   // DLOM 적용
-  const finalMult = weighted != null ? weighted * (1 - dlom/100) : null;
+  const finalMult = compAgg != null ? compAgg * (1 - dlom/100) : null;
 
   const host = document.getElementById('ev-result');
   if(host){
     if(finalMult == null){
-      host.innerHTML = '<span style="color:var(--text3)">상장사 자동 조회 또는 M&A 거래 입력 후 자동 산출됩니다.</span>';
+      host.innerHTML = '<span style="color:var(--text3)">비교회사 ticker 입력 후 [조회] → 자동 산출됩니다.</span>';
     }else{
       host.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;font-size:.72rem">
-          <div><b>① 상장사 ${method==='median'?'중앙값':'평균'}</b><br><span style="font-size:.95rem;color:#0369A1;font-weight:700">${compAgg!=null?compAgg.toFixed(2)+'배':'—'}</span><br><span style="color:var(--text3)">${compMults.length}개</span></div>
-          <div><b>② M&A 거래 ${method==='median'?'중앙값':'평균'}</b><br><span style="font-size:.95rem;color:#0369A1;font-weight:700">${maAgg!=null?maAgg.toFixed(2)+'배':'—'}</span><br><span style="color:var(--text3)">${maMults.length}건</span></div>
-          <div><b>③ 가중평균</b><br><span style="font-size:.95rem;color:#0369A1;font-weight:700">${weighted.toFixed(2)}배</span><br><span style="color:var(--text3)">상장 ${wComp}% + M&A ${wMa}%</span></div>
-          <div style="padding:6px 10px;background:#FEF3C7;border-radius:4px"><b>④ 비유동성 할인 후 (최종)</b><br><span style="font-size:1.15rem;color:#92400E;font-weight:700">${finalMult.toFixed(2)}배</span><br><span style="color:var(--text3)">DLOM ${dlom}% 적용</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;font-size:.72rem">
+          <div><b>① 상장사 ${method==='median'?'중앙값':'평균'}</b><br>
+            <span style="font-size:1rem;color:#0369A1;font-weight:700">${compAgg.toFixed(2)}배</span><br>
+            <span style="color:var(--text3)">유효 비교회사 ${compMults.length}개</span>
+          </div>
+          <div style="padding:6px 10px;background:#FEF3C7;border-radius:4px">
+            <b>② 비유동성 할인 후 (최종)</b><br>
+            <span style="font-size:1.2rem;color:#92400E;font-weight:700">${finalMult.toFixed(2)}배</span><br>
+            <span style="color:var(--text3)">DLOM ${dlom}% 적용</span>
+          </div>
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button onclick="document.getElementById('a_exit_mult').value=${finalMult.toFixed(2)};dcfCalc()" style="font-size:.74rem;padding:5px 14px;background:#0EA5E9;color:#fff;border:none;border-radius:4px;cursor:pointer">→ DCF에 ${finalMult.toFixed(2)}배 적용</button>
-          <span style="font-size:.66rem;color:var(--text3)">K-IFRS 1113.93(d) — 비교회사 명단·M&A 사례·할인 근거를 워크페이퍼에 기록 필수</span>
+          <span style="font-size:.64rem;color:var(--text3)">K-IFRS 1113.93(d): 비교회사 명단·DLOM 근거를 워크페이퍼에 기록 필수</span>
         </div>`;
     }
   }
