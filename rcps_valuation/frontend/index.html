@@ -190,15 +190,19 @@ details.note-fold .note{margin-top:4px}
 .placeholder p{font-size:0.88rem;color:var(--text3);letter-spacing:-0.01em}
 .placeholder small{font-size:0.72rem;color:var(--text3)}
 
-/* 결과·페이지 툴바 — 스크롤 시에도 우상단 고정 (sticky) */
-.toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;margin:-8px 0 0}
+.toolbar{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px}
 .eval-meta{font-size:0.7rem;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.38rem 0.8rem;letter-spacing:-0.01em}
 .btn-dl{display:flex;align-items:center;gap:5px;padding:0.42rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .btn-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent);box-shadow:0 2px 8px rgba(49,130,246,.15)}
 .btn-dl:disabled{opacity:0.5;cursor:not-allowed;background:var(--bg2);border-color:var(--border);color:var(--text3)}
 .btn-dl:disabled:hover{background:var(--bg2);border-color:var(--border);color:var(--text3);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-/* 페이지 공통 툴바 — 다운로드 버튼 우상단 sticky (DCF·WACC·변동성·부트스트래핑 — RCPS와 동일 위치) */
-.page-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;max-width:1100px;width:100%;margin:0 auto;padding:8px 0;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:var(--bg)}
+/* 전역 다운로드 버튼 — 모든 페이지에서 화면 우상단 동일 위치 고정 (fixed) */
+.global-dl{position:fixed;top:14px;right:1.5rem;z-index:120;display:none;align-items:center;gap:5px;padding:0.5rem 0.95rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:9px;font-family:var(--sans);font-size:0.74rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.global-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent);box-shadow:0 4px 14px rgba(49,130,246,.2)}
+.global-dl:disabled{opacity:0.5;cursor:not-allowed;background:var(--bg2);border-color:var(--border);color:var(--text3)}
+.global-dl:disabled:hover{background:var(--bg2);border-color:var(--border);color:var(--text3);box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.global-dl.show{display:inline-flex}
+@media (max-width:768px){.global-dl{top:auto;bottom:14px;right:1rem;padding:0.6rem 1rem;font-size:0.78rem;box-shadow:0 4px 14px rgba(0,0,0,.18)}}
 
 /* 결과 패널 2단 컬럼 (감사 검증 워크플로우: 좌=공정가치+구성요소·BDT, 우=모형비교+탭) */
 .res-2col{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;align-items:start}
@@ -376,6 +380,12 @@ details.note-fold .note{margin-top:4px}
     <span class="hd-badge">K-IFRS 1109 · TF · GS · MC · DCF · Bootstrap</span>
   </div>
 </header>
+
+<!-- 전역 다운로드 버튼 — 모든 페이지에서 화면 우상단 동일 위치 (fixed) -->
+<button id="global-dl-btn" class="global-dl" onclick="(window.__dlFn||function(){})()" title="현재 페이지의 상세 Excel 다운로드">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+  <span class="dl-label">상세 Excel</span>
+</button>
 
 <div class="global-bar">
   <label for="valuation_date">📅 평가기준일</label>
@@ -707,10 +717,6 @@ details.note-fold .note{margin-top:4px}
   <div id="result-wrap" style="display:none">
     <div class="toolbar">
       <div class="eval-meta" id="eval-info"></div>
-      <button class="btn-dl" onclick="dlExcel()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        RCPS 상세 Excel
-      </button>
     </div>
     <div class="res-2col">
     <div class="res-left">
@@ -779,13 +785,6 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-dcf" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
-  <div class="page-toolbar">
-    <button class="btn-dl" onclick="dcfDownloadXlsx()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      DCF 상세 Excel
-    </button>
-  </div>
-
   <div class="dcf-assump">
     <div class="dcf-assump-hd">밸류에이션 가정</div>
     <div class="dcf-assump-grid" style="grid-template-columns:90px 90px 90px 1fr 1fr 1fr 1fr">
@@ -831,13 +830,6 @@ details.note-fold .note{margin-top:4px}
      WACC 산정 페이지 (CAPM + Hamada unlever/relever)
 ══════════════════════ -->
 <div class="page" id="page-wacc" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
-
-  <div class="page-toolbar">
-    <button class="btn-dl" onclick="waccDownloadXlsx()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      WACC 상세 Excel
-    </button>
-  </div>
 
   <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
     <div class="sec-title">WACC 상세 산정 <span class="badge-opt">DCF 할인율</span></div>
@@ -1038,13 +1030,6 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-vol" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
 
-  <div class="page-toolbar">
-    <button class="btn-dl" onclick="volDownloadXlsx()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      변동성 상세 Excel
-    </button>
-  </div>
-
   <div class="sec">
     <div class="sec-title">변동성 평가 <span class="badge-opt">유사기업 · 역사적</span></div>
     <div class="note">비상장 발행사의 변동성(σ)은 <b>유사상장기업의 역사적 변동성</b>으로 추정합니다. 산정기간은 <b>잔여만기 매칭</b>이 K-IFRS 감사 기본값입니다. 산출 후 <b>"RCPS 평가에 적용"</b>으로 변동성 입력칸에 반영됩니다.</div>
@@ -1146,13 +1131,6 @@ details.note-fold .note{margin-top:4px}
      이자율 부트스트래핑 페이지
 ══════════════════════ -->
 <div class="page" id="page-boot" style="display:none">
-
-  <div class="page-toolbar" style="padding:0.6rem 1.2rem 0;max-width:none">
-    <button class="btn-dl" onclick="bootDownloadXlsx()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      부트스트래핑 상세 Excel
-    </button>
-  </div>
 
   <!-- 금리 자동 구성: ECOS 국고채(Rf) + 이자율 파일(Rd) -->
   <div class="dcf-assump" style="flex-shrink:0">
@@ -1331,7 +1309,28 @@ function switchPage(name,btn){
   if(name==='boot')bootRender();
   if(name==='vol')volInitDates();
   if(name==='wacc')waccRecalc();
+  updateGlobalDl(name);
 }
+
+// 전역 다운로드 버튼 — 페이지 별 라벨·함수 라우팅 (모든 페이지 동일 우상단 위치)
+function updateGlobalDl(name){
+  const btn=document.getElementById('global-dl-btn');
+  if(!btn)return;
+  const map={
+    rcps:{label:'RCPS 상세 Excel',fn:'dlExcel'},
+    dcf:{label:'DCF 상세 Excel',fn:'dcfDownloadXlsx'},
+    wacc:{label:'WACC 상세 Excel',fn:'waccDownloadXlsx'},
+    vol:{label:'변동성 상세 Excel',fn:'volDownloadXlsx'},
+    boot:{label:'부트스트래핑 상세 Excel',fn:'bootDownloadXlsx'}
+  };
+  const cfg=map[name];
+  if(!cfg){btn.classList.remove('show');window.__dlFn=null;return;}
+  btn.classList.add('show');
+  btn.querySelector('.dl-label').textContent=cfg.label;
+  window.__dlFn=window[cfg.fn]||function(){alert('아직 평가 결과가 없습니다.');};
+}
+// 초기 로드 시 현재 활성 페이지 라벨 설정
+if(typeof window!=='undefined')window.addEventListener('DOMContentLoaded',function(){updateGlobalDl('rcps');});
 
 /* ══ 계약서 요약 (AI) ══ */
 const _CONTRACT_MODELS={
