@@ -3,7 +3,7 @@ from inputs.deal_params import RCPSParams
 
 
 def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = None,
-                     bond_discrete: bool = False) -> dict:
+                     bond_discrete: bool = False, seed: int = None) -> dict:
     """RCPS 몬테카를로 (Tsiveriotis-Fernandes 2성분 LSM, Antithetic Variates)
 
     경로별 가치를 지분(E)·채권(B) 두 성분으로 분리해 TF와 동일하게 할인:
@@ -13,6 +13,10 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
         · bond_discrete=True  (이산복리)     : 1/(1+Kd)^dt
     조기 전환·풋 행사 결정은 LSM(최소제곱회귀)로 추정한 계속가치와 비교.
     TF/GS와 정합 비교 시 bond_discrete를 동일하게 맞춰야 채권 PV 일치.
+
+    seed: 난수 시드 (감사 재현성). None이면 평가기준일 ordinal을 사용해
+          동일 평가일·동일 입력에서 항상 같은 결과를 산출 (K-IFRS 13.91).
+          명시적으로 시드를 다르게 주면 다른 표본 경로 산출.
     """
     T = params.T
     if T <= 0:
@@ -30,6 +34,11 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     face = params.face_value
     K = params.conversion_price if params.conversion_price > 0 else face
 
+    # ── 감사 재현성: 시드 고정 (K-IFRS 13.91 — 동일 입력 동일 결과)
+    if seed is None:
+        seed = int(params.valuation_date.toordinal())
+    rng = np.random.default_rng(seed)
+
     # ── TF 정합 할인계수: 지분=rf 연속복리, 채권=Kd 컨벤션 선택 ──
     disc_rf = np.exp(-r * dt)
     if bond_discrete:
@@ -38,7 +47,7 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
         disc_kd = np.exp(-r_d * dt)
 
     half = n_paths // 2
-    Z = np.random.standard_normal((half, n_steps))
+    Z = rng.standard_normal((half, n_steps))
     Z = np.vstack([Z, -Z])
     S = np.empty((n_paths, n_steps + 1))
     S[:, 0] = S0
@@ -117,20 +126,20 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     coupon_cf = _coupon_schedule(params, n_steps, dt)
 
     # ── 만기 가치: 전환 vs 상환 → E/B 버킷 분리 ──
-    # 풋이 유효일 때만 풋 행사가 적용
-    # TF/GS와 동일하게 만기 쿠폰을 상환 측에 포함 (전환 시는 쿠폰 포기 — TF 컨벤션)
+    # 패턴 A(누적 우선배당 표준 — GS/5803 일치): 비교는 원금끼리, 만기쿠폰은
+    # 결정 무관 양쪽 가산. 전환자도 만기 시점 누적 우선배당 청구권 보유.
     put_mat = params.put_exercise_price(n_steps * dt) if params.has_put else face
     mat_coupon = coupon_cf.get(n_steps, 0)
-    redeem_T = max(face, put_mat) + mat_coupon
+    mat_principal = max(face, put_mat)
     conv_T = (face / K_path[:, -1]) * S[:, -1]
     # 만기 강제전환(KO): 배리어 충족 경로는 무조건 전환
     if has_mand:
         force_T = mand_active[:, -1]
-        converted = (conv_T >= redeem_T) | force_T
+        converted = (conv_T >= mat_principal) | force_T
     else:
-        converted = conv_T >= redeem_T
+        converted = conv_T >= mat_principal
     E = np.where(converted, conv_T, 0.0)
-    B = np.where(converted, 0.0, float(redeem_T))
+    B = np.where(converted, float(mat_coupon), float(mat_principal + mat_coupon))
     ever_conv = converted.copy()
 
     # ── 후방귀납 (TF 와 동일: E_hold=disc_rf·E, B_hold=coup+disc_kd·B) ──
@@ -179,13 +188,15 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
                 conv_better = np.ones(n_paths, dtype=bool)
             else:
                 conv_better = np.zeros(n_paths, dtype=bool)
+            # 패턴 A: 결정과 무관하게 그 시점 cash 쿠폰(coup, 이미 B에 가산됨)은 보존
             do_conv = do_ex & conv_better & conv_on
             do_put  = do_ex & (~conv_better) & put_active
-            E = np.where(do_conv, conv_val, E); B = np.where(do_conv, 0.0, B)
+            E = np.where(do_conv, conv_val, E); B = np.where(do_conv, float(coup), B)
             ever_conv = ever_conv | do_conv
-            E = np.where(do_put, 0.0, E); B = np.where(do_put, put_ex, B)
+            E = np.where(do_put, 0.0, E); B = np.where(do_put, put_ex + coup, B)
 
         # ── (b) 발행자 소프트콜: 배리어 충족 & 콜이 가치를 낮출 때만 행사 ──
+        # 패턴 A: 콜→전환/콜→상환 모두 그 시점 cash 쿠폰 보존
         if has_soft:
             act = call_soft_active[:, t]
             call_ex = float(params.call_exercise_price(t * dt))
@@ -194,14 +205,15 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
             conv_wins = conv_on & (conv_val >= call_ex)
             set_conv = do_call & conv_wins
             set_red  = do_call & (~conv_wins)
-            E = np.where(set_conv, conv_val, E); B = np.where(set_conv, 0.0, B)
+            E = np.where(set_conv, conv_val, E); B = np.where(set_conv, float(coup), B)
             ever_conv = ever_conv | set_conv
-            E = np.where(set_red, 0.0, E); B = np.where(set_red, call_ex, B)
+            E = np.where(set_red, 0.0, E); B = np.where(set_red, call_ex + coup, B)
 
         # ── (c) 강제전환 (Knock-out): 배리어 충족 경로 무조건 전환 ──
+        # 패턴 A: 강제전환도 그 시점 cash 쿠폰 보존
         if has_mand and conv_on:
             act = mand_active[:, t]
-            E = np.where(act, conv_val, E); B = np.where(act, 0.0, B)
+            E = np.where(act, conv_val, E); B = np.where(act, float(coup), B)
             ever_conv = ever_conv | act
 
     V = E + B
@@ -217,6 +229,7 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
         "ci_upper": round(fv + 1.96 * se),
         "n_paths": n_paths,
         "n_steps": n_steps,
+        "seed": seed,                                 # 감사 재현성 — 워크페이퍼 기록용
         "early_exercise_pct": round(float(ever_conv.mean() * 100), 1),
         "conversion_value": round(equity_comp),      # 전환(지분) 성분
         "bond_put_value": round(bond_comp),           # 채권+풋+상환 성분

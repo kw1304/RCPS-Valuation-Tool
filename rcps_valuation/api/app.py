@@ -295,6 +295,23 @@ def evaluate():
         except Exception as e:
             mc = {"error": str(e)}
 
+        # ── requires_mc 라우팅 (경로의존 옵션 활성 시): 트리(TF/GS) 값은 구조적으로
+        #     과소평가 → 응답에서 마스킹하여 사용자가 잘못 인용하지 않도록 차단.
+        #     fair_value만 null 처리하고 진단용 필드는 보존(분해·트리는 참고용으로만).
+        if params.requires_mc:
+            _mc_required_marker = {
+                "mc_required": True,
+                "reason": params.mc_only_reason,
+                "note": "경로의존 옵션(래칫 리픽싱·VWAP·소프트콜·강제전환·배리어 풋 등) "
+                        "활성. recombining 트리(TF/GS)는 구조적 과소평가 → MC 결과 사용 권장."
+            }
+            if isinstance(tf, dict) and not tf.get("error"):
+                tf.update(_mc_required_marker)
+                tf["fair_value"] = None
+            if isinstance(gs, dict) and not gs.get("error"):
+                gs.update(_mc_required_marker)
+                gs["fair_value"] = None
+
         # ── 민감도 (TF 기준)
         try:
             sens = sensitivity_analysis(params, steps=min(steps_used, 60))

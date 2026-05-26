@@ -132,15 +132,16 @@ def gs_rcps(params: RCPSParams, steps: int = None,
                 return K / max(K_floor, S)
         return 1.0
 
-    # ── 희석주가: 전환 후 1주당 가격
-    # N_new = face/K_effective = 신규 발행 보통주 총수 = (face/K) × ratio
-    # 전환 시 회사가치 = 기존지분(n_com·S) + 부채흡수(bond_pv TOTAL)
-    # n_rcps × 1 가정 대신 face/K로 일반화 (face_per_RCPS != K 케이스 정확 처리)
+    # ── 희석주가: 전환 후 1주당 가격 (5803 표준 — 모든 RCPS 동시 전환 가정)
+    # = (n_com·S + n_rcps·bond_pv) / (n_com + n_rcps·N_new_per)
+    # 분자: 기존 지분 + 전체 RCPS 부채흡수, 분모: 기존 + 전체 신주
+    # bond_pv는 per-RCPS, N_new_per = (face/K)·ratio (per RCPS).
+    # 1주 한계 케이스 (n_rcps 없는 식)는 ITM 만기 노드 전환가치 과대평가.
     def _diluted(i, j):
         S = _S(i, j)
         r = _ratio(i, j)
         N_new = (face / K) * r
-        return (S * n_com + bond_pv[i]) / (n_com + N_new)
+        return (S * n_com + n_rcps * bond_pv[i]) / (n_com + n_rcps * N_new)
 
     # ── 전환가치 (희석 경로) — TOTAL 단위
     # per-share post × N_new = 전환 시 RCPS 보유자가 받는 총 가치

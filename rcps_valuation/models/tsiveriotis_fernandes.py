@@ -80,11 +80,15 @@ def tf_rcps(params: RCPSParams, steps: int = None,
     else:
         bond_pv = None
 
-    # ── 만기 페이오프
+    # ── 만기 페이오프 (패턴 A: 누적 우선배당 표준 — GS/5803 일치)
+    # 결정 비교는 원금끼리(쿠폰 제외), 만기쿠폰은 결정 무관 양쪽 가산.
+    # 전환자도 전환 직전까지 누적된 우선배당 청구권 보유, 전환 이후는 청구권 소멸.
     t_mat = steps * dt
     # 풋 보장이 만기에 유효한 경우만 put_mat 적용 (put_start>만기면 보장 없음)
     put_mat = params.put_exercise_price(t_mat) if params.has_put else face
-    mat_redeem = max(face, put_mat) + coupon_cf.get(steps, 0)
+    mat_principal = max(face, put_mat)
+    mat_coupon = coupon_cf.get(steps, 0)
+    mat_redeem = mat_principal + mat_coupon  # 상환 페이오프 (트리 시각화용)
 
     E = np.zeros(steps + 1)
     B = np.zeros(steps + 1)
@@ -101,16 +105,17 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         return 1.0
 
     def _diluted(i, j):
-        """전환 후 1주당 가격 = (n_com·S + bond_pv_total) / (n_com + N_new)
-        N_new = face/K_effective = 전환 시 신규 발행되는 보통주 총수
-              = (face/K) × ratio  (ratio = K/K_eff, 리픽싱 반영)
-        bond_pv[i]는 TOTAL 채권 PV. 전환 시 회사가치 = 기존지분(n_com·S) + 부채흡수(bond_pv).
-        n_rcps × 1 (1 RCPS = 1 주) 가정 대신 face/K로 일반화 →
-        face_per_RCPS != conv_price 케이스도 정확히 처리."""
+        """전환 후 1주당 가격 (5803 표준 — 모든 RCPS 동시 전환 가정).
+        = (n_com·S + n_rcps·bond_pv[i]) / (n_com + n_rcps·N_new_per)
+        분자: 기존 지분가치 + 전체 RCPS의 부채흡수(=n_rcps × 한 RCPS의 채권 PV)
+        분모: 기존 보통주 + 전체 RCPS 전환 시 발행되는 신주 총수(=n_rcps × N_new_per)
+        bond_pv[i]는 per-RCPS PV (face 단위). N_new_per = (face/K)·ratio (per RCPS).
+        만기에 ITM 시 전체 RCPS 동시 전환되는 Nash equilibrium이 표준 — 1주 한계 케이스
+        (n_rcps 없는 식)는 전환가치 과대평가."""
         S = S0 * (u ** (i - j)) * (d_fac ** j)
         r = _ratio(i, j)
         N_new = (face / K) * r
-        return (S * n_com + bond_pv[i]) / (n_com + N_new)
+        return (S * n_com + n_rcps * bond_pv[i]) / (n_com + n_rcps * N_new)
 
     def _conv_val_dil(i, j):
         """희석경로 전환가치 (TOTAL 단위, 모든 RCPS 합산).
@@ -175,10 +180,11 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         else:
             K_eff = _eff_K(S_T, K, K_floor, params, steps, steps)
             cv = (face / K_eff) * S_T if K_eff > 0 else 0
-        if cv >= mat_redeem:
-            E[j] = cv; B[j] = 0.0
+        # 결정은 원금끼리, 쿠폰은 양쪽 가산 (B 버킷)
+        if cv >= mat_principal:
+            E[j] = cv; B[j] = mat_coupon
         else:
-            E[j] = 0.0; B[j] = mat_redeem
+            E[j] = 0.0; B[j] = mat_principal + mat_coupon
         if collect_tree:
             _g_stock[steps][j] = round(S_T, 2)
             _g_eq[steps][j]    = round(float(E[j]), 2)
@@ -187,7 +193,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
             _g_conv[steps][j]  = round(cv, 2)
             _g_bond_intr[steps][j] = round(float(mat_redeem), 2)  # 만기 상환 내재가치
             _g_dil[steps][j]   = round(float(_diluted(steps, j)) if use_dil else S_T, 2)
-            _g_dec[steps][j]   = "전환" if cv >= mat_redeem else "상환"
+            _g_dec[steps][j]   = "전환" if cv >= mat_principal else "상환"
 
     # ── 역방향 귀납
     for i in range(steps - 1, -1, -1):
@@ -231,13 +237,14 @@ def tf_rcps(params: RCPSParams, steps: int = None,
                 _g_bond_hold[i][j] = round(B_hold, 2)
 
             # ── 발행자 콜 캡 (수의상환권): issuer calls when call_ex < V_hold
+            # 패턴 A: 콜 행사 시도 그 시점 cash 쿠폰은 보존 (결정 무관 지급)
             cont_E = E_hold
             cont_B = B_hold
             if call_active and i >= call_step:
                 call_ex = params.call_exercise_price(t_node)
                 if call_ex < V_hold:
                     cont_E = 0.0
-                    cont_B = call_ex
+                    cont_B = call_ex + coup
             cont_tot = cont_E + cont_B
 
             # ── 채권 내재가치 (즉시 풋 행사 시 받을 금액). 풋 불가 노드는 0
@@ -245,24 +252,25 @@ def tf_rcps(params: RCPSParams, steps: int = None,
             if i >= put_step and params.has_put:
                 bond_intr_node = float(params.put_exercise_price(t_node))
 
-            # ── 투자자 옵션 (put / conversion)
+            # ── 투자자 옵션 (put / conversion) — 패턴 A: 결정과 무관하게 그 시점 cash 쿠폰 보존
             if i >= put_step and params.has_put:
                 put_ex = params.put_exercise_price(t_node)
-                if put_ex > cont_tot:
-                    E_new[j] = 0.0; B_new[j] = put_ex
+                if put_ex + coup > cont_tot:
+                    E_new[j] = 0.0; B_new[j] = put_ex + coup
                     if collect_tree:
                         _g_stock[i][j] = round(S, 2)
                         _g_eq[i][j]    = 0.0
-                        _g_bond[i][j]  = round(put_ex, 2)
-                        _g_rcps[i][j]  = round(put_ex, 2)
+                        _g_bond[i][j]  = round(put_ex + coup, 2)
+                        _g_rcps[i][j]  = round(put_ex + coup, 2)
                         _g_conv[i][j]  = round(cv, 2)
                         _g_bond_intr[i][j] = round(bond_intr_node, 2)
                         _g_dil[i][j]   = round(float(_diluted(i, j)) if use_dil else S, 2)
                         _g_dec[i][j]   = "상환"
                     continue
 
-            if i >= conv_step and cv > cont_tot:
-                E_new[j] = cv; B_new[j] = 0.0
+            if i >= conv_step and (cv + coup) > cont_tot:
+                # 전환 결정: 전환가치 + 그 시점 cash 쿠폰 (패턴 A — 전환자도 누적 우선배당 청구권)
+                E_new[j] = cv; B_new[j] = coup
                 if collect_tree:
                     _g_dec[i][j] = "전환"
             else:
