@@ -301,7 +301,7 @@ def evaluate():
         except Exception as e:
             sens = {"error": str(e)}
 
-        # ── 후속측정
+        # ── 후속측정 (K-IFRS 1109 측정 연속성: 최초인식과 동일 컨벤션)
         subsequent = []
         if data.get("reporting_dates"):
             from valuation.subsequent import subsequent_measurement
@@ -314,7 +314,10 @@ def evaluate():
                     "risk_free_rate": float(e.get("risk_free_rate", params.risk_free_rate)),
                     "credit_spread": float(e.get("credit_spread", params.credit_spread)),
                 })
-            subsequent = subsequent_measurement(params, rd, steps=60)
+            subsequent = subsequent_measurement(
+                params, rd, steps=60,
+                rf_curve=rf_curve, kd_curve=kd_curve,
+                bond_discrete=False)
 
         result = {
             "tf": tf,
@@ -469,7 +472,10 @@ def download():
                 "risk_free_rate": float(e.get("risk_free_rate", params.risk_free_rate)),
                 "credit_spread": float(e.get("credit_spread", params.credit_spread)),
             } for e in data["reporting_dates"]]
-            subsequent = subsequent_measurement(params, rd, steps=60)
+            subsequent = subsequent_measurement(
+                params, rd, steps=60,
+                rf_curve=dl_rf_curve, kd_curve=dl_kd_curve,
+                bond_discrete=False)
             # report.py 스키마에 맞게 키 매핑
             for row in subsequent:
                 row["straight_bond_value"] = row.get("bond_value", 0)

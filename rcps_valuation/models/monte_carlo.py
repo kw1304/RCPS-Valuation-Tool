@@ -2,13 +2,17 @@ import numpy as np
 from inputs.deal_params import RCPSParams
 
 
-def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = None) -> dict:
+def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = None,
+                     bond_discrete: bool = False) -> dict:
     """RCPS 몬테카를로 (Tsiveriotis-Fernandes 2성분 LSM, Antithetic Variates)
 
     경로별 가치를 지분(E)·채권(B) 두 성분으로 분리해 TF와 동일하게 할인:
       - 지분(전환) 요소 E : 무위험 rf 연속복리  exp(-rf·dt)
-      - 채권(상환·쿠폰) 요소 B : 신용조정 Kd 이산복리  (1+Kd)^(-dt)
+      - 채권(상환·쿠폰) 요소 B : 신용조정 Kd
+        · bond_discrete=False (기본, 연속복리): exp(-Kd·dt)
+        · bond_discrete=True  (이산복리)     : 1/(1+Kd)^dt
     조기 전환·풋 행사 결정은 LSM(최소제곱회귀)로 추정한 계속가치와 비교.
+    TF/GS와 정합 비교 시 bond_discrete를 동일하게 맞춰야 채권 PV 일치.
     """
     T = params.T
     if T <= 0:
@@ -26,9 +30,12 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     face = params.face_value
     K = params.conversion_price if params.conversion_price > 0 else face
 
-    # ── TF 정합 할인계수: 지분=rf, 채권=Kd 모두 연속복리 (연속스팟 정합) ──
+    # ── TF 정합 할인계수: 지분=rf 연속복리, 채권=Kd 컨벤션 선택 ──
     disc_rf = np.exp(-r * dt)
-    disc_kd = np.exp(-r_d * dt)
+    if bond_discrete:
+        disc_kd = 1.0 / ((1.0 + r_d) ** dt)
+    else:
+        disc_kd = np.exp(-r_d * dt)
 
     half = n_paths // 2
     Z = np.random.standard_normal((half, n_steps))
