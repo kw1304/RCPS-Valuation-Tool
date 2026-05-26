@@ -227,73 +227,7 @@ def _crr_full(face, params: RCPSParams, Kd, steps, dt, coupon_cf,
     return float(V[0])
 
 
-def _full_rcps_tf(face, params: RCPSParams, r_f, Kd, q, steps, dt,
-                  coupon_cf, conv_step, put_step, S0, u, d, p, K, K_floor) -> tuple:
-    """
-    TF 분리 할인 (Tsiveriotis-Fernandes) + 풋옵션:
-      E: 지분 컴포넌트 (전환 → 주식 가치) → Rf 할인
-      B: 채권 컴포넌트 (쿠폰 + 상환 + 풋) → Kd 할인
-      총 FV = E + B
-    """
-    disc_f = np.exp(-r_f * dt)
-    disc_d = np.exp(-Kd * dt)
-
-    # 만기 페이오프
-    t_mat = steps * dt
-    put_mat = params.put_exercise_price(t_mat) if params.has_put else face
-    mat_coupon = coupon_cf.get(steps, 0)
-
-    E = np.zeros(steps + 1)
-    B = np.zeros(steps + 1)
-
-    for j in range(steps + 1):
-        S_T = S0 * (u ** (steps - j)) * (d ** j)
-        K_eff = _eff_K(S_T, K, K_floor, params, steps, steps)
-        conv_val = (face / K_eff) * S_T if K_eff > 0 else 0
-        redeem_val = max(face, put_mat) + mat_coupon
-
-        if conv_val >= redeem_val:
-            E[j] = conv_val
-            B[j] = 0.0
-        else:
-            E[j] = 0.0
-            B[j] = redeem_val
-
-    for i in range(steps - 1, -1, -1):
-        t_node = i * dt
-        E_new = np.zeros(i + 1)
-        B_new = np.zeros(i + 1)
-        coup = coupon_cf.get(i, 0)
-
-        for j in range(i + 1):
-            S = S0 * (u ** (i - j)) * (d ** j)
-            K_eff = _eff_K(S, K, K_floor, params, i, steps)
-            conv_val = (face / K_eff) * S if K_eff > 0 else 0
-
-            E_hold = disc_f * (p * E[j] + (1 - p) * E[j + 1])
-            B_hold = coup + disc_d * (p * B[j] + (1 - p) * B[j + 1])
-            V_hold = E_hold + B_hold
-
-            # 풋 행사 가능 구간
-            if i >= put_step and params.has_put:
-                put_ex = params.put_exercise_price(t_node)
-                if put_ex > V_hold:
-                    E_new[j] = 0.0
-                    B_new[j] = put_ex
-                    continue
-
-            # 전환 가능 구간
-            if i >= conv_step and conv_val > V_hold:
-                E_new[j] = conv_val
-                B_new[j] = 0.0
-            else:
-                E_new[j] = E_hold
-                B_new[j] = B_hold
-
-        E = E_new
-        B = B_new
-
-    return float(E[0] + B[0]), float(E[0]), float(B[0])
+# _full_rcps_tf: dead code 제거 (2026-05-26). TF/GS 모두 자체 구현(`tf_rcps`, `gs_rcps`) 사용.
 
 
 def _eff_K(S, K, K_floor, params: RCPSParams, step: int, steps: int) -> float:

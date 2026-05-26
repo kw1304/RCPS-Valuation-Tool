@@ -288,10 +288,18 @@ def evaluate():
             gs["put_option_value"] = tf.get("put_option_value")
             gs["conversion_value"] = round(gs["fair_value"] - pbv)
 
-        # ── 몬테카를로 (참고)
+        # ── 몬테카를로 (참고) — TF·GS와 동일 forward curve 적용 (term structure 정합)
         try:
             n_paths = int(data.get("mc_paths", 10000))
-            mc = monte_carlo_rcps(params, n_paths=n_paths, n_steps=min(steps_used, 260))
+            mc_steps = min(steps_used, 260)
+            mc_rf = rf_curve if rf_curve and len(rf_curve) >= mc_steps else (
+                _spot_to_step_forwards(data.get("rf_spot"), params.T, mc_steps) if data.get("rf_spot") else None
+            )
+            mc_kd = kd_curve if kd_curve and len(kd_curve) >= mc_steps else (
+                _spot_to_step_forwards(data.get("rd_spot"), params.T, mc_steps) if data.get("rd_spot") else None
+            )
+            mc = monte_carlo_rcps(params, n_paths=n_paths, n_steps=mc_steps,
+                                  rf_curve=mc_rf, kd_curve=mc_kd)
         except Exception as e:
             mc = {"error": str(e)}
 
@@ -331,9 +339,11 @@ def evaluate():
                     "risk_free_rate": float(e.get("risk_free_rate", params.risk_free_rate)),
                     "credit_spread": float(e.get("credit_spread", params.credit_spread)),
                 })
+            # spot 원자료를 전달 → 보고일별 잔존 T에 맞춰 forward 재구성 (호라이즌 정합)
             subsequent = subsequent_measurement(
                 params, rd, steps=60,
                 rf_curve=rf_curve, kd_curve=kd_curve,
+                rf_spot=data.get("rf_spot"), rd_spot=data.get("rd_spot"),
                 bond_discrete=False)
 
         result = {
@@ -1995,12 +2005,8 @@ def bdt_evaluate():
     from models.bdt import evaluate_bdt_bond
     coupon_cf = _coupon_schedule(params, steps, dt)
 
-    # 풋 스케줄: put_start 이후 매 스텝 행사가능(미국식). _date_to_step 동일 규칙.
-    if params.put_start is None:
-        put_step = steps
-    else:
-        days = (params.put_start - params.valuation_date).days
-        put_step = 0 if days <= 0 else min(int(days / (params.T * 365) * steps), steps)
+    # 풋 스케줄: 4개 모형 통일 컨벤션(round) 사용 — TF/GS와 풋 활성 step 정확 일치
+    put_step = params.date_to_step(params.put_start, steps)
     put_schedule = {i: float(params.put_exercise_price(i * dt))
                     for i in range(put_step, steps + 1)}
 

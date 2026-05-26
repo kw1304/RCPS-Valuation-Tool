@@ -109,6 +109,23 @@ class RCPSParams:
     common_shares: Optional[float] = None   # 보통주식수
     rcps_shares: Optional[float] = None     # RCPS 주식수
 
+    def __post_init__(self):
+        """입력 검증 — 음수·0 등 비현실 값 차단 (K-IFRS 13.B40 관측가능 시장데이터 요건)"""
+        if self.face_value <= 0:
+            raise ValueError(f"발행금액(face_value)은 양수여야 합니다. 입력: {self.face_value}")
+        if self.volatility < 0:
+            raise ValueError(f"변동성(volatility)은 음수일 수 없습니다. 입력: {self.volatility}")
+        if self.conversion_price < 0:
+            raise ValueError(f"전환가액(conversion_price)은 음수일 수 없습니다. 입력: {self.conversion_price}")
+        if self.stock_price < 0:
+            raise ValueError(f"주가(stock_price)는 음수일 수 없습니다. 입력: {self.stock_price}")
+        # 리픽싱 약정 검증: trigger 누락 시 침묵 100% 발동 방지 (약정 조항 명시 요구)
+        if self.refixing and self.refixing_trigger is None:
+            raise ValueError(
+                "리픽싱(refixing=True) 활성 시 refixing_trigger는 필수입니다. "
+                "일반 약정 표준은 0.9 (주가가 전환가의 90% 이하로 떨어지면 발동)."
+            )
+
     @property
     def discount_rate(self) -> float:
         return self.risk_free_rate + self.credit_spread

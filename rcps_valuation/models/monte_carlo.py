@@ -3,7 +3,8 @@ from inputs.deal_params import RCPSParams
 
 
 def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = None,
-                     bond_discrete: bool = False, seed: int = None) -> dict:
+                     bond_discrete: bool = False, seed: int = None,
+                     rf_curve=None, kd_curve=None) -> dict:
     """RCPS 몬테카를로 (Tsiveriotis-Fernandes 2성분 LSM, Antithetic Variates)
 
     경로별 가치를 지분(E)·채권(B) 두 성분으로 분리해 TF와 동일하게 할인:
@@ -17,10 +18,13 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     seed: 난수 시드 (감사 재현성). None이면 평가기준일 ordinal을 사용해
           동일 평가일·동일 입력에서 항상 같은 결과를 산출 (K-IFRS 13.91).
           명시적으로 시드를 다르게 주면 다른 표본 경로 산출.
+    rf_curve / kd_curve: 스텝별 forward rate (None이면 flat rate). TF·GS와 일관 비교 시 필수.
     """
     T = params.T
     if T <= 0:
         raise ValueError("평가기준일이 만기일 이후입니다.")
+    if params.volatility <= 0:
+        raise ValueError("변동성(σ)은 양수여야 합니다. 입력값: %.4f" % params.volatility)
 
     if n_steps is None:
         n_steps = max(int(round(T * 12)), 12)
@@ -39,22 +43,36 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
         seed = int(params.valuation_date.toordinal())
     rng = np.random.default_rng(seed)
 
-    # ── TF 정합 할인계수: 지분=rf 연속복리, 채권=Kd 컨벤션 선택 ──
-    disc_rf = np.exp(-r * dt)
-    if bond_discrete:
-        disc_kd = 1.0 / ((1.0 + r_d) ** dt)
+    # ── TF 정합 할인계수: 스텝별 곡선 우선, 없으면 flat
+    use_curves = bool(rf_curve and kd_curve and len(rf_curve) >= n_steps and len(kd_curve) >= n_steps)
+    if use_curves:
+        rf_arr = np.array(rf_curve[:n_steps], dtype=float)
+        kd_arr = np.array(kd_curve[:n_steps], dtype=float)
+        disc_rf_arr = np.exp(-rf_arr * dt)
+        if bond_discrete:
+            disc_kd_arr = 1.0 / ((1.0 + kd_arr) ** dt)
+        else:
+            disc_kd_arr = np.exp(-kd_arr * dt)
+        # 드리프트도 스텝별 — GBM에서 ld[t] = (rf[t]-q-0.5σ²)·dt
+        ld_arr = (rf_arr - q - 0.5 * sigma**2) * dt
     else:
-        disc_kd = np.exp(-r_d * dt)
+        disc_rf_arr = np.full(n_steps, float(np.exp(-r * dt)))
+        if bond_discrete:
+            disc_kd_arr = np.full(n_steps, float(1.0 / ((1.0 + r_d) ** dt)))
+        else:
+            disc_kd_arr = np.full(n_steps, float(np.exp(-r_d * dt)))
+        ld_arr = np.full(n_steps, float((r - q - 0.5 * sigma**2) * dt))
 
+    # 홀수 n_paths 가드: antithetic은 짝수 필요 → 짝수로 내림 (n_paths 정정)
     half = n_paths // 2
+    n_paths = 2 * half
     Z = rng.standard_normal((half, n_steps))
     Z = np.vstack([Z, -Z])
     S = np.empty((n_paths, n_steps + 1))
     S[:, 0] = S0
-    ld = (r - q - 0.5 * sigma**2) * dt          # 위험중립 드리프트 (레퍼런스 GBM 동일)
     vd = sigma * np.sqrt(dt)
     for t in range(n_steps):
-        S[:, t+1] = S[:, t] * np.exp(ld + vd * Z[:, t])
+        S[:, t+1] = S[:, t] * np.exp(ld_arr[t] + vd * Z[:, t])
 
     # ── 리픽싱 기준가: spot(현재주가) 또는 VWAP(직전 N스텝 평균) ──
     vw = int(getattr(params, "refixing_vwap_window", 0) or 0)
@@ -143,10 +161,11 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
     ever_conv = converted.copy()
 
     # ── 후방귀납 (TF 와 동일: E_hold=disc_rf·E, B_hold=coup+disc_kd·B) ──
+    # 스텝별 할인계수 사용 (use_curves=True이면 forward curve, 아니면 flat)
     for t in range(n_steps - 1, -1, -1):
         coup = coupon_cf.get(t, 0)
-        E = E * disc_rf
-        B = coup + B * disc_kd
+        E = E * disc_rf_arr[t]
+        B = coup + B * disc_kd_arr[t]
         V_hold = E + B
 
         conv_on = t >= conv_step
@@ -230,6 +249,7 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
         "n_paths": n_paths,
         "n_steps": n_steps,
         "seed": seed,                                 # 감사 재현성 — 워크페이퍼 기록용
+        "term_structure_applied": bool(use_curves),  # 스텝별 forward 사용 여부
         "early_exercise_pct": round(float(ever_conv.mean() * 100), 1),
         "conversion_value": round(equity_comp),      # 전환(지분) 성분
         "bond_put_value": round(bond_comp),           # 채권+풋+상환 성분

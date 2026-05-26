@@ -33,6 +33,8 @@ def gs_rcps(params: RCPSParams, steps: int = None,
     T = params.T
     if T <= 0:
         raise ValueError("평가기준일이 만기일 이후입니다.")
+    if params.volatility <= 0:
+        raise ValueError("변동성(σ)은 양수여야 합니다. 입력: %.4f" % params.volatility)
 
     if steps is None:
         steps = max(int(round(T * 12)), 12)

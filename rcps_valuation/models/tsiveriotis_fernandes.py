@@ -24,6 +24,8 @@ def tf_rcps(params: RCPSParams, steps: int = None,
     T = params.T
     if T <= 0:
         raise ValueError("평가기준일이 만기일 이후입니다.")
+    if params.volatility <= 0:
+        raise ValueError("변동성(σ)은 양수여야 합니다. 입력: %.4f" % params.volatility)
 
     if steps is None:
         steps = max(int(round(T * 12)), 12)
@@ -323,13 +325,13 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         "bond_component":         round(float(B[0])),
         "steps":                  steps,
         "model":                  "Tsiveriotis-Fernandes",
-        "rf_used":                r_f,
-        "kd_used":                r_d,
+        "rf_used":                (list(rf_curve) if rf_curve else r_f),
+        "kd_used":                (list(kd_curve) if kd_curve else r_d),
+        "term_structure_applied": bool(rf_curve and kd_curve),
         "dilution_applied":       bool(use_dil),
         "diluted_stock_price_0":  round(diluted_s0, 6) if diluted_s0 is not None else None,
     }
     if collect_tree:
-        p_scalar = (rf_curve if rf_curve else p_flat) if rf_curve else p_flat
         out["tree"] = {
             "stock":          _g_stock,
             "decision":       _g_dec,
