@@ -2055,7 +2055,7 @@ function renderTreeGrids(){
   const rcpsShares=parseFloat(rsRaw);
   const perShare=(!isNaN(rcpsShares)&&rcpsShares>0);
   const divisor=perShare?rcpsShares:1;
-  const VALUE_KEYS=new Set(['conv_intrinsic','rcps_value','hold_value','equity_comp','bond_comp','equity_hold','bond_hold']);
+  const VALUE_KEYS=new Set(['conv_intrinsic','bond_intrinsic','rcps_value','hold_value','equity_comp','bond_comp','equity_hold','bond_hold']);
 
   const fvPerShare = (fv!=null&&perShare)?fv/rcpsShares:fv;
   let html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:8px">
@@ -2069,8 +2069,9 @@ function renderTreeGrids(){
   const tfGrids = [
     {key:'stock',          label:'① 주가 트리'},
     {key:'decision',       label:'의사결정'},
-    {key:'conv_intrinsic', label:'전환 내재가치'},
-    {key:'rcps_value',     label:'RCPS 가치'},
+    {key:'conv_intrinsic', label:'전환 내재가치 (즉시 전환 시)'},
+    {key:'bond_intrinsic', label:'채권 내재가치 (즉시 풋·만기상환 시)'},
+    {key:'rcps_value',     label:'RCPS 가치 (의사결정 후 채택)'},
     {key:'hold_value',     label:'보유가치(연속보유)'},
     {key:'equity_comp',    label:'지분가치(실현)'},
     {key:'bond_comp',      label:'채권가치(실현)'},
@@ -2082,8 +2083,9 @@ function renderTreeGrids(){
     {key:'decision',       label:'의사결정'},
     {key:'conv_prob',      label:'전환확률'},
     {key:'disc_factor',    label:'할인계수'},
-    {key:'conv_intrinsic', label:'전환 내재가치'},
-    {key:'rcps_value',     label:'RCPS 가치'},
+    {key:'conv_intrinsic', label:'전환 내재가치 (즉시 전환 시)'},
+    {key:'bond_intrinsic', label:'채권 내재가치 (즉시 풋·만기상환 시)'},
+    {key:'rcps_value',     label:'RCPS 가치 (의사결정 후 채택)'},
     {key:'hold_value',     label:'보유가치(연속보유)'},
   ];
   const grids = modelKey==='tf' ? tfGrids : gsGrids;

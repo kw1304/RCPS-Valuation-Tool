@@ -288,6 +288,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
         _g_stock    = [[0.0]*(i+1) for i in range(steps+1)]
         _g_rcps     = [[0.0]*(i+1) for i in range(steps+1)]
         _g_conv     = [[0.0]*(i+1) for i in range(steps+1)]
+        _g_bond_intr= [[0.0]*(i+1) for i in range(steps+1)]  # 채권 내재가치
         _g_dil      = [[0.0]*(i+1) for i in range(steps+1)]
         _g_cp       = [[0.0]*(i+1) for i in range(steps+1)]
         _g_df       = [[0.0]*(i+1) for i in range(steps+1)]
@@ -308,6 +309,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
             _g_stock[steps][j] = round(S_T, 2)
             _g_rcps[steps][j]  = round(V[j], 2)
             _g_conv[steps][j]  = round(_conv_val(steps, j), 2)
+            _g_bond_intr[steps][j] = round(float(mat_redeem), 2)  # 만기 상환 내재가치
             _g_dil[steps][j]   = round(float(_diluted(steps, j)) if use_dil else S_T, 2)
             _g_cp[steps][j]    = round(cp[steps][j], 6)
             _g_df[steps][j]    = 1.0  # terminal: no further discounting
@@ -347,9 +349,12 @@ def gs_rcps(params: RCPSParams, steps: int = None,
                 df_u = _dfac(i + 1, j,     i)
                 df_d = _dfac(i + 1, j + 1, i)
                 blended_df = round((p_i * df_u + q_i * df_d) / 1.0, 6)
+                # 채권 내재가치 (즉시 풋 행사 시 받을 금액)
+                bond_intr_node = float(rd_i) if rd_i is not None else 0.0
                 _g_stock[i][j]    = round(S, 2)
                 _g_rcps[i][j]     = round(Vn[j], 2)
                 _g_conv[i][j]     = round(ei, 2)
+                _g_bond_intr[i][j]= round(bond_intr_node, 2)
                 _g_dil[i][j]      = round(float(_diluted(i, j)) if use_dil else S, 2)
                 _g_cp[i][j]       = round(cp[i][j], 6)
                 _g_df[i][j]       = blended_df
@@ -379,6 +384,7 @@ def gs_rcps(params: RCPSParams, steps: int = None,
             "decision":       _g_dec,
             "rcps_value":     _g_rcps,
             "conv_intrinsic": _g_conv,
+            "bond_intrinsic": _g_bond_intr,
             "diluted":        _g_dil,
             "conv_prob":      _g_cp,
             "disc_factor":    _g_df,

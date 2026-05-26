@@ -155,7 +155,8 @@ def tf_rcps(params: RCPSParams, steps: int = None,
         _g_eq         = [[0.0]*(i+1) for i in range(steps+1)]
         _g_bond       = [[0.0]*(i+1) for i in range(steps+1)]
         _g_rcps       = [[0.0]*(i+1) for i in range(steps+1)]
-        _g_conv       = [[0.0]*(i+1) for i in range(steps+1)]
+        _g_conv       = [[0.0]*(i+1) for i in range(steps+1)]   # 전환 내재가치
+        _g_bond_intr  = [[0.0]*(i+1) for i in range(steps+1)]   # 채권 내재가치 (풋·만기 상환)
         _g_dil        = [[0.0]*(i+1) for i in range(steps+1)]
         _g_dec        = [[""  ]*(i+1) for i in range(steps+1)]
         _g_hold_val   = [[0.0]*(i+1) for i in range(steps+1)]  # 총 보유가치
@@ -184,6 +185,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
             _g_bond[steps][j]  = round(float(B[j]), 2)
             _g_rcps[steps][j]  = round(float(E[j] + B[j]), 2)
             _g_conv[steps][j]  = round(cv, 2)
+            _g_bond_intr[steps][j] = round(float(mat_redeem), 2)  # 만기 상환 내재가치
             _g_dil[steps][j]   = round(float(_diluted(steps, j)) if use_dil else S_T, 2)
             _g_dec[steps][j]   = "전환" if cv >= mat_redeem else "상환"
 
@@ -238,6 +240,11 @@ def tf_rcps(params: RCPSParams, steps: int = None,
                     cont_B = call_ex
             cont_tot = cont_E + cont_B
 
+            # ── 채권 내재가치 (즉시 풋 행사 시 받을 금액). 풋 불가 노드는 0
+            bond_intr_node = 0.0
+            if i >= put_step and params.has_put:
+                bond_intr_node = float(params.put_exercise_price(t_node))
+
             # ── 투자자 옵션 (put / conversion)
             if i >= put_step and params.has_put:
                 put_ex = params.put_exercise_price(t_node)
@@ -249,6 +256,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
                         _g_bond[i][j]  = round(put_ex, 2)
                         _g_rcps[i][j]  = round(put_ex, 2)
                         _g_conv[i][j]  = round(cv, 2)
+                        _g_bond_intr[i][j] = round(bond_intr_node, 2)
                         _g_dil[i][j]   = round(float(_diluted(i, j)) if use_dil else S, 2)
                         _g_dec[i][j]   = "상환"
                     continue
@@ -269,6 +277,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
                 _g_bond[i][j]  = round(float(B_new[j]), 2)
                 _g_rcps[i][j]  = round(float(E_new[j] + B_new[j]), 2)
                 _g_conv[i][j]  = round(cv, 2)
+                _g_bond_intr[i][j] = round(bond_intr_node, 2)
                 _g_dil[i][j]   = round(float(_diluted(i, j)) if use_dil else S, 2)
 
         E = E_new; B = B_new
@@ -316,6 +325,7 @@ def tf_rcps(params: RCPSParams, steps: int = None,
             "decision":       _g_dec,
             "rcps_value":     _g_rcps,
             "conv_intrinsic": _g_conv,
+            "bond_intrinsic": _g_bond_intr,
             "diluted":        _g_dil,
             "equity_comp":    _g_eq,
             "bond_comp":      _g_bond,

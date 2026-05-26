@@ -199,8 +199,9 @@ def _write_tree(ws, title, tree, params=None):
         grids = [
             ("stock",          "① 주가 트리 (원/주)"),
             ("decision",       "의사결정"),
-            ("conv_intrinsic", "전환 내재가치 (원/주)"),
-            ("rcps_value",     "RCPS 가치 (원/주)"),
+            ("conv_intrinsic", "전환 내재가치 — 즉시 전환 시 (원/주)"),
+            ("bond_intrinsic", "채권 내재가치 — 즉시 풋·만기상환 시 (원/주)"),
+            ("rcps_value",     "RCPS 가치 — 의사결정 후 채택 (원/주)"),
             ("hold_value",     "보유가치 — 연속보유 (원/주)"),
             ("equity_comp",    "지분가치 — 실현 (원/주)"),
             ("bond_comp",      "채권가치 — 실현 (원/주)"),
@@ -213,13 +214,14 @@ def _write_tree(ws, title, tree, params=None):
             ("decision",       "의사결정"),
             ("conv_prob",      "전환확률"),
             ("disc_factor",    "할인계수"),
-            ("conv_intrinsic", "전환 내재가치 (원/주)"),
-            ("rcps_value",     "RCPS 가치 (원/주)"),
+            ("conv_intrinsic", "전환 내재가치 — 즉시 전환 시 (원/주)"),
+            ("bond_intrinsic", "채권 내재가치 — 즉시 풋·만기상환 시 (원/주)"),
+            ("rcps_value",     "RCPS 가치 — 의사결정 후 채택 (원/주)"),
             ("hold_value",     "보유가치 — 연속보유 (원/주)"),
         ]
 
     # per-share 변환 대상 (주가/확률/할인계수 제외)
-    VALUE_KEYS = {"conv_intrinsic", "rcps_value", "hold_value",
+    VALUE_KEYS = {"conv_intrinsic", "bond_intrinsic", "rcps_value", "hold_value",
                   "equity_comp", "bond_comp", "equity_hold", "bond_hold"}
     # 주가는 모형에서 이미 per-share, 확률·할인계수는 단위 없음
     # decision 은 텍스트
