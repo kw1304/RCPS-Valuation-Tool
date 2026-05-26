@@ -2394,14 +2394,38 @@ def dcf_peer_multiples():
         return jsonify({"status": "error", "message": "yfinance/pandas 미설치"}), 200
 
     listing_map = {}
+    name_to_code = {}  # 한글·영문 회사명 → ticker 코드 매핑
     try:
         for r in _stock_listing():
             listing_map[r["code"]] = r["market"]
+            nm = (r.get("name") or "").strip()
+            if nm:
+                name_to_code[nm] = r["code"]
+                # 약식 매칭(공백 제거)도 등록
+                name_to_code[nm.replace(" ", "")] = r["code"]
     except Exception:
         pass
 
+    def _resolve(token):
+        """입력 토큰을 ticker 코드로 변환 — 회사명·6자리코드·yfinance ticker 모두 허용."""
+        t = (token or "").strip()
+        if not t: return t
+        # 1) 회사명 직접 매칭
+        if t in name_to_code: return name_to_code[t]
+        # 2) 공백 제거 매칭
+        if t.replace(" ", "") in name_to_code:
+            return name_to_code[t.replace(" ", "")]
+        # 3) 부분 일치 (한글 이름 일부만 입력한 경우)
+        if any(ord(c) > 127 for c in t):  # 한글 등 비-ASCII
+            for nm, code in name_to_code.items():
+                if t in nm:
+                    return code
+        # 4) 6자리 코드 또는 영문 ticker — 그대로
+        return t
+
     results = []
-    for code in tickers:
+    for raw in tickers:
+        code = _resolve(raw)
         ysym = _to_yahoo_symbol(code, listing_map)
         try:
             t = yf.Ticker(ysym)
@@ -2469,7 +2493,8 @@ def dcf_peer_multiples():
                 multiple = ev / ebitda
 
             results.append({
-                "ticker": code,
+                "input": raw,           # 사용자가 입력한 원본 (회사명·코드)
+                "ticker": code,         # 매핑된 ticker 코드
                 "name": name,
                 "market_cap": mc,
                 "net_debt": net_debt,
@@ -2481,7 +2506,7 @@ def dcf_peer_multiples():
                 "period_end": period_end,
             })
         except Exception as e:
-            results.append({"ticker": code, "error": str(e)[:150]})
+            results.append({"input": raw, "ticker": code, "error": str(e)[:150]})
 
     # 통계 (정상값만)
     valid_multiples = [r["ev_ebitda"] for r in results if r.get("ev_ebitda") and 0 < r["ev_ebitda"] < 100]

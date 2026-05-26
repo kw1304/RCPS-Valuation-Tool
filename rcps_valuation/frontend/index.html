@@ -848,10 +848,10 @@ details.note-fold .note{margin-top:4px}
       <!-- ① 동종업계 상장사 조회 -->
       <div style="margin-bottom:10px">
         <div style="display:flex;gap:6px;margin-bottom:6px">
-          <input type="text" id="ev-peer-tickers" placeholder="비교회사 ticker 5~10개 쉼표 구분 (예: 005930, 000660, AAPL)" style="flex:1;font-size:.72rem;padding:4px 8px">
+          <input type="text" id="ev-peer-tickers" placeholder="회사명 또는 ticker 쉼표 구분 (예: 코스맥스, 삼성전자, 192820, AAPL)" style="flex:1;font-size:.72rem;padding:4px 8px">
           <button onclick="evFetchPeers()" style="font-size:.72rem;padding:4px 12px;background:#0EA5E9;color:#fff;border:none;border-radius:4px;cursor:pointer">조회</button>
         </div>
-        <div id="ev-peer-result" style="font-size:.68rem;color:var(--text3)">평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용. 평가기준일이 비어있으면 현시점 데이터.</div>
+        <div id="ev-peer-result" style="font-size:.68rem;color:var(--text3)">한국 회사명·6자리 코드·해외 ticker 모두 인식. 평가기준일 시점 분기 재무제표 기준 EBITDA(TTM 4분기 합산) 사용.</div>
       </div>
 
       <!-- ② 집계 방식 + 비유동성 할인 -->
@@ -2711,17 +2711,18 @@ async function evFetchPeers(){
     if(j.status !== 'ok'){ host.innerHTML = `<span style="color:#DC2626">실패: ${j.message||'unknown'}</span>`; return; }
     window.evPeerData = j.peers || [];
     let html = `<table style="width:100%;font-size:.7rem;border-collapse:collapse;background:#fff;border-radius:4px;overflow:hidden">
-      <thead><tr style="background:#E0F2FE"><th style="padding:4px 6px;text-align:left">티커</th><th style="padding:4px 6px;text-align:left">종목명</th><th style="padding:4px 6px;text-align:right">시총(억)</th><th style="padding:4px 6px;text-align:right">순차입(억)</th><th style="padding:4px 6px;text-align:right">EBITDA(억)</th><th style="padding:4px 6px;text-align:right">EV/EBITDA</th></tr></thead><tbody>`;
+      <thead><tr style="background:#E0F2FE"><th style="padding:4px 6px;text-align:left">입력</th><th style="padding:4px 6px;text-align:left">매칭 ticker</th><th style="padding:4px 6px;text-align:left">종목명</th><th style="padding:4px 6px;text-align:right">시총(억)</th><th style="padding:4px 6px;text-align:right">순차입(억)</th><th style="padding:4px 6px;text-align:right">EBITDA(억)</th><th style="padding:4px 6px;text-align:right">EV/EBITDA</th></tr></thead><tbody>`;
     j.peers.forEach(p => {
+      const inputShow = p.input || p.ticker;
       if(p.error){
-        html += `<tr><td style="padding:3px 6px">${p.ticker}</td><td colspan="5" style="padding:3px 6px;color:#DC2626">${p.error}</td></tr>`;
+        html += `<tr><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px">${p.ticker||'—'}</td><td colspan="5" style="padding:3px 6px;color:#DC2626">${p.error}</td></tr>`;
       }else{
         const mcEok = p.market_cap ? (p.market_cap/1e8).toFixed(0) : '—';
         const ndEok = p.net_debt != null ? (p.net_debt/1e8).toFixed(0) : '—';
         const ebEok = p.ebitda ? (p.ebitda/1e8).toFixed(0) : '—';
         const mult = p.ev_ebitda ? p.ev_ebitda.toFixed(2)+'배' : '—';
         const isValid = p.ev_ebitda && 0 < p.ev_ebitda && p.ev_ebitda < 100;
-        html += `<tr style="${isValid?'':'opacity:.5'}"><td style="padding:3px 6px">${p.ticker}</td><td style="padding:3px 6px">${p.name||''}</td><td style="padding:3px 6px;text-align:right">${mcEok}</td><td style="padding:3px 6px;text-align:right">${ndEok}</td><td style="padding:3px 6px;text-align:right">${ebEok}</td><td style="padding:3px 6px;text-align:right;font-weight:600">${mult}</td></tr>`;
+        html += `<tr style="${isValid?'':'opacity:.5'}"><td style="padding:3px 6px">${inputShow}</td><td style="padding:3px 6px;color:var(--text3)">${p.ticker}</td><td style="padding:3px 6px">${p.name||''}</td><td style="padding:3px 6px;text-align:right">${mcEok}</td><td style="padding:3px 6px;text-align:right">${ndEok}</td><td style="padding:3px 6px;text-align:right">${ebEok}</td><td style="padding:3px 6px;text-align:right;font-weight:600">${mult}</td></tr>`;
       }
     });
     html += `</tbody></table>`;
