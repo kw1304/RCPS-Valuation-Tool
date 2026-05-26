@@ -3,7 +3,41 @@
 이전엔 api/app.py와 valuation/subsequent.py에 동일 목적 함수가 별도로 존재해서
 한 곳만 수정 시 silent divergence 위험 → 본 모듈로 통합.
 """
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
+
+
+def curve_horizon_check(spot_pts: Sequence[Sequence[float]], T: float) -> Optional[dict]:
+    """곡선 잔존만기 적용 가능성 점검.
+
+    RCPS 잔존만기 T가 입력 곡선의 최장 만기를 초과하면 평탄 외삽 적용 → 텀 프리미엄 누락 위험.
+    K-IFRS 13.62 "관측가능 input의 충실한 표현" — 만기 매칭 필수.
+
+    Returns: {ok, max_input_T, T_target, warning} or None if input invalid.
+    """
+    try:
+        if not spot_pts or T <= 0:
+            return None
+        max_input = 0.0
+        for pt in spot_pts:
+            try:
+                t_yr = float(pt[0])
+                if t_yr > max_input:
+                    max_input = t_yr
+            except (TypeError, ValueError, IndexError):
+                continue
+        if max_input <= 0:
+            return None
+        ok = T <= max_input + 0.001  # 1일 허용
+        warning = None
+        if not ok:
+            warning = (
+                f"잔존만기 {T:.2f}년이 입력 곡선의 최장 만기 {max_input:.2f}년을 초과합니다. "
+                f"초과 구간은 평탄 외삽(텀 프리미엄 누락 가능) 처리됩니다. "
+                f"장기물 데이터를 추가하면 정확도가 향상됩니다."
+            )
+        return {"ok": ok, "max_input_T": max_input, "T_target": T, "warning": warning}
+    except Exception:
+        return None
 
 
 def spot_to_step_forwards(spot_pts: Sequence[Sequence[float]],

@@ -348,7 +348,7 @@ details.note-fold .note{margin-top:4px}
 <header>
   <div class="hd-title">
     <h1><span class="ac">웅계사's</span> RCPS/DCF Valuation <span class="ac">Tool</span></h1>
-    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다.<br>단순 확인 목적으로 사용을 권장합니다.<br><span style="font-size:.66rem;color:var(--text3)">※ 분류 전제: <b>FVTPL(당기손익-공정가치)</b> — RCPS는 통상 전환권이 내재파생상품이라 SPPI 충족 안 됨. 상각후원가 분류 시 EIR amortization·Stage 1/2/3 ECL은 별도 산정 필요.</span></p>
+    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다.<br>단순 확인 목적으로 사용을 권장합니다.</p>
   </div>
   <div class="hd-right">
     <div class="header-groups">
@@ -674,7 +674,7 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div class="note" id="self-price-msg" style="display:none;margin-top:4px"></div>
     <div class="row1">
-      <div class="field"><label for="volatility">변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
+      <div class="field"><label for="volatility" title="주식 가격의 연환산 변동성. 보통 30~60% (안정 대형주 20~30%, 성장주·중소형 50~80%). BDT 탭의 금리 변동성(σ_r)과 다른 개념.">변동성 (%) <span style="color:var(--text3);font-weight:400;font-size:.65rem">주식 σ</span></label><input type="number" id="volatility" value="50.07" step="0.1"></div>
     </div>
     <div class="row2">
       <div class="field"><label for="steps">스텝 수 (시간단계) <span style="font-size:.7rem;color:#0EA5E9;font-weight:600">· TF·GS·MC 공통 적용</span></label>
@@ -736,6 +736,7 @@ details.note-fold .note{margin-top:4px}
     <div class="res-right">
     <div class="model-row" id="model-row"></div>
     <div id="model-interp"></div>
+    <div id="curve-warn"></div>
     <div class="tabs">
       <div class="tab-bar">
         <button class="tab-btn active" onclick="tabSwitch('params',this)">입력 요약</button>
@@ -1757,11 +1758,32 @@ function fillValuationFromContract(){
   setV('issue_date',v.issue_date); setV('maturity_date',v.maturity_date);
   setM('face_value',v.face_value); setM('rcps_shares',v.rcps_shares); setM('conversion_price',v.conversion_price);
   setV('conversion_start',v.conversion_start);
+  setV('put_start',v.put_start);
   if(v.coupon_rate!=null&&v.coupon_rate!=='') setV('coupon_rate',(parseFloat(v.coupon_rate)*100));
+  if(v.coupon_frequency) setV('coupon_frequency',v.coupon_frequency);
+  if(v.dividend_cumulative!=null){
+    const dc=document.getElementById('dividend_cumulative');
+    if(dc) dc.checked=!!(v.dividend_cumulative===true||v.dividend_cumulative==='true'||v.dividend_cumulative===1);
+  }
+  if(v.dividend_first_pay_year!=null&&v.dividend_first_pay_year!=='') setV('dividend_first_pay_year',v.dividend_first_pay_year);
   if(v.put_irr!=null&&v.put_irr!==''){
     const hp=document.getElementById('has_put'); if(hp&&!hp.checked){hp.checked=true;togglePut();}
     setV('put_irr',(parseFloat(v.put_irr)*100));
-    const pm=document.getElementById('put_price_mode'); if(pm){pm.value='irr_y';togglePutMode();}
+    const pm=document.getElementById('put_price_mode'); if(pm){pm.value=v.put_price_mode||'irr_y';togglePutMode();}
+  }
+  // 발행자 콜
+  if(v.call_irr!=null&&v.call_irr!==''){
+    const hc=document.getElementById('has_call'); if(hc&&!hc.checked){hc.checked=true;toggleCall();}
+    setV('call_start',v.call_start);
+    setV('call_irr',(parseFloat(v.call_irr)*100));
+    const cm=document.getElementById('call_price_mode'); if(cm&&v.call_price_mode) cm.value=v.call_price_mode;
+  }
+  // 강제전환(Knock-out)
+  if(v.mandatory_conv_barrier!=null&&v.mandatory_conv_barrier!==''){
+    const mc=document.getElementById('has_mandconv'); if(mc&&!mc.checked){mc.checked=true; if(typeof togglePD==='function')togglePD('mandconv');}
+    setV('mandatory_conv_barrier',v.mandatory_conv_barrier);
+    if(v.mandatory_conv_window!=null) setV('mandatory_conv_window',v.mandatory_conv_window);
+    if(v.mandatory_conv_count!=null) setV('mandatory_conv_count',v.mandatory_conv_count);
   }
   // ── 리픽싱(전환가액 조정) 자동 반영
   const rfChk=document.getElementById('refixing');
@@ -1889,7 +1911,19 @@ async function runBdt(){
         <tr><td>③ 풋옵션가치 (Put = 풋채권 − 순채권)</td><td style="text-align:right">${fmtW(tfPv)}</td><td style="text-align:right">${fmtW(d.put_option_value)}</td><td style="text-align:center">${diff(d.put_option_value,tfPv)}</td></tr>
       </tbody></table>
       <div style="font-size:.7rem;color:var(--text3);margin-top:4px">BDT 입력 — 금리 σ <b>${(d.rate_vol*100).toFixed(2)}%</b> · 스텝 <b>${d.n_steps_used}</b> · dt ${d.dt.toFixed(4)}년 · 풋시작 step ${d.put_step}<br>
-      ※ BDT는 Rd(신용조정) 곡선에 lognormal 단기금리트리를 캘리브레이션해 후방귀납으로 풋채권을 산정합니다. TF는 주가트리 + 결정론적 금리를 쓰므로 일반채권은 거의 같고, 풋옵션 가치는 모형 가정 차이로 달라질 수 있습니다.</div>`;
+      ※ BDT는 Rd(신용조정) 곡선에 lognormal 단기금리트리를 캘리브레이션해 후방귀납으로 풋채권을 산정합니다. TF는 주가트리 + 결정론적 금리를 쓰므로 일반채권은 거의 같고, 풋옵션 가치는 모형 가정 차이로 달라질 수 있습니다.</div>
+      ${d.sigma_sensitivity&&d.sigma_sensitivity.length?`
+      <div style="margin-top:8px;padding:8px 10px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px">
+        <div style="font-size:.74rem;font-weight:700;color:#0369A1;margin-bottom:4px">σ_r 민감도 — 금리 변동성 가정 robustness</div>
+        <table class="dtable" style="font-size:.7rem"><thead><tr><th>σ_r</th><th style="text-align:right">풋채권가치</th><th style="text-align:right">풋옵션가치</th><th style="text-align:right">기준 대비</th></tr></thead><tbody>
+        ${d.sigma_sensitivity.map(s=>{
+          const isBase=Math.abs(s.sigma-d.rate_vol)<0.005;
+          const diffPct=s.diff_from_base&&d.put_bond_value?((s.diff_from_base/d.put_bond_value)*100).toFixed(2)+'%':'—';
+          return `<tr${isBase?' style="background:#FEF3C7;font-weight:600"':''}><td>${s.sigma_pct}%${isBase?' (현재)':''}</td><td style="text-align:right">${fmtW(s.put_bond_value)}</td><td style="text-align:right">${fmtW(s.put_option_value)}</td><td style="text-align:right">${diffPct}</td></tr>`;
+        }).join('')}
+        </tbody></table>
+        <div style="font-size:.66rem;color:var(--text3);margin-top:3px">※ σ_r은 시장에서 직접 관측 불가한 가정 — 감사인이 가장 자주 challenge하는 영역. 5~15% 범위에서 풋채권가치 변동을 확인하세요.</div>
+      </div>`:''}`;
   }catch(e){out.innerHTML=`<span style="color:var(--red)">요청 실패: ${e.message}</span>`;}
   finally{btn.disabled=false;}
 }
@@ -2116,6 +2150,15 @@ function renderRCPS(data){
     }
     interpEl.innerHTML=notes.length?
       `<div style="margin-top:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:.75rem;line-height:1.7"><b style="color:#78350F">■ 모형 간 차이 자동 해석</b><br>${notes.map(n=>'· '+n).join('<br>')}</div>`:'';
+  }
+  // 곡선 만기 초과 경고
+  const cwEl=document.getElementById('curve-warn');
+  if(cwEl){
+    if(r.curve_warnings && r.curve_warnings.length){
+      cwEl.innerHTML=`<div style="margin-top:10px;padding:10px 12px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;font-size:.74rem;line-height:1.7"><b style="color:#92400E">⚠ 금리곡선 만기 점검</b><br>${r.curve_warnings.map(w=>'· '+w).join('<br>')}</div>`;
+    }else{
+      cwEl.innerHTML='';
+    }
   }
 
   const p=lastReq.params;
@@ -3699,6 +3742,15 @@ function volRenderResult(j){
     meta+=`<br><span style="color:var(--text3)">이상치 필터 미적용: ${oi.reason}</span>`;
   }
   if(j.failed&&j.failed.length)meta+=`<br><span style="color:var(--red)">조회 실패 ${j.failed.length}건: ${j.failed.map(f=>f.ticker).join(', ')}</span>`;
+  // SE/95% CI 표시 — per_ticker에 sigma_se 있으면 종목별 평균으로 추정
+  // (basket 집계 σ의 SE는 종목별 SE 평균보다 작지만 보수적 안내)
+  const ses=j.per_ticker.filter(p=>p.sigma_se!=null).map(p=>p.sigma_se);
+  if(ses.length){
+    const avgSE=ses.reduce((a,b)=>a+b,0)/ses.length;
+    const sigma=j.sigma_pct/100;
+    meta+=`<br>※ <b>변동성 추정 정확도</b> — 표준오차 약 ±${(avgSE*100).toFixed(2)}%p (종목별 평균). 95% 신뢰구간 약 <b>${((sigma-1.96*avgSE)*100).toFixed(2)}% ~ ${((sigma+1.96*avgSE)*100).toFixed(2)}%</b>`;
+  }
+  meta+='<br>※ <b>기간 선택 가이드</b> — RCPS 잔존 만기에 가까운 기간으로 σ를 산정하세요. 예: 잔존 5년 → 시작일을 5년 전으로. 1년·3년·5년 기간 결과가 5%p 이상 다르면 가정 robustness 검토 권장.';
   meta+='<br>※ 자동조회 값은 시점마다 달라질 수 있으니, 감사 증빙용으로 원자료 CSV를 내보내 보관하세요.';
   document.getElementById('vol-meta').innerHTML=meta;
   document.getElementById('vol-export').style.display=window.volLastRaw?'':'none';

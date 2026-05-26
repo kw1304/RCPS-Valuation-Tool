@@ -115,10 +115,39 @@ class RCPSParams:
             raise ValueError(f"발행금액(face_value)은 양수여야 합니다. 입력: {self.face_value}")
         if self.volatility < 0:
             raise ValueError(f"변동성(volatility)은 음수일 수 없습니다. 입력: {self.volatility}")
+        if self.volatility > 5.0:
+            raise ValueError(
+                f"변동성이 비정상적으로 큽니다(σ={self.volatility*100:.0f}%). "
+                f"퍼센트를 소수로 잘못 입력했을 가능성(예: 50% → 0.5)."
+            )
         if self.conversion_price < 0:
             raise ValueError(f"전환가액(conversion_price)은 음수일 수 없습니다. 입력: {self.conversion_price}")
         if self.stock_price < 0:
             raise ValueError(f"주가(stock_price)는 음수일 수 없습니다. 입력: {self.stock_price}")
+        # 날짜 순서 검증 — silent 비현실값 차단
+        if self.issue_date and self.maturity_date and self.issue_date >= self.maturity_date:
+            raise ValueError(
+                f"발행일({self.issue_date})이 만기일({self.maturity_date})보다 같거나 이후입니다. "
+                f"발행일 < 만기일 순서 확인 필요."
+            )
+        if self.valuation_date and self.maturity_date and self.valuation_date >= self.maturity_date:
+            raise ValueError(
+                f"평가기준일({self.valuation_date})이 만기일({self.maturity_date}) 이후입니다. "
+                f"만기 도래한 RCPS는 평가 대상이 아닙니다."
+            )
+        if self.valuation_date and self.issue_date and self.valuation_date < self.issue_date:
+            raise ValueError(
+                f"평가기준일({self.valuation_date})이 발행일({self.issue_date}) 이전입니다. "
+                f"평가기준일은 발행일 이후여야 합니다."
+            )
+        if self.conversion_start and self.maturity_date and self.conversion_start > self.maturity_date:
+            raise ValueError(
+                f"전환 시작일({self.conversion_start})이 만기일({self.maturity_date}) 이후입니다."
+            )
+        if self.put_start and self.maturity_date and self.put_start > self.maturity_date:
+            raise ValueError(
+                f"풋 시작일({self.put_start})이 만기일({self.maturity_date}) 이후입니다."
+            )
         # 리픽싱 약정 검증: trigger 누락 시 침묵 100% 발동 방지 (약정 조항 명시 요구)
         if self.refixing and self.refixing_trigger is None:
             raise ValueError(

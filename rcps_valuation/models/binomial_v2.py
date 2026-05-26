@@ -144,15 +144,19 @@ def _at(x, i):
 
 
 def _bond_only(face, params: RCPSParams, disc, p, steps, dt, coupon_cf) -> float:
-    """순채권(bond floor) PV: 쿠폰 + 만기 보장상환액, 조기 풋·전환 없음.
-    만기 상환 = max(face, 만기 풋행사가) — 보장수익률(IRR) 상환이 있으면 그 누적액.
-    풋옵션가치 = puttable_bond − bond_only = 조기행사 프리미엄.
-    disc/p 는 스칼라 또는 per-step 배열."""
-    t_mat = steps * dt
-    redeem = params.put_exercise_price(t_mat) if params.has_put else face
-    V = np.full(steps + 1, float(max(face, redeem)))
+    """순채권(bond floor) PV: 쿠폰 + face 만기상환, 풋·전환 권리 일체 없음.
 
-    # 만기 쿠폰
+    5803 표준 분해:
+      ① 순채권   = face 만기상환 + 쿠폰 PV (Kd 할인) — 풋 권리 미반영
+      ② 풋채권   = 순채권 + 풋옵션 (만기 max(face, put_mat) + 중간 풋행사)
+      ③ 풋옵션가치 = 풋채권 − 순채권 (풋 권리의 시간가치)
+
+    이전엔 만기 V = max(face, put_mat)로 풋 IRR make-whole 가격이 순채권에 흡수
+    → 채권가치 +29% 과대, 풋옵션 -56% 과소, 전환권 -40% 왜곡 (5803 ref 대비).
+    풋 권리는 _puttable_bond에서만 반영해야 분해의 경제적 의미가 살아남.
+
+    disc/p 는 스칼라 또는 per-step 배열."""
+    V = np.full(steps + 1, float(face))  # 만기에 face만 (풋 권리 제외)
     if steps in coupon_cf:
         V += coupon_cf[steps]
 
@@ -168,12 +172,18 @@ def _bond_only(face, params: RCPSParams, disc, p, steps, dt, coupon_cf) -> float
 
 def _puttable_bond(face, params: RCPSParams, disc, p, steps, dt, coupon_cf,
                    put_step, S0, u, d, K, K_floor) -> float:
-    """풋 채권 PV: 쿠폰 + 만기상환 + 풋옵션. disc/p 는 스칼라 또는 per-step 배열."""
-    # 만기 페이오프: max(순채권 상환, 풋 행사가)
-    t_mat = steps * dt
-    put_mat = params.put_exercise_price(t_mat) if params.has_put else face
+    """풋 채권 PV: 쿠폰 + face 만기상환 + 중간 풋 행사 옵션.
 
-    V = np.full(steps + 1, float(max(face, put_mat)))
+    5803 / BDT 표준 컨벤션 (2026-05-26 통일):
+      - 만기 V = face (풋은 만기 이전까지의 권리, 만기 자동행사 없음)
+      - 중간 노드(put_step ≤ i < steps)에서 V = max(continuation, put_ex)
+      - 풋옵션가치 = 풋채권 − 순채권 = 풋 권리의 시간가치 (5803 ref ≈ face의 6.5%)
+
+    이전엔 만기 V = max(face, put_mat)로 풋이 만기 자동행사 — 풋옵션가치가
+    +290% 과대 (25bn vs 5803 ref 6.5bn). TF·BDT·CRR 모두 만기 face 통일.
+
+    disc/p 는 스칼라 또는 per-step 배열."""
+    V = np.full(steps + 1, float(face))  # 만기 풋 차단 (BDT·5803과 통일)
     if steps in coupon_cf:
         V += coupon_cf[steps]
 
@@ -183,7 +193,7 @@ def _puttable_bond(face, params: RCPSParams, disc, p, steps, dt, coupon_cf,
         if i in coupon_cf:
             V_new += coupon_cf[i]
 
-        # 풋 행사 가능 구간
+        # 풋 행사 가능 구간 (만기 이전 노드)
         if i >= put_step and params.has_put:
             t_node = i * dt
             put_ex = params.put_exercise_price(t_node)

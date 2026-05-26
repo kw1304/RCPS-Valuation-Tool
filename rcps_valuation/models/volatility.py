@@ -38,23 +38,42 @@ def historical_vol(closes, trading_days=252, log=True):
 
     σ_annual = stdev(daily returns, ddof=1) × √(trading_days)
     log=True 면 로그수익률 ln(S_t/S_{t-1}), 아니면 산술수익률.
+
+    표준오차(SE): σ_SE ≈ σ / √(2·n_obs) — 정규수익률 가정 하 σ 추정의 SE.
+    Hull "Options, Futures, and Other Derivatives" 11e Ch.15.
+    95% CI = σ ± 1.96·σ_SE.
+
+    log/산술 비교: log_return σ와 simple_return σ를 동시 산출하여 비교 (정규 분포일 때 ~동일,
+    σ 큰 경우 차이 ~0.1~0.5%p).
     """
     c = np.asarray(closes, dtype=float)
     if c.size < 2:
         raise ValueError("종가가 2개 이상 필요합니다 (수익률 계산 불가).")
-    if log:
-        rets = np.diff(np.log(c))
-    else:
-        rets = c[1:] / c[:-1] - 1.0
+    rets_log = np.diff(np.log(c))
+    rets_simple = c[1:] / c[:-1] - 1.0
+    rets = rets_log if log else rets_simple
     daily_sigma = float(np.std(rets, ddof=1))
     sigma = daily_sigma * math.sqrt(trading_days)
+    n_obs = int(rets.size)
+    # 표준오차 — σ 추정 신뢰도 (95% CI 산출용)
+    sigma_se = sigma / math.sqrt(2 * n_obs) if n_obs > 0 else 0.0
+    # 비교용 산출 (log/산술 모두)
+    log_sigma = float(np.std(rets_log, ddof=1)) * math.sqrt(trading_days)
+    simple_sigma = float(np.std(rets_simple, ddof=1)) * math.sqrt(trading_days)
     return {
         "sigma": sigma,                     # 연율 변동성(소수, 0.241 = 24.1%)
+        "sigma_se": sigma_se,               # 표준오차 (정규수익률 가정)
+        "ci95_low": max(0.0, sigma - 1.96 * sigma_se),
+        "ci95_high": sigma + 1.96 * sigma_se,
         "daily_sigma": daily_sigma,
-        "n_obs": int(rets.size),            # 수익률 관측치 수
+        "n_obs": n_obs,                     # 수익률 관측치 수
         "n_prices": int(c.size),
         "trading_days": trading_days,
         "log_returns": bool(log),
+        # 비교 정보 (log vs 산술)
+        "log_sigma": log_sigma,
+        "simple_sigma": simple_sigma,
+        "convention_diff_pp": abs(log_sigma - simple_sigma) * 100,
     }
 
 
@@ -168,10 +187,15 @@ def basket_volatility(series, trading_days=252, log=True, method="median",
                 "ticker": tk,
                 "name": s.get("name", tk),
                 "sigma": hv["sigma"],
+                "sigma_se": hv["sigma_se"],         # 표준오차 (정규수익률 가정)
+                "ci95_low": hv["ci95_low"],
+                "ci95_high": hv["ci95_high"],
                 "n_obs": hv["n_obs"],
                 "removed": removed,
                 "cap": s.get("cap"),
                 "trading_days_used": td,
+                "log_sigma": hv["log_sigma"],
+                "simple_sigma": hv["simple_sigma"],
             })
             caps.append(s.get("cap"))
         except Exception as e:  # noqa: BLE001 — 종목별 실패는 스킵하고 사유 보존
