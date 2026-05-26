@@ -193,8 +193,19 @@ def monte_carlo_rcps(params: RCPSParams, n_paths: int = 10000, n_steps: int = No
             itm = imm > 0.0
             cont = V_hold.copy()
             if int(itm.sum()) >= 50:
+                # LSM basis: Longstaff-Schwartz(2001) 권장 — ITM 정보(max(0,S-K))를 직접 포함.
+                # 4차 다항식보다 ITM이 큰 영역에서 회귀 정확도 우수.
+                # 전환가 K가 path별로 다를 수 있으므로(리픽싱) conv_val(=가치)을 직접 활용.
                 x = S_t[itm] / S0
-                X = np.column_stack([np.ones(x.size), x, x**2, x**3])
+                # 전환권 자체 정보 (max(0, conversion_value - face_value)/S0)도 basis로 사용
+                cv_norm = np.where(conv_val[itm] > 0, conv_val[itm] / S0, 0.0)
+                X = np.column_stack([
+                    np.ones(x.size),
+                    x,
+                    x**2,
+                    cv_norm,           # ITM 정보 직접 (전환가치 자체)
+                    cv_norm * x,       # 교차항
+                ])
                 try:
                     c, _, _, _ = np.linalg.lstsq(X, V_hold[itm], rcond=None)
                     cont[itm] = X @ c

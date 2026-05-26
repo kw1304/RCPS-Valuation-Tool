@@ -336,21 +336,25 @@ def gs_rcps(params: RCPSParams, steps: int = None,
             # 시각화용 평균 df (트리 그리드에 표시)
             df_parent = 0.5 * (df_up + df_dn)
 
-            # ── 발행자 콜 캡 (Pass 3)
-            cont_hold = hold
-            if call_active and i >= call_step:
-                call_ex_p3 = params.call_exercise_price(i * dt)
-                if call_ex_p3 < hold:
-                    cont_hold = call_ex_p3
-
+            # Pass 1 결정을 그대로 따라 cp 일관성 보장 (M14 — GS Pass3 결정 일관성)
+            # 이전엔 Pass3가 max(intr, cont_hold)로 결정을 재산정 → 콜 활성 노드에서
+            # Pass1·Pass3 결정이 갈릴 위험. cp는 Pass1 기반인데 Pass3가 다른 결정이면
+            # 블렌딩 할인계수와 가치 결정이 inconsistent.
             ei = _conv_val(i, j)
             rd_i = _redeem(i)
-            if rd_i is not None:
-                intr = max(ei, rd_i)
-            else:
-                intr = ei
-            # 5803: value = max(MAT,PUT,CON,TIME) + INT (쿠폰은 결정 무관 현 노드 가산)
-            Vn[j] = max(intr, cont_hold) + coupon_cf.get(i, 0)
+            d = dec[i][j]
+            coup_i = coupon_cf.get(i, 0)
+            if d == 'c':           # 전환
+                Vn[j] = ei + coup_i
+            elif d == 'r':         # 상환 (풋 또는 만기상환)
+                Vn[j] = (rd_i if rd_i is not None else face) + coup_i
+            elif d == 'l':         # 발행자 콜
+                call_ex_p3 = params.call_exercise_price(i * dt)
+                Vn[j] = call_ex_p3 + coup_i
+            else:                  # 'h' = 보유 (Pass3 블렌딩 hold 값)
+                Vn[j] = hold + coup_i
+            # 시각화용 df_parent는 그대로 유지
+            cont_hold = hold  # for tree visualization compatibility
 
             if collect_tree:
                 S = _S(i, j)

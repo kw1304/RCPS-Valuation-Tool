@@ -1,16 +1,45 @@
+"""민감도 분석 — 가정을 조금씩 흔들었을 때 공정가치 변동.
+
+K-IFRS 13.93(h)(ii) Level 3 unobservable input 민감도 공시.
+본 평가와 같은 곡선·같은 단계를 써야 base fv가 일치합니다.
+"""
 from copy import deepcopy
+from typing import Optional, List
 import numpy as np
 from inputs.deal_params import RCPSParams
 from models.tsiveriotis_fernandes import tf_rcps
 
 
-def sensitivity_analysis(params: RCPSParams, steps: int = None) -> dict:
-    base = tf_rcps(params, steps=steps)
+def _shift_curve(curve: Optional[List[float]], delta: float) -> Optional[List[float]]:
+    """곡선 평행이동 — 신용스프레드 민감도용 (kd_curve += delta)."""
+    if not curve:
+        return None
+    return [max(float(r) + delta, 0.0) for r in curve]
+
+
+def sensitivity_analysis(params: RCPSParams, steps: int = None,
+                         rf_curve: Optional[List[float]] = None,
+                         kd_curve: Optional[List[float]] = None) -> dict:
+    """가정 ±변동에 따른 공정가치 민감도.
+
+    Args:
+        params: 평가 파라미터
+        steps: 트리 단계 (본 평가와 동일해야 base fv 일치)
+        rf_curve, kd_curve: 본 평가에 사용된 step-forward 곡선
+            — 신용스프레드 민감도는 kd_curve 평행이동으로 재구성
+    """
+    tf_kw = {}
+    if rf_curve and kd_curve:
+        tf_kw["rf_curve"] = rf_curve
+        tf_kw["kd_curve"] = kd_curve
+
+    base = tf_rcps(params, steps=steps, **tf_kw)
     base_fv = base["fair_value"]
 
-    def calc(p):
+    def calc(p, kw=None):
         try:
-            return round(tf_rcps(p, steps=steps)["fair_value"])
+            kw = kw or tf_kw
+            return round(tf_rcps(p, steps=steps, **kw)["fair_value"])
         except Exception:
             return None
 
@@ -43,11 +72,18 @@ def sensitivity_analysis(params: RCPSParams, steps: int = None) -> dict:
             })
 
     # 신용스프레드 민감도: ±5%p (1%p 간격)
+    # 곡선 사용 시 kd_curve 평행이동, 곡선 미사용 시 credit_spread 가산
     spread_results = []
     for delta in np.arange(-0.05, 0.051, 0.01):
         p = deepcopy(params)
         p.credit_spread = max(round(params.credit_spread + delta, 4), 0.001)
-        fv = calc(p)
+        if kd_curve:
+            # 곡선 사용: kd_curve 평행이동
+            kw = {"rf_curve": rf_curve, "kd_curve": _shift_curve(kd_curve, float(delta))}
+            fv = calc(p, kw=kw)
+        else:
+            # 곡선 미사용: credit_spread 가산만으로 충분
+            fv = calc(p)
         if fv:
             spread_results.append({
                 "label": f"{p.credit_spread*100:.1f}%",
@@ -61,4 +97,5 @@ def sensitivity_analysis(params: RCPSParams, steps: int = None) -> dict:
         "volatility": vol_results,
         "stock_price": stock_results,
         "credit_spread": spread_results,
+        "curve_applied": bool(rf_curve and kd_curve),
     }

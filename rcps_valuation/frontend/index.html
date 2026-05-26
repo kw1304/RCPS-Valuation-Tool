@@ -348,7 +348,7 @@ details.note-fold .note{margin-top:4px}
 <header>
   <div class="hd-title">
     <h1><span class="ac">웅계사's</span> RCPS/DCF Valuation <span class="ac">Tool</span></h1>
-    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다.<br>단순 확인 목적으로 사용을 권장합니다.</p>
+    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다.<br>단순 확인 목적으로 사용을 권장합니다.<br><span style="font-size:.66rem;color:var(--text3)">※ 분류 전제: <b>FVTPL(당기손익-공정가치)</b> — RCPS는 통상 전환권이 내재파생상품이라 SPPI 충족 안 됨. 상각후원가 분류 시 EIR amortization·Stage 1/2/3 ECL은 별도 산정 필요.</span></p>
   </div>
   <div class="hd-right">
     <div class="header-groups">
@@ -609,11 +609,12 @@ details.note-fold .note{margin-top:4px}
     <div class="toggle"><input type="checkbox" id="has_mandconv" onchange="togglePD('mandconv')"><label for="has_mandconv">강제전환 Knock-out</label></div>
     <div id="mandconv-fields" class="hidden">
       <div class="row3">
-        <div class="field"><label for="mandatory_conv_barrier">배리어 (전환가 배수)</label><input type="number" id="mandatory_conv_barrier" value="2.00" step="0.10"></div>
+        <div class="field"><label for="mandatory_conv_barrier" title="전환가 대비 배수. 보통 1.5~2.5배 (주가가 전환가의 150~250% 도달 시 강제전환). 1배 미만이면 OTM 강제전환 가능성이 생겨 평가가 비현실적으로 왜곡됩니다.">배리어 (전환가 배수) <span style="color:var(--text3);font-weight:400;font-size:.7rem">권장 1.5~2.5</span></label><input type="number" id="mandatory_conv_barrier" value="2.00" step="0.10" min="0.1" oninput="(function(el){var v=parseFloat(el.value);var w=document.getElementById('mc-barrier-warn');if(w){if(v>0&&v<1.0)w.innerHTML='<span style=\\'color:#DC2626\\'>⚠ 배리어가 전환가보다 낮습니다 (배수&lt;1.0). 주가가 전환가보다 낮은 상태에서도 강제전환이 발동되어 평가가 비현실적으로 부풀려질 수 있어요.</span>';else if(v>0&&v<1.2)w.innerHTML='<span style=\\'color:#B45309\\'>⚠ 배리어가 매우 낮습니다 (배수&lt;1.2). 실무 통상 1.5~2.5배. 약정 확인 권장.</span>';else w.innerHTML=\\'\\';}})(this)"></div>
         <div class="field"><label for="mandatory_conv_window">관측창 (스텝)</label><input type="number" id="mandatory_conv_window" value="1" step="1"></div>
         <div class="field"><label for="mandatory_conv_count">충족 횟수</label><input type="number" id="mandatory_conv_count" value="1" step="1"></div>
       </div>
       <details class="note-fold"><summary></summary><div class="note"><b>주가 ≥ 전환가×배리어</b>를 충족하면 보통주로 강제전환(Knock-out). 충족 경로는 채권·풋이 소멸하고 전환가치로 확정됩니다.<br>• <b>관측창</b>: 최근 몇 스텝을 한 묶음으로 보고 배리어 충족을 판정할지.<br>• <b>충족 횟수</b>: 그 관측창 안에서 배리어를 몇 번 이상 넘겨야 발동하는지.<br>→ 창=1·횟수=1 이면 한 번만 넘어도 발동하는 <b>단순 배리어</b>. 예) 30/20 이면 최근 30스텝 중 20회 이상 상회해야 강제전환(<b>Parisian 배리어</b>) — 일시적 급등으로 인한 오발동을 막는 장치.<br>여기서 <b>스텝은 시장데이터의 "스텝 수(시간단계)"와 같은 단위</b>입니다(1스텝 ≈ 만기 ÷ 스텝수).</div></details>
+      <div id="mc-barrier-warn" style="font-size:.7rem;margin-top:4px;line-height:1.5"></div>
     </div>
 
     <!-- 소프트콜: 콜옵션 필요 -->
@@ -676,11 +677,11 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label for="volatility">변동성 (%)</label><input type="number" id="volatility" value="50.07" step="0.1"></div>
     </div>
     <div class="row2">
-      <div class="field"><label for="steps">스텝 수 (시간단계)</label>
-        <select id="steps">
-          <option value="60">60 스텝</option>
-          <option value="120" selected>120 스텝</option>
-          <option value="240">240 스텝</option>
+      <div class="field"><label for="steps">스텝 수 (시간단계) <span style="font-size:.7rem;color:#0EA5E9;font-weight:600">· TF·GS·MC 공통 적용</span></label>
+        <select id="steps" title="평가기간을 몇 칸으로 쪼갤지. TF·GS·MC가 같은 단계를 써야 결과 비교가 의미 있음.">
+          <option value="60">60 스텝 (빠름)</option>
+          <option value="120" selected>120 스텝 (권장)</option>
+          <option value="240">240 스텝 (정밀)</option>
           <option value="weekly">주간 (자동, T×52)</option>
         </select>
       </div>
@@ -694,7 +695,7 @@ details.note-fold .note{margin-top:4px}
         </select>
       </div>
     </div>
-    <div class="note" style="margin-top:4px">※ <b>스텝 수</b>는 평가기준일~만기까지 시간축을 몇 칸으로 쪼갤지(=MC 스텝·트리 시간단계)이며, <b>1스텝 ≈ 만기기간 ÷ 스텝수</b> 입니다. 경로의존 옵션의 <b>관측창·충족 횟수도 이 스텝과 같은 단위</b>로 셉니다.<br>※ 무위험이자율·신용스프레드는 <b>부트스트래핑 탭의 RF/RD 곡선에서 잔여만기 시점값으로 자동 도출</b>되며, 할인은 그 곡선의 선도이자율(연속스팟 선형보간+평탄외삽)을 스텝별로 적용합니다.</div>
+    <div class="note" style="margin-top:4px">※ <b>스텝 수</b>는 평가기준일~만기까지 시간축을 몇 칸으로 쪼갤지(=MC 스텝·트리 시간단계)이며, <b>1스텝 ≈ 만기기간 ÷ 스텝수</b> 입니다. 경로의존 옵션의 <b>관측창·충족 횟수도 이 스텝과 같은 단위</b>로 셉니다.<br>※ <b style="color:#0EA5E9">TF·GS·MC 세 모형이 동일한 스텝·동일한 곡선을 씁니다</b> — 모형 간 결과 차이는 "모형 구조의 차이"만 반영하며, 단계 수 차이로 갈라지지 않습니다 (K-IFRS 13.IE65).<br>※ 무위험이자율·신용스프레드는 <b>부트스트래핑 탭의 RF/RD 곡선에서 잔여만기 시점값으로 자동 도출</b>되며, 할인은 그 곡선의 선도이자율(연속스팟 선형보간+평탄외삽)을 스텝별로 적용합니다.</div>
   </div>
 
   <div id="err-box" class="err-msg"></div>
@@ -729,11 +730,12 @@ details.note-fold .note{margin-top:4px}
           <button class="btn-sm add" id="bdt-run-btn" onclick="runBdt()" style="white-space:nowrap;height:32px">BDT 재평가</button>
         </div>
       </div>
-      <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용 · 공정가치 합산 제외). 일반채권가치는 σ에 거의 무관(시장 캘리브레이션)이며 풋옵션 가치만 σ에 민감. "BDT 재평가" 버튼을 누르세요.</div>
+      <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용 · 공정가치 합산 제외). 일반채권가치는 σ에 거의 무관(시장 캘리브레이션)이며 풋옵션 가치만 σ에 민감. "BDT 재평가" 버튼을 누르세요.<br><b style="color:var(--text2)">금리 변동성(σ)이란?</b> 단기금리가 1년 동안 얼마나 흔들리는지를 나타내는 값입니다. <b>주식 변동성과는 다른 개념</b>이에요 (주식은 보통 30~60%, 단기금리는 한국 시장에서 통상 <b>5~15%</b>). 금리 안정기는 5~8%, 변동기는 10~15% 정도가 일반적입니다.</div>
     </div>
     </div><!-- /.res-left -->
     <div class="res-right">
     <div class="model-row" id="model-row"></div>
+    <div id="model-interp"></div>
     <div class="tabs">
       <div class="tab-bar">
         <button class="tab-btn active" onclick="tabSwitch('params',this)">입력 요약</button>
@@ -804,6 +806,20 @@ details.note-fold .note{margin-top:4px}
         <input type="checkbox" id="a_scenario" onchange="dcfCalc()"> 3-시나리오 분석 (Bull/Base/Bear)
       </label>
       <span id="dcf-warn" style="font-size:.7rem;color:var(--amber);font-weight:600"></span>
+    </div>
+    <div id="dcf-steady" style="margin-top:6px;font-size:.72rem;line-height:1.5"></div>
+    <div style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px">
+      <span style="font-size:.72rem;font-weight:700;color:#0369A1">잔존가치(TV) 산정 방식:</span>
+      <select id="a_tv_method" onchange="dcfCalc()" title="Gordon: '영구 동일 성장' 가정. Multiple: '마지막 해 EBITDA × 배수'로 계산. Weighted: 두 방식 50:50 가중.">
+        <option value="gordon" selected>Gordon (영구 성장 가정)</option>
+        <option value="multiple">Exit Multiple (배수 적용)</option>
+        <option value="weighted">두 방식 가중평균 (50:50)</option>
+      </select>
+      <label style="font-size:.72rem;color:var(--text2);display:flex;align-items:center;gap:4px" title="마지막 해 EV/EBITDA 배수. 한국 비상장 통상 6~12배. M&A 사례·동종업계 평균 참고.">
+        EV/EBITDA 배수
+        <input type="number" id="a_exit_mult" value="8" step="0.5" min="0" style="width:60px" oninput="dcfCalc()">
+      </label>
+      <span style="font-size:.68rem;color:#64748B">※ 두 방식 결과 차이가 크면 가정을 재확인하세요</span>
     </div>
   </div>
 
@@ -1049,6 +1065,11 @@ details.note-fold .note{margin-top:4px}
       <button class="btn-run" onclick="waccApplyToDcf()" style="padding:0.45rem 0.9rem">DCF 탭에 적용</button>
     </div>
     <div class="note" id="w_wacc_formula">E/V × Ke + D/V × Kd × (1−t)</div>
+    <div style="font-size:.66rem;color:var(--text3);margin-top:4px;line-height:1.55">
+      ※ MRP·CRP 출처: <b>Damodaran Country Risk Premium</b> (2026-01 update, pages.stern.nyu.edu/~adamodar/ctryprem) · 사이즈 프리미엄 출처: <b>Kroll Valuation Handbook</b> (2025-06 update)<br>
+      ※ 평가기준일이 위 update 시점과 6개월 이상 차이나면 원본 사이트에서 최신값 확인 권장
+    </div>
+    <div id="w-country-warn"></div>
   </div>
 </div><!-- /page-wacc -->
 
@@ -1569,13 +1590,12 @@ async function _xlsxDownload(url, payload, filename){
 }
 
 async function dcfDownloadXlsx(){
-  // DCF C1 후속: 백엔드 평가 엔진을 단일 출처로 사용. 화면 계산은 실시간 피드백,
-  // Excel은 서버 dcf_valuation()이 산출한 결과를 그대로 사용 → 감사 추적성 확보
+  // 백엔드 평가 엔진(/api/dcf)을 단일 출처로 사용. Excel은 서버 결과 그대로.
   const vd=document.getElementById('valuation_date')?.value||'';
   const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||0)/100;
   const g=(parseFloat(document.getElementById('a_g')?.value)||0)/100;
   const years=(dcfYears||[]).map(y=>({revenue:y.revenue,ebit:y.ebit,tax:y.tax,da:y.da,capex:y.capex,dnwc:y.dnwc}));
-  // 1) 서버 단일 출처로 평가 결과 얻기
+  // 1) 서버 단일 출처
   let result={};
   try{
     const r=await fetch('/api/dcf',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -1587,10 +1607,28 @@ async function dcfDownloadXlsx(){
         nci_adjustment:getMoney('a_nci'),
         total_shares:getMoney('a_shares')||1,
         mid_year:document.getElementById('a_midyear')?.checked||false,
+        tv_method:document.getElementById('a_tv_method')?.value||'gordon',
+        exit_multiple:parseFloat(document.getElementById('a_exit_mult')?.value)||0,
       })});
     const j=await r.json();
     if(j.status==='ok'){
-      result={pv_explicit:j.result.pv_explicit_fcf, terminal_value:j.result.terminal_value, pv_terminal:j.result.pv_terminal_value};
+      // 서버 결과 전체 채택 — equity_value·stock_price 포함
+      result={
+        pv_explicit:j.result.pv_explicit_fcf,
+        terminal_value:j.result.terminal_value,
+        pv_terminal:j.result.pv_terminal_value,
+        enterprise_value:j.result.enterprise_value,
+        equity_value:j.result.equity_value,
+        stock_price:j.result.stock_price,
+        tv_method_used:j.result.tv_method_used,
+        tv_gordon:j.result.tv_gordon,
+        tv_multiple:j.result.tv_multiple,
+        negative_equity_warning:j.result.negative_equity_warning,
+        steady_state:j.result.steady_state,
+      };
+      if(j.result.negative_equity_warning){
+        if(!confirm('⚠ DCF 자기자본가치가 음수입니다 (자본잠식 신호). 그래도 다운로드하시겠습니까?'))return;
+      }
     }
   }catch(e){console.warn('DCF 서버 평가 실패, 클라이언트 fallback 사용:',e);}
   // 2) Excel export
@@ -2055,14 +2093,47 @@ function renderRCPS(data){
       <div class="mcard mc"><div class="mn">Monte Carlo LSM (참고)</div><div class="mv">${mcFv?fmtW(mcFv):'—'}</div>${mcFv?`<div class="ci-bar">95% CI&nbsp; ${fmtWs(mc.ci_lower)} ~ ${fmtWs(mc.ci_upper)}</div>`:''}${diffBadge(mcFv,tfFv)}</div>`;
   }
 
+  // 모형 간 차이 자동 해석 (일반인 친화) — 감사 대응 시 즉답 가능하도록
+  const interpEl=document.getElementById('model-interp');
+  if(interpEl && !r.mc_only){
+    const notes=[];
+    if(tfFv && gsFv){
+      const d=gsFv-tfFv, dp=Math.abs(d)/tfFv*100;
+      if(dp<1.0)notes.push(`<b style="color:#059669">✓</b> TF·GS 거의 일치 (${d>=0?'+':''}${Math.round(d).toLocaleString()}원, ${dp.toFixed(2)}%) — 두 모형 결과가 같은 자릿수, 공정가치 신뢰도 양호`);
+      else if(dp<3.0)notes.push(`TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dp.toFixed(2)}%) — TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩. 두 모형의 <b>구조 차이로 통상 수준</b>의 차이`);
+      else notes.push(`<b style="color:#B45309">⚠</b> TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dp.toFixed(2)}%) — 차이가 다소 큼. 콜·풋·강제전환 같은 옵션 권리가 활성화된 약정일 가능성`);
+    }
+    if(mcFv && tfFv && mc?.ci_lower!=null && mc?.ci_upper!=null){
+      if(tfFv>=mc.ci_lower && tfFv<=mc.ci_upper)
+        notes.push(`<b style="color:#059669">✓</b> MC 신뢰구간(95%) 안에 TF 결과 포함 — 통계적으로 일치`);
+      else
+        notes.push(`<b style="color:#B45309">⚠</b> TF 결과가 MC 95% 신뢰구간(${Math.round(mc.ci_lower).toLocaleString()}~${Math.round(mc.ci_upper).toLocaleString()}원) 밖 — 경로의존 옵션이 트리에 충분히 반영되지 않은 가능성, MC 채택 검토`);
+    }
+    if(mc?.std_error && mcFv){
+      const sePct=mc.std_error/mcFv*100;
+      if(sePct<0.5)notes.push(`MC 정밀도 양호: 표본오차 ${Math.round(mc.std_error).toLocaleString()}원 (공정가치의 ${sePct.toFixed(2)}%, 실무 권장 0.5% 이내)`);
+      else notes.push(`MC 표본오차 ${Math.round(mc.std_error).toLocaleString()}원 (${sePct.toFixed(2)}%) — 권장 0.5% 초과. 경로 수를 늘리면 더 정밀해집니다 (약 ${Math.ceil((sePct/0.5)**2)}배 경로 필요)`);
+    }
+    interpEl.innerHTML=notes.length?
+      `<div style="margin-top:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:.75rem;line-height:1.7"><b style="color:#78350F">■ 모형 간 차이 자동 해석</b><br>${notes.map(n=>'· '+n).join('<br>')}</div>`:'';
+  }
+
   const p=lastReq.params;
+  // K/S0 비율 (moneyness) — 변동성 가정 한계 안내
+  const _moneyness = p.stock_price>0 ? p.conversion_price/p.stock_price : null;
+  let _moneyMsg = '';
+  if(_moneyness!=null){
+    if(_moneyness>1.5)_moneyMsg=`<div style="font-size:.7rem;color:#B45309;margin-top:4px">⚠ 전환가가 주가의 ${_moneyness.toFixed(2)}배 (Deep OTM). 변동성 추정은 등가격(ATM) 기준이므로, 이렇게 멀리 떨어진 영역에서는 정확도가 다소 떨어질 수 있어요.</div>`;
+    else if(_moneyness<0.5)_moneyMsg=`<div style="font-size:.7rem;color:#B45309;margin-top:4px">⚠ 전환가가 주가의 ${_moneyness.toFixed(2)}배 (Deep ITM). 주가가 이미 전환가를 크게 상회 — 변동성보다 즉시 전환가치가 평가를 좌우합니다.</div>`;
+  }
   document.getElementById('info-grid').innerHTML=`
     <div class="info-box"><h4>발행 조건</h4><table>
       <tr><td>발행일</td><td>${p.issue_date}</td></tr><tr><td>만기일</td><td>${p.maturity_date}</td></tr>
       <tr><td>발행금액</td><td>${fmtW(p.face_value)}</td></tr><tr><td>우선배당률</td><td>${fmtP(p.coupon_rate*100,2)}</td></tr>
       <tr><td>전환가액</td><td>${fmtN(p.conversion_price)}원</td></tr><tr><td>전환 시작일</td><td>${p.conversion_start||'—'}</td></tr>
       <tr><td>풋 시작일</td><td>${p.put_start||'—'}</td></tr><tr><td>보장수익률 IRR</td><td>${p.put_irr>0?fmtP(p.put_irr*100,2):'—'}</td></tr>
-    </table></div>
+      ${_moneyness!=null?`<tr><td>전환가/주가</td><td>${_moneyness.toFixed(3)}${_moneyness>1.0?' (OTM)':_moneyness<1.0?' (ITM)':' (ATM)'}</td></tr>`:''}
+    </table>${_moneyMsg}</div>
     <div class="info-box"><h4>시장 데이터 (평가기준일)</h4><table>
       <tr><td>평가기준일</td><td>${p.valuation_date}</td></tr><tr><td>주가 S₀</td><td>${fmtN(p.stock_price)}원</td></tr>
       <tr><td>변동성 σ</td><td>${fmtP(p.volatility*100,2)}</td></tr><tr><td>무위험이자율 r</td><td>${fmtP(p.risk_free_rate*100,2)}</td></tr>
@@ -2369,6 +2440,56 @@ function dcfCalc(){
     if(wacc-g<0.02 && wacc>g) msgs.push(`WACC−g=${((wacc-g)*100).toFixed(1)}%p — 매우 작음. TV 민감도 매우 큼`);
     warnEl.textContent=msgs.join(' · ');
   }
+  // 정상상태(steady state) 4조건 점검 — TV 가정의 합리성 (일반인 친화 안내)
+  // 1) 마지막 해 CapEx ≈ D&A × (1+g)  — 자산 유지·성장 균형
+  // 2) 운전자본 변동이 매출의 20% 이내  — 영구 가정과 모순 없게
+  // 3) 마지막 3개년 EBIT 마진 차이 2%p 이내  — 마진 안정
+  // 4) 마지막 해 매출성장 ≈ g  — 영구 성장률에 안착
+  const ssMsgs=[];
+  if(dcfYears.length>=2){
+    const lastY=dcfYears[dcfYears.length-1];
+    // 1. CapEx vs D&A
+    if(lastY.da>0){
+      const ratio=lastY.capex/lastY.da;
+      const ideal=1+g;
+      if(Math.abs(ratio-ideal)>ideal*0.3){
+        ssMsgs.push(`마지막 해 CapEx가 감가상각비의 ${ratio.toFixed(2)}배(권장 ${ideal.toFixed(2)}배) — ${ratio<ideal?'자산 축소':'영구 과투자'} 가정과 가까움`);
+      }
+    }
+    // 2. 매출 대비 운전자본 변동
+    if(lastY.revenue>0 && Math.abs(lastY.dnwc/lastY.revenue)>0.20){
+      ssMsgs.push(`마지막 해 운전자본 변동이 매출의 ${(lastY.dnwc/lastY.revenue*100).toFixed(1)}% — 20% 초과. 영구 가정과 어긋날 수 있음`);
+    }
+    // 3. EBIT 마진 안정 (최근 3년)
+    if(dcfYears.length>=3){
+      const margins=dcfYears.slice(-3).filter(y=>y.revenue>0).map(y=>y.ebit/y.revenue*100);
+      if(margins.length>=2){
+        const range=Math.max(...margins)-Math.min(...margins);
+        if(range>2){
+          ssMsgs.push(`마지막 3개년 EBIT 마진 변동폭 ${range.toFixed(1)}%p — 마진이 들쭉날쭉(권장 2%p 이내). 영구 가치 추정 불안정`);
+        }
+      }
+    }
+    // 4. 마지막 해 매출성장 vs g
+    const prevY=dcfYears[dcfYears.length-2];
+    if(prevY.revenue>0){
+      const revG=(lastY.revenue/prevY.revenue-1);
+      if(Math.abs(revG-g)>0.03){
+        ssMsgs.push(`마지막 해 매출성장 ${(revG*100).toFixed(1)}% vs 영구성장률 ${(g*100).toFixed(1)}% — 차이 3%p 초과. 영구상태로의 안착이 부자연스러움`);
+      }
+    }
+  }
+  const ssEl=document.getElementById('dcf-steady');
+  if(ssEl){
+    if(ssMsgs.length===0 && dcfYears.length>=2){
+      ssEl.innerHTML=`<span style="color:#059669">✓ 영구가치(TV) 가정의 4가지 합리성 점검 통과</span>`;
+    }else if(ssMsgs.length>0){
+      ssEl.innerHTML=`<div style="color:#B45309;font-weight:600;margin-bottom:3px">⚠ 영구가치 가정 점검 — ${ssMsgs.length}건 주의</div>`+
+        ssMsgs.map(m=>`<div style="color:var(--text2);font-size:.68rem;padding-left:8px">· ${m}</div>`).join('');
+    }else{
+      ssEl.innerHTML='';
+    }
+  }
   const calc=dcfYears.map((y,i)=>{
     const prev=i>0?dcfYears[i-1]:null;
     const rev_gr=prev&&prev.revenue?((y.revenue-prev.revenue)/prev.revenue*100):null;
@@ -2405,28 +2526,50 @@ function dcfCalc(){
   }
   const pvEx=calc.reduce((s,c)=>s+c.pvfcff,0);
   const lastFCFF=calc[calc.length-1].fcff;
-  const tv=lastFCFF*(1+g)/(wacc-g);
+  // TV 산정: Gordon · Exit Multiple · Weighted
+  const tvMethod=document.getElementById('a_tv_method')?.value||'gordon';
+  const exitMult=parseFloat(document.getElementById('a_exit_mult')?.value)||0;
+  const tvGordon=lastFCFF*(1+g)/(wacc-g);
+  const lastYear=dcfYears[dcfYears.length-1];
+  const ebitdaN=(lastYear?.ebit||0)+(lastYear?.da||0);
+  const tvMultiple=exitMult>0?ebitdaN*exitMult:null;
+  let tv;
+  if(tvMethod==='multiple'&&tvMultiple!=null)tv=tvMultiple;
+  else if(tvMethod==='weighted'&&tvMultiple!=null)tv=(tvGordon+tvMultiple)/2;
+  else tv=tvGordon;
   // TV 할인: mid-year면 t=N-0.5, full-year면 t=N (명시기간 종료 시점)
   const tvT=midyear?(dcfYears.length-0.5):dcfYears.length;
   const pvTV=tv/Math.pow(1+wacc,tvT);
+  const pvTVGordon=tvGordon/Math.pow(1+wacc,tvT);
+  const pvTVMultiple=tvMultiple!=null?tvMultiple/Math.pow(1+wacc,tvT):null;
   // Equity Bridge (K-IFRS 평가실무):
   //   = 영업가치 + 비영업자산 − 순차입금 − 다른시리즈 우선주 − 비지배지분
   // 다른 시리즈 우선주(pref)는 보통주에 우선하는 청산권을 가지므로 보통주 가치에서 차감.
   // 본인 RCPS는 순환참조라 제외(stock_price 산정 후 RCPS 평가에서 별도 인식).
   const opVal=pvEx+pvTV;
   const ev=opVal+nonop;
-  const equity=Math.max(opVal+nonop-nd-pref-nci,0);
-  const sp=equity/shares;
+  const equityRaw=opVal+nonop-nd-pref-nci;  // 음수 가능 — 침묵 클리핑 금지
+  const equityNeg=equityRaw<0;
+  const equity=equityNeg?0:equityRaw;
+  const sp=equityNeg?0:(equity/shares);
   document.getElementById('dcf-result-wrap').style.display='block';
   document.getElementById('dcf-sum-grid').innerHTML=`
     <div class="dcf-scard"><div class="sn">명시적 FCF 현재가치</div><div class="sv">${fmtW(pvEx)}</div><div class="ss">예측기간 ${dcfYears.length}년 FCFF PV 합계</div></div>
-    <div class="dcf-scard"><div class="sn">터미널 밸류 현재가치</div><div class="sv">${fmtW(pvTV)}</div><div class="ss">명목 TV ${fmtW(tv)} · TV/EV ${pct(pvTV,ev)}</div></div>
-    <div class="dcf-scard"><div class="sn">자기자본가치</div><div class="sv">${fmtW(equity)}</div><div class="ss">영업가치 ${fmtW(opVal)} + 비영업자산 ${fmtW(nonop)} − 순차입금 ${fmtW(nd)}${pref?` − 우선주 ${fmtW(pref)}`:''}${nci?` − 비지배지분 ${fmtW(nci)}`:''}</div></div>
-    <div class="dcf-scard sp"><div class="sn">주당 내재가치</div><div class="sv">${fmtN(sp)}원</div><div class="ss">자기자본 ÷ ${fmtN(shares)}주</div></div>`;
+    <div class="dcf-scard"><div class="sn">잔존가치(TV) 현재가치</div><div class="sv">${fmtW(pvTV)}</div><div class="ss">채택: <b>${tvMethod==='multiple'?'Exit Multiple':tvMethod==='weighted'?'가중평균':'Gordon'}</b> · TV/EV ${pct(pvTV,ev)}${tvMultiple!=null?`<br><span style="color:var(--text3);font-size:.66rem">비교 — Gordon ${fmtWs(pvTVGordon)} · Multiple ${fmtWs(pvTVMultiple)}</span>`:''}</div></div>
+    <div class="dcf-scard${equityNeg?' neg':''}"><div class="sn">자기자본가치${equityNeg?' ⚠':''}</div><div class="sv">${equityNeg?`<span style="color:#DC2626">${fmtW(equityRaw)}</span>`:fmtW(equity)}</div><div class="ss">${equityNeg?`<b style="color:#DC2626">자본잠식 신호</b> — 영업가치보다 차감항목(순차입금·우선주·비지배)이 더 큼. 주당가치 산정 불가. 가정을 재검토하세요.`:`영업가치 ${fmtW(opVal)} + 비영업자산 ${fmtW(nonop)} − 순차입금 ${fmtW(nd)}${pref?` − 우선주 ${fmtW(pref)}`:''}${nci?` − 비지배지분 ${fmtW(nci)}`:''}`}</div></div>
+    <div class="dcf-scard sp"><div class="sn">주당 내재가치</div><div class="sv">${equityNeg?`<span style="color:#DC2626">평가 불가</span>`:`${fmtN(sp)}원`}</div><div class="ss">${equityNeg?'자기자본가치가 음수입니다 — RCPS 전달 불가':`자기자본 ÷ ${fmtN(shares)}주`}</div></div>`;
   const badge=document.getElementById('dcf-sp-badge');
-  badge.textContent=`산출 주가: ${fmtN(sp)}원`;badge.style.display='block';
-  const sendBtn=document.getElementById('btn-send');
-  sendBtn.style.display='block';sendBtn.dataset.sp=Math.round(sp);
+  if(equityNeg){
+    badge.textContent=`⚠ 자본잠식 — DCF 결과를 RCPS로 전달할 수 없습니다`;
+    badge.style.display='block';
+    badge.style.background='#FEE2E2';badge.style.color='#991B1B';
+    document.getElementById('btn-send').style.display='none';
+  }else{
+    badge.textContent=`산출 주가: ${fmtN(sp)}원`;badge.style.display='block';
+    badge.style.background='';badge.style.color='';
+    const sendBtn=document.getElementById('btn-send');
+    sendBtn.style.display='block';sendBtn.dataset.sp=Math.round(sp);
+  }
   dc('dcf-ev');
   CH['dcf-ev']=new Chart(document.getElementById('c-dcf-ev').getContext('2d'),{type:'doughnut',
     data:{labels:['명시적 FCF PV','터미널 밸류 PV'],datasets:[{data:[pvEx,pvTV],backgroundColor:['#3182F6','#FF9F00'],borderWidth:2,borderColor:'#fff'}]},
@@ -2582,8 +2725,44 @@ function dcfMultipleCheck(ev, years, midyear){
   host.innerHTML=`Implied EV/EBITDA (마지막 연도): <b>${mult.toFixed(1)}x</b> <span style="color:var(--text3)">${flag}</span>`;
 }
 
-function sendToRCPS(){
-  const sp=parseInt(document.getElementById('btn-send').dataset.sp||0);if(!sp)return;
+async function sendToRCPS(){
+  // 서버 단일 출처(/api/dcf)에서 stock_price 받아 RCPS로 전달
+  // 화면 미리보기와 서버 계산이 다르면 서버값을 신뢰 (감사 추적성)
+  const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||0)/100;
+  const g=(parseFloat(document.getElementById('a_g')?.value)||0)/100;
+  const years=(dcfYears||[]).map(y=>({revenue:y.revenue,ebit:y.ebit,tax:y.tax,da:y.da,capex:y.capex,dnwc:y.dnwc}));
+  let sp=0;
+  try{
+    const r=await fetch('/api/dcf',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        years, wacc, terminal_growth:g,
+        net_debt:getMoney('a_nd'),
+        non_operating_assets:getMoney('a_nonop'),
+        preferred_value:getMoney('a_pref')||0,
+        nci_adjustment:getMoney('a_nci'),
+        total_shares:getMoney('a_shares')||1,
+        mid_year:document.getElementById('a_midyear')?.checked||false,
+        tv_method:document.getElementById('a_tv_method')?.value||'gordon',
+        exit_multiple:parseFloat(document.getElementById('a_exit_mult')?.value)||0,
+      })});
+    const j=await r.json();
+    if(j.status==='ok'){
+      if(j.result.negative_equity_warning){
+        alert('⚠ DCF 자기자본가치가 음수입니다 (자본잠식 신호). RCPS 평가를 진행하지 않습니다. 가정을 재검토하세요.');
+        return;
+      }
+      sp=Math.round(j.result.stock_price||0);
+    }else{
+      alert('DCF 서버 평가 실패: '+(j.message||'unknown'));
+      return;
+    }
+  }catch(e){
+    // 서버 실패 시 화면값 폴백
+    sp=parseInt(document.getElementById('btn-send').dataset.sp||0);
+    if(!sp){alert('DCF 평가 결과가 없습니다.');return;}
+    console.warn('DCF 서버 호출 실패, 화면값 사용:',e);
+  }
+  if(!sp){alert('주당가치 산출 불가.');return;}
   setMoney('stock_price',sp);
   document.getElementById('is_unlisted').checked=true;
   switchPage('rcps',document.getElementById('tab-rcps-btn'));
@@ -2610,9 +2789,9 @@ function waccRenderPeers(){
     if(p.tdSource==='bs' && p.asOf){
       metaParts.push(`D/E ${p.asOf}`);
     } else if(p.tdSource==='info'){
-      metaParts.push(`<span style="color:#B45309" title="평가기준일 BS 미확보 → 현시점 yfinance.info 폴백">⚠ D/E 현시점 폴백</span>`);
+      metaParts.push(`<span style="color:#B45309" title="평가기준일 분기말 재무제표를 찾지 못해 yfinance의 현시점 D/E로 대체했습니다. 평가기준일과 현시점 사이에 자본구조 큰 변동(유증·자사주매입 등)이 있으면 결과가 왜곡될 수 있어요.">⚠ D/E 현시점 대체</span>`);
     } else if(p.mcSource==='info' && p.tdSource){
-      metaParts.push(`<span style="color:#B45309">⚠ 시총 현시점 폴백</span>`);
+      metaParts.push(`<span style="color:#B45309" title="평가기준일 시총을 찾지 못해 현시점 시총으로 대체. 평가기준일 종가 × 발행주식수로 직접 입력하면 정확합니다.">⚠ 시총 현시점 대체</span>`);
     }
     const deMeta=metaParts.length?`<div style="font-size:.62rem;color:var(--text3);margin-top:2px">${metaParts.join(' · ')}</div>`:'';
     return `<tr>
@@ -2750,22 +2929,62 @@ function waccRecalc(){
   // β_D>0: Full Hamada — β_U = [β_L + β_D·(1−t)·D/E] / [1 + (1−t)·D/E]
   const betaD = (parseFloat(document.getElementById('w_beta_d')?.value)||0);
 
-  // 국가별 세율 매핑 (Damodaran 2024 기준 marginal corporate tax rate)
+  // 국가별 세율 매핑 (Damodaran 2024 기준 marginal corporate tax rate, source: pages.stern.nyu.edu/~adamodar)
   // unlever는 peer 국가 세율, relever는 평가대상 세율 (Damodaran Investment Valuation 3e Ch.8)
+  // yfinance info.country 표기 변형(예: "Korea, Republic of") 매핑 확장
   const _COUNTRY_TAX = {
-    'South Korea':0.242,'Korea':0.242,'United States':0.25,'USA':0.25,'Japan':0.30,
-    'China':0.25,'Hong Kong':0.165,'Taiwan':0.20,'Singapore':0.17,
-    'United Kingdom':0.25,'Germany':0.30,'France':0.258,'Italy':0.278,
-    'India':0.252,'Brazil':0.34,'Australia':0.30,'Canada':0.265,
+    // 한국
+    'South Korea':0.242,'Korea':0.242,'Korea, Republic of':0.242,'Republic of Korea':0.242,
+    // 미국·캐나다
+    'United States':0.25,'USA':0.25,'United States of America':0.25,'US':0.25,
+    'Canada':0.265,
+    // 일본·중화권
+    'Japan':0.30,
+    'China':0.25,"People's Republic of China":0.25,'Hong Kong':0.165,'Hong Kong SAR':0.165,
+    'Taiwan':0.20,'Taiwan, Province of China':0.20,
+    'Singapore':0.17,
+    // 유럽
+    'United Kingdom':0.25,'UK':0.25,'Great Britain':0.25,
+    'Germany':0.30,'France':0.258,'Italy':0.278,
+    'Netherlands':0.258,'Switzerland':0.18,'Sweden':0.206,'Norway':0.22,'Denmark':0.22,
+    'Spain':0.25,'Belgium':0.25,'Ireland':0.125,
+    // 기타 주요국
+    'India':0.252,'Brazil':0.34,'Australia':0.30,'New Zealand':0.28,
+    'Mexico':0.30,'South Africa':0.27,'Israel':0.23,'Turkey':0.25,
+    'Russia':0.20,'Indonesia':0.22,'Thailand':0.20,'Vietnam':0.20,
+    'Malaysia':0.24,'Philippines':0.25,'Saudi Arabia':0.20,'United Arab Emirates':0.09,
   };
+  // SPC(특수목적법인) 등록국 — 실질 사업국과 다를 가능성 高. 사용자 주의 환기.
+  const _SPC_COUNTRIES = new Set([
+    'Cayman Islands','Bermuda','British Virgin Islands','BVI','Luxembourg',
+    'Marshall Islands','Panama','Liberia','Jersey','Guernsey','Isle of Man','Bahamas',
+  ]);
   // 유사기업 β_U 계산 후 집계 → β_L_target (re-lever)
   // peer는 unlever에 peer 국가 세율, target은 입력 tax로 re-lever
   const peers=window.waccPeers.filter(p=>p.betaL>0);
-  const betaUs=peers.map(p=>{
+  const _countryWarnings = [];
+  const betaUs=peers.map((p,idx)=>{
     const de=p.de/100;
-    const peerTax = (p.country && _COUNTRY_TAX[p.country]!=null) ? _COUNTRY_TAX[p.country] : tax;
+    let peerTax = tax;
+    let mappedOk = false;
+    if(p.country){
+      if(_COUNTRY_TAX[p.country]!=null){peerTax=_COUNTRY_TAX[p.country]; mappedOk=true;}
+      if(_SPC_COUNTRIES.has(p.country)){
+        _countryWarnings.push(`${p.name||'peer#'+(idx+1)}: 등록국 "${p.country}"는 SPC 등록지(케이맨·버뮤다 등). 실제 사업국 세율이 다를 수 있어 결과 검토 필요`);
+      }else if(!mappedOk){
+        _countryWarnings.push(`${p.name||'peer#'+(idx+1)}: 국가 "${p.country}" 세율 매핑 없음 — 평가대상 세율(${(tax*100).toFixed(1)}%)로 대체. 정확도 위해 실질국 세율 확인 권장`);
+      }
+    }
     return (p.betaL + betaD*(1-peerTax)*de) / (1 + (1-peerTax)*de);
   });
+  // peer 평균 D/E 점검 — 100% 초과 시 β_D 입력 권장 (Hamada 단순가정 부정확)
+  const _peerDeMedian = peers.length ? (()=>{
+    const arr=[...peers.map(p=>p.de)].sort((a,b)=>a-b);
+    return arr.length%2 ? arr[(arr.length-1)/2] : 0.5*(arr[arr.length/2-1]+arr[arr.length/2]);
+  })() : 0;
+  if(_peerDeMedian>100 && betaD===0){
+    _countryWarnings.push(`비교회사 D/E 중앙값 ${_peerDeMedian.toFixed(0)}% — 부채가 많은 회사들입니다. 부채베타(β_D)를 0으로 두면 베타 추정이 약간 부정확해질 수 있어요. 위 β_D 칸에서 신용등급(BBB → 0.20 등)을 선택해보세요.`);
+  }
   let beta_u_agg=0;
   if(betaUs.length){
     const sorted=[...betaUs].sort((a,b)=>a-b);
@@ -2792,6 +3011,15 @@ function waccRecalc(){
   document.getElementById('w_wacc_out').textContent = (wacc*100).toFixed(2)+'%';
   document.getElementById('w_wacc_formula').innerHTML =
     `WACC = E/V <b>${(ev*100).toFixed(1)}%</b> × Ke <b>${(ke*100).toFixed(2)}%</b> + D/V <b>${(dv*100).toFixed(1)}%</b> × Kd <b>${(kd*100).toFixed(2)}%</b> × (1−t) <b>${((1-tax)*100).toFixed(1)}%</b> = <b style="color:var(--accent)">${(wacc*100).toFixed(2)}%</b>`;
+  // peer/β_D 관련 일반인 친화 경고 표시
+  const cwEl = document.getElementById('w-country-warn');
+  if(cwEl){
+    if(_countryWarnings.length){
+      cwEl.innerHTML = `<div style="margin-top:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:.72rem;line-height:1.65"><b style="color:#78350F">⚠ 비교회사 가정 점검</b><br>${_countryWarnings.map(m=>'· '+m).join('<br>')}</div>`;
+    }else{
+      cwEl.innerHTML = '';
+    }
+  }
   window._lastWacc = wacc;
   // 평가기준일 동기화 표시
   const vd=document.getElementById('valuation_date')?.value;
@@ -2847,7 +3075,11 @@ document.addEventListener('DOMContentLoaded',onValDateChange);
 
 // 평가기준일·평가대상 시총 기반 MRP·CRP·사이즈 프리미엄 자동 채움
 // MRP = Mature Market ERP(선진국 기본), CRP = 한국 추가 위험. 합치면 Damodaran "한국 ERP" 값과 일치(중복 방지).
-// 연도별 근사값 (Damodaran 반기 업데이트 기준). 정확값은 pages.stern.nyu.edu/~adamodar/ctryprem 확인 권장.
+// 출처: Damodaran, "Country Risk Premiums" (pages.stern.nyu.edu/~adamodar/ctryprem)
+// 갱신주기: 매년 1월·7월. 본 데이터는 2026-01 update 기준 (가장 최근 가용).
+// 평가 시점이 update 시점과 6개월 이상 차이나면 원본 사이트에서 최신값 확인 권장.
+const _DAMODARAN_UPDATE = '2026-01-01';
+const _KROLL_SIZE_UPDATE = '2025-06-30';  // Kroll Valuation Handbook 반기 업데이트
 const _MATURE_ERP={'2026':4.23,'2025':4.30,'2024':4.60,'2023':5.00,'2022':4.40,'2021':4.25,'2020':5.20,'2019':5.06};
 const _CRP_KR={'2026':0.64,'2025':0.80,'2024':0.85,'2023':0.95,'2022':1.10,'2021':0.85,'2020':1.05,'2019':0.80};
 // CRP 연도×국가 매트릭스 (Damodaran). 단위 %.

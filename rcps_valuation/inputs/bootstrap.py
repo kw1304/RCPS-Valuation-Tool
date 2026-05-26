@@ -89,9 +89,11 @@ def bootstrap_par_yield(rows: Sequence[dict], m: int = 2,
 
     dfs: Dict[float, float] = {}
     mid_rows = []
+    warnings_list = [warning] if warning else []
 
     T = dt
     step = 1
+    prev_df = 1.0  # 직전 스텝 DF (forward 산출용)
     while T <= max_T_used + 1e-9:
         Tr = round(T * 1000) / 1000
         ytm = _interp_ytm(Tr, valid)
@@ -106,8 +108,16 @@ def bootstrap_par_yield(rows: Sequence[dict], m: int = 2,
         if df > 0 and df < 2 and not math.isnan(df):
             dfs[Tr] = df
             zper = math.pow(df, -1.0 / step) - 1
+            # forward rate (연속복리) — 음수·과대 시 경고
+            fwd = math.log(prev_df / df) / dt if df > 0 and prev_df > 0 else 0.0
             mid_rows.append({"T": Tr, "step": step, "ytm_per": ytm / m,
-                             "zper": zper * 100, "df": df})
+                             "zper": zper * 100, "df": df,
+                             "fwd_cont": fwd * 100})
+            if fwd < 0:
+                warnings_list.append(f"T={Tr}년 시점 선도이자율 {fwd*100:.2f}% (음수) — 시장 금리 역전 구간")
+            elif fwd > 0.50:
+                warnings_list.append(f"T={Tr}년 시점 선도이자율 {fwd*100:.1f}% (50% 초과) — 입력 데이터 이상 가능")
+            prev_df = df
         T = round((T + dt) * 1000) / 1000
         step += 1
 
@@ -125,6 +135,11 @@ def bootstrap_par_yield(rows: Sequence[dict], m: int = 2,
                              "zcont": zcont * 100})
         oT = round((oT + 0.25) * 1000) / 1000
 
+    # K-IFRS 13.BC176 — 변환·근사 가정 명시
+    convention_note = (
+        "시장 YTM을 액면거래(par) 채권의 쿠폰으로 근사하여 부트스트랩. "
+        "한국 국고채는 액면 근처 거래로 근사 양호하나, BBB 이하 회사채는 편향 가능."
+    )
     return {
         "mid_rows": mid_rows,
         "out_rows": out_rows,
@@ -132,6 +147,8 @@ def bootstrap_par_yield(rows: Sequence[dict], m: int = 2,
         "input_max": input_max,
         "max_T_used": max_T_used,
         "warning": warning,
+        "warnings": warnings_list,
+        "convention": convention_note,
     }
 
 

@@ -4,7 +4,7 @@ from openpyxl.utils import get_column_letter
 from datetime import datetime
 
 
-def generate_workpaper(params, initial_result, subsequent_results, sensitivity_result, output_path,
+def generate_workpaper(params, initial_result, sensitivity_result, output_path,
                        tf_tree=None, gs_tree=None, eval_result=None, bdt_cross=None):
     wb = Workbook()
 
@@ -33,11 +33,7 @@ def generate_workpaper(params, initial_result, subsequent_results, sensitivity_r
         ws_gs = wb.create_sheet("6.GS이항트리")
         _write_tree(ws_gs, "GS (Goldman Sachs)", gs_tree, params)
 
-    if subsequent_results:
-        ws_sub = wb.create_sheet("7.후속측정")
-        _write_subsequent(ws_sub, subsequent_results)
-
-    ws_sens = wb.create_sheet("8.민감도분석")
+    ws_sens = wb.create_sheet("7.민감도분석")
     _write_sensitivity(ws_sens, sensitivity_result)
 
     wb.save(output_path)
@@ -109,6 +105,71 @@ def _write_model_comparison(ws, eval_result, params):
         bg = "F7FAFC" if ri % 2 == 0 else "FFFFFF"
         _cell(ws, ri, 1, k, bg=bg)
         _cell(ws, ri, 2, v, bg=bg, align="right")
+
+    # ── 자동 해석 (감사 대응성) — 일반인이 읽고 이해 가능한 한 줄 해설
+    interp_row = r0 + len(metas) + 2
+    ws.cell(row=interp_row, column=1, value="■ 모형 간 차이 해석").font = Font(name="맑은 고딕", bold=True, size=11)
+    ws.merge_cells(start_row=interp_row, start_column=1, end_row=interp_row, end_column=5)
+    notes = _interpret_model_diff(tf, gs, mc)
+    for i, note in enumerate(notes, interp_row + 1):
+        bg = "FFFBEB"
+        c = ws.cell(row=i, column=1, value=note)
+        c.font = Font(name="맑은 고딕", size=10, color="78350F")
+        c.fill = PatternFill(fill_type="solid", fgColor=bg)
+        c.alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[i].height = 28
+        ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=5)
+
+
+def _interpret_model_diff(tf: dict, gs: dict, mc: dict) -> list:
+    """TF/GS/MC 결과 차이를 일반인 친화적 한 줄 해설로 자동 생성.
+
+    감사인이 "왜 TF·GS·MC 결과가 다른가?"에 즉답 가능하도록 자동 주석.
+    K-IFRS 13.93(g) Level 3 측정 불확실성 공시 보조.
+    """
+    notes = []
+    tf_fv = tf.get("fair_value") if tf and not tf.get("error") else None
+    gs_fv = gs.get("fair_value") if gs and not gs.get("error") else None
+    mc_fv = mc.get("fair_value") if mc and not mc.get("error") else None
+    mc_se = mc.get("std_error") if mc else None
+    mc_ci_low = mc.get("ci_lower") if mc else None
+    mc_ci_high = mc.get("ci_upper") if mc else None
+
+    # TF vs GS 차이
+    if tf_fv and gs_fv:
+        diff = gs_fv - tf_fv
+        diff_pct = abs(diff) / tf_fv * 100
+        if diff_pct < 1.0:
+            notes.append(f"• TF·GS 거의 일치 ({diff:+,.0f}원, {diff_pct:.2f}%) — 두 모형이 같은 자릿수의 결과를 산출. 공정가치 신뢰도 양호.")
+        elif diff_pct < 3.0:
+            notes.append(f"• TF·GS 차이 {diff:+,.0f}원 ({diff_pct:.2f}%) — TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩. 두 모형의 구조 차이로 통상 수준의 차이.")
+        else:
+            notes.append(f"• TF·GS 차이 {diff:+,.0f}원 ({diff_pct:.2f}%) — 차이가 상대적으로 큼. 콜·풋·강제전환 같은 옵션 권리가 활성화된 경우 두 모형의 블렌딩 방식 차이가 확대됨.")
+
+    # MC와 TF·GS 비교 (SE/CI 활용)
+    if mc_fv and tf_fv:
+        mc_diff = mc_fv - tf_fv
+        if mc_ci_low is not None and mc_ci_high is not None:
+            if mc_ci_low <= tf_fv <= mc_ci_high:
+                notes.append(f"• MC 결과 {mc_fv:,.0f}원 (95% 신뢰구간 {mc_ci_low:,.0f}~{mc_ci_high:,.0f}원) — TF 결과가 신뢰구간 안에 있어 통계적으로 일치.")
+            else:
+                notes.append(f"• MC 결과 {mc_fv:,.0f}원 (95% CI {mc_ci_low:,.0f}~{mc_ci_high:,.0f}원) — TF 결과가 신뢰구간 밖. 경로의존 옵션이 트리에서 충분히 반영되지 않은 가능성. 경로수 증가 또는 MC 채택 검토.")
+        else:
+            notes.append(f"• MC 결과 {mc_fv:,.0f}원 (TF 대비 {mc_diff:+,.0f}원) — 시뮬레이션 표본오차 확인 필요.")
+
+    # SE 가이드
+    if mc_se and mc_fv:
+        se_pct = mc_se / mc_fv * 100
+        if se_pct < 0.3:
+            notes.append(f"• MC 표본오차 {mc_se:,.0f}원 (공정가치의 {se_pct:.2f}%) — 매우 정밀.")
+        elif se_pct < 0.7:
+            notes.append(f"• MC 표본오차 {mc_se:,.0f}원 (공정가치의 {se_pct:.2f}%) — 실무 권장 수준(0.5% 이하)에 근접.")
+        else:
+            notes.append(f"• MC 표본오차 {mc_se:,.0f}원 (공정가치의 {se_pct:.2f}%) — 권장 0.5% 초과. 경로수를 늘리면 정밀도 향상 (현재 path 수의 {int((se_pct/0.5)**2)}배 권장).")
+
+    if not notes:
+        notes.append("• 모형 비교 데이터 부족 — 평가 후 자동 생성됩니다.")
+    return notes
 
 
 def _write_bdt_cross(ws, bdt):
@@ -428,38 +489,6 @@ def _write_valuation(ws, initial):
         bg = "F7FAFC" if ri % 2 == 0 else "FFFFFF"
         _cell(ws, ri, 1, k, bg=bg)
         _cell(ws, ri, 2, v, bg=bg)
-
-
-def _write_subsequent(ws, results):
-    cols = ["A", "B", "C", "D", "E", "F", "G", "H"]
-    widths = [14, 20, 20, 18, 18, 12, 14, 12]
-    for col, w in zip(cols, widths):
-        ws.column_dimensions[col].width = w
-    ws.row_dimensions[1].height = 32
-
-    t = ws.cell(row=1, column=1, value="후속측정 — 보고기간별 공정가치")
-    t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
-    t.alignment = Alignment(horizontal="center", vertical="center")
-    ws.merge_cells("A1:H1")
-
-    headers = ["평가기준일", "공정가치(원)", "순채권가치(원)", "전환권가치(원)", "변동액(원)", "변동률", "주가(원)", "변동성"]
-    for i, h in enumerate(headers, 1):
-        _hdr(ws, 3, i, h)
-
-    for ri, row in enumerate(results, 4):
-        bg = "F7FAFC" if ri % 2 == 0 else "FFFFFF"
-        chg = row["change"]
-        chg_bg = "C6F6D5" if chg and chg > 0 else ("FED7D7" if chg and chg < 0 else bg)
-
-        _cell(ws, ri, 1, row["date"], bg=bg, align="center")
-        _cell(ws, ri, 2, row["fair_value"], bg=bg, num_fmt="#,##0", align="right")
-        _cell(ws, ri, 3, row["straight_bond_value"], bg=bg, num_fmt="#,##0", align="right")
-        _cell(ws, ri, 4, row["conversion_component"], bg=bg, num_fmt="#,##0", align="right")
-        _cell(ws, ri, 5, chg if chg is not None else "-", bg=chg_bg, num_fmt="#,##0", align="right")
-        _cell(ws, ri, 6, f"{row['change_pct']:+.2f}%" if row["change_pct"] is not None else "-", bg=chg_bg, align="center")
-        _cell(ws, ri, 7, row["stock_price"], bg=bg, num_fmt="#,##0", align="right")
-        _cell(ws, ri, 8, f"{row['volatility']}%", bg=bg, align="center")
 
 
 def _write_sensitivity(ws, sensitivity):

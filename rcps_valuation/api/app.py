@@ -179,6 +179,9 @@ def dcf():
             nci_adjustment=float(data.get("nci_adjustment", 0)),
             total_shares=float(data.get("total_shares", 1)),
             mid_year=bool(data.get("mid_year", False)),
+            tv_method=str(data.get("tv_method", "gordon")),
+            exit_multiple=float(data.get("exit_multiple", 0) or 0),
+            tv_weight_gordon=float(data.get("tv_weight_gordon", 0.5)),
         )
         result = dcf_valuation(params)
         return jsonify({"status": "ok", "result": result})
@@ -192,7 +195,12 @@ def evaluate():
         data = request.json
         params = parse_params(data["params"])
         steps_req = int(data.get("steps", 0)) or None
-        steps_used = steps_req if steps_req else max(int(round(params.T * 12)), 12)
+        # 사용자 지정 단계 우선 — 미입력 시 월별(T*12) 기본값. 안전 cap 520.
+        # K-IFRS 13.IE65: 4모형이 동일 단계·동일 곡선이어야 "모형 구조 차이"가 분리됨.
+        if steps_req:
+            steps_used = max(1, min(int(steps_req), 520))
+        else:
+            steps_used = max(int(round(params.T * 12)), 12)
 
         # 이항 파라미터 (u/d/p) — 프론트 참고용
         dt = params.T / steps_used
@@ -233,30 +241,19 @@ def evaluate():
         except Exception as e:
             tf = {"error": str(e)}
 
-        # ── GS 모형 (메인 2)
+        # ── GS 모형 (메인 2) — TF와 동일 step·동일 곡선 (모형 구조 차이만 분리)
         try:
-            gs_kw = {"bond_discrete": False}  # 연속복리 (연속스팟 정합)
+            gs_kw = {"bond_discrete": False}
             if data.get("gs_params"):
                 gp = data["gs_params"]
                 for k in ("enterprise_value", "net_debt", "common_shares", "rcps_shares"):
                     v = _f(gp.get(k))
                     if v:
                         gs_kw[k] = v
-            gs_steps = min(steps_used, 150)
             if rf_curve and kd_curve:
-                # GS may use a different step count; rebuild curves if needed
-                try:
-                    if gs_steps != steps_used:
-                        gs_kw["rf_curve"] = _spot_to_step_forwards(
-                            data.get("rf_spot"), params.T, gs_steps)
-                        gs_kw["kd_curve"] = _spot_to_step_forwards(
-                            data.get("rd_spot"), params.T, gs_steps)
-                    else:
-                        gs_kw["rf_curve"] = rf_curve
-                        gs_kw["kd_curve"] = kd_curve
-                except Exception:
-                    pass
-            gs = gs_rcps(params, steps=gs_steps, **gs_kw)
+                gs_kw["rf_curve"] = rf_curve
+                gs_kw["kd_curve"] = kd_curve
+            gs = gs_rcps(params, steps=steps_used, **gs_kw)
         except Exception as e:
             gs = {"error": str(e)}
 
@@ -272,18 +269,11 @@ def evaluate():
             gs["put_option_value"] = tf.get("put_option_value")
             gs["conversion_value"] = round(gs["fair_value"] - pbv)
 
-        # ── 몬테카를로 (참고) — TF·GS와 동일 forward curve 적용 (term structure 정합)
+        # ── 몬테카를로 — TF·GS와 동일 step·동일 곡선 (모형 비교의 분리 원칙)
         try:
             n_paths = int(data.get("mc_paths", 10000))
-            mc_steps = min(steps_used, 260)
-            mc_rf = rf_curve if rf_curve and len(rf_curve) >= mc_steps else (
-                _spot_to_step_forwards(data.get("rf_spot"), params.T, mc_steps) if data.get("rf_spot") else None
-            )
-            mc_kd = kd_curve if kd_curve and len(kd_curve) >= mc_steps else (
-                _spot_to_step_forwards(data.get("rd_spot"), params.T, mc_steps) if data.get("rd_spot") else None
-            )
-            mc = monte_carlo_rcps(params, n_paths=n_paths, n_steps=mc_steps,
-                                  rf_curve=mc_rf, kd_curve=mc_kd)
+            mc = monte_carlo_rcps(params, n_paths=n_paths, n_steps=steps_used,
+                                  rf_curve=rf_curve, kd_curve=kd_curve)
         except Exception as e:
             mc = {"error": str(e)}
 
@@ -304,31 +294,13 @@ def evaluate():
                 gs.update(_mc_required_marker)
                 gs["fair_value"] = None
 
-        # ── 민감도 (TF 기준)
+        # ── 민감도 (TF 기준) — 본 평가와 동일한 곡선 사용 (base fv 일치)
         try:
-            sens = sensitivity_analysis(params, steps=min(steps_used, 60))
+            sens = sensitivity_analysis(
+                params, steps=min(steps_used, 60),
+                rf_curve=rf_curve, kd_curve=kd_curve)
         except Exception as e:
             sens = {"error": str(e)}
-
-        # ── 후속측정 (K-IFRS 1109 측정 연속성: 최초인식과 동일 컨벤션)
-        subsequent = []
-        if data.get("reporting_dates"):
-            from valuation.subsequent import subsequent_measurement
-            rd = []
-            for e in data["reporting_dates"]:
-                rd.append({
-                    "date": date.fromisoformat(e["date"]),
-                    "stock_price": float(e["stock_price"]),
-                    "volatility": float(e["volatility"]),
-                    "risk_free_rate": float(e.get("risk_free_rate", params.risk_free_rate)),
-                    "credit_spread": float(e.get("credit_spread", params.credit_spread)),
-                })
-            # spot 원자료를 전달 → 보고일별 잔존 T에 맞춰 forward 재구성 (호라이즌 정합)
-            subsequent = subsequent_measurement(
-                params, rd, steps=60,
-                rf_curve=rf_curve, kd_curve=kd_curve,
-                rf_spot=data.get("rf_spot"), rd_spot=data.get("rd_spot"),
-                bond_discrete=False)
 
         result = {
             "tf": tf,
@@ -349,7 +321,6 @@ def evaluate():
         return jsonify({
             "status": "ok",
             "result": serialize(result),
-            "subsequent": subsequent,
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e), "trace": traceback.format_exc()}), 400
@@ -473,26 +444,8 @@ def download():
             dl_kw["rf_curve"] = dl_rf_curve
             dl_kw["kd_curve"] = dl_kd_curve
         result = tf_rcps(params, **dl_kw)
-        subsequent = []
-        if data.get("reporting_dates"):
-            from valuation.subsequent import subsequent_measurement
-            rd = [{
-                "date": date.fromisoformat(e["date"]),
-                "stock_price": float(e["stock_price"]),
-                "volatility": float(e["volatility"]),
-                "risk_free_rate": float(e.get("risk_free_rate", params.risk_free_rate)),
-                "credit_spread": float(e.get("credit_spread", params.credit_spread)),
-            } for e in data["reporting_dates"]]
-            subsequent = subsequent_measurement(
-                params, rd, steps=60,
-                rf_curve=dl_rf_curve, kd_curve=dl_kd_curve,
-                bond_discrete=False)
-            # report.py 스키마에 맞게 키 매핑
-            for row in subsequent:
-                row["straight_bond_value"] = row.get("bond_value", 0)
-                row["conversion_component"] = row.get("fair_value", 0) - row.get("bond_value", 0)
-
-        sens = sensitivity_analysis(params, steps=60)
+        sens = sensitivity_analysis(params, steps=60,
+                                    rf_curve=dl_rf_curve, kd_curve=dl_kd_curve)
 
         # 이항 파라미터 (u/d/p) — 조서 모델정보용
         steps_r = result["steps"]
@@ -562,7 +515,7 @@ def download():
 
         tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
         tmp.close()
-        generate_workpaper(params, initial_adapted, subsequent, sens, tmp.name,
+        generate_workpaper(params, initial_adapted, sens, tmp.name,
                            tf_tree=tf_tree_dl, gs_tree=gs_tree_dl,
                            eval_result=data.get("eval_result"),
                            bdt_cross=data.get("bdt_cross"))
@@ -2000,6 +1953,15 @@ def bdt_evaluate():
     except Exception as e:
         return jsonify({"status": "error", "message": f"BDT 평가 실패: {str(e)[:200]}"}), 200
 
+    # σ_r 해석 안내 — 사용자가 주식변동성과 혼동하지 않도록
+    interp = ("σ_r은 단기금리 lognormal 변동성입니다. 주식 변동성(보통 30~60%)과 "
+              "다른 개념으로, 한국 단기금리(CD91 기준) lognormal σ는 통상 5~15% 범위입니다.")
+    sigma_warn = None
+    if sigma > 0.5:
+        sigma_warn = f"σ_r={sigma*100:.1f}% — 50% 초과. 입력값이 비정상적으로 큽니다 (주식 변동성을 잘못 입력했을 가능성)."
+    elif sigma < 0.03:
+        sigma_warn = f"σ_r={sigma*100:.2f}% — 3% 미만. 한국 시장 통상 범위(5~15%) 하회."
+
     out.update({
         "status": "ok",
         "T": T,
@@ -2007,6 +1969,8 @@ def bdt_evaluate():
         "put_step": put_step,
         "rate_vol": sigma,
         "model": "Black-Derman-Toy (constant sigma, q=0.5)",
+        "interpretation": interp,
+        "sigma_warning": sigma_warn,
     })
     return jsonify(out)
 
