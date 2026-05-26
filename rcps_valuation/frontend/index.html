@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>웅계사's RCPS/DCF Valuation Tool</title>
+<title>RCPS/DCF Valuation Tool · K-IFRS 1109</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -199,6 +199,8 @@ details.note-fold .note{margin-top:4px}
 .btn-dl:disabled:hover{background:var(--bg2);border-color:var(--border);color:var(--text3);box-shadow:0 1px 3px rgba(0,0,0,.06)}
 /* 페이지 공통 툴바 — 다운로드 버튼 우상단 sticky (DCF·WACC·변동성·부트스트래핑 — RCPS와 동일 위치) */
 .page-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;max-width:1100px;width:100%;margin:0 auto;padding:8px 0;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:var(--bg)}
+/* WACC·계약서 등 페이지 내 .sec 영역 공통 max-width (인라인 중복 제거) */
+.sec-max{max-width:1100px;width:100%;margin:0 auto}
 
 /* 결과 패널 2단 컬럼 (감사 검증 워크플로우: 좌=공정가치+구성요소·BDT, 우=모형비교+탭) */
 .res-2col{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;align-items:start}
@@ -320,7 +322,7 @@ details.note-fold .note{margin-top:4px}
 #page-boot{flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.2rem;gap:10px}
 .boot-dual{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
 .boot-sect{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.boot-sect-hd{background:var(--accent);color:#fff;text-align:center;font-weight:800;padding:.5rem 1rem;font-size:.78rem;letter-spacing:.1em;flex-shrink:0}
+.boot-sect-hd{background:var(--accent);color:#fff;text-align:center;font-weight:800;padding:.5rem 1rem;font-size:.78rem;letter-spacing:.04em;flex-shrink:0}
 .boot-sect-body{display:flex;overflow-x:auto;overflow-y:auto;max-height:580px;align-items:flex-start}
 .boot-col{flex-shrink:0;border-right:1px solid #DBEAFE}
 .bst{border-collapse:collapse;font-size:.685rem}
@@ -346,7 +348,7 @@ details.note-fold .note{margin-top:4px}
 
 <header>
   <div class="hd-title">
-    <h1><span class="ac">웅계사</span>'s RCPS/DCF Valuation <span class="ac">Tool</span></h1>
+    <h1>RCPS/DCF Valuation <span class="ac">Tool</span></h1>
     <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다. 단순 확인 목적으로 사용을 권장합니다.</p>
   </div>
   <div class="hd-right">
@@ -378,7 +380,7 @@ details.note-fold .note{margin-top:4px}
 </header>
 
 <div class="global-bar">
-  <label for="valuation_date">📅 평가기준일</label>
+  <label for="valuation_date">평가기준일</label>
   <input type="date" id="valuation_date" value="2024-12-31" onchange="onValDateChange()">
   <span class="global-bar-hint">이 일자로 RCPS·DCF·WACC·변동성 평가의 모든 자동조회(Rf·Kd·β·D/E·MRP·CRP·사이즈·종가)가 기준이 됩니다</span>
 </div>
@@ -387,7 +389,7 @@ details.note-fold .note{margin-top:4px}
      계약서 요약 페이지
 ══════════════════════ -->
 <div class="page" id="page-contract" style="display:none;flex-direction:column;overflow-y:auto;background:var(--bg);padding:1.5rem;gap:12px">
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+  <div class="sec sec-max">
     <div class="sec-title">상환전환우선주 계약서 요약 <span class="badge-opt">AI</span></div>
     <div class="note" style="margin-bottom:10px">RCPS 신주인수계약서(PDF/Excel)를 업로드하면 AI가 발행조건·상장구조·세부약정을 요약하고, 평가툴 입력값을 자동으로 채웁니다. <b>스캔 이미지 PDF도 지원</b>(텍스트가 없으면 AI 비전이 직접 읽음 — 다소 느릴 수 있음).</div>
     <div class="row2">
@@ -416,13 +418,16 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div class="note" id="contract-key-help" style="margin-top:2px">내 <b>Claude Code CLI</b>(Claude 구독)로 요약. 사전 준비: 독립형 Claude Code 설치 + 로그인 + <code>claude</code> 가 PATH에 있어야 함(또는 서버 환경변수 <code>CLAUDE_CLI_CMD</code>에 경로 지정). 텍스트 전용(스캔은 로컬 OCR). ※ 본문은 Anthropic 서버로 전송됨(로컬 아님).</div>
     <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
-      <div style="font-weight:600;font-size:.84rem;margin-bottom:4px">또는 — 내 Claude Code 구독으로 무료 요약 🔗</div>
+      <div style="font-weight:600;font-size:.84rem;margin-bottom:4px">또는 — 내 Claude Code 구독으로 무료 요약</div>
       <div class="note" style="margin-bottom:6px">① Claude Code에 <b>"이 계약서 요약해서 contract_summary.json으로 저장해줘"</b> 라고 요청(PDF 경로/첨부) → ② 아래 버튼으로 불러오기. <b>API 키·비용 불필요</b>, 기밀은 내 Claude 안에서 처리.</div>
-      <button class="btn-run" onclick="loadContractFromFile()" style="margin:0">📂 Claude Code 요약 불러오기</button>
+      <button class="btn-dl" onclick="loadContractFromFile()" style="margin:0">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Claude Code 요약 불러오기
+      </button>
       <span id="contract-load-status" style="font-size:.76rem;color:var(--accent);margin-left:8px"></span>
     </div>
   </div>
-  <div id="contract-result" style="max-width:1100px;width:100%;margin:0 auto;display:none"></div>
+  <div id="contract-result" class="sec-max" style="display:none"></div>
 </div>
 
 <!-- ══════════════════════
@@ -722,7 +727,7 @@ details.note-fold .note{margin-top:4px}
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <label for="bdt_rate_vol" style="font-size:.78rem;color:var(--text2);white-space:nowrap;font-weight:500">금리 변동성 (%)</label>
           <input type="number" id="bdt_rate_vol" value="15" step="0.5" min="0" style="width:70px;height:32px;padding:0 0.55rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-variant-numeric:tabular-nums;text-align:right;box-sizing:border-box">
-          <button class="btn-run" id="bdt-run-btn" onclick="runBdt()" style="height:32px;padding:0 0.9rem;margin:0;font-size:.78rem;white-space:nowrap">BDT 재평가</button>
+          <button class="btn-sm add" id="bdt-run-btn" onclick="runBdt()" style="white-space:nowrap;height:32px">BDT 재평가</button>
         </div>
       </div>
       <div id="bdt-result" class="note" style="margin:0">RD 곡선과 금리 변동성을 사용해 풋채권가치를 BDT로 독립 산정합니다(②③ 카드와 비교용). "BDT 재평가" 버튼을 누르세요.</div>
@@ -753,8 +758,8 @@ details.note-fold .note{margin-top:4px}
       <div class="tab-content" id="tab-tree">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:.8rem;font-weight:600;color:var(--text2)">모델:</span>
-          <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" value="tf" checked onchange="renderTreeGrids()"> TF</label>
-          <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" value="gs" onchange="renderTreeGrids()"> GS</label>
+          <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" id="tree-model-tf" value="tf" checked onchange="renderTreeGrids()"> TF</label>
+          <label style="font-size:.8rem;cursor:pointer"><input type="radio" name="tree-model" id="tree-model-gs" value="gs" onchange="renderTreeGrids()"> GS</label>
           <span style="font-size:.8rem;font-weight:600;color:var(--text2);margin-left:8px">단계:</span>
           <span id="tree-steps-label" style="font-size:.8rem;font-weight:600;color:var(--accent)">평가 설정 따름</span>
           <button onclick="loadTree()"
@@ -788,7 +793,7 @@ details.note-fold .note{margin-top:4px}
 
   <div class="dcf-assump">
     <div class="dcf-assump-hd">밸류에이션 가정</div>
-    <div class="dcf-assump-grid" style="grid-template-columns:90px 90px 90px 1fr 1fr 1fr 1fr">
+    <div class="dcf-assump-grid" style="grid-template-columns:minmax(90px,1fr) minmax(100px,1fr) minmax(90px,1fr) 1fr 1fr 1fr 1fr">
       <div class="field"><label for="a_wacc">WACC (%)</label><input type="number" id="a_wacc" value="12" step="0.1" oninput="dcfCalc()"></div>
       <div class="field"><label for="a_g">영구성장률 g (%)</label><input type="number" id="a_g" value="2" step="0.1" oninput="dcfCalc()"></div>
       <div class="field"><label for="a_tax">기본 세율 (%)</label><input type="number" id="a_tax" value="25" step="0.5" oninput="dcfTaxFill()"></div>
@@ -839,13 +844,13 @@ details.note-fold .note{margin-top:4px}
     </button>
   </div>
 
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+  <div class="sec sec-max">
     <div class="sec-title">WACC 상세 산정 <span class="badge-opt">DCF 할인율</span></div>
     <div class="note">CAPM 기반 자기자본비용 + 부채비용을 가중평균해 WACC를 산정합니다. 산출값은 "DCF에 적용" 버튼으로 DCF 탭의 WACC 입력칸에 자동 반영됩니다.</div>
   </div>
 
   <!-- ① 무위험이자율 + 시장위험프리미엄 -->
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+  <div class="sec sec-max">
     <div class="sec-title">① 무위험이자율 (Rf) · 시장위험프리미엄 (MRP)</div>
     <div class="row3">
       <div class="field"><label for="w_rf">무위험이자율 Rf (%)</label><input type="number" id="w_rf" value="3.0" step="0.05" oninput="waccRecalc()"></div>
@@ -861,7 +866,7 @@ details.note-fold .note{margin-top:4px}
   </div>
 
   <!-- ② 베타 (Hamada unlever/relever) -->
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+  <div class="sec sec-max">
     <div class="sec-title">② 베타 산정 — Hamada Unlever / Re-lever</div>
     <div class="note" style="margin-bottom:8px">유사상장기업의 <b>레버드 베타(β_L)</b>를 자본구조 영향 제거(unlever)해 자산 베타(β_U)로 만든 뒤, 평가대상의 자본구조로 다시 re-lever 합니다.<br>식: <code>β_U = β_L / (1 + (1−t)·D/E)</code> &nbsp; · &nbsp; <code>β_target_L = β_U × (1 + (1−t)·D/E_target)</code><br>유사기업 칸에 <b>회사명·코드·해외티커</b> 입력 후 "베타 자동산정"을 누르면 시장지수 회귀로 β_L이 자동 채워집니다.</div>
     <div class="row3" style="margin-bottom:8px">
@@ -960,9 +965,9 @@ details.note-fold .note{margin-top:4px}
   </div>
 
   <!-- ③ 자기자본비용 Ke -->
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+  <div class="sec sec-max">
     <div class="sec-title">③ 자기자본비용 (Ke) — CAPM</div>
-    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br>📅 <button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.<br>사이즈 프리미엄: 시총(상장사) 또는 매출액(비상장 평가대상은 수동입력 권장) — Kroll Cost of Capital Navigator 8개 지표 중 가장 흔한 두 가지.</span></div>
+    <div class="note" style="margin-bottom:8px">식: <code>Ke = Rf + β_L × MRP (+ 사이즈/국가 프리미엄)</code><br><button class="btn-run" onclick="waccAutoPremiums()" style="padding:0.3rem 0.7rem;margin:0;font-size:0.72rem">평가기준일 기준 MRP·CRP·사이즈 자동</button> &nbsp;<span id="w_prem_status" style="font-size:.72rem;color:var(--text3)"></span><br><span style="font-size:0.66rem;color:var(--text3)">※ MRP·CRP는 Damodaran 반기(1·7월) 업데이트 기준 연도별 근사값. 정확한 평가에는 <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html" target="_blank" style="color:var(--accent)">Damodaran 원자료</a>의 평가기준일 값 확인 권장.<br>사이즈 프리미엄: 시총(상장사) 또는 매출액(비상장 평가대상은 수동입력 권장) — Kroll Cost of Capital Navigator 8개 지표 중 가장 흔한 두 가지.</span></div>
     <div class="row2" style="margin-bottom:8px">
       <div class="field"><label>사이즈 기준 <span style="color:var(--text3);font-weight:400;font-size:0.65rem">자동 매핑 기준 지표</span></label>
         <select id="w_size_basis" onchange="waccToggleSizeManual()">
@@ -1000,7 +1005,7 @@ details.note-fold .note{margin-top:4px}
   </div>
 
   <!-- ④ 타인자본비용 Kd -->
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+  <div class="sec sec-max">
     <div class="sec-title">④ 타인자본비용 (Kd)</div>
     <div class="row3">
       <div class="field"><label for="w_kd">세전 Kd (%)</label><input type="number" id="w_kd" value="5.0" step="0.05" oninput="waccRecalc()"></div>
@@ -1011,7 +1016,7 @@ details.note-fold .note{margin-top:4px}
   </div>
 
   <!-- ⑤ 자본구조 -->
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto">
+  <div class="sec sec-max">
     <div class="sec-title">⑤ 자본구조 (Target)</div>
     <div class="row2">
       <div class="field"><label for="w_ev">자기자본 비중 E/V (%)</label><input type="number" id="w_ev" value="60" step="1" oninput="waccSyncCap('ev')"></div>
@@ -1021,7 +1026,7 @@ details.note-fold .note{margin-top:4px}
   </div>
 
   <!-- ⑥ 결과 -->
-  <div class="sec" style="max-width:1100px;width:100%;margin:0 auto;background:var(--bg2)">
+  <div class="sec sec-max" style="background:var(--bg2)">
     <div class="sec-title">⑥ WACC 산출 결과</div>
     <div style="display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin-bottom:10px">
       <div>WACC =</div>
@@ -1116,7 +1121,7 @@ details.note-fold .note{margin-top:4px}
       <tbody id="vol-basket-body"></tbody>
     </table>
     <div class="note" id="vol-basket-empty" style="margin-top:6px">위 검색창에서 유사상장기업을 추가하세요.</div>
-    <button class="btn-run" id="vol-run" onclick="volRun()" style="margin-top:10px">변동성 조회·산출</button>
+    <button class="btn-run" id="vol-run" onclick="volRun()" style="margin-top:10px;max-width:200px">변동성 조회·산출</button>
   </div>
 
   <!-- CSV 업로드 -->
@@ -1135,7 +1140,7 @@ details.note-fold .note{margin-top:4px}
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
       <div>집계 변동성 σ = <span id="vol-sigma" style="font-size:1.6rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums">—</span></div>
       <button class="btn-run" id="vol-apply" onclick="volApplyToRcps()" style="padding:0.45rem 0.9rem">RCPS 평가에 적용</button>
-      <button class="btn-run" id="vol-export" onclick="volExportCsv()" style="padding:0.45rem 0.9rem;background:var(--text3)">원자료 CSV 내보내기</button>
+      <button class="btn-sm" id="vol-export" onclick="volExportCsv()" style="background:var(--bg2);color:var(--text2);border-color:var(--border)">원자료 CSV 내보내기</button>
     </div>
     <div class="note" id="vol-meta" style="margin-top:8px"></div>
   </div>
@@ -1147,7 +1152,7 @@ details.note-fold .note{margin-top:4px}
 ══════════════════════ -->
 <div class="page" id="page-boot" style="display:none">
 
-  <div class="page-toolbar" style="padding:0.6rem 1.2rem 0;max-width:none">
+  <div class="page-toolbar" style="padding:0.6rem 1.2rem 0;max-width:none;background:var(--bg)">
     <button class="btn-dl" onclick="bootDownloadXlsx()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       부트스트래핑 상세 Excel
@@ -1448,7 +1453,10 @@ function renderContractSummary(s){
     </table>
     <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
       <button class="btn-run" onclick="fillValuationFromContract()" style="margin:0">평가툴에 입력값 채우기 →</button>
-      <button class="btn-run" onclick="downloadContractExcel()" style="margin:0;background:var(--text2)">엑셀 다운로드 ⬇</button>
+      <button class="btn-run" onclick="downloadContractExcel()" style="margin:0;background:var(--text2);display:inline-flex;align-items:center;gap:6px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        엑셀 다운로드
+      </button>
       <span id="contract-fill-status" style="font-size:.76rem;color:var(--accent)"></span>
     </div>
   </div>`;
@@ -1493,6 +1501,23 @@ async function downloadContractExcel(){
   }catch(e){alert('다운로드 실패: '+e.message);}
 }
 
+// 공통 토스트 (성공/오류 알림, 우하단 2.8초)
+function _toast(msg, isErr=false){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  Object.assign(t.style,{
+    position:'fixed',bottom:'24px',right:'24px',zIndex:'9999',
+    padding:'0.65rem 1.1rem',borderRadius:'10px',fontSize:'0.8rem',fontWeight:'600',
+    background:isErr?'#FEF2F2':'#F0FDF4',
+    color:isErr?'var(--red)':'#166534',
+    border:`1px solid ${isErr?'#FECACA':'#BBF7D0'}`,
+    boxShadow:'0 4px 16px rgba(0,0,0,.12)',
+    transition:'opacity 0.4s',opacity:'1'
+  });
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},2800);
+}
+
 // 공통 다운로드 헬퍼
 async function _xlsxDownload(url, payload, filename){
   try{
@@ -1503,7 +1528,8 @@ async function _xlsxDownload(url, payload, filename){
     a.href=URL.createObjectURL(blob);
     a.download=filename;
     a.click(); URL.revokeObjectURL(a.href);
-  }catch(e){alert('다운로드 실패: '+e.message);}
+    _toast(filename+' 다운로드 완료');
+  }catch(e){_toast('다운로드 실패: '+e.message,true);}
 }
 
 async function dcfDownloadXlsx(){
@@ -1830,7 +1856,11 @@ function collectParams(){
 async function run(){
   document.getElementById('err-box').style.display='none';
   document.getElementById('run-btn').disabled=true;
-  showLoader('TF / GS 모형 평가 중... (약 10~20초)');
+  const _mcPaths = parseInt(document.getElementById('mc_paths').value);
+  const _mcMsg = _mcPaths >= 100000
+    ? `TF / GS / MC 모형 평가 중... MC ${(_mcPaths/10000).toFixed(0)}만 경로 — 약 1~3분 소요`
+    : 'TF / GS / MC 모형 평가 중... (약 10~30초)';
+  showLoader(_mcMsg);
   try{
     const params=collectParams();
     const steps=resolveSteps(params);
@@ -2973,7 +3003,7 @@ function waccApplyToDcf(){
   if(!w){alert('DCF 탭의 WACC 입력칸을 찾을 수 없습니다.');return;}
   w.value=(window._lastWacc*100).toFixed(2);
   if(typeof dcfCalc==='function')dcfCalc();
-  switchPage('dcf',document.querySelectorAll('.nav-tab')[2]);
+  switchPage('dcf', document.querySelector('.nav-tab[data-page="dcf"]'));
   w.style.transition='none';w.style.background='#DCFCE7';
   setTimeout(()=>{w.style.transition='background 1.5s ease';w.style.background='';},80);
 }
