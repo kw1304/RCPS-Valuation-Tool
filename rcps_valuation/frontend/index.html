@@ -279,17 +279,17 @@ details.note-fold .note{margin-top:4px}
 .tv-method-row .tv-hint{grid-column:1/-1;font-size:0.67rem;color:var(--text3);line-height:1.45;padding-top:2px}
 
 /* EV/EBITDA 자동 산출 도구 박스 */
-.ev-calc-box{margin-top:8px;padding:12px 14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px}
+.ev-calc-box{margin-top:8px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px}
 .ev-calc-box-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
-.ev-calc-box-hd h4{margin:0;font-size:.82rem;color:#0369A1;font-weight:700}
+.ev-calc-box-hd h4{margin:0;font-size:.80rem;color:var(--text2);font-weight:700}
 .ev-calc-desc{font-size:.68rem;color:var(--text2);line-height:1.6;margin-bottom:10px}
 .ev-calc-search{display:flex;gap:6px;margin-bottom:6px}
-.ev-calc-search input{flex:1;font-size:.72rem;padding:0.45rem 0.7rem;background:var(--bg3);border:1.5px solid transparent;border-radius:8px;font-family:var(--sans);color:var(--text);outline:none}
+.ev-calc-search input{flex:1;font-size:.72rem;padding:0.45rem 0.7rem;background:var(--bg2);border:1.5px solid transparent;border-radius:8px;font-family:var(--sans);color:var(--text);outline:none}
 .ev-calc-search input:focus{border-color:var(--accent);background:#fff}
 .ev-calc-hint{font-size:.68rem;color:var(--text3);line-height:1.5}
-.ev-calc-opts{margin-bottom:8px;padding:8px 10px;background:var(--bg2);border-radius:8px}
+.ev-calc-opts{margin-bottom:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px}
 .ev-calc-opts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-.ev-calc-result{padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:.72rem;line-height:1.6}
+.ev-calc-result{padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:.72rem;line-height:1.6}
 
 .dcf-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .btn-sm{padding:0.42rem 0.9rem;border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all 0.15s;letter-spacing:-0.01em}
@@ -2767,7 +2767,7 @@ async function evFetchPeers(){
     })[s] || {txt:s||'—', color:'var(--text3)', desc:''};
 
     let html = `<table style="width:100%;font-size:.68rem;border-collapse:collapse;background:var(--bg2);border-radius:6px;overflow:hidden;margin-top:4px">
-      <thead><tr style="background:#DBEAFE;color:var(--text)">
+      <thead><tr style="background:var(--bg3);color:var(--text);border-bottom:1px solid var(--border)">
         <th style="padding:5px 7px;text-align:left;font-weight:600">입력</th>
         <th style="padding:5px 7px;text-align:left;font-weight:600">매칭 ticker</th>
         <th style="padding:5px 7px;text-align:left;font-weight:600">종목명</th>
@@ -2838,12 +2838,12 @@ function evRecalc(){
       host.innerHTML = `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;font-size:.72rem">
           <div><b>① 상장사 ${method==='median'?'중앙값':'평균'}</b><br>
-            <span style="font-size:1rem;color:#0369A1;font-weight:700">${compAgg.toFixed(2)}배</span><br>
+            <span style="font-size:1rem;color:var(--accent);font-weight:700">${compAgg.toFixed(2)}배</span><br>
             <span style="color:var(--text3)">유효 비교회사 ${compMults.length}개</span>
           </div>
-          <div style="padding:6px 10px;background:#FEF3C7;border-radius:4px">
+          <div style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px">
             <b>② 비유동성 할인 후 (최종)</b><br>
-            <span style="font-size:1.2rem;color:#92400E;font-weight:700">${finalMult.toFixed(2)}배</span><br>
+            <span style="font-size:1.2rem;color:var(--text);font-weight:700">${finalMult.toFixed(2)}배</span><br>
             <span style="color:var(--text3)">DLOM ${dlom}% 적용</span>
           </div>
         </div>
