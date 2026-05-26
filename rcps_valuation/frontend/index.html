@@ -821,16 +821,17 @@ details.note-fold .note{margin-top:4px}
     <div id="dcf-steady" style="margin-top:6px;font-size:.72rem;line-height:1.5"></div>
     <div style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px">
       <span style="font-size:.72rem;font-weight:700;color:#0369A1">잔존가치(TV) 산정 방식:</span>
-      <select id="a_tv_method" onchange="dcfCalc()" title="Gordon: '영구 동일 성장' 가정. Multiple: '마지막 해 EBITDA × 배수'로 계산. Weighted: 두 방식 50:50 가중.">
+      <select id="a_tv_method" onchange="dcfTvMethodChange()" title="Gordon: 마지막 FCFF가 영구히 g%씩 성장 가정. Multiple: 마지막 EBITDA × 배수. Weighted: 두 방식 50:50 가중.">
         <option value="gordon" selected>Gordon (영구 성장 가정)</option>
         <option value="multiple">Exit Multiple (배수 적용)</option>
         <option value="weighted">두 방식 가중평균 (50:50)</option>
       </select>
-      <label style="font-size:.72rem;color:var(--text2);display:flex;align-items:center;gap:4px" title="마지막 해 EV/EBITDA 배수. 한국 비상장 통상 6~12배. M&A 사례·동종업계 평균 참고.">
+      <label id="a_exit_mult_wrap" style="font-size:.72rem;color:var(--text2);display:none;align-items:center;gap:4px" title="EV/EBITDA = 기업 전체 가치 ÷ 연 EBITDA. 'EBITDA 몇 년치를 회수해야 본전인가' 비율. 한국 비상장 통상 6~12배 (산업·성장성 따라).&#10;예: 마지막 해 EBITDA 30억 × 배수 8 = TV 240억.">
         EV/EBITDA 배수
         <input type="number" id="a_exit_mult" value="8" step="0.5" min="0" style="width:60px" oninput="dcfCalc()">
+        <span style="font-size:.62rem;color:var(--text3)">(통상 6~12배)</span>
       </label>
-      <span style="font-size:.68rem;color:#64748B">※ 두 방식 결과 차이가 크면 가정을 재확인하세요</span>
+      <span id="a_tv_help" style="font-size:.68rem;color:#64748B">※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요</span>
     </div>
   </div>
 
@@ -2291,13 +2292,6 @@ function renderRightsTimeline(p){
   const fmtD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
   // ── 마커 리스트 구성
-  const allMarkers = [
-    {pos: 0,             label: '발행일',      date: fmtD(issue),    color: '#475569'},
-    {pos: pos(valDate),  label: '평가기준일',  date: fmtD(valDate),  color: '#0EA5E9'},
-    pConv = null,  // placeholder, 아래에서 갱신
-    {pos: 100,           label: '만기일',      date: fmtD(mat),      color: '#475569'},
-  ].filter(m => m && m.pos != null);
-  // 위 코드 단순화 — 직접 배열 빌드
   const markers = [];
   markers.push({pos: 0, label: '발행일', date: fmtD(issue), color: '#475569'});
   if(pos(valDate) != null) markers.push({pos: pos(valDate), label: '평가기준일', date: fmtD(valDate), color: '#0EA5E9'});
@@ -2314,7 +2308,7 @@ function renderRightsTimeline(p){
 
   // ── 라벨 슬롯 자동 할당 (zigzag) — 인접 거리 < THRESHOLD(%)이면 슬롯을 위·아래·더 위/아래로 분산
   const THRESHOLD = 8;  // 가까운 마커 임계값 (%)
-  const SLOT_OFFSETS = [-38, 38, -64, 64, -90, 90];  // 위·아래 교차로 점점 멀리
+  const SLOT_OFFSETS = [-26, 26, -52, 52];  // 위·아래 교차 (압축: 최대 4슬롯)
   markers[0].slot = 0;  // 첫 마커: 위쪽 가까이
   for(let i = 1; i < markers.length; i++){
     let chosen = 0;
@@ -2336,35 +2330,41 @@ function renderRightsTimeline(p){
   const pPutVal = put ? pos(put) : null;
   const pCallVal = call ? pos(call) : null;
 
-  // 마커 HTML 생성
+  // 마커 HTML 생성 (라벨 1줄 — 압축)
   const markerHtml = markers.map(m => {
     const offset = SLOT_OFFSETS[m.slot] || 0;
     const isAbove = offset < 0;
     return `<div style="position:absolute;left:${m.pos}%;top:0;bottom:0;width:2px;background:${m.color};transform:translateX(-1px);z-index:2">
-      <div style="position:absolute;${isAbove?`top:${offset}px`:`bottom:${-offset}px`};left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.62rem;font-weight:600;color:${m.color};line-height:1.3;padding:1px 3px;background:rgba(255,255,255,.92);border-radius:2px">${m.label}<br><span style="font-weight:400;color:var(--text3)">${m.date}</span></div>
+      <div style="position:absolute;${isAbove?`top:${offset}px`:`bottom:${-offset}px`};left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.6rem;font-weight:600;color:${m.color};line-height:1.2;padding:1px 4px;background:rgba(255,255,255,.95);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.04)"><span>${m.label}</span> <span style="font-weight:400;color:var(--text3);font-size:.56rem">${m.date}</span></div>
     </div>`;
   }).join('');
 
-  // 동적 높이: 슬롯 최대 offset에 따라
-  const maxSlot = Math.max(...markers.map(m => m.slot || 0));
-  const topPad = Math.abs(SLOT_OFFSETS[maxSlot] || 0) + 20;
+  // 동적 높이: 슬롯 최대 offset에 따라 (압축)
+  const maxSlotIdx = Math.max(...markers.map(m => m.slot || 0));
+  const topPad = Math.abs(SLOT_OFFSETS[maxSlotIdx] || 0) + 16;
+
+  // 활성 구간 막대 — 3줄 (전환·풋·콜)이 있을 때 추가 높이 계산
+  const activeRows = (pConvVal != null ? 1 : 0) + (pPutVal != null ? 1 : 0) + (pCallVal != null ? 1 : 0);
+  const barH = 6, barGap = 6;
+  const barAreaH = 8 + activeRows * (barH + barGap);  // 기본 8px + 활성 막대들
+  const boxH = topPad + barAreaH + topPad + 8;
 
   host.innerHTML = `
-    <div class="info-box" style="padding:1.1rem 1.3rem">
-      <h4 style="margin-bottom:14px">계약 권리 활성 구간</h4>
-      <div style="position:relative;height:${topPad * 2 + 40}px;margin:0 12px">
-        <!-- 활성 구간 막대들 (중앙 정렬) -->
+    <div class="info-box" style="padding:0.85rem 1.1rem">
+      <h4 style="margin-bottom:10px">계약 권리 활성 구간</h4>
+      <div style="position:relative;height:${boxH}px;margin:0 12px">
         <div style="position:absolute;top:${topPad}px;left:0;right:0;height:8px;background:#E5E7EB;border-radius:2px" title="전체 기간"></div>
-        ${pConvVal != null ? `<div style="position:absolute;top:${topPad+12}px;left:${pConvVal}%;right:0;height:6px;background:rgba(0,192,115,.45);border-radius:2px" title="전환 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#059669;font-weight:600">전환 권리 활성 →</div></div>` : ''}
-        ${pPutVal != null ? `<div style="position:absolute;top:${topPad+20}px;left:${pPutVal}%;right:0;height:6px;background:rgba(255,159,0,.45);border-radius:2px" title="풋 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#B45309;font-weight:600">풋 권리 활성 →</div></div>` : ''}
-        ${pCallVal != null ? `<div style="position:absolute;top:${topPad+28}px;left:${pCallVal}%;right:0;height:6px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 활성"><div style="position:absolute;right:8px;top:-14px;font-size:.6rem;color:#DC2626;font-weight:600">콜 권리 활성 →</div></div>` : ''}
-        <!-- 시점 마커 (라벨 자동 분산) -->
+        ${pConvVal != null ? `<div style="position:absolute;top:${topPad+10}px;left:${pConvVal}%;right:0;height:${barH}px;background:rgba(0,192,115,.45);border-radius:2px" title="전환 권리 활성"></div>
+          <div style="position:absolute;top:${topPad+10}px;right:8px;font-size:.58rem;color:#059669;font-weight:600;line-height:${barH}px">전환 활성 →</div>` : ''}
+        ${pPutVal != null ? `<div style="position:absolute;top:${topPad+10+barH+barGap}px;left:${pPutVal}%;right:0;height:${barH}px;background:rgba(255,159,0,.45);border-radius:2px" title="풋 권리 활성"></div>
+          <div style="position:absolute;top:${topPad+10+barH+barGap}px;right:8px;font-size:.58rem;color:#B45309;font-weight:600;line-height:${barH}px">풋 활성 →</div>` : ''}
+        ${pCallVal != null ? `<div style="position:absolute;top:${topPad+10+(barH+barGap)*2}px;left:${pCallVal}%;right:0;height:${barH}px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 권리 활성"></div>
+          <div style="position:absolute;top:${topPad+10+(barH+barGap)*2}px;right:8px;font-size:.58rem;color:#DC2626;font-weight:600;line-height:${barH}px">콜 활성 →</div>` : ''}
         ${markerHtml}
       </div>
-      <div style="font-size:.66rem;color:var(--text3);margin-top:8px;line-height:1.5">
-        ※ 회색 막대는 전체 평가기간(발행일~만기). 색상 막대는 각 권리의 활성 구간(시작일~만기).
-        가까운 시점의 라벨은 위·아래로 자동 분산되어 표시됩니다.
-        평가기준일은 발행 후 ${((valDate-issue)/(365.25*24*3600*1000)).toFixed(2)}년 시점이며, 잔존 만기는 ${((mat-valDate)/(365.25*24*3600*1000)).toFixed(2)}년입니다.
+      <div style="font-size:.64rem;color:var(--text3);margin-top:4px;line-height:1.5">
+        ※ 회색 막대는 전체 평가기간(발행일~만기). 색상 막대는 각 권리의 활성 구간.
+        평가기준일은 발행 후 <b>${((valDate-issue)/(365.25*24*3600*1000)).toFixed(2)}년</b>, 잔존 만기 <b>${((mat-valDate)/(365.25*24*3600*1000)).toFixed(2)}년</b>.
       </div>
     </div>`;
 }
@@ -2621,6 +2621,26 @@ function dcfCellBlur(el){
 function dcfCellInput(el){
   el.dataset.v=el.value.replace(/[^0-9.-]/g,'');
   dcfYears[parseInt(el.dataset.yr)][el.dataset.field]=parseFloat(el.dataset.v)||0;
+}
+
+/* TV 산정 방식 변경 — Gordon이면 EV/EBITDA 입력 숨김 */
+function dcfTvMethodChange(){
+  const m = document.getElementById('a_tv_method')?.value || 'gordon';
+  const wrap = document.getElementById('a_exit_mult_wrap');
+  const help = document.getElementById('a_tv_help');
+  if(wrap){
+    wrap.style.display = (m === 'gordon') ? 'none' : 'flex';
+  }
+  if(help){
+    if(m === 'gordon'){
+      help.textContent = '※ Gordon은 영구성장률 g만 사용 — EV/EBITDA 배수 입력 불필요';
+    } else if(m === 'multiple'){
+      help.textContent = '※ Exit Multiple은 마지막 해 EBITDA × 배수로 TV 산정 — 영구성장률 g 미사용';
+    } else {
+      help.textContent = '※ 가중평균 — Gordon과 Exit Multiple을 50:50으로 평균';
+    }
+  }
+  dcfCalc();
 }
 
 /* 정상상태 보정 — 권장값 적용 후 재계산 */
