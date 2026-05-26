@@ -2372,6 +2372,65 @@ def _find_ebitda_at(ticker_obj, target_date_str):
     return None
 
 
+@app.route("/api/peer_search", methods=["GET"])
+def peer_search():
+    """회사명·티커로 비교회사 검색 — yfinance.Search 활용 (해외 포함).
+
+    국내 종목은 _stock_listing 명단 우선 매칭 (FDR 기반, 정확함).
+    해외 종목은 yfinance.Search로 회사명 → ticker (예: 'Intercos' → 'ICOS.MI').
+    """
+    q = (request.args.get("q") or "").strip()
+    if not q:
+        return jsonify({"status": "ok", "results": []})
+    results = []
+    seen = set()
+
+    # 1) 국내 종목 명단 (KRX FDR) — 회사명·코드 부분일치
+    try:
+        listing = _stock_listing()
+        ql = q.lower()
+        for r in listing:
+            nm = (r.get("name") or "")
+            code = r.get("code") or ""
+            if (ql in nm.lower()) or (q == code) or code.startswith(q):
+                key = code
+                if key in seen: continue
+                seen.add(key)
+                results.append({
+                    "code": code,
+                    "name": nm,
+                    "market": r.get("market", "KOSPI"),
+                    "exchange": "KRX",
+                })
+                if len(results) >= 15: break
+    except Exception:
+        pass
+
+    # 2) yfinance Search — 해외 종목 (회사명 검색)
+    if len(results) < 10:
+        try:
+            import yfinance as yf
+            s = yf.Search(q, max_results=10)
+            for item in (s.quotes or []):
+                sym = item.get("symbol") or ""
+                if not sym or sym in seen: continue
+                # 미국 ticker는 점 없음 (AAPL), 해외는 .MI/.PA/.T/.HK 등
+                # 한국 종목은 위에서 이미 처리했으므로 .KS/.KQ는 건너뜀
+                if sym.endswith(".KS") or sym.endswith(".KQ"): continue
+                seen.add(sym)
+                results.append({
+                    "code": sym,
+                    "name": item.get("shortname") or item.get("longname") or sym,
+                    "market": item.get("exchange") or "",
+                    "exchange": item.get("exchDisp") or item.get("exchange") or "",
+                })
+                if len(results) >= 15: break
+        except Exception:
+            pass
+
+    return jsonify({"status": "ok", "results": results})
+
+
 @app.route("/api/dcf/peer_multiples", methods=["POST"])
 def dcf_peer_multiples():
     """비교회사 EV/EBITDA 자동 산출 (평가기준일 기준).

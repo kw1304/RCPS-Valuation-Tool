@@ -2724,12 +2724,55 @@ function evRenderRows(){
   const host = document.getElementById('ev-peer-rows');
   if(!host) return;
   host.innerHTML = window.evPeerRows.map((v, i) =>
-    `<div style="display:flex;gap:6px;margin-bottom:3px;align-items:center">
+    `<div style="display:flex;gap:6px;margin-bottom:3px;align-items:center;position:relative">
       <span style="font-size:.66rem;color:var(--text3);width:18px;text-align:right">${i+1}.</span>
-      <input type="text" placeholder="회사명 또는 ticker (예: 코스맥스, 192820, AAPL)" value="${(v||'').replace(/"/g,'&quot;')}" oninput="window.evPeerRows[${i}]=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault();evFetchPeers();}" style="flex:1;font-size:.72rem;padding:3px 6px">
+      <div style="flex:1;position:relative">
+        <input type="text" id="ev-peer-inp-${i}" placeholder="회사명·티커 (예: 코스맥스, Intercos, AAPL, ICOS.MI)" value="${(v||'').replace(/"/g,'&quot;')}"
+          oninput="window.evPeerRows[${i}]=this.value;evPeerSearch(${i},this)"
+          onfocus="evPeerSearch(${i},this)"
+          onblur="setTimeout(()=>evPeerHideDrop(${i}),200)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();evPeerHideDrop(${i});evFetchPeers();}else if(event.key==='Escape'){evPeerHideDrop(${i});}"
+          style="width:100%;font-size:.72rem;padding:3px 6px">
+        <div id="ev-peer-drop-${i}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:30;background:#fff;border:1px solid var(--border);border-radius:4px;max-height:200px;overflow:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);margin-top:2px"></div>
+      </div>
       <button onclick="evPeerRemove(${i})" style="font-size:.62rem;padding:2px 7px;background:#FEE2E2;color:#991B1B;border:none;border-radius:3px;cursor:pointer">×</button>
     </div>`
   ).join('');
+}
+
+let _evPeerSearchTimer = null;
+function evPeerSearch(idx, inputEl){
+  clearTimeout(_evPeerSearchTimer);
+  const q = (inputEl.value || '').trim();
+  const drop = document.getElementById(`ev-peer-drop-${idx}`);
+  if(q.length < 1){ drop.style.display = 'none'; return; }
+  _evPeerSearchTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/peer_search?q=' + encodeURIComponent(q));
+      const j = await r.json();
+      if(document.getElementById(`ev-peer-inp-${idx}`)?.value.trim() !== q){ drop.style.display='none'; return; }
+      if(j.status !== 'ok' || !j.results.length){ drop.style.display='none'; return; }
+      drop.innerHTML = j.results.map(x => {
+        const safeName = (x.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        return `<div onclick="evPeerPick(${idx},'${x.code}','${safeName}')" style="padding:6px 8px;cursor:pointer;font-size:.7rem;border-bottom:1px solid #F2F4F6" onmouseover="this.style.background='#F0F9FF'" onmouseout="this.style.background=''">
+          <b>${x.name}</b> <span style="color:var(--text3)">${x.code}${x.exchange?' · '+x.exchange:''}</span>
+        </div>`;
+      }).join('');
+      drop.style.display = 'block';
+    } catch(e) { drop.style.display = 'none'; }
+  }, 200);
+}
+
+function evPeerPick(idx, code, name){
+  window.evPeerRows[idx] = code;
+  const inp = document.getElementById(`ev-peer-inp-${idx}`);
+  if(inp){ inp.value = code; inp.title = name; }
+  evPeerHideDrop(idx);
+}
+
+function evPeerHideDrop(idx){
+  const drop = document.getElementById(`ev-peer-drop-${idx}`);
+  if(drop) drop.style.display = 'none';
 }
 
 function evPeerAdd(){
