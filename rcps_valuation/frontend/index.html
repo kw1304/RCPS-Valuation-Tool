@@ -810,11 +810,8 @@ details.note-fold .note{margin-top:4px}
       <div class="field"><label for="a_nci">비지배지분조정 (원)</label><input type="text" id="a_nci" class="money" value="0" onfocus="mFocus(this)" onblur="mBlur(this,()=>dcfCalc())" oninput="mInput(this)"></div>
     </div>
     <div style="display:flex;gap:14px;margin-top:8px;align-items:center;flex-wrap:wrap">
-      <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--text2);cursor:pointer" title="현금흐름이 연중 균등 발생 가정. 한국 평가법인 보고서 다수 채택. 활성 시 EV 약 4~6% 상승.">
+      <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--text2);cursor:pointer" title="현금흐름이 연중 균등 발생 가정. 활성 시 할인 기간이 0.5년 짧아져 EV 증가. 회계 표준 강제 X, 평가 컨벤션 선택.">
         <input type="checkbox" id="a_midyear" onchange="dcfCalc()"> Mid-year Convention
-      </label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--text2);cursor:pointer" title="Bull/Base/Bear 시나리오를 base case ±20%/0%/-20% 매출·EBIT 가정으로 자동 산출. 평가법인 보고서 표준 3-시나리오 가중평균.">
-        <input type="checkbox" id="a_scenario" onchange="dcfCalc()"> 3-시나리오 분석 (Bull/Base/Bear)
       </label>
       <span id="dcf-warn" style="font-size:.7rem;color:var(--amber);font-weight:600"></span>
     </div>
@@ -864,7 +861,7 @@ details.note-fold .note{margin-top:4px}
             </select>
           </div>
           <div>
-            <label title="비유동성 할인 (DLOM): 비상장은 거래 유동성 없어 상장사 배수보다 낮게 평가. K-IFRS 1113.B45.">비유동성 할인 DLOM (%)</label>
+            <label title="비유동성 할인 (DLOM, Discount for Lack of Marketability):&#10;&#10;개념: K-IFRS 1113.B45 — 비상장은 거래 유동성 없어 같은 회사의 상장 가치보다 낮게 평가.&#10;&#10;범위: 실증 연구(FMV·Pluris·Mandelbaum 판례) 평균 약 25%, 사례별 0~50% 차이.&#10;개념 자체는 회계 표준 명문이나 정확한 할인율은 평가자 판단 영역.&#10;사례 근거를 워크페이퍼에 기록 권장.">비유동성 할인 DLOM (%) <span style="color:var(--text3);font-size:.6rem">— 실증 평균 ~25% (사례별 조정)</span></label>
             <input type="number" id="ev-dlom" value="25" min="0" max="50" step="5" oninput="evRecalc()" style="width:100%">
           </div>
         </div>
@@ -2967,59 +2964,10 @@ function dcfCalc(){
   dcfTvWarn(pvTV, ev);
   // ── EV/EBITDA implied cross-check
   dcfMultipleCheck(ev, dcfYears, midyear);
-  // ── 3-시나리오 분석 (활성화 시)
-  if(document.getElementById('a_scenario')?.checked){
-    dcfScenarioAnalysis(dcfYears, wacc, g, nonop, nd, pref, nci, shares, midyear, sp);
-  } else {
-    const sc=document.getElementById('dcf-scen');if(sc)sc.remove();
-  }
-}
-
-function dcfScenarioAnalysis(years, wacc, g, nonop, nd, pref, nci, shares, midyear, baseSp){
-  // 평가법인 표준 3-시나리오: 매출·EBIT를 각 ±20%/0/-20% 가중 (60% Base + 20% Bull + 20% Bear)
-  const scenarios=[
-    {name:'Bull (낙관)', mult:1.20, prob:0.20, color:'#00C073'},
-    {name:'Base (기준)', mult:1.00, prob:0.60, color:'var(--accent)'},
-    {name:'Bear (보수)', mult:0.80, prob:0.20, color:'var(--red)'},
-  ];
-  const tvT=midyear?(years.length-0.5):years.length;
-  const results=scenarios.map(s=>{
-    let pvEx=0;const fcffs=[];
-    for(let i=0;i<years.length;i++){
-      const y=years[i];
-      const adjEbit=y.ebit*s.mult;
-      const nopat=adjEbit*(1-y.tax/100);
-      const fcff=nopat+y.da-y.capex-y.dnwc;
-      fcffs.push(fcff);
-      const t=midyear?(i+0.5):(i+1);
-      pvEx+=fcff/Math.pow(1+wacc,t);
-    }
-    const tv=fcffs[fcffs.length-1]*(1+g)/(wacc-g);
-    const pvtv=tv/Math.pow(1+wacc,tvT);
-    const opVal=pvEx+pvtv;
-    const eq=Math.max(opVal+nonop-nd-pref-nci,0);
-    return {...s, sp:eq/shares, equity:eq};
-  });
-  const weightedSp=results.reduce((s,r)=>s+r.sp*r.prob,0);
-  const rows=results.map(r=>`
-    <tr><td style="color:${r.color};font-weight:600">${r.name}</td>
-      <td>${(r.mult*100).toFixed(0)}%</td>
-      <td>${(r.prob*100).toFixed(0)}%</td>
-      <td>${fmtN(r.sp)}원</td>
-      <td>${fmtW(r.equity)}</td></tr>`).join('');
-  let host=document.getElementById('dcf-scen');
-  if(!host){
-    const wrap=document.querySelector('#dcf-result-wrap');
-    host=document.createElement('div');host.id='dcf-scen';host.className='dcf-det';host.style.marginTop='12px';
-    wrap.appendChild(host);
-  }
-  host.innerHTML=`<h4>3-시나리오 분석 <span style="font-weight:400;color:var(--text3);font-size:.72rem">(EBIT ±20% 가정 · 평가법인 표준 가중평균)</span></h4>
-    <table class="dtable" style="font-size:.74rem">
-      <thead><tr><th>시나리오</th><th>EBIT 가정</th><th>가중치</th><th>주당가치</th><th>자기자본가치</th></tr></thead>
-      <tbody>${rows}
-        <tr style="background:#EFF6FF"><td colspan="3" style="font-weight:700;color:var(--accent)">가중평균 주당가치</td>
-          <td style="font-weight:700;color:var(--accent)">${fmtN(weightedSp)}원</td>
-          <td style="color:var(--text3)">Base 대비 ${weightedSp>=baseSp?'+':''}${((weightedSp-baseSp)/baseSp*100).toFixed(1)}%</td></tr></tbody></table>`;
+  // 3-시나리오 분석 (Bull/Base/Bear ±20%, 가중치 20/60/20) 제거 (2026-05-27)
+  // — ±20% 변동·가중치 모두 학술·표준 출처 없는 임의 관행값.
+  // — 별도 민감도 분석 탭에서 매출·EBIT 변동을 사용자가 직접 설정 가능.
+  const sc=document.getElementById('dcf-scen');if(sc)sc.remove();
 }
 
 function dcfSensMatrix(years, calc, wacc0, g0, nonop, nd, pref, nci, shares, midyear){
