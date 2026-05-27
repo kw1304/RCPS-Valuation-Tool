@@ -1085,24 +1085,24 @@ details.note-fold .note{margin-top:4px}
     </div>
     <details class="note-fold"><summary></summary><div class="note">출처: <b>Duff &amp; Phelps</b>(현 Kroll) Valuation Handbook(사이즈), <b>Damodaran</b> Country Risk Premium 표(CRP). 한국 평가에서 평가대상이 한국 기업이면 통상 CRP=0(이미 Rf에 국가위험 반영). 평가대상이 해외 진출국 기업이면 그 국가의 CRP 추가.</div></details>
     <div class="row2" style="margin-top:10px">
-      <div class="field"><label for="w_beta_d" title="부채 베타. Hamada 식 분자 항. 0이면 표준 Hamada(MM 가정). 신용등급 BBB는 통상 0.15~0.20 (Pratt-Grabowski).">부채 베타 β_D (선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">신용등급↓</span></label>
+      <div class="field"><label for="w_beta_d" title="부채 베타. Hamada 식 분자 항. 0이면 표준 Hamada(MM 가정). 등급별 값은 학술 합의대역 중앙값 근사 — 정확 산정은 Damodaran spread × ρ 방식 권장.">부채 베타 β_D (선택) <span style="color:var(--text3);font-weight:400;font-size:0.65rem">신용등급↓</span></label>
         <div style="display:flex;gap:6px">
           <input type="number" id="w_beta_d" value="0" step="0.05" min="0" oninput="waccRecalc()" style="flex:1;min-width:0">
-          <select id="w_beta_d_sel" onchange="if(this.value!==''){document.getElementById('w_beta_d').value=this.value;waccRecalc();}" style="width:148px;flex-shrink:0">
-            <option value="">선택 (Pratt-Grabowski 근사)</option>
-            <option value="0">0 — 표준 Hamada (MM)</option>
-            <option value="0.05">AAA 0.05</option>
-            <option value="0.10">AA 0.10</option>
-            <option value="0.15">A 0.15</option>
-            <option value="0.20">BBB 0.20</option>
-            <option value="0.25">BB 0.25</option>
-            <option value="0.30">B 0.30</option>
+          <select id="w_beta_d_sel" onchange="if(this.value!==''){document.getElementById('w_beta_d').value=this.value;waccRecalc();}" style="width:148px;flex-shrink:0" title="학술 합의대역 중앙값 근사 (Schaefer-Strebulaev 2008, Damodaran spread×ρ, Kaplan-Stein 1990 교차). 단일 출처 표 X.">
+            <option value="">선택 (학술대역 중앙값)</option>
+            <option value="0">0 — 표준 Hamada (MM 가정)</option>
+            <option value="0.05">AAA~AA 0.05 (대역 0.02~0.10)</option>
+            <option value="0.10">A 0.10 (대역 0.05~0.15)</option>
+            <option value="0.15">BBB 0.15 (대역 0.10~0.20)</option>
+            <option value="0.20">BBB- 0.20 (대역 0.15~0.25)</option>
+            <option value="0.25">BB 0.25 (대역 0.20~0.35)</option>
+            <option value="0.30">B 0.30 (대역 0.30~0.45)</option>
           </select>
         </div>
       </div>
       <div class="field"></div>
     </div>
-    <div class="note" style="font-size:0.66rem;color:var(--text3);background:transparent;border:none;padding:4px 0;margin:0">β_D&gt;0 시 Full Hamada: β_U = [β_L + β_D·(1−t)·D/E] / [1 + (1−t)·D/E]. 한국 비상장 RCPS는 신용 BBB~BB 추정 시 β_D 0.15~0.25 권장 (Pratt-Grabowski 2014).</div>
+    <div class="note" style="font-size:0.66rem;color:var(--text3);background:transparent;border:none;padding:4px 0;margin:0">β_D&gt;0 시 Full Hamada: β_U = [β_L + β_D·(1−t)·D/E] / [1 + (1−t)·D/E]. 등급별 값은 <b>학술 합의대역 중앙값 근사</b> (Schaefer-Strebulaev 2008 J.Finance · Kaplan-Stein 1990 · Damodaran spread×ρ 교차). 단일 권위 표는 부재하므로 평가실무자 판단으로 대역 내 조정 가능. 정확 산정은 평가대상 발행채권 yield spread × bond-equity 상관계수 방식 권장.</div>
     <div class="info-box" id="w-ke-box" style="margin-top:8px">
       <div style="font-size:.78rem;line-height:1.6">
         Rf <span id="w_disp_rf">3.00%</span> + β_L <span id="w_disp_beta">—</span> × MRP <span id="w_disp_mrp">6.00%</span>
