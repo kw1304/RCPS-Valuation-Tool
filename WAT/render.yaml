@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: wat-landing
+    runtime: static
+    rootDir: WAT
+    buildCommand: ""
+    staticPublishPath: .
+    autoDeploy: true
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=300

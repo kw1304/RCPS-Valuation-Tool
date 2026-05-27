@@ -336,17 +336,20 @@ body.tool-mode footer.legal{display:none}
   cta.addEventListener('focusout', close);
 })();
 
-/* ── 툴 레지스트리 (URL 수정은 여기서) */
+/* ── 툴 레지스트리 (로컬/배포 자동 분기) */
+const IS_LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
+const URL_RCPS = IS_LOCAL ? 'http://127.0.0.1:5000/' : 'https://rcps-valuation-docker.onrender.com/';
+const URL_JET  = IS_LOCAL ? 'http://127.0.0.1:5050/' : 'https://jet-auto-tool.onrender.com/';
 const TOOLS = {
   'rcps-dcf': {
     name: 'RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델',
     category: 'Valuation',
-    url: 'http://127.0.0.1:5000/',
+    url: URL_RCPS,
   },
   'jet': {
     name: 'JET Tool · Journal Entry Test',
     category: 'Audit Support',
-    url: 'http://127.0.0.1:5050/',
+    url: URL_JET,
   },
 };
 
