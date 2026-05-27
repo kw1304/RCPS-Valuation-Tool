@@ -838,13 +838,8 @@ input[type="range"]:focus { border: none; box-shadow: none; }
     </div>
 
     <div class="form-group">
-      <div class="form-label">계약 잔존 만기</div>
-      <div style="display:flex;align-items:center;gap:0.5rem">
-        <input type="number" id="maturity-years" value="3" min="0" max="30" step="1" style="flex:1">
-        <span style="font-size:0.82rem;color:var(--text2);font-weight:500;white-space:nowrap;flex-shrink:0">년</span>
-        <input type="number" id="maturity-months" value="0" min="0" max="11" step="1" style="flex:1">
-        <span style="font-size:0.82rem;color:var(--text2);font-weight:500;white-space:nowrap;flex-shrink:0">개월</span>
-      </div>
+      <div class="form-label">계약 만기일 <span id="maturity-years-display">잔존 — 년</span></div>
+      <input type="date" id="maturity-date">
     </div>
 
     <div class="form-group">
@@ -1188,13 +1183,8 @@ input[type="range"]:focus { border: none; box-shadow: none; }
             <input type="text" id="hedge-notional" placeholder="예: 10,000,000,000" inputmode="numeric">
           </div>
           <div class="form-group" style="margin:0">
-            <div class="form-label">위험회피대상 만기</div>
-            <div style="display:flex;align-items:center;gap:0.4rem">
-              <input type="number" id="hedge-years" min="0" max="30" step="1" placeholder="0" style="flex:1">
-              <span style="font-size:0.8rem;color:var(--text2);white-space:nowrap">년</span>
-              <input type="number" id="hedge-months" min="0" max="11" step="1" placeholder="0" style="flex:1">
-              <span style="font-size:0.8rem;color:var(--text2);white-space:nowrap">개월</span>
-            </div>
+            <div class="form-label">위험회피대상 만기일 <span id="hedge-years-display">잔존 — 년</span></div>
+            <input type="date" id="hedge-date">
           </div>
           <div class="form-group" style="margin:0">
             <div class="form-label">변동금리 지수</div>
@@ -1555,7 +1545,7 @@ function calculate() {
 
   const params = {
     notional: parseFloat(document.getElementById('notional').value.replace(/,/g, '')),
-    maturity: (parseInt(document.getElementById('maturity-years').value) || 0) + (parseInt(document.getElementById('maturity-months').value) || 0) / 12,
+    maturity: computeMaturityYears('eval-date', 'maturity-date'),
     frequency: parseInt(document.getElementById('frequency').value),
     fixed_rate: parseFloat(document.getElementById('fixed_rate').value),
     position: document.getElementById('position').value,
@@ -2069,9 +2059,7 @@ function runQualitativeTest() {
   const freqLabel = { 1: '연 1회', 2: '반기 1회', 4: '분기 1회' };
 
   const hedgeNotional = parseFloat((document.getElementById('hedge-notional').value || '').replace(/,/g, ''));
-  const hedgeYears    = parseInt(document.getElementById('hedge-years').value)  || 0;
-  const hedgeMonths   = parseInt(document.getElementById('hedge-months').value) || 0;
-  const hedgeMaturity = hedgeYears + hedgeMonths / 12;
+  const hedgeMaturity = computeMaturityYears('eval-date', 'hedge-date');
   const hedgeFreq     = parseInt(document.getElementById('hedge-frequency').value);
 
   const checks = [
@@ -2084,7 +2072,7 @@ function runQualitativeTest() {
     {
       name: '만기',
       irs:   fmtMaturity(p.maturity),
-      hedge: hedgeYears + '년 ' + hedgeMonths + '개월',
+      hedge: fmtMaturity(hedgeMaturity),
       match: Math.abs(hedgeMaturity - p.maturity) < 0.01,
     },
     {
@@ -2376,12 +2364,54 @@ window.onload = () => {
     if (raw) hedgeNotionalEl.value = parseInt(raw, 10).toLocaleString('ko-KR');
   });
 
+  // ── 만기일 자동 초기값(평가일 + 3년) + 입력 변경 시 잔존만기 라벨 갱신
+  function addYearsISO(iso, yrs){
+    const d = new Date(iso);
+    d.setFullYear(d.getFullYear() + yrs);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dd}`;
+  }
+  function refreshMaturityLabel(){
+    const fmt = (yrs) => {
+      if (!isFinite(yrs) || yrs <= 0) return '잔존 — 년';
+      const y = Math.floor(yrs);
+      const m = Math.round((yrs - y) * 12);
+      if (m === 0) return `잔존 ${y}년`;
+      if (y === 0) return `잔존 ${m}개월`;
+      return `잔존 ${y}년 ${m}개월`;
+    };
+    const labM = document.getElementById('maturity-years-display');
+    if (labM) labM.textContent = fmt(computeMaturityYears('eval-date', 'maturity-date'));
+    const labH = document.getElementById('hedge-years-display');
+    if (labH) labH.textContent = fmt(computeMaturityYears('eval-date', 'hedge-date'));
+  }
+
+  const matEl = document.getElementById('maturity-date');
+  const hedEl = document.getElementById('hedge-date');
+  if (!matEl.value) matEl.value = addYearsISO(evalDate.value, 3);  // 기본 평가일 + 3년
+  matEl.addEventListener('change', refreshMaturityLabel);
+  hedEl.addEventListener('change', refreshMaturityLabel);
+  evalDate.addEventListener('change', refreshMaturityLabel);
+  refreshMaturityLabel();
+
   // CSA 슬라이더 & EE 설명 초기화
   updateCsaSlider(document.getElementById('csa_slider'));
   updateEeDesc();
 
   loadRates(todayString()); // 페이지 로드 시 오늘 날짜로 자동 로드
 };
+
+// 평가일 ↔ 만기일 → 잔존 연수 (소수)
+function computeMaturityYears(evalId, matId){
+  const e = document.getElementById(evalId)?.value;
+  const m = document.getElementById(matId)?.value;
+  if (!e || !m) return 0;
+  const ed = new Date(e), md = new Date(m);
+  if (isNaN(ed) || isNaN(md) || md <= ed) return 0;
+  return (md - ed) / (1000 * 60 * 60 * 24 * 365.25);
+}
 </script>
 <style>
 footer.legal{padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;line-height:1.4}
