@@ -794,13 +794,17 @@ def step4_upload_replies(pid: str):
                 workpaper_id=wp.id,
             )
 
-            # 2) 텍스트 추출
+            # 2) 텍스트 추출 (tables 포함)
             from pathlib import Path as _Path
             extract_result = extract_text(_Path(artifact.stored_path))
             ocr_warnings = extract_result.warnings
 
-            # 3) 파싱
-            parsed = parse_confirmation(extract_result.full_text, kind=kind)
+            # 3) 파싱 — pdfplumber tables 우선 활용
+            parsed = parse_confirmation(
+                extract_result.full_text,
+                kind=kind,
+                tables=extract_result.tables if extract_result.tables else None,
+            )
 
             # 4) 거래처 매칭
             raw_name = parsed.extracted_name or filename

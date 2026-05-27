@@ -247,6 +247,67 @@ table tfoot td{background:var(--bg3);font-weight:700;color:var(--text)}
 .btn-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:0 3px;font-size:13px;font-family:var(--sans)}
 .btn-del:hover{color:var(--red)}
 
+/* ── Step 4 인라인 편집 테이블 ───────────────────────────────── */
+.reply-table{width:100%;border-collapse:collapse;font-size:0.74rem;font-variant-numeric:tabular-nums;min-width:900px}
+.reply-table th{background:var(--bg3);color:var(--text2);padding:7px 8px;text-align:left;font-weight:600;font-size:0.68rem;border-bottom:1px solid var(--border);white-space:nowrap}
+.reply-table th.num{text-align:right}
+.reply-table td{padding:5px 7px;border-bottom:1px solid var(--border);vertical-align:middle}
+.reply-table td.num{text-align:right}
+.reply-table tr.row-dirty{background:#FFF9E6}
+.reply-table tr.row-needs-review td{background:#FFF1F2}
+.reply-table tr.row-matched td{background:#F0FDF4}
+.reply-table tr.row-mismatch td{background:#FFFBEB}
+.reply-table tr.row-extraction-failed td{background:#FFF1F2}
+/* 인라인 입력 셀 */
+.reply-table .cell-input{
+  width:100%;border:1px solid transparent;background:transparent;
+  font-family:var(--sans);font-size:0.74rem;color:var(--text);
+  padding:3px 5px;border-radius:5px;outline:none;
+  transition:border-color 0.12s,background 0.12s;
+}
+.reply-table .cell-input:focus{border-color:var(--accent);background:#fff}
+.reply-table .cell-input:hover{background:var(--bg3)}
+.reply-table .cell-select{
+  border:1px solid transparent;background:transparent;
+  font-family:var(--sans);font-size:0.72rem;color:var(--text);
+  padding:3px 5px;border-radius:5px;outline:none;cursor:pointer;
+  -webkit-appearance:none;
+  transition:border-color 0.12s,background 0.12s;
+  width:100%;
+}
+.reply-table .cell-select:focus,.reply-table .cell-select:hover{border-color:var(--accent);background:#fff}
+/* 저장 버튼 */
+.btn-row-save{
+  padding:2px 10px;background:var(--accent);color:#fff;border:none;
+  border-radius:6px;font-family:var(--sans);font-size:0.68rem;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:background 0.12s;
+}
+.btn-row-save:hover{background:var(--accent2)}
+.btn-row-save:disabled{background:var(--text3);cursor:default}
+/* 일괄 저장 바 */
+.bulk-action-bar{
+  display:none;position:sticky;bottom:0;background:var(--bg2);
+  border-top:1px solid var(--border);padding:0.6rem 1.15rem;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-size:0.78rem;
+}
+.bulk-action-bar.has-dirty{display:flex}
+/* AuditTrail 섹션 */
+.audit-section{margin-top:12px}
+.audit-section summary{
+  cursor:pointer;font-size:0.78rem;font-weight:700;color:var(--text2);
+  padding:0.6rem 0.85rem;background:var(--bg3);border-radius:8px;
+  letter-spacing:-0.01em;list-style:none;display:flex;align-items:center;gap:6px;
+}
+.audit-section summary::before{content:'▶';font-size:0.6rem;color:var(--text3);transition:transform 0.15s}
+.audit-section[open] summary::before{transform:rotate(90deg)}
+.audit-table{width:100%;border-collapse:collapse;font-size:0.7rem;margin-top:6px}
+.audit-table th{background:var(--bg3);color:var(--text3);padding:5px 8px;text-align:left;font-size:0.65rem;font-weight:600;border-bottom:1px solid var(--border)}
+.audit-table td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.audit-table .json-toggle{font-size:0.65rem;color:var(--accent);cursor:pointer;text-decoration:underline}
+.audit-json-detail{font-size:0.65rem;font-family:monospace;background:var(--bg3);padding:6px;border-radius:5px;margin-top:4px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;display:none}
+.audit-json-detail.open{display:block}
+
 /* Step placeholder 화면 */
 .step-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:12px;text-align:center;padding:2rem}
 .step-placeholder .step-ph-badge{font-size:0.7rem;font-weight:700;padding:0.3rem 1rem;background:var(--bg3);color:var(--text3);border-radius:100px;letter-spacing:-0.01em}
@@ -669,37 +730,65 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
       </div>
     </aside>
 
-    <section class="res-panel" id="res-panel-4">
+    <section class="res-panel" id="res-panel-4" style="display:flex;flex-direction:column;overflow:auto">
       <div class="placeholder" id="placeholder-4">
         <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
         <p>PDF 회신을 업로드하면 <b>자동 대사</b> 결과가 표시됩니다</p>
         <small>추출·매칭·차이판정이 자동으로 수행됩니다</small>
       </div>
+      <!-- 회신 일람표 (인라인 편집) -->
+      <div id="s4-table-wrap" style="display:none;flex:1;overflow:auto;padding:1rem 1.15rem">
+        <!-- KPI -->
+        <div class="kpi-grid" id="s4-kpi" style="margin-bottom:14px"></div>
+        <!-- 일람표 -->
+        <div class="card" style="overflow:hidden">
+          <h3>회신 일람표 <span class="h3-sub" id="s4-table-count"></span>
+            <span style="margin-left:auto">
+              <button id="btn-s4-bulk-save" class="btn-row-save" style="display:none;background:var(--green)" onclick="s4BulkSave()">변경 일괄 저장</button>
+              <button style="margin-left:6px;padding:2px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;font-family:var(--sans);font-size:0.68rem;font-weight:600;cursor:pointer;color:var(--text2)" onclick="s4LoadReplies()">새로고침</button>
+            </span>
+          </h3>
+          <div style="overflow-x:auto;margin-top:8px">
+            <table class="reply-table">
+              <thead>
+                <tr>
+                  <th style="width:160px">거래처명</th>
+                  <th class="num" style="width:130px">회신 잔액</th>
+                  <th class="num" style="width:120px">장부가</th>
+                  <th class="num" style="width:100px">차이</th>
+                  <th class="num" style="width:70px">차이%</th>
+                  <th style="width:110px">회신일자</th>
+                  <th style="width:120px">상태</th>
+                  <th style="width:150px">비고</th>
+                  <th style="width:60px">저장</th>
+                </tr>
+              </thead>
+              <tbody id="s4-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <!-- AuditTrail -->
+        <div class="audit-section" style="margin-top:14px">
+          <details id="audit-details">
+            <summary onclick="s4LoadAuditTrail()">변경 이력 (AuditTrail)</summary>
+            <div style="margin-top:6px;overflow-x:auto">
+              <table class="audit-table">
+                <thead><tr>
+                  <th style="width:160px">시각</th>
+                  <th style="width:80px">사용자</th>
+                  <th style="width:140px">액션</th>
+                  <th style="width:100px">대상</th>
+                  <th>변경 요약</th>
+                </tr></thead>
+                <tbody id="audit-tbody">
+                  <tr><td colspan="5" style="color:var(--text3);text-align:center;padding:12px">펼치면 로드됩니다</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </div>
     </section>
-  </div>
-
-  <!-- Step 4 수정 모달 -->
-  <div class="modal-overlay" id="s4-edit-modal" style="display:none" onclick="if(event.target===this)closeS4Modal()">
-    <div class="modal">
-      <h2>회신 내용 수정</h2>
-      <input type="hidden" id="s4-edit-id">
-      <div class="field"><label>거래처명 (매칭)</label><input id="s4-edit-name" placeholder="거래처명"></div>
-      <div class="field"><label>회신 잔액</label><input type="number" id="s4-edit-balance" placeholder="0"></div>
-      <div class="field"><label>회신 일자</label><input type="date" id="s4-edit-date"></div>
-      <div class="field"><label>상태</label>
-        <select id="s4-edit-status">
-          <option value="matched">일치</option>
-          <option value="mismatch">불일치</option>
-          <option value="needs_review">검토 필요</option>
-          <option value="extraction_failed">추출 실패</option>
-        </select>
-      </div>
-      <div class="field"><label>비고</label><input id="s4-edit-notes" placeholder="수동 보정 사유"></div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeS4Modal()">취소</button>
-        <button class="btn-primary" onclick="s4SaveEdit()">저장</button>
-      </div>
-    </div>
   </div>
 
   <!-- Step 5: 차이·대체 (Week 4 구현 예정) -->
@@ -1450,101 +1539,221 @@ async function s4LoadReplies() {
   } catch(e) { /* silent */ }
 }
 
+// ── Step 4 인라인 편집 상태 ────────────────────────────────────────────────
+let S4_REPLIES = [];        // 현재 로드된 회신 목록
+let S4_DIRTY = {};          // {reply_id: {field: newValue, ...}} — 변경된 행
+
 function s4RenderReplies(replies) {
+  S4_REPLIES = replies;
+  S4_DIRTY = {};
+
   const total = replies.length;
   const matched = replies.filter(r => r.status === "matched").length;
   const mismatch = replies.filter(r => r.status === "mismatch").length;
   const failed = replies.filter(r => r.status === "extraction_failed").length;
   const review = replies.filter(r => r.status === "needs_review").length;
 
-  const statusBadge = (s) => {
-    const map = {
-      matched: `<span style="color:var(--green);font-weight:700">일치</span>`,
-      mismatch: `<span style="color:var(--amber);font-weight:700">불일치</span>`,
-      extraction_failed: `<span style="color:var(--red);font-weight:700">추출실패</span>`,
-      needs_review: `<span style="color:var(--red);font-weight:700">검토필요</span>`,
-      pending: `<span style="color:var(--text3);font-weight:500">대기</span>`,
-    };
-    return map[s] || `<span>${s}</span>`;
-  };
+  // KPI
+  document.getElementById("s4-kpi").innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">전체 회신</div><div class="kpi-value">${total}건</div></div>
+    <div class="kpi-card"><div class="kpi-label">일치</div><div class="kpi-value green">${matched}건</div></div>
+    <div class="kpi-card"><div class="kpi-label">불일치</div><div class="kpi-value amber">${mismatch}건</div></div>
+    <div class="kpi-card"><div class="kpi-label">검토필요</div><div class="kpi-value" style="color:var(--red)">${review + failed}건</div></div>
+  `;
+  document.getElementById("s4-table-count").textContent = `${total}건`;
 
-  const rows = replies.map(r => {
-    const displayName = r.party_name_matched || r.party_name_raw || "-";
-    const conf = r.party_match_confidence != null ? (r.party_match_confidence * 100).toFixed(0) + "%" : "-";
-    const extBal = r.extracted_balance != null ? fmt(r.extracted_balance) : "-";
+  // 행 렌더링
+  const tbody = document.getElementById("s4-tbody");
+  tbody.innerHTML = "";
+
+  replies.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.id = `s4-row-${r.id}`;
+    s4SetRowClass(tr, r.status);
+
     const ledBal = r.ledger_balance != null ? fmt(r.ledger_balance) : "-";
     const diff = r.difference != null ? fmt(r.difference) : "-";
-    const diffPct = r.difference_pct != null ? (r.difference_pct * 100).toFixed(2) + "%" : "-";
-    return `<tr>
-      <td style="font-weight:600">${displayName}</td>
-      <td class="num">${extBal} <span style="font-size:0.68rem;color:var(--text3)">${r.extracted_balance_currency}</span></td>
-      <td class="num">${ledBal}</td>
-      <td class="num" style="color:${r.difference && Math.abs(r.difference) > 0 ? 'var(--amber)' : 'var(--text3)'}">${diff}</td>
-      <td class="num">${diffPct}</td>
-      <td>${statusBadge(r.status)}</td>
-      <td style="font-size:0.72rem;color:var(--text3)">${conf}</td>
-      <td style="font-size:0.72rem;color:var(--text3)">${r.extraction_method || "-"}</td>
-      <td><button class="btn-del" style="font-size:0.72rem;padding:2px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer" onclick='s4OpenEdit(${JSON.stringify(r)})'>수정</button></td>
-    </tr>`;
-  }).join("");
+    const diffPct = r.difference_pct != null ? (Math.abs(r.difference_pct) * 100).toFixed(2) + "%" : "-";
+    const diffColor = r.difference && Math.abs(r.difference) > 0 ? "var(--amber)" : "var(--text3)";
+    const extBal = r.extracted_balance != null ? r.extracted_balance : "";
+    const curTag = r.extracted_balance_currency && r.extracted_balance_currency !== "KRW"
+      ? `<span style="font-size:0.66rem;color:var(--text3);margin-left:3px">${r.extracted_balance_currency}</span>` : "";
 
-  document.getElementById("res-panel-4").innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">전체 회신</div><div class="kpi-value">${total}건</div></div>
-      <div class="kpi-card"><div class="kpi-label">일치</div><div class="kpi-value green">${matched}건</div></div>
-      <div class="kpi-card"><div class="kpi-label">불일치</div><div class="kpi-value amber">${mismatch}건</div></div>
-      <div class="kpi-card"><div class="kpi-label">검토필요</div><div class="kpi-value" style="color:var(--red)">${review + failed}건</div></div>
-    </div>
-    <div class="card">
-      <h3>회신 일람표 <span class="h3-sub">${total}건</span></h3>
-      <div style="overflow-x:auto;margin-top:8px">
-        <table>
-          <thead><tr>
-            <th>거래처명</th><th class="num">회신 잔액</th><th class="num">장부가</th>
-            <th class="num">차이</th><th class="num">차이%</th>
-            <th>상태</th><th>매칭신뢰도</th><th>추출방법</th><th>액션</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>`;
+    tr.innerHTML = `
+      <td>
+        <input class="cell-input" id="s4-name-${r.id}" value="${escHtml(r.party_name_matched || r.party_name_raw || '')}"
+          title="추출명: ${escHtml(r.party_name_raw || '')}"
+          oninput="s4MarkDirty('${r.id}','party_name_matched',this.value)">
+      </td>
+      <td class="num">
+        <input class="cell-input" type="number" id="s4-bal-${r.id}" value="${extBal}"
+          style="text-align:right;width:110px"
+          oninput="s4MarkDirty('${r.id}','extracted_balance',parseFloat(this.value)||null)">${curTag}
+      </td>
+      <td class="num" style="color:var(--text2);font-weight:500">${ledBal}</td>
+      <td class="num" style="color:${diffColor}">${diff}</td>
+      <td class="num" style="color:${diffColor}">${diffPct}</td>
+      <td>
+        <input class="cell-input" type="date" id="s4-date-${r.id}" value="${r.reply_date || ''}"
+          oninput="s4MarkDirty('${r.id}','reply_date',this.value||null)">
+      </td>
+      <td>
+        <select class="cell-select" id="s4-status-${r.id}"
+          onchange="s4MarkDirty('${r.id}','status',this.value)">
+          <option value="matched" ${r.status==='matched'?'selected':''}>일치</option>
+          <option value="mismatch" ${r.status==='mismatch'?'selected':''}>불일치</option>
+          <option value="needs_review" ${r.status==='needs_review'?'selected':''}>검토필요</option>
+          <option value="extraction_failed" ${r.status==='extraction_failed'?'selected':''}>추출실패</option>
+          <option value="pending" ${r.status==='pending'?'selected':''}>대기</option>
+        </select>
+      </td>
+      <td>
+        <input class="cell-input" id="s4-notes-${r.id}" value="${escHtml(r.notes||'')}"
+          placeholder="비고"
+          oninput="s4MarkDirty('${r.id}','notes',this.value||null)">
+      </td>
+      <td>
+        <button class="btn-row-save" id="s4-save-${r.id}" disabled
+          onclick="s4SaveRow('${r.id}')">저장</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // 테이블 표시
+  document.getElementById("placeholder-4").style.display = "none";
+  document.getElementById("s4-table-wrap").style.display = "flex";
+  document.getElementById("s4-table-wrap").style.flexDirection = "column";
 }
 
-function s4OpenEdit(reply) {
-  document.getElementById("s4-edit-id").value = reply.id;
-  document.getElementById("s4-edit-name").value = reply.party_name_matched || reply.party_name_raw || "";
-  document.getElementById("s4-edit-balance").value = reply.extracted_balance != null ? reply.extracted_balance : "";
-  document.getElementById("s4-edit-date").value = reply.reply_date || "";
-  document.getElementById("s4-edit-status").value = reply.status || "pending";
-  document.getElementById("s4-edit-notes").value = reply.notes || "";
-  document.getElementById("s4-edit-modal").style.display = "flex";
-}
-
-function closeS4Modal() {
-  document.getElementById("s4-edit-modal").style.display = "none";
-}
-
-async function s4SaveEdit() {
-  const pid = STATE.currentProjectId;
-  if (!pid) return;
-  const replyId = document.getElementById("s4-edit-id").value;
-  const payload = {
-    party_name_matched: document.getElementById("s4-edit-name").value || null,
-    extracted_balance: parseFloat(document.getElementById("s4-edit-balance").value) || null,
-    reply_date: document.getElementById("s4-edit-date").value || null,
-    status: document.getElementById("s4-edit-status").value,
-    notes: document.getElementById("s4-edit-notes").value || null,
+function s4SetRowClass(tr, status) {
+  tr.className = "";
+  const map = {
+    matched: "row-matched",
+    mismatch: "row-mismatch",
+    needs_review: "row-needs-review",
+    extraction_failed: "row-extraction-failed",
   };
+  if (map[status]) tr.classList.add(map[status]);
+}
+
+function s4MarkDirty(replyId, field, value) {
+  if (!S4_DIRTY[replyId]) S4_DIRTY[replyId] = {};
+  S4_DIRTY[replyId][field] = value;
+  // 행 dirty 표시
+  const tr = document.getElementById(`s4-row-${replyId}`);
+  if (tr) tr.classList.add("row-dirty");
+  // 행 저장 버튼 활성화
+  const saveBtn = document.getElementById(`s4-save-${replyId}`);
+  if (saveBtn) saveBtn.disabled = false;
+  // 일괄 저장 버튼 표시
+  document.getElementById("btn-s4-bulk-save").style.display = "inline-block";
+}
+
+async function s4SaveRow(replyId) {
+  const pid = STATE.currentProjectId;
+  if (!pid || !S4_DIRTY[replyId]) return;
+  const btn = document.getElementById(`s4-save-${replyId}`);
+  if (btn) { btn.textContent = "저장 중"; btn.disabled = true; }
+
+  const payload = S4_DIRTY[replyId];
   try {
     const r = await fetch(`/api/project/${pid}/step4/reply/${replyId}`, {
       method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload)
     });
     const data = await r.json();
     if (data.error) throw new Error(data.error);
-    closeS4Modal();
-    s4LoadReplies();
-  } catch(e) { alert("수정 실패: " + e.message); }
+    // 해당 행 dirty 해제 + 상태 클래스 갱신
+    delete S4_DIRTY[replyId];
+    const tr = document.getElementById(`s4-row-${replyId}`);
+    if (tr) {
+      tr.classList.remove("row-dirty");
+      const newStatus = document.getElementById(`s4-status-${replyId}`)?.value || data.status;
+      s4SetRowClass(tr, newStatus);
+    }
+    if (btn) { btn.textContent = "저장"; btn.disabled = true; }
+    if (Object.keys(S4_DIRTY).length === 0) {
+      document.getElementById("btn-s4-bulk-save").style.display = "none";
+    }
+  } catch(e) {
+    alert("수정 실패: " + e.message);
+    if (btn) { btn.textContent = "저장"; btn.disabled = false; }
+  }
 }
+
+async function s4BulkSave() {
+  const dirtyIds = Object.keys(S4_DIRTY);
+  if (!dirtyIds.length) return;
+  for (const id of dirtyIds) {
+    await s4SaveRow(id);
+  }
+  alert(`${dirtyIds.length}건 저장 완료`);
+}
+
+// AuditTrail 로드 (details 펼칠 때 호출)
+let _auditLoaded = false;
+async function s4LoadAuditTrail() {
+  const pid = STATE.currentProjectId;
+  if (!pid || _auditLoaded) return;
+  _auditLoaded = true;
+  const tbody = document.getElementById("audit-tbody");
+  try {
+    const r = await fetch(`/api/project/${pid}/audit-trail`);
+    const data = await r.json();
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:12px">이력 없음</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = data.map((t, i) => {
+      const ts = new Date(t.timestamp).toLocaleString("ko-KR", {
+        month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"
+      });
+      const afterSummary = t.after_value ? (() => {
+        try {
+          const obj = JSON.parse(t.after_value);
+          return Object.entries(obj).slice(0, 3).map(([k,v]) => `${k}: ${v}`).join(" | ");
+        } catch { return t.after_value.substring(0, 60); }
+      })() : "-";
+      const hasDetail = t.after_value;
+      return `<tr>
+        <td style="white-space:nowrap;color:var(--text3)">${ts}</td>
+        <td style="color:var(--text3)">${t.user_email || "-"}</td>
+        <td><span style="font-size:0.68rem;font-weight:600;color:var(--text2)">${t.action}</span></td>
+        <td style="font-size:0.68rem;color:var(--text3)">${t.entity_type}<br>${(t.entity_id||"").substring(0,8)}...</td>
+        <td>
+          <span style="font-size:0.7rem">${afterSummary}</span>
+          ${hasDetail ? `<br><span class="json-toggle" onclick="toggleAuditJson('aj-${i}')">상세 펼침</span>
+          <div class="audit-json-detail" id="aj-${i}">${escHtml(t.after_value)}</div>` : ""}
+        </td>
+      </tr>`;
+    }).join("");
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red)">로드 실패: ${e.message}</td></tr>`;
+  }
+}
+
+function toggleAuditJson(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle("open");
+}
+
+// AuditTrail details 열릴 때마다 재로드 가능하도록 reset
+document.addEventListener("DOMContentLoaded", () => {
+  const det = document.getElementById("audit-details");
+  if (det) det.addEventListener("toggle", () => {
+    if (det.open && !_auditLoaded) s4LoadAuditTrail();
+  });
+});
+
+function escHtml(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// 기존 호환성: s4OpenEdit, closeS4Modal, s4SaveEdit (모달 방식 제거 — 인라인으로 대체)
+function s4OpenEdit(reply) { /* 인라인 편집으로 대체 — 더 이상 모달 불필요 */ }
+function closeS4Modal() { document.getElementById("s4-edit-modal") && (document.getElementById("s4-edit-modal").style.display="none"); }
+async function s4SaveEdit() { /* 인라인 편집으로 대체 */ }
 
 async function s4MarkDone() {
   const pid = STATE.currentProjectId;
@@ -1559,6 +1768,8 @@ async function s4MarkDone() {
     document.getElementById("btn-s4-done").textContent = "완료";
     document.getElementById("btn-s4-done").disabled = true;
     STATE.stepDone[4] = true;
+    // AuditTrail 캐시 리셋 (완료 이벤트 반영)
+    _auditLoaded = false;
     goStep(4);
     alert("Step 4 완료가 기록되었습니다.");
   } catch(e) { alert("실패: " + e.message); }
@@ -1580,7 +1791,7 @@ function goStep(n) {
   _origGoStep(n);
   if (n === 2) { s2RefreshContacts(); }
   if (n === 3) { s3RefreshPreview(); loadTemplates(); }
-  if (n === 4) { s4LoadReplies(); }
+  if (n === 4) { s4LoadReplies(); _auditLoaded = false; }
 }
 
 // ── 초기화 ─────────────────────────────────────────────────
