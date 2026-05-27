@@ -832,14 +832,15 @@ input[type="range"]:focus { border: none; box-shadow: none; }
       <input type="text" id="notional" value="10,000,000,000" inputmode="numeric">
     </div>
 
-    <div class="form-group">
-      <div class="form-label">평가기준일 <span class="spinner" id="rate-spinner" style="display:none"></span></div>
-      <input type="date" id="eval-date">
-    </div>
-
-    <div class="form-group">
-      <div class="form-label">계약 만기일 <span id="maturity-years-display">잔존 — 년</span></div>
-      <input type="date" id="maturity-date">
+    <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem">
+      <div>
+        <div class="form-label">평가기준일 <span class="spinner" id="rate-spinner" style="display:none"></span></div>
+        <input type="date" id="eval-date">
+      </div>
+      <div>
+        <div class="form-label">계약 만기일 <span id="maturity-years-display">잔존 — 년</span></div>
+        <input type="date" id="maturity-date">
+      </div>
     </div>
 
     <div class="form-group">
