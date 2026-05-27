@@ -1025,6 +1025,7 @@ details.note-fold .note{margin-top:4px}
     </div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
       <button class="btn-sm add" onclick="waccAddPeer()">+ 유사기업 추가</button>
+      <button class="btn-sm" onclick="waccBetaScatterAll()" style="background:#0EA5E9;color:#fff" title="조회된 모든 peer β 회귀를 한 차트에서 비교">📊 전체 β 비교</button>
       <span style="font-size:.7rem;color:var(--text3)">유사기업 칸에 회사명·코드 입력 후 <b>Enter</b> → β·D/E 자동</span>
       <span id="w-beta-status" style="font-size:.74rem;color:var(--text3);align-self:center;margin-left:auto"></span>
     </div>
@@ -1908,7 +1909,45 @@ function fillValuationFromContract(){
     if(v.refixing_frequency){const fq=document.getElementById('refixing_frequency'); if(fq)fq.value=v.refixing_frequency;}
   }
   recalcDerived();
-  if(st)st.textContent='평가툴 입력값을 채웠습니다'+(isRfx?' (리픽싱 포함 — 트리거/주기 확인 권장)':'')+'. (RCPS 탭에서 확인)';
+
+  // 누락 필드 점검 — 핵심 필드가 비어있으면 시각 강조
+  const REQUIRED = [
+    {id:'issue_date',       label:'발행일',          src: v.issue_date},
+    {id:'maturity_date',    label:'만기일',          src: v.maturity_date},
+    {id:'face_value',       label:'발행금액',         src: v.face_value},
+    {id:'conversion_price', label:'전환가액',         src: v.conversion_price},
+    {id:'rcps_shares',      label:'RCPS 주식수',     src: v.rcps_shares},
+    {id:'coupon_rate',      label:'우선배당률',       src: v.coupon_rate},
+    {id:'conversion_start', label:'전환 시작일',      src: v.conversion_start},
+    {id:'put_irr',          label:'풋 보장수익률 IRR', src: v.put_irr},
+    {id:'put_start',        label:'풋 시작일',        src: v.put_start},
+  ];
+  const missing = [];
+  REQUIRED.forEach(r => {
+    const filled = (r.src != null && r.src !== '' && r.src !== 0);
+    const el = document.getElementById(r.id);
+    if(!el) return;
+    // 시각 강조: 비어있으면 빨강 테두리, 채워졌으면 평상
+    if(!filled){
+      el.style.boxShadow = '0 0 0 2px rgba(239,68,68,.5)';
+      el.style.background = '#FEF2F2';
+      el.title = '계약서 추출 누락 — 직접 입력 필요';
+      missing.push(r.label);
+    } else {
+      el.style.boxShadow = '';
+      el.style.background = '';
+      el.title = '';
+    }
+  });
+
+  if(st){
+    const baseMsg = '평가툴 입력값을 채웠습니다' + (isRfx ? ' (리픽싱 포함 — 트리거/주기 확인 권장)' : '') + '.';
+    if(missing.length){
+      st.innerHTML = `${baseMsg} <span style="color:#DC2626;font-weight:600">⚠ ${missing.length}개 필드 누락</span> — RCPS 탭에서 빨간 칸 직접 입력: ${missing.join(', ')}`;
+    } else {
+      st.innerHTML = `${baseMsg} <span style="color:#059669">✓ 핵심 필드 모두 추출</span> (RCPS 탭 확인)`;
+    }
+  }
 }
 
 function recalcDerived(){
@@ -3295,6 +3334,74 @@ function waccRenderPeers(){
   }).join('');
 }
 function waccAddPeer(){window.waccPeers.push({name:'',betaL:1.0,de:50});waccRenderPeers();waccRecalc();}
+
+/* 전체 peer β 회귀 통합 산점도 — peer별 회귀선 동시 비교 */
+function waccBetaScatterAll(){
+  const peers = (window.waccPeers||[]).filter(p => p && p.betaScatter && p.betaLine);
+  if(!peers.length){ alert('조회된 peer 없음 — 먼저 β 자동 조회 실행'); return; }
+
+  const old = document.getElementById('wacc-scatter-modal'); if(old) old.remove();
+  // peer별 색상 팔레트
+  const PALETTE = ['#3182F6','#FF9F00','#7C3AED','#059669','#DC2626','#0EA5E9','#B45309','#EC4899','#475569','#A16207'];
+
+  const datasets = [];
+  peers.forEach((p, idx) => {
+    const color = PALETTE[idx % PALETTE.length];
+    const label = (p.name || p._code || `peer ${idx+1}`).slice(0, 18);
+    datasets.push({
+      label: `${label} (β=${p.betaRaw}, R²=${p.betaR2})`,
+      data: p.betaScatter.map(([x,y]) => ({x: x*100, y: y*100})),
+      backgroundColor: color + '60',
+      pointRadius: 2, pointHoverRadius: 4,
+      type: 'scatter',
+    });
+    datasets.push({
+      label: `${label} 회귀선`,
+      data: p.betaLine.map(([x,y]) => ({x: x*100, y: y*100})),
+      borderColor: color,
+      borderWidth: 2,
+      pointRadius: 0,
+      type: 'line',
+      showLine: true,
+      fill: false,
+      tension: 0,
+    });
+  });
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="wacc-scatter-modal" onclick="if(event.target.id==='wacc-scatter-modal')document.getElementById('wacc-scatter-modal').remove()" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:10px;padding:20px 24px;max-width:780px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <h3 style="margin:0;font-size:1rem;color:#1A365D">전체 peer β 회귀 비교 (n=${peers.length})</h3>
+          <button onclick="document.getElementById('wacc-scatter-modal').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text2)">×</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px;line-height:1.6">
+          peer별 색상 — 점=관측치(시장수익률, 종목수익률), 선=회귀선. β·R² 라벨에 표시.<br>
+          회귀선 기울기 차이가 peer 간 β 분산 정도. X축: 시장지수 수익률 · Y축: 종목 수익률.
+        </div>
+        <div style="height:420px"><canvas id="wacc-scatter-all-canvas"></canvas></div>
+        <div style="font-size:.64rem;color:var(--text3);margin-top:6px;line-height:1.5">
+          ※ K-IFRS 1113.93(d) input 출처 시각 입증 — peer pool 분산을 한 화면에서 확인. 평가법인 워크페이퍼 첨부 표준.
+        </div>
+      </div>
+    </div>
+  `);
+  const ctx = document.getElementById('wacc-scatter-all-canvas').getContext('2d');
+  new Chart(ctx, {
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font:{size:9}, boxWidth:10, padding:4, filter: (item) => !item.text.includes('회귀선') } },
+        tooltip: { callbacks: { label: ctx => ` Rm=${ctx.parsed.x.toFixed(2)}%, Ri=${ctx.parsed.y.toFixed(2)}%` } },
+      },
+      scales: {
+        x: { type:'linear', title:{display:true,text:'시장 수익률 Rm (%)',font:{size:10}}, ticks:{callback:v=>v.toFixed(1)+'%',font:{size:9}}, grid:{color:'#F2F4F6'} },
+        y: { title:{display:true,text:'종목 수익률 Ri (%)',font:{size:10}}, ticks:{callback:v=>v.toFixed(1)+'%',font:{size:9}}, grid:{color:'#F2F4F6'} },
+      },
+    },
+  });
+}
 
 /* β 회귀 산점도 모달 — peer R² 신뢰도 시각 입증 (K-IFRS 1113.93(d)) */
 function waccBetaScatter(i){
