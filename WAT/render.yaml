@@ -5,7 +5,7 @@ services:
     rootDir: WAT
     buildCommand: ""
     staticPublishPath: .
-    autoDeploy: true
+    autoDeploy: false
     headers:
       - path: /*
         name: X-Frame-Options

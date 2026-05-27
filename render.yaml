@@ -12,4 +12,4 @@ services:
       - key: APP_PASSWORD
         sync: false
     healthCheckPath: /healthz
-    autoDeploy: true
+    autoDeploy: false

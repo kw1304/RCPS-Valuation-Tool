@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: jet-auto-tool
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: .
+    buildCommand: pip install -e . && pip install gunicorn flask
+    startCommand: gunicorn jet.interface.api.app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 600 --preload
+    envVars:
+      - key: APP_USER
+        value: admin
+      - key: APP_PASSWORD
+        sync: false
+      - key: JET_DATA_DIR
+        value: /tmp/jet-runtime
+    healthCheckPath: /healthz
+    autoDeploy: false
