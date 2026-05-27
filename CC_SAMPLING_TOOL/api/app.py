@@ -443,48 +443,32 @@ def inspect():
 # ─────────────────────────────────────────────────────────────
 # 3. 샘플링 실행
 # ─────────────────────────────────────────────────────────────
-@app.route("/api/run", methods=["POST"])
-def run():
-    data = request.json or {}
-    kind = data.get("kind", "receivable")
-    sheet = data.get("sheet")
-    project_id = data.get("project_id") or STATE.get("current_project_id")
-
+def _run_single_kind(data: dict, kind: str, sheet: str | None,
+                     project_id: str, related_parties: set) -> tuple:
+    """단일 kind(채권 or 채무) 샘플링 실행 → (serialized_dict | None, error_str | None)."""
     if not STATE.get("ledger_path"):
-        return jsonify({"error": "거래처원장 파일을 먼저 업로드하세요 (Step 0)"}), 400
+        return None, "거래처원장 파일을 먼저 업로드하세요"
+
+    actual_sheet = sheet or STATE.get("sheets", {}).get(kind)
+    if not actual_sheet:
+        # 시트가 없으면 에러가 아니라 skip (both 모드에서 한쪽만 있어도 동작)
+        return None, f"{kind} 시트 미감지 — 원장에 해당 시트가 없습니다"
 
     pm_raw = data.get("performance_materiality", 0)
     try:
         pm = float(pm_raw)
     except (TypeError, ValueError):
-        return jsonify({"error": f"수행 중요성(performance_materiality) 값이 잘못되었습니다: {pm_raw}"}), 400
+        return None, f"수행 중요성(performance_materiality) 값이 잘못되었습니다: {pm_raw}"
     if pm <= 0:
-        return jsonify({"error": "수행 중요성(PM)은 0보다 커야 합니다"}), 400
-
-    if project_id is None:
-        log.warning("project_id 없는 /api/run 호출 — 임시 프로젝트 생성 (deprecated)")
-        with get_session() as s:
-            project_id, _ = _get_or_create_temp_project(s, kind)
+        return None, "수행 중요성(PM)은 0보다 커야 합니다"
 
     try:
-        df = pd.read_excel(STATE["ledger_path"], sheet_name=sheet)
+        df = pd.read_excel(STATE["ledger_path"], sheet_name=actual_sheet)
     except Exception as e:
-        return jsonify({"error": f"거래처원장 파일 읽기 실패: {e!s}. 파일을 다시 업로드하세요."}), 400
+        return None, f"거래처원장 파일 읽기 실패 ({kind}): {e!s}"
 
     if df.empty:
-        return jsonify({"error": "거래처원장이 비어 있습니다. 데이터를 확인하세요."}), 400
-
-    # 특관자 fallback: payload에 없으면 업로드된 RP 파일에서 자동 로드 (ISA 550 — 모두 포함 원칙)
-    related_parties_data = data.get("related_parties")
-    if related_parties_data:
-        related_parties = set(related_parties_data)
-    elif STATE.get("rp_path"):
-        try:
-            related_parties = load_related_parties(STATE["rp_path"])
-        except Exception:
-            related_parties = set()
-    else:
-        related_parties = set()
+        return None, f"거래처원장이 비어 있습니다 ({kind})"
 
     params = SamplingParams(
         company_name=data.get("company_name", ""),
@@ -507,18 +491,12 @@ def run():
 
     result = run_sampling(df, params)
 
-    # Edge case: 모집단 0 또는 거래처 0건 → 사용자에게 명확한 안내
     if result.population_amount <= 0:
         kind_label = "채권" if kind == "receivable" else "채무"
-        return jsonify({
-            "error": (
-                f"{kind_label} 모집단 잔액이 0입니다. "
-                f"올바른 시트를 선택했는지 확인하세요. "
-                f"(선택된 시트: {sheet or '자동감지'})"
-            ),
-            "population_amount": 0,
-            "hint": "거래처원장 시트명이 채권/채무 중 어느 쪽인지 확인 후 sheet 파라미터를 명시적으로 지정해보세요.",
-        }), 400
+        return None, (
+            f"{kind_label} 모집단 잔액이 0입니다. "
+            f"올바른 시트를 선택했는지 확인하세요. (시트: {actual_sheet})"
+        )
 
     serialized = _serialize_result(result, params)
     STATE["last_result"][kind] = {"result": result, "params": params}
@@ -539,13 +517,108 @@ def run():
             "reviewer": params.reviewer,
         }
         wp_repo.save_sampling_result(wp.id, params_dict, serialized)
-        # AuditTrail: step1_sampling
         _audit(s, "step1_sampling", "Workpaper", wp.id, project_id,
                after={
                    "kind": kind,
                    "final_sample_size": result.size_result.final_sample_size,
                    "population_amount": result.population_amount,
                })
+
+    return serialized, None
+
+
+@app.route("/api/run", methods=["POST"])
+def run():
+    """샘플링 실행.
+
+    kind="both"(default) → 채권·채무 양쪽 자동 실행.
+    kind="receivable" or "payable" → 단일 실행 (하위 호환).
+    """
+    data = request.json or {}
+    kind = data.get("kind", "both")   # default = both (자동)
+    sheet = data.get("sheet")
+    project_id = data.get("project_id") or STATE.get("current_project_id")
+
+    if not STATE.get("ledger_path"):
+        return jsonify({"error": "거래처원장 파일을 먼저 업로드하세요 (Step 0)"}), 400
+
+    if project_id is None:
+        log.warning("project_id 없는 /api/run 호출 — 임시 프로젝트 생성 (deprecated)")
+        with get_session() as s:
+            project_id, _ = _get_or_create_temp_project(s, kind)
+
+    # 특관자 fallback
+    related_parties_data = data.get("related_parties")
+    if related_parties_data:
+        related_parties = set(related_parties_data)
+    elif STATE.get("rp_path"):
+        try:
+            related_parties = load_related_parties(STATE["rp_path"])
+        except Exception:
+            related_parties = set()
+    else:
+        related_parties = set()
+
+    # ── kind="both": 채권+채무 양쪽 자동 실행 ────────────────────────────
+    if kind == "both":
+        results: dict[str, dict] = {}
+        errors: dict[str, str] = {}
+        for chk_kind in ("receivable", "payable"):
+            chk_sheet = sheet or STATE.get("sheets", {}).get(chk_kind)
+            serialized, err = _run_single_kind(
+                data=data, kind=chk_kind, sheet=chk_sheet,
+                project_id=project_id, related_parties=related_parties,
+            )
+            if err:
+                errors[chk_kind] = err
+            else:
+                results[chk_kind] = serialized
+
+        if not results:
+            # 양쪽 모두 실패
+            return jsonify({
+                "error": "채권·채무 샘플링 모두 실패했습니다",
+                "receivable_error": errors.get("receivable"),
+                "payable_error": errors.get("payable"),
+            }), 400
+
+        combined_final = sum(
+            (r.get("size", {}).get("final_sample_size", 0) for r in results.values()), 0
+        )
+        combined_population = sum(
+            (r.get("population_amount", 0) for r in results.values()), 0.0
+        )
+
+        response: dict = {
+            "kind": "both",
+            "receivable": results.get("receivable"),
+            "payable": results.get("payable"),
+            "combined": {
+                "total_population": combined_population,
+                "total_final_sample_size": combined_final,
+                "receivable_sample": results.get("receivable", {}).get("size", {}).get("final_sample_size", 0),
+                "payable_sample": results.get("payable", {}).get("size", {}).get("final_sample_size", 0),
+            },
+        }
+        if errors:
+            response["warnings"] = errors
+        return jsonify(response)
+
+    # ── 단일 kind (deprecated, 하위 호환) ────────────────────────────────
+    pm_raw = data.get("performance_materiality", 0)
+    try:
+        pm = float(pm_raw)
+    except (TypeError, ValueError):
+        return jsonify({"error": f"수행 중요성(performance_materiality) 값이 잘못되었습니다: {pm_raw}"}), 400
+    if pm <= 0:
+        return jsonify({"error": "수행 중요성(PM)은 0보다 커야 합니다"}), 400
+
+    serialized, err = _run_single_kind(
+        data=data, kind=kind, sheet=sheet,
+        project_id=project_id, related_parties=related_parties,
+    )
+    if err:
+        return jsonify({"error": err, "population_amount": 0}), 400
 
     return jsonify(serialized)
 
@@ -989,7 +1062,7 @@ def step3_build(pid: str):
             return jsonify({"error": "not found"}), 404
 
         data = request.json or {}
-        kind = data.get("kind", "receivable")
+        kind = data.get("kind", "both")  # default = both — 단일 통합 파일
 
         # kind=both: 채권+채무 단일 통합 파일 빌드
         if kind == "both":
@@ -1200,7 +1273,9 @@ def step4_upload_replies(pid: str):
         if proj is None or proj.status == "archived":
             return jsonify({"error": "not found"}), 404
 
-        kind = request.form.get("kind", "receivable")
+        kind_raw = request.form.get("kind", "auto")
+        # "auto" 또는 "both" → receivable을 Artifact FK 기준으로, 실제 분류는 양쪽 자동
+        kind = "receivable" if kind_raw in ("auto", "both") else kind_raw
         try:
             tolerance = float(request.form.get("tolerance", "0") or "0")
         except ValueError:

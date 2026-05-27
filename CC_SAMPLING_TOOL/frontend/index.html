@@ -437,14 +437,6 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
   <!-- Step 1: 샘플링 -->
   <div class="step-view active" id="step-view-1">
     <aside class="form-panel">
-      <!-- 채권/채무 탭 — Step 1 내부 -->
-      <div class="sec" style="padding-bottom:0.5rem">
-        <div class="kind-tabs">
-          <button class="kind-tab active" data-kind="receivable" onclick="switchKind('receivable')">채권 C100</button>
-          <button class="kind-tab" data-kind="payable" onclick="switchKind('payable')">채무 AA100</button>
-        </div>
-      </div>
-
       <div class="sec">
         <div class="sec-title">1. 회사자료 업로드 <span class="badge-req">필수</span></div>
         <div class="file-input-wrap">
@@ -550,7 +542,7 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
       <div class="placeholder" id="placeholder">
         <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
         <p>좌측 패널에서 파일 업로드 후 <b>샘플링 실행</b></p>
-        <small>채권·채무는 상단 탭으로 전환 — 한 파일에서 양쪽 시트 자동 감지</small>
+        <small>채권·채무 양쪽 자동 실행 — 한 파일에서 양쪽 시트 자동 감지</small>
       </div>
     </section>
   </div>
@@ -623,14 +615,6 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
   <!-- Step 3: 조서 -->
   <div class="step-view" id="step-view-3">
     <aside class="form-panel">
-      <!-- 채권/채무 탭 -->
-      <div class="sec" style="padding-bottom:0.5rem">
-        <div class="kind-tabs">
-          <button class="kind-tab active" data-kind3="receivable" onclick="s3SwitchKind('receivable')">채권 C100</button>
-          <button class="kind-tab" data-kind3="payable" onclick="s3SwitchKind('payable')">채무 AA100</button>
-        </div>
-      </div>
-
       <div class="sec">
         <div class="sec-title">1. 양식 선택</div>
         <div class="field">
@@ -648,17 +632,7 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
           <div class="field"><label>작성자</label><input id="s3-preparer" placeholder="이름"></div>
           <div class="field"><label>검토자</label><input id="s3-reviewer" placeholder="이름"></div>
         </div>
-      </div>
-
-      <div class="sec">
-        <div class="sec-title">3. 채권·채무 선택</div>
-        <div class="field">
-          <label>구분</label>
-          <select id="s3-kind-select" onchange="s3SwitchKindSelect(this.value)">
-            <option value="receivable">채권 (C100)</option>
-            <option value="payable">채무 (AA100)</option>
-          </select>
-        </div>
+        <div class="note">채권(C100) + 채무(AA100) 통합 조서가 자동 생성됩니다.</div>
       </div>
 
       <div class="run-wrap" style="display:flex;flex-direction:column;gap:8px">
@@ -681,13 +655,6 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
   <!-- Step 4: PDF 회신 처리 -->
   <div class="step-view" id="step-view-4">
     <aside class="form-panel">
-      <div class="sec" style="padding-bottom:0.5rem">
-        <div class="kind-tabs">
-          <button class="kind-tab active" data-kind4="receivable" onclick="s4SwitchKind('receivable')">채권 C100</button>
-          <button class="kind-tab" data-kind4="payable" onclick="s4SwitchKind('payable')">채무 AA100</button>
-        </div>
-      </div>
-
       <div class="sec">
         <div class="sec-title">1. PDF 회신 업로드</div>
         <div class="file-input-wrap" id="s4-drop-zone"
@@ -707,20 +674,11 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
 
       <div class="sec">
         <div class="sec-title">2. 자동 처리 옵션</div>
-        <div class="row2">
-          <div class="field">
-            <label>차이 허용 금액 (원)</label>
-            <input type="number" id="s4-tolerance" value="0" min="0" placeholder="0">
-          </div>
-          <div class="field">
-            <label>채권·채무 구분</label>
-            <select id="s4-kind-select" onchange="s4SwitchKindSelect(this.value)">
-              <option value="receivable">채권 (C100)</option>
-              <option value="payable">채무 (AA100)</option>
-            </select>
-          </div>
+        <div class="field">
+          <label>차이 허용 금액 (원)</label>
+          <input type="number" id="s4-tolerance" value="0" min="0" placeholder="0">
         </div>
-        <div class="note">허용 금액 0 = 1원이라도 다르면 불일치. 반올림 차이 허용 시 1,000~10,000원 설정.</div>
+        <div class="note">채권·채무 자동 분류 — PDF 내 표 섹션 기반으로 양쪽 자동 등록됩니다. 허용 금액 0 = 1원이라도 다르면 불일치.</div>
       </div>
 
       <div class="run-wrap" style="display:flex;flex-direction:column;gap:8px">
@@ -804,11 +762,7 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
         <section class="card" style="margin-bottom:1rem">
           <h3 class="card-title">1. 미회신·차이 일람 자동 식별</h3>
           <div class="field-row" style="align-items:center;gap:0.5rem;margin-bottom:0.75rem">
-            <label style="min-width:40px;font-size:0.78rem;color:var(--text2)">구분</label>
-            <select id="s5-kind" style="flex:1;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-              <option value="receivable">채권</option>
-              <option value="payable">채무</option>
-            </select>
+            <span style="font-size:0.78rem;color:var(--text2)">채권·채무 양쪽 자동 처리</span>
             <button class="btn-primary" style="padding:0.4rem 1rem;font-size:0.8rem" onclick="s5LoadPending()">자동 식별 실행</button>
           </div>
           <div id="s5-pending-area" style="display:none">
@@ -871,13 +825,7 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
             <input id="s5-recon-file" type="file" accept=".xlsx"
                    style="width:100%;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
           </div>
-          <div class="field" style="margin-bottom:0.6rem">
-            <label>구분</label>
-            <select id="s5-recon-kind" style="width:100%;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
-              <option value="payable">채무</option>
-              <option value="receivable">채권</option>
-            </select>
-          </div>
+          <div class="note" style="margin-bottom:0.6rem">채권·채무 양쪽 자동 인식 — 소명 파일에서 대상 구분을 자동으로 파악합니다.</div>
           <button class="btn-secondary" style="width:100%;font-size:0.85rem" onclick="s5ParseReconciliation()">자동 인식</button>
           <div id="s5-recon-result" style="margin-top:0.75rem;font-size:0.78rem"></div>
         </section>
@@ -1006,12 +954,12 @@ const CF_MATRIX = {
 };
 
 let STATE = {
-  kind: "receivable",
+  kind: "both",   // 기본값: 채권+채무 양쪽 자동
   currentStep: 1,
   sheets: {"receivable": null, "payable": null},
   fs_amounts: {},
   related_parties: [],
-  last_result: {"receivable": null, "payable": null},
+  last_result: {"receivable": null, "payable": null, "both": null},
   currentProjectId: null,
   stepDone: {1:false, 2:false, 3:false, 4:false, 5:false},
 };
@@ -1044,7 +992,7 @@ function goStep(n){
   // 다운로드 버튼: Step 1에서만
   const dlBtn = document.getElementById("dl-btn");
   if(n!==1) dlBtn.style.display="none";
-  else if(STATE.last_result[STATE.kind]) dlBtn.style.display="inline-flex";
+  else if(STATE.last_result["receivable"] || STATE.last_result["payable"]) dlBtn.style.display="inline-flex";
 }
 
 // ── 채권/채무 탭 ───────────────────────────────────────────
@@ -1261,16 +1209,18 @@ function getExcl(){
   return obj;
 }
 
-// ── 샘플링 실행 ────────────────────────────────────────────
+// ── 샘플링 실행 (kind="both" 자동) ────────────────────────────────────────────
 async function runSampling(){
-  const kind = STATE.kind;
-  const sheet = STATE.sheets[kind];
-  if (!sheet) { alert(`${kind==="receivable"?"채권":"채무"} 시트를 찾지 못함. 원장 시트명 확인.`); return; }
+  const sheets = STATE.sheets;
+  if (!sheets.receivable && !sheets.payable) {
+    alert("거래처원장을 먼저 업로드하세요 — 채권·채무 시트가 감지되지 않았습니다.");
+    return;
+  }
 
   const rpList = document.getElementById("rp_list").value.split("\n").map(s=>s.trim()).filter(Boolean);
 
   const payload = {
-    kind, sheet,
+    kind: "both",   // 채권+채무 양쪽 자동
     project_id: STATE.currentProjectId,
     company_name: document.getElementById("company_name").value,
     period_end: document.getElementById("period_end").value,
@@ -1295,18 +1245,126 @@ async function runSampling(){
     const r = await fetch("/api/run", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
     const data = await r.json();
     if (data.error) throw new Error(data.error);
-    STATE.last_result[kind] = data;
+
+    // both 응답: {kind:"both", receivable:{...}, payable:{...}, combined:{...}}
+    if (data.kind === "both") {
+      if (data.receivable) STATE.last_result["receivable"] = data.receivable;
+      if (data.payable) STATE.last_result["payable"] = data.payable;
+      STATE.last_result["both"] = data;
+      renderResultBoth(data);
+    } else {
+      // 단일 kind fallback (하위 호환)
+      const k = data.decisions ? "receivable" : "receivable";
+      STATE.last_result[k] = data;
+      renderResult(data);
+    }
+
     STATE.stepDone[1] = true;
-    goStep(1); // 스테퍼 done 표시 갱신
-    renderResult(data);
+    goStep(1);
     document.getElementById("dl-btn").style.display = "inline-flex";
-    document.getElementById("dl-btn").href = `/api/download/${kind}`;
+    document.getElementById("dl-btn").href = `/api/download/receivable`;
+    if (data.warnings) {
+      const warnMsg = Object.entries(data.warnings).map(([k,v])=>`${k==="receivable"?"채권":"채무"}: ${v}`).join("\n");
+      alert("일부 처리 경고:\n" + warnMsg);
+    }
   } catch (e) {
     alert("실행 실패: " + e.message);
   } finally {
     btn.textContent = "샘플링 실행";
     btn.disabled = false;
   }
+}
+
+// ── 양쪽 결과 렌더링 (채권+채무 통합 KPI) ──────────────────────────────────
+function renderResultBoth(data) {
+  const rv = data.receivable;
+  const py = data.payable;
+  const comb = data.combined || {};
+
+  function kindKpi(d, label, prefix) {
+    if (!d) return `<div class="kpi-card"><div class="kpi-label">${label} 모집단</div><div class="kpi-value" style="color:var(--text3)">미처리</div></div>`;
+    const final = d.decisions ? d.decisions.filter(x=>x.final_sampled).length : d.size.final_sample_size;
+    return `
+      <div class="kpi-card"><div class="kpi-label">${label} 모집단</div><div class="kpi-value">${fmt(d.population_amount)}</div><div class="kpi-sub">원</div></div>
+      <div class="kpi-card"><div class="kpi-label">${label} Key 기준</div><div class="kpi-value accent">${fmt(d.size.key_item_threshold)}</div></div>
+      <div class="kpi-card highlight"><div class="kpi-label">${label} 최종샘플</div><div class="kpi-value green">${final}건</div><div class="kpi-sub">${prefix}</div></div>`;
+  }
+
+  let html = `
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      ${kindKpi(rv, "채권 C100", "C100")}
+      ${kindKpi(py, "채무 AA100", "AA100")}
+      <div class="kpi-card" style="background:var(--bg3)"><div class="kpi-label">합계 샘플</div><div class="kpi-value">${comb.total_final_sample_size||0}건</div><div class="kpi-sub">채권+채무</div></div>
+    </div>`;
+
+  // 채권 결과 섹션
+  if (rv) html += renderResultSection(rv, "채권 (C100)");
+  // 채무 결과 섹션
+  if (py) html += renderResultSection(py, "채무 (AA100)");
+
+  document.getElementById("res-panel").innerHTML = html;
+}
+
+// 단일 kind 결과 섹션 HTML (헤더 레이블 포함)
+function renderResultSection(d, label) {
+  const final = d.decisions.filter(x=>x.final_sampled);
+  const excl = d.decisions.filter(x=>x.is_excluded).length;
+  const ki = final.filter(x=>x.is_key_item).length;
+  const rep = final.filter(x=>x.is_representative && !x.is_key_item).length;
+  const rp = final.filter(x=>x.is_related_party && x.final_sampled && !x.is_key_item && !x.is_representative).length;
+
+  const compRows = d.completeness.rows.map(r=>`
+    <tr>
+      <td>${r.group}</td><td class="num">${fmt(r.ledger)}</td>
+      <td class="num">${fmt(r.fs)}</td>
+      <td class="num" style="color:${Math.abs(r.diff)<1?'var(--text3)':'var(--amber)'}">${fmt(r.diff)}</td>
+      <td>${r.note||""}</td>
+    </tr>`).join("");
+
+  const sampledRows = final.sort((a,b)=>b.balance-a.balance).map((d,i)=>{
+    const tags = [];
+    if(d.is_key_item) tags.push('<span class="pill ki">Key item</span>');
+    if(d.is_representative) tags.push('<span class="pill rep">Representative</span>');
+    if(d.is_related_party) tags.push('<span class="pill rp">특관자</span>');
+    return `<tr class="${d.is_key_item?'key-item':'sampled'}"><td class="center">${i+1}</td><td>${d.name}</td><td class="num">${fmt(d.balance)}</td><td>${tags.join(" ")}</td></tr>`;
+  }).join("");
+
+  const musRows = d.mus.selections.map(s=>`
+    <tr class="${s.hit?'sampled':''}">
+      <td>${s.name}</td><td class="num">${fmt(s.balance)}</td><td class="num">${fmt(s.cumulative)}</td>
+      <td class="center">${s.selections}</td><td class="num">${fmt(s.remainder_after)}</td>
+      <td class="center">${s.hit?'<b style="color:var(--green)">Y</b>':'N'}</td>
+    </tr>`).join("");
+
+  return `
+    <div class="card" style="border-left:3px solid var(--accent);margin-bottom:0.75rem">
+      <h3 style="color:var(--accent)">${label} <span class="h3-sub">최종 ${final.length}건 · 발송제외 ${excl}건</span></h3>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0">
+        <div class="kpi-card" style="padding:6px 10px"><div class="kpi-label" style="font-size:0.65rem">Key item</div><div class="kpi-value amber" style="font-size:1rem">${ki}건</div></div>
+        <div class="kpi-card" style="padding:6px 10px"><div class="kpi-label" style="font-size:0.65rem">Representative</div><div class="kpi-value accent" style="font-size:1rem">${rep}건</div></div>
+        <div class="kpi-card" style="padding:6px 10px"><div class="kpi-label" style="font-size:0.65rem">특관자</div><div class="kpi-value" style="font-size:1rem">${rp}건</div></div>
+        <div class="kpi-card" style="padding:6px 10px"><div class="kpi-label" style="font-size:0.65rem">표본간격</div><div class="kpi-value" style="font-size:1rem">${fmt(d.size.sample_interval)}</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0.75rem">
+      <h3>완전성 검토 — ${label} <span class="h3-sub">회사명세서 ↔ 재무제표</span></h3>
+      <table><thead><tr><th>계정그룹</th><th class="num">회사명세서</th><th class="num">재무제표</th><th class="num">차이</th><th>차이소명</th></tr></thead>
+        <tbody>${compRows}</tbody>
+        <tfoot><tr><td>합계</td><td class="num">${fmt(d.completeness.total_ledger)}</td><td class="num">${fmt(d.completeness.total_fs)}</td><td class="num">${fmt(d.completeness.total_diff)}</td><td></td></tr></tfoot>
+      </table>
+    </div>
+    <div class="card" style="margin-bottom:0.75rem">
+      <h3>최종 샘플링 거래처 — ${label} <span class="h3-sub">${final.length}건</span></h3>
+      <table><thead><tr><th class="center">#</th><th>거래처명</th><th class="num">잔액</th><th>구분</th></tr></thead>
+        <tbody>${sampledRows}</tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <h3>MUS 추출 내역 — ${label} <span class="h3-sub">임의출발점 ${fmt(d.mus.random_start)} · 표본간격 ${fmt(d.mus.sample_interval)}</span></h3>
+      <table><thead><tr><th>거래처명</th><th class="num">잔액</th><th class="num">누적</th><th class="center">선택수</th><th class="num">remainder</th><th class="center">Hit</th></tr></thead>
+        <tbody>${musRows}</tbody>
+      </table>
+    </div>`;
 }
 
 // ── 결과 렌더링 ────────────────────────────────────────────
@@ -1562,13 +1620,12 @@ function s3RefreshPreview() {
 async function s3Build() {
   const pid = STATE.currentProjectId;
   if (!pid) { alert("프로젝트를 먼저 선택하세요"); return; }
-  const kind = S3.kind;
 
   const btn = document.getElementById("btn-s3-build");
   btn.textContent = "생성 중..."; btn.disabled = true;
 
   const payload = {
-    kind,
+    kind: "both",  // 항상 채권+채무 통합
     template_id: document.getElementById("s3-template-id").value,
     preparer: document.getElementById("s3-preparer").value || document.getElementById("preparer").value,
     reviewer: document.getElementById("s3-reviewer").value || document.getElementById("reviewer").value,
@@ -1673,7 +1730,7 @@ async function s4Upload() {
   btn.textContent = "처리 중..."; btn.disabled = true;
 
   const fd = new FormData();
-  fd.append("kind", S4.kind);
+  fd.append("kind", "auto");  // 서버가 채권/채무 자동 분류
   fd.append("tolerance", document.getElementById("s4-tolerance").value || "0");
   S4.files.forEach(f => fd.append("files[]", f));
 
@@ -1699,9 +1756,14 @@ async function s4LoadReplies() {
   const pid = STATE.currentProjectId;
   if (!pid) return;
   try {
-    const r = await fetch(`/api/project/${pid}/step4/replies?kind=${S4.kind}`);
-    const data = await r.json();
-    if (data.length) s4RenderReplies(data);
+    // 채권+채무 양쪽 로드 후 합쳐서 표시
+    const [r1, r2] = await Promise.all([
+      fetch(`/api/project/${pid}/step4/replies?kind=receivable`),
+      fetch(`/api/project/${pid}/step4/replies?kind=payable`),
+    ]);
+    const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+    const combined = [...(d1 || []), ...(d2 || [])];
+    if (combined.length) s4RenderReplies(combined);
   } catch(e) { /* silent */ }
 }
 
@@ -2004,11 +2066,31 @@ function _s5Pct(r) {
 async function s5LoadPending() {
   const pid = STATE.currentProjectId;
   if (!pid) { alert("프로젝트를 먼저 선택하세요"); return; }
-  const kind = document.getElementById("s5-kind").value;
-  const r = await fetch(`/api/project/${pid}/step5/pending?kind=${kind}`);
-  if (!r.ok) { alert("조회 실패: " + r.status); return; }
-  const data = await r.json();
-  _s5PendingList = data.pending || [];
+
+  // 채권·채무 양쪽 자동 처리 (auto-identify-pending)
+  try {
+    const autoR = await fetch(`/api/project/${pid}/step5/auto-identify-pending`, {method:"POST"});
+    if (!autoR.ok) { alert("자동 식별 실패: " + autoR.status); return; }
+    await autoR.json(); // 결과 소비 (created/updated/skipped)
+  } catch(e) { alert("자동 식별 오류: " + e.message); return; }
+
+  // 채권+채무 pending 양쪽 조회 후 합치기
+  const [r1, r2] = await Promise.all([
+    fetch(`/api/project/${pid}/step5/pending?kind=receivable`),
+    fetch(`/api/project/${pid}/step5/pending?kind=payable`),
+  ]);
+  const d1 = r1.ok ? await r1.json() : {pending:[]};
+  const d2 = r2.ok ? await r2.json() : {pending:[]};
+
+  // 중복 제거 (같은 거래처가 채권+채무 양쪽 pending 일 수 있음)
+  const seen = new Set();
+  _s5PendingList = [...(d1.pending||[]).map(p=>({...p,_kind:"채권"})),
+                    ...(d2.pending||[]).map(p=>({...p,_kind:"채무"}))].filter(p=>{
+    const key = p.party_name + "|" + p._kind;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   // Pending 표 렌더
   const tbody = document.getElementById("s5-pending-tbody");
@@ -2016,7 +2098,7 @@ async function s5LoadPending() {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">미회신·차이 거래처 없음</td></tr>`;
   } else {
     tbody.innerHTML = _s5PendingList.map(p => `<tr>
-      <td>${p.party_name}</td>
+      <td>${p.party_name} <span style="font-size:0.68rem;color:var(--text3)">[${p._kind}]</span></td>
       <td><span style="${p.reason==='미회신'?'color:#1B64DA':'color:#D97706'}">${p.reason}</span></td>
       <td style="text-align:right">${_s5Fmt(p.ledger_balance)}</td>
       <td style="text-align:right">${p.reply_balance!=null?_s5Fmt(p.reply_balance):"—"}</td>
@@ -2028,7 +2110,7 @@ async function s5LoadPending() {
   // 거래처 드롭다운 갱신
   const sel = document.getElementById("s5-party-sel");
   sel.innerHTML = `<option value="">— 선택 —</option>` +
-    _s5PendingList.map(p => `<option value="${p.party_name}">${p.party_name} (${p.reason})</option>`).join("");
+    _s5PendingList.map(p => `<option value="${p.party_name}">${p.party_name} [${p._kind}] (${p.reason})</option>`).join("");
 
   // KPI 갱신
   document.getElementById("s5-k-not-replied").textContent = _s5PendingList.filter(p=>p.reason==="미회신").length;
@@ -2041,10 +2123,15 @@ async function s5LoadPending() {
 async function s5LoadProcedures() {
   const pid = STATE.currentProjectId;
   if (!pid) return;
-  const kind = document.getElementById("s5-kind").value;
-  const r = await fetch(`/api/project/${pid}/step5/procedures?kind=${kind}`);
-  if (!r.ok) return;
-  _s5ProcList = await r.json();
+  const [r1, r2] = await Promise.all([
+    fetch(`/api/project/${pid}/step5/procedures?kind=receivable`),
+    fetch(`/api/project/${pid}/step5/procedures?kind=payable`),
+  ]);
+  const d1 = r1.ok ? await r1.json() : [];
+  const d2 = r2.ok ? await r2.json() : [];
+  // 중복 id 제거 (혹시 같은 절차가 양쪽에 등록된 경우)
+  const seen = new Set();
+  _s5ProcList = [...d1, ...d2].filter(p => { if(seen.has(p.id)) return false; seen.add(p.id); return true; });
   _s5RenderProcTable();
 
   // KPI 계속
@@ -2186,7 +2273,10 @@ async function s5UploadEvidence() {
   if (!pid) { alert("프로젝트 선택 필요"); return; }
   const party = document.getElementById("s5-party-sel").value;
   if (!party) { alert("거래처를 선택하세요"); return; }
-  const kind = document.getElementById("s5-kind").value;
+  // kind 자동 감지: pending 목록에서 해당 거래처의 kind 참조, 없으면 receivable fallback
+  const pp = _s5PendingList.find(p => p.party_name === party);
+  const kindRaw = pp ? pp._kind : null;
+  const kind = kindRaw === "채무" ? "payable" : "receivable";
   const files = document.getElementById("s5-file-input").files;
   if (!files || files.length === 0) { alert("파일을 선택하세요"); return; }
 
@@ -2196,7 +2286,6 @@ async function s5UploadEvidence() {
   fd.append("procedure_type", document.getElementById("s5-proc-type").value);
   fd.append("auditor_notes", document.getElementById("s5-notes").value);
   // ledger_balance 자동 주입
-  const pp = _s5PendingList.find(p => p.party_name === party);
   if (pp) {
     if (pp.ledger_balance != null) fd.append("ledger_balance", pp.ledger_balance);
     if (pp.reply_balance != null)  fd.append("reply_balance", pp.reply_balance);
@@ -2224,7 +2313,7 @@ async function s5ParseReconciliation() {
 
   const fd = new FormData();
   fd.append("file", fileInput.files[0]);
-  fd.append("kind", document.getElementById("s5-recon-kind").value);
+  fd.append("kind", "payable");  // 서버에서 채권·채무 양쪽 자동 처리 (payable은 API 내부 기본값)
 
   const r = await fetch(`/api/project/${pid}/step5/parse-reconciliation`, { method:"POST", body:fd });
   const data = await r.json();
@@ -2259,13 +2348,17 @@ async function s5ParseReconciliation() {
 async function s5MarkDone() {
   const pid = STATE.currentProjectId;
   if (!pid) { alert("프로젝트 선택 필요"); return; }
-  const kind = document.getElementById("s5-kind").value;
-  const r = await fetch(`/api/project/${pid}/step5/mark-done`, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({kind})
-  });
-  if (r.ok) { alert("Step 5 완료 처리됐습니다."); }
+  // 채권·채무 양쪽 완료 처리
+  await Promise.all(["receivable","payable"].map(k =>
+    fetch(`/api/project/${pid}/step5/mark-done`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({kind: k})
+    })
+  ));
+  alert("Step 5 완료 처리됐습니다.");
+  STATE.stepDone[5] = true;
+  goStep(5);
 }
 
 // Step 2 진입 시 거래처 목록 갱신
