@@ -64,7 +64,7 @@ def both_project(client):
 
 
 def test_step3_receivable_has_9_sheets(client, both_project, tmp_path):
-    """채권 조서 — 9개 시트 (generic reporter)."""
+    """채권 조서 — 10개 시트 (generic reporter)."""
     pid = both_project["pid"]
     r = client.post(f"/api/project/{pid}/step3/build", json={
         "kind": "receivable",
@@ -82,7 +82,7 @@ def test_step3_receivable_has_9_sheets(client, both_project, tmp_path):
     sheets = wb.sheetnames
     wb.close()
 
-    assert len(sheets) == 9, f"채권 조서 시트 수 불일치: {len(sheets)} — {sheets}"
+    assert len(sheets) == 10, f"채권 조서 시트 수 불일치: {len(sheets)} — {sheets}"
 
 
 def test_step3_receivable_has_요약_sheet(client, both_project, tmp_path):

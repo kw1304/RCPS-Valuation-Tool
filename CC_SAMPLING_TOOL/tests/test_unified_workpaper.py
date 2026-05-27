@@ -137,7 +137,7 @@ def _ap_kd() -> KindData:
 # ─────────────────────────────────────────────────────────────
 
 def test_combined_report_has_9_sheets(tmp_path):
-    """build_combined_report(both) → 정확히 9개 시트."""
+    """build_combined_report(both) → 정확히 10개 시트."""
     out = tmp_path / "combined.xlsx"
     build_combined_report(out, receivable=_ar_kd(), payable=_ap_kd())
 
@@ -150,7 +150,7 @@ def test_combined_report_has_9_sheets(tmp_path):
 
 
 def test_combined_report_correct_sheet_names(tmp_path):
-    """build_combined_report → 9개 시트 이름이 기대값과 일치."""
+    """build_combined_report → 10개 시트 이름이 기대값과 일치."""
     out = tmp_path / "combined_names.xlsx"
     build_combined_report(out, receivable=_ar_kd(), payable=_ap_kd())
 
@@ -165,12 +165,12 @@ def test_combined_report_correct_sheet_names(tmp_path):
 
 
 def test_confirmation_sheet_has_both_ar_ap_parties(tmp_path):
-    """조회서 시트에 채권·채무 거래처 모두 포함."""
+    """샘플링 거래처 내역 시트에 채권·채무 거래처 모두 포함."""
     out = tmp_path / "both_parties.xlsx"
     build_combined_report(out, receivable=_ar_kd(), payable=_ap_kd())
 
     wb = openpyxl.load_workbook(out, data_only=True)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
     all_values = {ws.cell(r, c).value for r in range(1, ws.max_row + 1)
                   for c in range(1, ws.max_column + 1)}
     wb.close()
@@ -181,7 +181,7 @@ def test_confirmation_sheet_has_both_ar_ap_parties(tmp_path):
 
 
 def test_receivable_only_has_9_sheets(tmp_path):
-    """채권만(receivable only) → 9시트."""
+    """채권만(receivable only) → 10시트."""
     out = tmp_path / "ar_only.xlsx"
     build_combined_report(out, receivable=_ar_kd(), payable=None)
 
@@ -192,7 +192,7 @@ def test_receivable_only_has_9_sheets(tmp_path):
 
 
 def test_payable_only_has_9_sheets(tmp_path):
-    """채무만(payable only) → 9시트."""
+    """채무만(payable only) → 10시트."""
     out = tmp_path / "ap_only.xlsx"
     build_combined_report(out, receivable=None, payable=_ap_kd())
 

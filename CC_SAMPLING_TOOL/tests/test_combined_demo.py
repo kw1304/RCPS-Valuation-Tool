@@ -167,7 +167,7 @@ def _build_combined(tmp_path: Path) -> openpyxl.Workbook:
 # ─────────────────────────────────────────────────────────────
 
 def test_combined_has_9_sheets(tmp_path):
-    """build_combined_report → 정확히 9개 시트."""
+    """build_combined_report → 정확히 EXPECTED_SHEET_COUNT(10)개 시트."""
     wb = _build_combined(tmp_path)
     assert len(wb.sheetnames) == EXPECTED_SHEET_COUNT, (
         f"시트 수 불일치: {len(wb.sheetnames)} — {wb.sheetnames}"
@@ -189,7 +189,7 @@ def test_first_sheet_is_summary(tmp_path):
 # ─────────────────────────────────────────────────────────────
 
 def test_sheet_names_match_expected(tmp_path):
-    """9개 시트 이름이 EXPECTED_GENERIC_SHEETS와 일치해야 한다."""
+    """10개 시트 이름이 EXPECTED_GENERIC_SHEETS와 일치해야 한다."""
     wb = _build_combined(tmp_path)
     actual = set(wb.sheetnames)
     missing = EXPECTED_GENERIC_SHEETS - actual
@@ -203,17 +203,17 @@ def test_sheet_names_match_expected(tmp_path):
 # ─────────────────────────────────────────────────────────────
 
 def test_confirmation_sheet_has_both_ar_ap_parties(tmp_path):
-    """조회서 시트에 채권·채무 거래처 모두 포함되어야 한다."""
+    """샘플링 거래처 내역 시트에 채권·채무 거래처 모두 포함되어야 한다."""
     wb = _build_combined(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
     all_values = {
         str(cell.value)
         for row in ws.iter_rows()
         for cell in row
         if cell.value is not None
     }
-    assert "채권거래처X" in all_values, "조회서에 채권거래처X 없음"
-    assert "채무거래처P" in all_values, "조회서에 채무거래처P 없음"
+    assert "채권거래처X" in all_values, "샘플링 거래처 내역에 채권거래처X 없음"
+    assert "채무거래처P" in all_values, "샘플링 거래처 내역에 채무거래처P 없음"
 
 
 def test_no_separate_c100_sheet(tmp_path):

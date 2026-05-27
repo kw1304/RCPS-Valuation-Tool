@@ -941,7 +941,15 @@ def _step3_build_both(pid: str, proj, data: dict, session):
 
     fname = f"C100AA100_{proj.company_name}_{proj.period_end}.xlsx"
     out_path = ROOT / "output" / fname
-    build_combined_report(out_path, receivable=ar_kd, payable=ap_kd)
+    ug_data_for_report = STATE.get("upload_guide_data")
+    if ug_data_for_report is None and STATE.get("upload_guide_path"):
+        try:
+            ug_data_for_report = load_upload_guide(STATE["upload_guide_path"])
+            STATE["upload_guide_data"] = ug_data_for_report
+        except Exception as e:
+            log.warning(f"UploadGuide 재로드 실패 (step3_both): {e}")
+    build_combined_report(out_path, receivable=ar_kd, payable=ap_kd,
+                          upload_guide_data=ug_data_for_report)
 
     # ── Artifact 저장 (채권 workpaper 기준) ──────────────────────────
     base_wp = wp_repo.get_or_create(pid, "receivable" if ar_kd else "payable")
@@ -2251,10 +2259,14 @@ def step5_auto_identify_pending(pid: str):
             # 회신 현황 — matched/mismatch/needs_review 모두 회신 있음으로 처리
             # needs_review 는 추출 실패 등이지 회신 자체가 없는 것이 아님 → placeholder 생성 skip
             replies = reply_repo.list_by_workpaper(chk_wp.id)
+            from src.domain.matching import _normalize as _norm
+            # normalize 기반 replied_set: 원본 이름 + normalized 이름 둘 다 포함
             replied_set: set[str] = set()
+            replied_norms: set[str] = set()
             for r in replies:
                 if r.party_name_matched and r.status in ("matched", "mismatch", "needs_review"):
                     replied_set.add(r.party_name_matched)
+                    replied_norms.add(_norm(r.party_name_matched))
 
             # 이미 AlternativeProcedure 가 사용자 등록(evidence 있음)이면 skip
             existing_procs_with_evidence: set[str] = set()
@@ -2268,7 +2280,8 @@ def step5_auto_identify_pending(pid: str):
                         pass
 
             for party_name, ledger_balance in sampled_parties.items():
-                if party_name in replied_set:
+                # 원본 이름 매칭 또는 normalize 후 매칭
+                if party_name in replied_set or _norm(party_name) in replied_norms:
                     skipped_count += 1
                     continue  # 이미 회신 처리됨
 

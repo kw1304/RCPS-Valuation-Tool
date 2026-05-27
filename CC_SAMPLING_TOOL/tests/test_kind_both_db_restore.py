@@ -100,8 +100,9 @@ def test_kind_both_single_file_9_sheets(client, both_db_project, tmp_path):
     sheets = set(wb.sheetnames)
     wb.close()
 
-    assert len(sheets) == 9, f"시트 수: {len(sheets)} (기대 9): {sheets}"
+    assert len(sheets) == 10, f"시트 수: {len(sheets)} (기대 10): {sheets}"
     assert "요약" in sheets
+    assert "샘플링 거래처 내역" in sheets
     assert "조회서" in sheets
     assert "대체적 절차" in sheets
 

@@ -19,6 +19,7 @@ TEMPLATE_PATH = ROOT / "input" / "조서" / "7620_코스맥스비티아이_C100_
 # generic_reporter 가 생성하는 9개 시트 (Toss 디자인 generic reporter)
 EXPECTED_GENERIC_SHEETS = {
     "요약",
+    "샘플링 거래처 내역",
     "조회서",
     "표본규모 산출",
     "모집단 완전성",
@@ -128,7 +129,7 @@ def test_step3_downloaded_xlsx_has_7_generic_sheets(client, sampled_project, tmp
 
     missing = EXPECTED_GENERIC_SHEETS - actual_sheets
     assert not missing, f"누락 시트: {missing} | 실제: {actual_sheets}"
-    assert len(actual_sheets) == 9, f"시트 수 불일치: {len(actual_sheets)} (기대 9)"
+    assert len(actual_sheets) == 10, f"시트 수 불일치: {len(actual_sheets)} (기대 10)"
 
 
 def test_step3_mark_done_sets_completed_at(client, sampled_project):

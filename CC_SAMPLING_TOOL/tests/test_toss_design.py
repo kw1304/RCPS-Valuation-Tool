@@ -106,7 +106,7 @@ def _make_wb(tmp_path) -> openpyxl.Workbook:
 def test_header_cells_white_background(tmp_path):
     """조회서 헤더 행: 흰 배경(FFFFFF) 확인."""
     wb = _make_wb(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     white_header_found = any(
         cell.fill and cell.fill.fgColor
@@ -167,7 +167,7 @@ def test_kpi_value_font_size_and_color(tmp_path):
 def test_excluded_party_strikethrough_in_confirmation(tmp_path):
     """조회서: 발송제외 거래처(제외거래처) 이름 셀이 strikethrough이어야 한다."""
     wb = _make_wb(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     strike_found = any(
         cell.font and cell.font.strike
@@ -181,7 +181,7 @@ def test_excluded_party_strikethrough_in_confirmation(tmp_path):
 def test_total_row_bg_sub_fill(tmp_path):
     """합계 행: F9FAFB(TOSS_BG_SUB) 배경 + bold 확인."""
     wb = _make_wb(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     for row in ws.iter_rows():
         for cell in row:

@@ -123,8 +123,9 @@ def test_step3_both_file_has_9_sheets(client, combined_project, tmp_path):
     n = len(sheets)
     wb.close()
 
-    assert n == 9, f"통합 조서 시트 수 불일치: {n} (기대 9)"
+    assert n == 10, f"통합 조서 시트 수 불일치: {n} (기대 10)"
     assert "요약" in sheets, f"'요약' 시트 없음"
+    assert "샘플링 거래처 내역" in sheets, f"'샘플링 거래처 내역' 시트 없음"
     assert "조회서" in sheets, f"'조회서' 시트 없음"
 
 

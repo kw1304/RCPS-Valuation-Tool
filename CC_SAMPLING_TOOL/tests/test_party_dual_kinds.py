@@ -179,7 +179,7 @@ def test_confirmation_sheet_dual_party_single_row(tmp_path):
     build_combined_report(out, receivable=_ar_kd(), payable=_ap_kd())
 
     wb = openpyxl.load_workbook(out, data_only=True)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     count = sum(
         1 for r in range(1, ws.max_row + 1)
@@ -197,7 +197,7 @@ def test_confirmation_sheet_ar_only_party_has_no_ap_total(tmp_path):
     build_combined_report(out, receivable=_ar_kd(), payable=_ap_kd())
 
     wb = openpyxl.load_workbook(out, data_only=True)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     # 채권전용거래처 행 찾기
     target_row = None
@@ -239,7 +239,7 @@ def test_confirmation_sheet_ar_only_party_has_no_ap_total(tmp_path):
         pytest.skip("'채무 계' 헤더 컬럼 미발견 — 시트 구조 확인 필요")
 
     wb2 = openpyxl.load_workbook(out, data_only=True)
-    ws2 = wb2["조회서"]
+    ws2 = wb2["샘플링 거래처 내역"]
     ap_val = ws2.cell(target_row, ap_sum_col).value
     wb2.close()
 
@@ -254,7 +254,7 @@ def test_confirmation_sheet_all_4_parties_present(tmp_path):
     build_combined_report(out, receivable=_ar_kd(), payable=_ap_kd())
 
     wb = openpyxl.load_workbook(out, data_only=True)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
     all_values = {ws.cell(r, c).value for r in range(1, ws.max_row + 1)
                   for c in range(1, ws.max_column + 1)}
     wb.close()

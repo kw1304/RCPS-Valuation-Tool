@@ -1,16 +1,17 @@
 """
-generic_reporter.py — Toss 디자인 + 9시트 단일 통합 조서 리포터
+generic_reporter.py — Toss 디자인 + 10시트 단일 통합 조서 리포터
 
 시트 구성:
-  1. 요약          — KPI 카드 + 단계 진행 현황
-  2. 조회서         — C100·AA100 채권/채무 통합 (한 표)
-  3. 표본규모 산출  — 채권/채무 섹션 2개
-  4. 모집단 완전성  — 완전성 대사 + 발송제외
-  5. Key item 매트릭스 — 채권/채무 통합
-  6. MUS 추출 내역  — 채권/채무 별 표
-  7. 주소 적정성    — UploadGuide 연락처
-  8. 회신 추적      — PDF 회신 일치/불일치
-  9. 대체적 절차    — 미회신·불일치 + 증빙
+  1. 요약               — KPI 카드 + 단계 진행 현황
+  2. 샘플링 거래처 내역  — C100·AA100 채권/채무 통합 (한 표, 50건 발송 명단)
+  3. 조회서             — UploadGuide 양식 (C1~C15) + 회신 상태 컬럼 (C16~C21)
+  4. 표본규모 산출       — 채권/채무 섹션 2개
+  5. 모집단 완전성       — 완전성 대사 + 발송제외
+  6. Key item 매트릭스  — 채권/채무 통합
+  7. MUS 추출 내역       — 채권/채무 별 표
+  8. 주소 적정성         — UploadGuide 연락처
+  9. 회신 추적           — PDF 회신 일치/불일치
+  10. 대체적 절차        — 미회신·불일치 + 증빙
 
 디자인: Toss 컨셉 — 흰 배경, #3182F6 accent, 얇은 회색 테두리
 템플릿 복사 없음. openpyxl 직접 스타일링.
@@ -32,6 +33,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from src.domain.mus import MUSResult
 from src.domain.population import CompletenessCheck, PartyDecision
 from src.domain.sample_size import SampleSizeResult
+from src.infrastructure.loaders import UploadGuideData, PartyContact
 
 
 # ─────────────────────────────────────────────────────────────
@@ -39,6 +41,7 @@ from src.domain.sample_size import SampleSizeResult
 # ─────────────────────────────────────────────────────────────
 EXPECTED_GENERIC_SHEETS: set[str] = {
     "요약",
+    "샘플링 거래처 내역",
     "조회서",
     "표본규모 산출",
     "모집단 완전성",
@@ -49,7 +52,7 @@ EXPECTED_GENERIC_SHEETS: set[str] = {
     "대체적 절차",
 }
 
-EXPECTED_SHEET_COUNT = 9
+EXPECTED_SHEET_COUNT = 10
 
 
 # ─────────────────────────────────────────────────────────────
@@ -482,8 +485,9 @@ def build_generic_report(
     exclusion_rows: list[ExclusionRow] | None = None,
     pdf_replies: list[ConfirmationReplyInfo] | None = None,
     alt_procedures: list[AlternativeProcedureEntry] | None = None,
+    upload_guide_data: UploadGuideData | None = None,
 ) -> None:
-    """단일 kind → 9시트 조서 생성 (채권 또는 채무)."""
+    """단일 kind → 10시트 조서 생성 (채권 또는 채무)."""
     kd = KindData(
         ctx=ctx,
         completeness=completeness,
@@ -497,16 +501,21 @@ def build_generic_report(
         pdf_replies=pdf_replies,
         alt_procedures=alt_procedures,
     )
-    build_combined_report(out_path, receivable=kd if ctx.kind != "payable" else None,
-                          payable=kd if ctx.kind == "payable" else None)
+    build_combined_report(
+        out_path,
+        receivable=kd if ctx.kind != "payable" else None,
+        payable=kd if ctx.kind == "payable" else None,
+        upload_guide_data=upload_guide_data,
+    )
 
 
 def build_combined_report(
     out_path: str | Path,
     receivable: KindData | None,
     payable: KindData | None,
+    upload_guide_data: UploadGuideData | None = None,
 ) -> None:
-    """채권+채무 단일 워크북 — 9시트 통합 출력."""
+    """채권+채무 단일 워크북 — 10시트 통합 출력."""
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -541,8 +550,10 @@ def build_combined_report(
     _build_sheet_summary(wb, base_ctx, ar_kd, ap_kd,
                          all_decisions, all_replies, all_alt_procs,
                          total_pop, total_pm)
-    _build_sheet_confirmation(wb, base_ctx, ar_kd, ap_kd,
-                              all_contacts, all_replies)
+    _build_sheet_sampling_party_list(wb, base_ctx, ar_kd, ap_kd,
+                                     all_contacts, all_replies)
+    _build_sheet_uploadguide_confirmation(wb, base_ctx, upload_guide_data,
+                                          all_replies, all_alt_procs)
     _build_sheet_sample_size(wb, base_ctx, ar_kd, ap_kd)
     _build_sheet_completeness(wb, base_ctx, ar_kd, ap_kd)
     _build_sheet_key_item_matrix(wb, base_ctx, ar_kd, ap_kd, total_pm)
@@ -701,7 +712,7 @@ def _build_sheet_summary(
 
 
 # ─────────────────────────────────────────────────────────────
-# Sheet 2: 조회서 (C100·AA100 통합)
+# Sheet 2: 샘플링 거래처 내역 (C100·AA100 통합 — 50건 발송 명단)
 # ─────────────────────────────────────────────────────────────
 
 _AR_ACCOUNTS = ["외상매출금", "받을어음", "미수금", "선급금", "임차보증금", "장기대여금"]
@@ -798,7 +809,19 @@ def _build_sheet_confirmation(
     contacts: list[PartyContactInfo],
     replies: list[ConfirmationReplyInfo],
 ) -> None:
-    ws = wb.create_sheet("조회서")
+    """하위 호환 — _build_sheet_sampling_party_list 로 위임."""
+    _build_sheet_sampling_party_list(wb, ctx, ar_kd, ap_kd, contacts, replies)
+
+
+def _build_sheet_sampling_party_list(
+    wb,
+    ctx: ReportContext,
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+    contacts: list[PartyContactInfo],
+    replies: list[ConfirmationReplyInfo],
+) -> None:
+    ws = wb.create_sheet("샘플링 거래처 내역")
 
     # 컬럼 너비
     col_widths = {1: 4, 2: 30, 3: 10}
@@ -831,9 +854,9 @@ def _build_sheet_confirmation(
     review_date = ctx.review_date or date.today()
 
     _write_doc_header(
-        ws, ctx.company_name, "조회서 Control Sheet — 채권·채무 통합",
+        ws, ctx.company_name, "샘플링 거래처 내역 — 채권·채무 통합 발송 명단",
         ctx.period_end, ctx.preparer, ctx.reviewer,
-        prep_date, review_date, wp_no="조회서",
+        prep_date, review_date, wp_no="발송명단",
         last_col=col_email,
     )
 
@@ -857,7 +880,13 @@ def _build_sheet_confirmation(
     _header_cell(ws, r, col_email,  "이메일")
     r += 1
 
-    unified = _merge_decisions(ar_kd, ap_kd, contacts, replies)
+    unified_all = _merge_decisions(ar_kd, ap_kd, contacts, replies)
+    # 조회서 시트 = 최종 발송 표본만 (final_sampled OR key item OR rep OR 특관자 OR 발송제외)
+    unified = [
+        r for r in unified_all
+        if r.final_sampled or r.is_key_item or r.is_representative
+        or r.is_related_party or r.is_excluded
+    ]
 
     totals_ar: dict[str, float] = {a: 0.0 for a in _AR_ACCOUNTS}
     totals_ap: dict[str, float] = {a: 0.0 for a in _AP_ACCOUNTS}
@@ -1680,7 +1709,271 @@ def _build_sheet_reply_tracking(
 
 
 # ─────────────────────────────────────────────────────────────
-# Sheet 9: 대체적 절차
+# Sheet 3: 조회서 (UploadGuide 양식 C1~C15 + 회신 컬럼 C16~C21)
+# ─────────────────────────────────────────────────────────────
+
+def _normalize_for_match(name: str) -> str:
+    """거래처명 정규화 — 공백·법인 접미사·특수문자 제거, 소문자."""
+    import re
+    import unicodedata
+    name = unicodedata.normalize("NFKC", name)
+    # 법인 접미사 제거
+    name = re.sub(
+        r"유한회사|주식회사|\(주\)|㈜|Co\.,\s*Ltd\.?|Ltd\.?|Inc\.?|有限公司|株式会社",
+        "", name, flags=re.IGNORECASE,
+    )
+    # 공백·특수문자 제거
+    name = re.sub(r"[\s\(\)\[\]\.\,\-\_]+", "", name)
+    return name.lower()
+
+
+def _build_sheet_uploadguide_confirmation(
+    wb,
+    ctx: ReportContext,
+    upload_guide_data: UploadGuideData | None,
+    replies: list[ConfirmationReplyInfo],
+    alt_procedures: list[AlternativeProcedureEntry],
+) -> None:
+    """조회서 시트 — UploadGuide Sheet1 행 그대로(C1~C15) + 회신 상태 컬럼(C16~C21).
+
+    데이터 출처:
+      C1~C15: UploadGuide send_targets의 계정과목별 원본 행
+      C16: 회신상태 — PDF 회신 매칭 → "원본", 대체적절차 있음 → "대체적", 없음 → "미회신"
+      C17: 회신금액, C18: 차이, C19: 일치여부, C20: 회신일자, C21: 비고
+    """
+    ws = wb.create_sheet("조회서")
+
+    # 컬럼 너비 설정
+    col_widths = {
+        1: 8,   # C1: 채권채무구분
+        2: 18,  # C2: 계정과목명
+        3: 8,   # C3: 통화
+        4: 15,  # C4: 조회금액
+        5: 8,   # C5: 통화2
+        6: 15,  # C6: 조회금액2
+        7: 28,  # C7: 거래처명
+        8: 8,   # C8: 국가
+        9: 10,  # C9: 거래처 구분
+        10: 14, # C10: 사업자번호
+        11: 10, # C11: 대표자명
+        12: 12, # C12: 담당자명
+        13: 18, # C13: 담당자 전화
+        14: 24, # C14: 담당자 이메일
+        15: 12, # C15: 필수항목
+        16: 10, # C16: 회신상태
+        17: 14, # C17: 회신금액
+        18: 14, # C18: 차이
+        19: 10, # C19: 일치여부
+        20: 12, # C20: 회신일자
+        21: 20, # C21: 비고
+    }
+    for col, width in col_widths.items():
+        _set_col_width(ws, col, width)
+
+    prep_date   = ctx.prep_date   or date.today()
+    review_date = ctx.review_date or date.today()
+
+    _write_doc_header(
+        ws, ctx.company_name, "조회서 — UploadGuide 발송 현황 및 회신 결과",
+        ctx.period_end, ctx.preparer, ctx.reviewer,
+        prep_date, review_date, wp_no="조회서",
+        last_col=21,
+    )
+
+    r = 5
+    _subheader_row(ws, r, "UploadGuide 발송 내역 + 회신 상태", col_end=21)
+    r += 1
+
+    # 헤더 행
+    headers = [
+        "채권채무구분", "계정과목명", "통화", "조회금액", "통화2", "조회금액2",
+        "거래처명", "국가", "거래처구분", "사업자번호", "대표자명",
+        "담당자명", "전화번호", "이메일", "필수항목",
+        "회신상태", "회신금액", "차이", "일치여부", "회신일자", "비고",
+    ]
+    for i, h in enumerate(headers, 1):
+        _header_cell(ws, r, i, h)
+    r += 1
+
+    if upload_guide_data is None or not upload_guide_data.send_targets:
+        c = ws.cell(r, 1, "UploadGuide 미제공 — 조회서 데이터 없음")
+        _apply(c, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("left"))
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=21)
+        return
+
+    # 회신 매칭 인덱스 구축 (party_name_matched 기준)
+    # key: (normalize(party), normalize(account)) → ConfirmationReplyInfo
+    reply_index: dict[tuple[str, str], ConfirmationReplyInfo] = {}
+    for rep in replies:
+        pnorm = _normalize_for_match(rep.party_name)
+        # ConfirmationReplyInfo 에는 계정과목 정보가 없으므로 party_name만으로 매칭
+        # 동일 거래처 여러 건이면 마지막 우선 (matched > mismatch > needs_review > 미회신)
+        status_priority = {"matched": 4, "mismatch": 3, "needs_review": 2, "미회신": 1}
+        existing = reply_index.get((pnorm, ""))
+        if existing is None or (
+            status_priority.get(rep.status, 0) > status_priority.get(existing.status, 0)
+        ):
+            reply_index[(pnorm, "")] = rep
+
+    # 대체적 절차 인덱스 구축
+    alt_index: dict[str, AlternativeProcedureEntry] = {}
+    for proc in alt_procedures:
+        alt_index[_normalize_for_match(proc.party_name)] = proc
+
+    # 각 행 작성
+    status_label_map = {
+        "matched": "원본", "mismatch": "원본", "needs_review": "원본", "미회신": "미회신",
+    }
+    match_label_map = {
+        "matched": "일치", "mismatch": "불일치", "needs_review": "검토필요",
+    }
+
+    for ct in upload_guide_data.send_targets:
+        # 계정과목별 행 (accounts 리스트)
+        accounts = ct.accounts if ct.accounts else [("", "KRW", 0.0)]
+
+        for acct_name, currency, amount in accounts:
+            pnorm = _normalize_for_match(ct.name)
+            rep = reply_index.get((pnorm, ""))
+
+            # 회신 상태 결정
+            if rep and rep.status in ("matched", "mismatch", "needs_review"):
+                reply_status = "원본"
+                reply_amount = rep.extracted_balance
+                diff_val = (
+                    (reply_amount - amount) if (reply_amount is not None and amount) else None
+                )
+                match_label = match_label_map.get(rep.status, "검토필요")
+                reply_date_val = rep.reply_date or ""
+                note_val = ""
+                reply_font = (
+                    FONT_GREEN  if rep.status == "matched"  else
+                    FONT_RED    if rep.status == "mismatch" else
+                    FONT_AMBER
+                )
+            elif pnorm in alt_index:
+                proc = alt_index[pnorm]
+                reply_status = "대체적"
+                reply_amount = proc.covered_amount
+                diff_val = None
+                match_label = ""
+                reply_date_val = ""
+                note_val = proc.conclusion or ""
+                reply_font = FONT_AMBER
+            else:
+                reply_status = "미회신"
+                reply_amount = None
+                diff_val = None
+                match_label = ""
+                reply_date_val = ""
+                note_val = ""
+                reply_font = FONT_FADED
+
+            # UploadGuide 원본 컬럼 (C1~C15)
+            _text_cell(ws, r, 1, "채권" if acct_name in _AR_ACCOUNTS else ("채무" if acct_name in _AP_ACCOUNTS else ""), align="center")
+            _text_cell(ws, r, 2, acct_name)
+            _text_cell(ws, r, 3, currency, align="center")
+            if amount:
+                _num_cell(ws, r, 4, amount)
+            else:
+                _text_cell(ws, r, 4, "")
+            _text_cell(ws, r, 5, "", align="center")  # 통화2
+            _text_cell(ws, r, 6, "")                  # 조회금액2
+            _text_cell(ws, r, 7, ct.name)
+            _text_cell(ws, r, 8, ct.country or "국내", align="center")
+            _text_cell(ws, r, 9, "사업자", align="center")
+            _text_cell(ws, r, 10, ct.business_no)
+            _text_cell(ws, r, 11, ct.ceo_name)
+            _text_cell(ws, r, 12, ct.contact_person)
+            _text_cell(ws, r, 13, ct.phone)
+            _text_cell(ws, r, 14, ct.email)
+            # C15: 필수항목 기재여부
+            has_required = bool(ct.email or ct.phone)
+            _text_cell(ws, r, 15, "완료" if has_required else "미완료",
+                       font=FONT_GREEN if has_required else FONT_RED, align="center")
+
+            # 회신 컬럼 (C16~C21)
+            # C16: 회신상태
+            c16 = ws.cell(r, 16, reply_status)
+            _apply(c16, font=reply_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("center"))
+            _row_height(ws, r, 22)
+
+            # C17: 회신금액
+            if reply_amount is not None:
+                _num_cell(ws, r, 17, reply_amount)
+            else:
+                _text_cell(ws, r, 17, "")
+
+            # C18: 차이
+            if diff_val is not None:
+                c18 = ws.cell(r, 18, diff_val)
+                diff_font = FONT_RED if abs(diff_val) > 0 else FONT_BODY
+                _apply(c18, font=diff_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+                       alignment=_al("right"), number_format=NUMFMT_INT)
+            else:
+                _text_cell(ws, r, 18, "")
+
+            # C19: 일치여부
+            if match_label:
+                match_font = (
+                    FONT_GREEN if match_label == "일치"    else
+                    FONT_RED   if match_label == "불일치"  else
+                    FONT_AMBER
+                )
+                c19 = ws.cell(r, 19, match_label)
+                _apply(c19, font=match_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+                       alignment=_al("center"))
+            else:
+                _text_cell(ws, r, 19, "")
+
+            # C20: 회신일자
+            _text_cell(ws, r, 20, reply_date_val, align="center")
+
+            # C21: 비고
+            _text_cell(ws, r, 21, note_val)
+
+            r += 1
+
+    # 집계 요약
+    r += 1
+    _subheader_row(ws, r, "회신 현황 요약", col_end=21)
+    r += 1
+    total_rows = len(upload_guide_data.send_targets)
+    replied = sum(
+        1 for ct in upload_guide_data.send_targets
+        if _normalize_for_match(ct.name) in {_normalize_for_match(rep.party_name)
+                                               for rep in replies
+                                               if rep.status in ("matched","mismatch","needs_review")}
+    )
+    alt_covered = sum(
+        1 for ct in upload_guide_data.send_targets
+        if _normalize_for_match(ct.name) in alt_index
+        and _normalize_for_match(ct.name) not in {
+            _normalize_for_match(rep.party_name)
+            for rep in replies if rep.status in ("matched","mismatch","needs_review")
+        }
+    )
+    no_reply = total_rows - replied - alt_covered
+
+    for label, val, font in [
+        ("발송 거래처 수", total_rows, FONT_BODY),
+        ("원본 회신",      replied,    FONT_GREEN),
+        ("대체적 절차",    alt_covered, FONT_AMBER),
+        ("미회신",         no_reply,   FONT_RED if no_reply > 0 else FONT_GREEN),
+    ]:
+        _text_cell(ws, r, 1, label, font=FONT_BOLD)
+        c = ws.cell(r, 2, val)
+        _apply(c, font=font, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+        _row_height(ws, r, 22)
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=21)
+        r += 1
+
+
+# ─────────────────────────────────────────────────────────────
+# Sheet 10: 대체적 절차
 # ─────────────────────────────────────────────────────────────
 
 def _build_sheet_alt_procedures(

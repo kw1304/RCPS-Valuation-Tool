@@ -225,7 +225,7 @@ def test_key_item_threshold_has_accent_font(tmp_path):
 def test_confirmation_sheet_header_has_accent_bottom_border(tmp_path):
     """조회서: 테이블 헤더 행이 파란(3182F6) bottom border를 가져야 한다."""
     wb = _build(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     accent_border_found = False
     for row in ws.iter_rows():
@@ -257,7 +257,7 @@ def test_sample_size_sheet_col_a_width(tmp_path):
 def test_confirmation_col_b_width(tmp_path):
     """조회서: B열(거래처명) 너비 ≈ 30 (오차 ±1)."""
     wb = _build(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
     w_b = ws.column_dimensions["B"].width
     assert abs(w_b - 30) < 1, f"B열 너비 불일치: {w_b}"
 
@@ -315,7 +315,7 @@ def test_subheader_fill_toss_bg_sub(tmp_path):
 def test_key_item_row_has_gold_left_border(tmp_path):
     """조회서: Key item 거래처(대형거래처A/B)의 첫 번째 셀이 GOLD 좌측 border를 가져야 한다."""
     wb = _build(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     gold_found = False
     for row in ws.iter_rows():
@@ -362,7 +362,7 @@ def test_mus_hit_row_has_green_marker(tmp_path):
 def test_total_row_fill_and_bold(tmp_path):
     """조회서: '총합계' 셀이 F9FAFB 배경 + bold이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     for row in ws.iter_rows():
         for cell in row:
@@ -383,7 +383,7 @@ def test_total_row_fill_and_bold(tmp_path):
 def test_excluded_party_has_strikethrough(tmp_path):
     """조회서·Key item 매트릭스: 발송제외 거래처(제외거래처D)가 strikethrough이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
 
     strike_found = any(
         cell.font and cell.font.strike

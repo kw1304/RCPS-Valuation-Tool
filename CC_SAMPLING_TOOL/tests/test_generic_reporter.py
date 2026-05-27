@@ -133,7 +133,7 @@ def test_build_generic_report_creates_9_sheets(tmp_path):
 
 
 def test_build_generic_report_sheet_names_correct(tmp_path):
-    """9개 시트 이름이 기대값과 일치."""
+    """10개 시트 이름이 기대값과 일치."""
     out = tmp_path / "test_sheets.xlsx"
     build_generic_report(
         out_path=out,
@@ -221,7 +221,7 @@ def test_confirmation_sheet_has_final_sampled_parties(tmp_path):
     )
 
     wb = openpyxl.load_workbook(out, data_only=True)
-    ws = wb["조회서"]
+    ws = wb["샘플링 거래처 내역"]
     all_values = [ws.cell(r, c).value for r in range(1, ws.max_row + 1)
                   for c in range(1, ws.max_column + 1)]
     wb.close()
