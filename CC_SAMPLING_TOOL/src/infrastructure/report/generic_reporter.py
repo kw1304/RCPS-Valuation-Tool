@@ -1,16 +1,19 @@
 """
-generic_reporter.py — 빈 워크북에서 7개 시트를 직접 작성하는 조서 리포터
+generic_reporter.py — Toss 디자인 + 9시트 단일 통합 조서 리포터
 
-데이터 출처:
-  C100  조회서     — 회사 원장 + UploadGuide 연락처 + PDF 회신 상태
-  C100A 주소 적정성 — UploadGuide 연락처 (없으면 빈 표)
-  C100-1 표본규모  — SampleSizeResult + SamplingParams
-  C100-2 Key item  — CompletenessCheck + PartyDecision + UploadGuide 발송제외
-  C100-3 MUS 추출  — MUSResult
-  대체적 절차      — AlternativeProcedureEntry (Step 4·5 완료 시)
-  샘플링 요약      — 1페이지 핵심 요약
+시트 구성:
+  1. 요약          — KPI 카드 + 단계 진행 현황
+  2. 조회서         — C100·AA100 채권/채무 통합 (한 표)
+  3. 표본규모 산출  — 채권/채무 섹션 2개
+  4. 모집단 완전성  — 완전성 대사 + 발송제외
+  5. Key item 매트릭스 — 채권/채무 통합
+  6. MUS 추출 내역  — 채권/채무 별 표
+  7. 주소 적정성    — UploadGuide 연락처
+  8. 회신 추적      — PDF 회신 일치/불일치
+  9. 대체적 절차    — 미회신·불일치 + 증빙
 
-템플릿 복사 없음. openpyxl 직접 스타일링. (7620 양식 준거)
+디자인: Toss 컨셉 — 흰 배경, #3182F6 accent, 얇은 회색 테두리
+템플릿 복사 없음. openpyxl 직접 스타일링.
 """
 from __future__ import annotations
 
@@ -32,58 +35,123 @@ from src.domain.sample_size import SampleSizeResult
 
 
 # ─────────────────────────────────────────────────────────────
-# 기대 시트 이름 집합 (채권 기준, 테스트·검증용)
+# 기대 시트 이름 집합 (테스트·검증용)
 # ─────────────────────────────────────────────────────────────
 EXPECTED_GENERIC_SHEETS: set[str] = {
-    "샘플링 요약",
-    "C100 조회서",
-    "C100A 조회처 주소 적정성",
-    "C100-1 표본규모 결정",
-    "C100-2 Key item 추출",
-    "C100-3 표본 추출(MUS)",
+    "요약",
+    "조회서",
+    "표본규모 산출",
+    "모집단 완전성",
+    "Key item 매트릭스",
+    "MUS 추출 내역",
+    "주소 적정성",
+    "회신 추적",
     "대체적 절차",
 }
 
+EXPECTED_SHEET_COUNT = 9
+
 
 # ─────────────────────────────────────────────────────────────
-# 7620 스타일 상수 (양식 준거)
+# Toss 디자인 색상 상수
 # ─────────────────────────────────────────────────────────────
 
 FONT_NAME = "맑은 고딕"
 
-# 폰트
-FONT_BASE        = Font(name=FONT_NAME, size=10)
-FONT_BOLD        = Font(name=FONT_NAME, size=10, bold=True)
-FONT_TITLE       = Font(name=FONT_NAME, size=10, bold=True)
-FONT_RED_BOLD    = Font(name=FONT_NAME, size=10, bold=True, color="FF0000")
-FONT_HEADER_WHITE = Font(name=FONT_NAME, size=10, bold=True, color="FFFFFF")
-FONT_GRAY_ITALIC  = Font(name=FONT_NAME, size=10, italic=True, color="808080")
+# 색상 코드 (# 없는 hex RGB)
+TOSS_ACCENT   = "3182F6"   # 파란 accent (헤더·KPI 강조)
+TOSS_ACCENT_D = "1B64DA"   # accent dark
+TOSS_TEXT     = "191F28"   # 기본 텍스트
+TOSS_TEXT2    = "4E5968"   # 보조 텍스트
+TOSS_TEXT3    = "8B95A1"   # 흐린 텍스트
+TOSS_BORDER   = "E5E8EB"   # 얇은 테두리 회색
+TOSS_BG_SUB   = "F9FAFB"   # 합계행·카드 배경
+TOSS_GREEN    = "00C073"   # 긍정/일치
+TOSS_RED      = "F04452"   # 부정/불일치
+TOSS_AMBER    = "FF9F00"   # 경고
+TOSS_GOLD     = "FFD966"   # Key item 좌측 마커
+TOSS_WHITE    = "FFFFFF"
 
-# 채우기
-FILL_HEADER_NAVY  = PatternFill("solid", fgColor="44546A")   # 테이블 헤더 navy
-FILL_SUBHEADER    = PatternFill("solid", fgColor="D6DCE5")   # 소제목 구분 회청
-FILL_INPUT_YELLOW = PatternFill("solid", fgColor="FFFFCC")   # 입력값 강조 연노랑
-FILL_KEY_ITEM     = PatternFill("solid", fgColor="FFF2CC")   # Key item 행 연노랑
-FILL_SAMPLED      = PatternFill("solid", fgColor="C6EFCE")   # MUS hit 연초록
-FILL_EXCLUDED     = PatternFill("solid", fgColor="F4CCCC")   # 발송제외 연빨강
-FILL_RELATED      = PatternFill("solid", fgColor="FCE4D6")   # 특관자 연주황
-FILL_META_LABEL   = PatternFill("solid", fgColor="D6DCE5")   # 메타 레이블 배경
-FILL_TOTAL_ROW    = PatternFill("solid", fgColor="D6DCE5")   # 합계 행
-FILL_CONCLUSION_OK      = PatternFill("solid", fgColor="C6EFCE")
-FILL_CONCLUSION_PARTIAL = PatternFill("solid", fgColor="FFF2CC")
-FILL_CONCLUSION_FAIL    = PatternFill("solid", fgColor="F4CCCC")
+# ─── 폰트 ───────────────────────────────────────────────────
+FONT_KPI_VALUE = Font(name=FONT_NAME, size=14, bold=True, color=TOSS_ACCENT)
+FONT_KPI_LABEL = Font(name=FONT_NAME, size=9,  color=TOSS_TEXT3)
+FONT_HEADER    = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_TEXT)
+FONT_BODY      = Font(name=FONT_NAME, size=10, color=TOSS_TEXT)
+FONT_BOLD      = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_TEXT)
+FONT_ACCENT    = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_ACCENT)
+FONT_FADED     = Font(name=FONT_NAME, size=10, color=TOSS_TEXT3)
+FONT_FADED_STRIKE = Font(name=FONT_NAME, size=10, color=TOSS_TEXT3, strikethrough=True)
+FONT_GREEN     = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_GREEN)
+FONT_RED       = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_RED)
+FONT_AMBER     = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_AMBER)
 
-# 테두리 — thin #888888
-_THIN_SIDE   = Side(style="thin", color="888888")
-BORDER_THIN  = Border(
+# ─── 채우기 ─────────────────────────────────────────────────
+FILL_WHITE   = PatternFill("solid", fgColor=TOSS_WHITE)
+FILL_BG_SUB  = PatternFill("solid", fgColor=TOSS_BG_SUB)   # 합계행·소제목
+
+# ─── 테두리 ─────────────────────────────────────────────────
+_THIN_SIDE       = Side(style="thin",   color=TOSS_BORDER)
+_THICK_SIDE      = Side(style="medium", color=TOSS_BORDER)
+_ACCENT_SIDE     = Side(style="medium", color=TOSS_ACCENT)
+_GOLD_SIDE       = Side(style="thick",  color=TOSS_GOLD)
+_GREEN_SIDE      = Side(style="thick",  color=TOSS_GREEN)
+_RED_SIDE        = Side(style="thick",  color=TOSS_RED)
+
+BORDER_LIGHT     = Border(
     left=_THIN_SIDE, right=_THIN_SIDE,
     top=_THIN_SIDE, bottom=_THIN_SIDE,
 )
+BORDER_HEADER    = Border(
+    left=_THIN_SIDE, right=_THIN_SIDE,
+    top=_THIN_SIDE, bottom=Side(style="medium", color=TOSS_ACCENT),
+)
+BORDER_TOTAL     = Border(
+    left=_THIN_SIDE, right=_THIN_SIDE,
+    top=Side(style="medium", color=TOSS_BORDER),
+    bottom=_THIN_SIDE,
+)
+BORDER_SUBHEADER = Border(
+    left=_THIN_SIDE, right=_THIN_SIDE,
+    top=_THIN_SIDE,
+    bottom=Side(style="medium", color=TOSS_BORDER),
+)
 
-# 숫자 포맷
+def _left_ki_border() -> Border:
+    """Key item 좌측 강조 (GOLD 두꺼운 좌측선)."""
+    return Border(
+        left=_GOLD_SIDE, right=_THIN_SIDE,
+        top=_THIN_SIDE, bottom=_THIN_SIDE,
+    )
+
+def _left_rep_border() -> Border:
+    """MUS hit 좌측 강조 (GREEN)."""
+    return Border(
+        left=_GREEN_SIDE, right=_THIN_SIDE,
+        top=_THIN_SIDE, bottom=_THIN_SIDE,
+    )
+
+def _left_excl_border() -> Border:
+    """발송제외 좌측 표시."""
+    return Border(
+        left=_RED_SIDE, right=_THIN_SIDE,
+        top=_THIN_SIDE, bottom=_THIN_SIDE,
+    )
+
+# ─── 숫자 포맷 ──────────────────────────────────────────────
 NUMFMT_INT  = '_-* #,##0_-;\\-* #,##0_-;_-* "-"_-;_-@_-'
 NUMFMT_DATE = "yyyy-mm-dd"
 NUMFMT_PCT  = "0.0%"
+
+# ─────────────────────────────────────────────────────────────
+# 하위 호환용 — 구버전 테스트가 임포트하는 상수 (폐기 예정)
+# ─────────────────────────────────────────────────────────────
+FILL_INPUT_YELLOW = PatternFill("solid", fgColor="FFFFCC")   # 하위 호환
+FILL_HEADER_NAVY  = PatternFill("solid", fgColor="44546A")   # 하위 호환
+FILL_SUBHEADER    = PatternFill("solid", fgColor="D6DCE5")   # 하위 호환
+FILL_KEY_ITEM     = PatternFill("solid", fgColor="FFF2CC")   # 하위 호환
+FILL_SAMPLED      = PatternFill("solid", fgColor="C6EFCE")   # 하위 호환
+FILL_TOTAL_ROW    = PatternFill("solid", fgColor="D6DCE5")   # 하위 호환
+FONT_RED_BOLD     = Font(name=FONT_NAME, size=10, bold=True, color="FF0000")  # 하위 호환
 
 
 # ─────────────────────────────────────────────────────────────
@@ -116,7 +184,7 @@ class PartyContactInfo:
 
 @dataclass
 class ExclusionRow:
-    """발송제외 거래처 행 — UploadGuide 발송제외 시트."""
+    """발송제외 거래처 행."""
     name: str
     account_name: str = ""
     currency: str = ""
@@ -148,240 +216,8 @@ class AlternativeProcedureEntry:
 
 
 # ─────────────────────────────────────────────────────────────
-# 공통 스타일 헬퍼 (7620 준거)
+# KindData — 채권/채무 데이터 묶음
 # ─────────────────────────────────────────────────────────────
-
-def _set_col_width(ws: Worksheet, col: int, width: float) -> None:
-    ws.column_dimensions[get_column_letter(col)].width = width
-
-
-def _al(h: str = "left", v: str = "center", wrap: bool = False) -> Alignment:
-    return Alignment(horizontal=h, vertical=v, wrap_text=wrap)
-
-
-def _apply(cell, font=None, fill=None, border=None, alignment=None,
-           number_format: str | None = None) -> None:
-    """한 번에 셀 서식 일괄 적용."""
-    if font is not None:
-        cell.font = font
-    if fill is not None:
-        cell.fill = fill
-    if border is not None:
-        cell.border = border
-    if alignment is not None:
-        cell.alignment = alignment
-    if number_format is not None:
-        cell.number_format = number_format
-
-
-# ── 조서 공통 헤더 블록 (R1~R3) ─────────────────────────────
-#
-#  A1: 회사명          E1: 작성자:  F1: <이름>  G1: 일자:  H1: <날짜>  I1: 조서번호
-#  A2: 시트제목(bold)  E2: 검토자:  F2: <이름>  G2: 일자:  H2: <날짜>  I2: <번호 빨강>
-#  A3: 기준일: <날짜>
-
-def _write_doc_header(
-    ws: Worksheet,
-    company: str,
-    title: str,
-    period_end: date,
-    preparer: str,
-    reviewer: str,
-    prep_date: date,
-    review_date: date,
-    wp_no: str,                   # 예: "C100-1"  (빨강)
-    last_col: int = 9,
-) -> None:
-    """7620 표준 조서 헤더 R1~R3 작성."""
-    # 행 높이
-    ws.row_dimensions[1].height = 20
-    ws.row_dimensions[2].height = 20
-    ws.row_dimensions[3].height = 18
-    ws.row_dimensions[4].height = 6   # 구분 여백
-
-    # A1: 회사명
-    c = ws.cell(1, 1, company)
-    _apply(c, font=FONT_BASE, border=BORDER_THIN, alignment=_al("left"))
-
-    # A2: 시트 제목
-    c = ws.cell(2, 1, title)
-    _apply(c, font=FONT_BOLD, border=BORDER_THIN, alignment=_al("left"))
-
-    # A3: 기준일
-    c = ws.cell(3, 1, period_end)
-    _apply(c, font=FONT_BASE, border=BORDER_THIN,
-           alignment=_al("left"), number_format=NUMFMT_DATE)
-
-    # E1·E2 라벨
-    for row, label in ((1, "작성자:"), (2, "검토자:")):
-        c = ws.cell(row, 5, label)
-        _apply(c, font=FONT_BASE, border=BORDER_THIN, alignment=_al("right"))
-
-    # F1·F2 이름
-    f1 = ws.cell(1, 6, preparer)
-    _apply(f1, font=FONT_BASE, border=BORDER_THIN, alignment=_al("left"))
-    f2 = ws.cell(2, 6, reviewer)
-    _apply(f2, font=FONT_BASE, border=BORDER_THIN, alignment=_al("left"))
-
-    # G1·G2 일자 라벨
-    for row in (1, 2):
-        c = ws.cell(row, 7, "일자:")
-        _apply(c, font=FONT_BASE, border=BORDER_THIN, alignment=_al("right"))
-
-    # H1·H2 날짜
-    h1 = ws.cell(1, 8, prep_date)
-    _apply(h1, font=FONT_BASE, border=BORDER_THIN,
-           alignment=_al("center"), number_format=NUMFMT_DATE)
-    h2 = ws.cell(2, 8, review_date)
-    _apply(h2, font=FONT_BASE, border=BORDER_THIN,
-           alignment=_al("center"), number_format=NUMFMT_DATE)
-
-    # I1: "조서번호" 라벨
-    c = ws.cell(1, 9, "조서번호")
-    _apply(c, font=FONT_BASE, border=BORDER_THIN, alignment=_al("center"))
-
-    # I2: 조서번호 값 (빨강 bold)
-    c = ws.cell(2, 9, wp_no)
-    _apply(c, font=FONT_RED_BOLD, border=BORDER_THIN, alignment=_al("center"))
-
-    # 빈 셀 테두리 채우기 (A1~D3, B3, C3, D3)
-    for row in range(1, 4):
-        for col in range(2, 5):
-            c = ws.cell(row, col)
-            if not c.value:
-                _apply(c, font=FONT_BASE, border=BORDER_THIN, alignment=_al("left"))
-
-    # A3 이후 빈 셀 (B3~I3)
-    for col in range(2, last_col + 1):
-        c = ws.cell(3, col)
-        if not c.value:
-            _apply(c, font=FONT_BASE, border=BORDER_THIN, alignment=_al("left"))
-
-
-# ── 소제목 행 ─────────────────────────────────────────────────
-def _subheader_row(ws: Worksheet, row: int, text: str,
-                   col_start: int = 1, col_end: int = 9) -> None:
-    """D6DCE5 배경 소제목 행 (7620 감사목적 등 구분선)."""
-    c = ws.cell(row, col_start, text)
-    _apply(c, font=FONT_BOLD, fill=FILL_SUBHEADER,
-           border=BORDER_THIN, alignment=_al("left"))
-    if col_end > col_start:
-        ws.merge_cells(start_row=row, start_column=col_start,
-                       end_row=row, end_column=col_end)
-    ws.row_dimensions[row].height = 18
-
-
-# ── 테이블 헤더 행 ────────────────────────────────────────────
-def _header_cell(ws: Worksheet, row: int, col: int, text: str,
-                 col_end: int | None = None) -> None:
-    """44546A navy 배경 + 흰 글씨 헤더 셀."""
-    c = ws.cell(row, col, text)
-    _apply(c, font=FONT_HEADER_WHITE, fill=FILL_HEADER_NAVY,
-           border=BORDER_THIN, alignment=_al("center", wrap=True))
-    if col_end and col_end > col:
-        ws.merge_cells(start_row=row, start_column=col,
-                       end_row=row, end_column=col_end)
-    ws.row_dimensions[row].height = 20
-
-
-# ── 데이터 셀 헬퍼 ────────────────────────────────────────────
-def _text_cell(ws: Worksheet, row: int, col: int, value,
-               bold: bool = False, fill: PatternFill | None = None,
-               align: str = "left") -> None:
-    c = ws.cell(row, col, value)
-    _apply(c, font=FONT_BOLD if bold else FONT_BASE,
-           fill=fill, border=BORDER_THIN, alignment=_al(align))
-    ws.row_dimensions[row].height = max(ws.row_dimensions[row].height or 0, 16)
-
-
-def _num_cell(ws: Worksheet, row: int, col: int, value,
-              fill: PatternFill | None = None,
-              fmt: str = NUMFMT_INT) -> None:
-    c = ws.cell(row, col, value)
-    _apply(c, font=FONT_BASE, fill=fill, border=BORDER_THIN,
-           alignment=_al("right"), number_format=fmt)
-    ws.row_dimensions[row].height = max(ws.row_dimensions[row].height or 0, 16)
-
-
-def _pct_cell(ws: Worksheet, row: int, col: int, value: float | None,
-              fill: PatternFill | None = None) -> None:
-    if value is not None:
-        c = ws.cell(row, col, value)
-        _apply(c, font=FONT_BASE, fill=fill, border=BORDER_THIN,
-               alignment=_al("center"), number_format=NUMFMT_PCT)
-    else:
-        _text_cell(ws, row, col, "", fill=fill, align="center")
-
-
-def _total_row_cell(ws: Worksheet, row: int, col: int, value,
-                    is_num: bool = False, fmt: str = NUMFMT_INT) -> None:
-    """합계 행 셀 — FILL_SUBHEADER + FONT_BOLD."""
-    c = ws.cell(row, col, value)
-    _apply(c, font=FONT_BOLD, fill=FILL_TOTAL_ROW, border=BORDER_THIN,
-           alignment=_al("right" if is_num else "left"),
-           number_format=fmt if is_num else None)
-    ws.row_dimensions[row].height = max(ws.row_dimensions[row].height or 0, 16)
-
-
-def _input_cell(ws: Worksheet, row: int, col: int, value,
-                fmt: str = NUMFMT_INT) -> None:
-    """입력값 강조 셀 (PM, 기준금액 등) — FILL_INPUT_YELLOW."""
-    c = ws.cell(row, col, value)
-    _apply(c, font=FONT_BASE, fill=FILL_INPUT_YELLOW, border=BORDER_THIN,
-           alignment=_al("right"), number_format=fmt)
-
-
-# ── 행 색상 결정 ──────────────────────────────────────────────
-def _party_fill(d: PartyDecision) -> PatternFill | None:
-    if d.is_related_party:
-        return FILL_RELATED
-    if d.is_key_item:
-        return FILL_KEY_ITEM
-    if d.is_representative:
-        return FILL_SAMPLED
-    return None
-
-
-# ─────────────────────────────────────────────────────────────
-# 메인 진입점
-# ─────────────────────────────────────────────────────────────
-
-def build_generic_report(
-    out_path: str | Path,
-    ctx: ReportContext,
-    completeness: CompletenessCheck,
-    size_result: SampleSizeResult,
-    decisions: list[PartyDecision],
-    mus_result: MUSResult,
-    performance_materiality: float,
-    population_amount: float,
-    contacts: list[PartyContactInfo] | None = None,
-    exclusion_rows: list[ExclusionRow] | None = None,
-    pdf_replies: list[ConfirmationReplyInfo] | None = None,
-    alt_procedures: list[AlternativeProcedureEntry] | None = None,
-) -> None:
-    """빈 워크북에서 7개 시트 직접 작성 — 템플릿 복사 없음."""
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    wb = openpyxl.Workbook()
-    wb.remove(wb.active)  # 기본 Sheet 제거
-
-    prefix = ctx.workpaper_no_prefix  # "C100" or "AA100"
-
-    _build_summary(wb, ctx, size_result, decisions, population_amount,
-                   performance_materiality, pdf_replies, alt_procedures)
-    _build_c100(wb, ctx, decisions, contacts or [], pdf_replies or [], prefix)
-    _build_c100a(wb, ctx, contacts or [])
-    _build_c100_1(wb, ctx, size_result, decisions, population_amount,
-                  performance_materiality, prefix)
-    _build_c100_2(wb, ctx, completeness, size_result, decisions,
-                  performance_materiality, exclusion_rows or [], prefix)
-    _build_c100_3(wb, ctx, size_result, mus_result, prefix)
-    _build_alt_procedures(wb, ctx, alt_procedures or [])
-
-    wb.save(out_path)
-
 
 @dataclass
 class KindData:
@@ -399,399 +235,1286 @@ class KindData:
     alt_procedures: list[AlternativeProcedureEntry] | None = None
 
 
+# ─────────────────────────────────────────────────────────────
+# 공통 스타일 헬퍼
+# ─────────────────────────────────────────────────────────────
+
+def _set_col_width(ws: Worksheet, col: int, width: float) -> None:
+    ws.column_dimensions[get_column_letter(col)].width = width
+
+
+def _al(h: str = "left", v: str = "center", wrap: bool = False) -> Alignment:
+    return Alignment(horizontal=h, vertical=v, wrap_text=wrap)
+
+
+def _apply(cell, font=None, fill=None, border=None, alignment=None,
+           number_format: str | None = None) -> None:
+    if font is not None:
+        cell.font = font
+    if fill is not None:
+        cell.fill = fill
+    if border is not None:
+        cell.border = border
+    if alignment is not None:
+        cell.alignment = alignment
+    if number_format is not None:
+        cell.number_format = number_format
+
+
+def _row_height(ws: Worksheet, row: int, h: float) -> None:
+    ws.row_dimensions[row].height = max(ws.row_dimensions[row].height or 0, h)
+
+
+# ── Toss 스타일 셀 헬퍼 ──────────────────────────────────────
+
+def _header_cell(ws: Worksheet, row: int, col: int, text: str,
+                 col_end: int | None = None) -> None:
+    """테이블 헤더: 흰 배경 + 파란 bottom border + bold 검정."""
+    c = ws.cell(row, col, text)
+    _apply(c, font=FONT_HEADER, fill=FILL_WHITE,
+           border=BORDER_HEADER, alignment=_al("center", wrap=True))
+    if col_end and col_end > col:
+        ws.merge_cells(start_row=row, start_column=col,
+                       end_row=row, end_column=col_end)
+    _row_height(ws, row, 22)
+
+
+def _subheader_row(ws: Worksheet, row: int, text: str,
+                   col_start: int = 1, col_end: int = 9) -> None:
+    """소제목 구분선: 옅은 회색 배경 + bold + 굵은 bottom border."""
+    c = ws.cell(row, col_start, text)
+    _apply(c, font=FONT_BOLD, fill=FILL_BG_SUB,
+           border=BORDER_SUBHEADER, alignment=_al("left"))
+    if col_end > col_start:
+        ws.merge_cells(start_row=row, start_column=col_start,
+                       end_row=row, end_column=col_end)
+    _row_height(ws, row, 22)
+
+
+def _text_cell(ws: Worksheet, row: int, col: int, value,
+               font=None, border=None, align: str = "left",
+               is_ki: bool = False, is_rep: bool = False,
+               is_excl: bool = False) -> None:
+    c = ws.cell(row, col, value)
+    b = border or (
+        _left_ki_border()   if is_ki   else
+        _left_rep_border()  if is_rep  else
+        _left_excl_border() if is_excl else
+        BORDER_LIGHT
+    )
+    f = font or (
+        FONT_BOLD if is_ki else
+        FONT_BODY
+    )
+    _apply(c, font=f, fill=FILL_WHITE, border=b, alignment=_al(align))
+    _row_height(ws, row, 22)
+
+
+def _num_cell(ws: Worksheet, row: int, col: int, value,
+              font=None, border=None,
+              fmt: str = NUMFMT_INT,
+              is_ki: bool = False, is_rep: bool = False) -> None:
+    c = ws.cell(row, col, value)
+    b = border or (
+        _left_ki_border()  if is_ki  else
+        _left_rep_border() if is_rep else
+        BORDER_LIGHT
+    )
+    f = font or (FONT_BOLD if is_ki else FONT_BODY)
+    _apply(c, font=f, fill=FILL_WHITE, border=b,
+           alignment=_al("right"), number_format=fmt)
+    _row_height(ws, row, 22)
+
+
+def _pct_cell(ws: Worksheet, row: int, col: int, value: float | None,
+              font=None) -> None:
+    if value is not None:
+        c = ws.cell(row, col, value)
+        _apply(c, font=font or FONT_BODY, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("center"), number_format=NUMFMT_PCT)
+    else:
+        _text_cell(ws, row, col, "", align="center")
+
+
+def _accent_num_cell(ws: Worksheet, row: int, col: int, value,
+                     fmt: str = NUMFMT_INT) -> None:
+    """파란 bold 숫자 — PM, Key item 기준금액 등 강조."""
+    c = ws.cell(row, col, value)
+    _apply(c, font=FONT_ACCENT, fill=FILL_WHITE, border=BORDER_LIGHT,
+           alignment=_al("right"), number_format=fmt)
+    _row_height(ws, row, 22)
+
+
+def _total_row_cell(ws: Worksheet, row: int, col: int, value,
+                    is_num: bool = False, fmt: str = NUMFMT_INT) -> None:
+    """합계 행: 옅은 회색 배경 + bold + 상단 굵은 border."""
+    c = ws.cell(row, col, value)
+    _apply(c, font=FONT_BOLD, fill=FILL_BG_SUB, border=BORDER_TOTAL,
+           alignment=_al("right" if is_num else "left"),
+           number_format=fmt if is_num else None)
+    _row_height(ws, row, 22)
+
+
+def _kpi_card(ws: Worksheet, row_top: int, col_left: int,
+              label: str, value, sub: str = "",
+              col_span: int = 3, row_span: int = 4,
+              fmt: str = NUMFMT_INT) -> None:
+    """KPI 카드 — 병합 셀 + 두꺼운 accent border."""
+    col_right = col_left + col_span - 1
+    row_bot   = row_top + row_span - 1
+
+    # 카드 테두리 (전체 병합 범위)
+    card_border = Border(
+        left=Side(style="medium", color=TOSS_BORDER),
+        right=Side(style="medium", color=TOSS_BORDER),
+        top=Side(style="medium", color=TOSS_BORDER),
+        bottom=Side(style="medium", color=TOSS_BORDER),
+    )
+
+    # 라벨 셀 (row_top)
+    lbl = ws.cell(row_top, col_left, label)
+    _apply(lbl, font=FONT_KPI_LABEL, fill=FILL_WHITE,
+           border=card_border, alignment=_al("left", "center"))
+
+    # 값 셀 (row_top+1)
+    val_cell = ws.cell(row_top + 1, col_left, value)
+    _apply(val_cell, font=FONT_KPI_VALUE, fill=FILL_WHITE,
+           border=card_border,
+           alignment=_al("left", "center"),
+           number_format=fmt)
+
+    # 부가 텍스트 셀 (row_top+2)
+    if sub:
+        sub_cell = ws.cell(row_top + 2, col_left, sub)
+        _apply(sub_cell, font=FONT_KPI_LABEL, fill=FILL_WHITE,
+               border=card_border, alignment=_al("left", "center", wrap=True))
+
+    # 병합
+    if col_span > 1:
+        for r in range(row_top, row_bot + 1):
+            ws.merge_cells(start_row=r, start_column=col_left,
+                           end_row=r, end_column=col_right)
+
+    # 행 높이
+    for r_idx in range(row_top, row_bot + 1):
+        _row_height(ws, r_idx, 22)
+
+
+# ── 조서 헤더 블록 ───────────────────────────────────────────
+
+def _write_doc_header(
+    ws: Worksheet,
+    company: str,
+    title: str,
+    period_end: date,
+    preparer: str,
+    reviewer: str,
+    prep_date: date,
+    review_date: date,
+    wp_no: str,
+    last_col: int = 9,
+) -> None:
+    """조서 공통 헤더 R1~R3."""
+    _row_height(ws, 1, 20)
+    _row_height(ws, 2, 20)
+    _row_height(ws, 3, 18)
+    _row_height(ws, 4, 6)
+
+    c = ws.cell(1, 1, company)
+    _apply(c, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("left"))
+    c = ws.cell(2, 1, title)
+    _apply(c, font=FONT_BOLD, border=BORDER_LIGHT, alignment=_al("left"))
+    c = ws.cell(3, 1, period_end)
+    _apply(c, font=FONT_BODY, border=BORDER_LIGHT,
+           alignment=_al("left"), number_format=NUMFMT_DATE)
+
+    for row, label in ((1, "작성자:"), (2, "검토자:")):
+        c = ws.cell(row, 5, label)
+        _apply(c, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("right"))
+
+    f1 = ws.cell(1, 6, preparer)
+    _apply(f1, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("left"))
+    f2 = ws.cell(2, 6, reviewer)
+    _apply(f2, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("left"))
+
+    for row in (1, 2):
+        c = ws.cell(row, 7, "일자:")
+        _apply(c, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("right"))
+
+    h1 = ws.cell(1, 8, prep_date)
+    _apply(h1, font=FONT_BODY, border=BORDER_LIGHT,
+           alignment=_al("center"), number_format=NUMFMT_DATE)
+    h2 = ws.cell(2, 8, review_date)
+    _apply(h2, font=FONT_BODY, border=BORDER_LIGHT,
+           alignment=_al("center"), number_format=NUMFMT_DATE)
+
+    # 조서번호 — Toss: accent bold 파란색
+    c = ws.cell(1, 9, "조서번호")
+    _apply(c, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("center"))
+    c = ws.cell(2, 9, wp_no)
+    _apply(c, font=FONT_ACCENT, border=BORDER_LIGHT, alignment=_al("center"))
+
+    for row in range(1, 4):
+        for col in range(2, 5):
+            c = ws.cell(row, col)
+            if not c.value:
+                _apply(c, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("left"))
+    for col in range(2, last_col + 1):
+        c = ws.cell(3, col)
+        if not c.value:
+            _apply(c, font=FONT_BODY, border=BORDER_LIGHT, alignment=_al("left"))
+
+
+# ─────────────────────────────────────────────────────────────
+# 메인 진입점 — 단일 kind
+# ─────────────────────────────────────────────────────────────
+
+def build_generic_report(
+    out_path: str | Path,
+    ctx: ReportContext,
+    completeness: CompletenessCheck,
+    size_result: SampleSizeResult,
+    decisions: list[PartyDecision],
+    mus_result: MUSResult,
+    performance_materiality: float,
+    population_amount: float,
+    contacts: list[PartyContactInfo] | None = None,
+    exclusion_rows: list[ExclusionRow] | None = None,
+    pdf_replies: list[ConfirmationReplyInfo] | None = None,
+    alt_procedures: list[AlternativeProcedureEntry] | None = None,
+) -> None:
+    """단일 kind → 9시트 조서 생성 (채권 또는 채무)."""
+    kd = KindData(
+        ctx=ctx,
+        completeness=completeness,
+        size_result=size_result,
+        decisions=decisions,
+        mus_result=mus_result,
+        performance_materiality=performance_materiality,
+        population_amount=population_amount,
+        contacts=contacts,
+        exclusion_rows=exclusion_rows,
+        pdf_replies=pdf_replies,
+        alt_procedures=alt_procedures,
+    )
+    build_combined_report(out_path, receivable=kd if ctx.kind != "payable" else None,
+                          payable=kd if ctx.kind == "payable" else None)
+
+
 def build_combined_report(
     out_path: str | Path,
     receivable: KindData | None,
     payable: KindData | None,
 ) -> None:
-    """채권+채무 단일 워크북에 통합 출력.
-
-    시트 구성 (최대 11개):
-      1. 샘플링 요약
-      2. C100 조회서
-      3. C100-1 표본규모 결정
-      4. C100-2 Key item 추출
-      5. C100-3 표본 추출(MUS)
-      6. AA100 조회서
-      7. AA100-1 표본규모 결정
-      8. AA100-2 Key item 추출
-      9. AA100-3 표본 추출(MUS)
-     10. C100A 조회처 주소 적정성
-     11. 대체적 절차
-    """
+    """채권+채무 단일 워크북 — 9시트 통합 출력."""
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
-    base_ctx = (receivable or payable).ctx
-    combined_decisions: list[PartyDecision] = []
-    combined_contacts: list[PartyContactInfo] = []
-    combined_pdf_replies: list[ConfirmationReplyInfo] = []
-    combined_alt_procs: list[AlternativeProcedureEntry] = []
-    total_pop = 0.0
+    base_kd   = receivable or payable
+    base_ctx  = base_kd.ctx
+    ar_kd     = receivable
+    ap_kd     = payable
+
+    # ── 합산 데이터 준비 ──────────────────────────────────────
+    all_decisions: list[PartyDecision] = []
+    all_contacts:  list[PartyContactInfo] = []
+    all_replies:   list[ConfirmationReplyInfo] = []
+    all_alt_procs: list[AlternativeProcedureEntry] = []
+    total_pop  = 0.0
+    total_pm   = base_kd.performance_materiality
 
     for kd in (receivable, payable):
         if kd is None:
             continue
-        combined_decisions.extend(kd.decisions)
+        all_decisions.extend(kd.decisions)
         if kd.contacts:
-            combined_contacts.extend(kd.contacts)
+            all_contacts.extend(kd.contacts)
         if kd.pdf_replies:
-            combined_pdf_replies.extend(kd.pdf_replies)
+            all_replies.extend(kd.pdf_replies)
         if kd.alt_procedures:
-            combined_alt_procs.extend(kd.alt_procedures)
+            all_alt_procs.extend(kd.alt_procedures)
         total_pop += kd.population_amount
 
-    rep_size = (receivable or payable).size_result
-    rep_pm   = (receivable or payable).performance_materiality
-    summary_ctx = ReportContext(
-        company_name=base_ctx.company_name,
-        period_end=base_ctx.period_end,
-        kind="both",
-        preparer=base_ctx.preparer,
-        reviewer=base_ctx.reviewer,
-        workpaper_no_prefix="",
-    )
-    _build_summary(
-        wb, summary_ctx, rep_size, combined_decisions,
-        total_pop, rep_pm, combined_pdf_replies, combined_alt_procs,
-    )
-
-    # 채권 시트들
-    if receivable:
-        kd = receivable
-        _build_c100(wb, kd.ctx, kd.decisions, kd.contacts or [], kd.pdf_replies or [], "C100")
-        _build_c100_1(wb, kd.ctx, kd.size_result, kd.decisions,
-                      kd.population_amount, kd.performance_materiality, "C100")
-        _build_c100_2(wb, kd.ctx, kd.completeness, kd.size_result, kd.decisions,
-                      kd.performance_materiality, kd.exclusion_rows or [], "C100")
-        _build_c100_3(wb, kd.ctx, kd.size_result, kd.mus_result, "C100")
-
-    # 채무 시트들
-    if payable:
-        kd = payable
-        _build_c100(wb, kd.ctx, kd.decisions, kd.contacts or [], kd.pdf_replies or [], "AA100")
-        _build_c100_1(wb, kd.ctx, kd.size_result, kd.decisions,
-                      kd.population_amount, kd.performance_materiality, "AA100")
-        _build_c100_2(wb, kd.ctx, kd.completeness, kd.size_result, kd.decisions,
-                      kd.performance_materiality, kd.exclusion_rows or [], "AA100")
-        _build_c100_3(wb, kd.ctx, kd.size_result, kd.mus_result, "AA100")
-
-    # C100A + 대체적 절차 — 양쪽 통합 단 1번
-    _build_c100a(wb, summary_ctx, combined_contacts)
-    _build_alt_procedures(wb, summary_ctx, combined_alt_procs)
-
-    # 시트 순서 재정렬
-    desired_order = [
-        "샘플링 요약",
-        "C100 조회서", "C100-1 표본규모 결정", "C100-2 Key item 추출", "C100-3 표본 추출(MUS)",
-        "AA100 조회서", "AA100-1 표본규모 결정", "AA100-2 Key item 추출", "AA100-3 표본 추출(MUS)",
-        "C100A 조회처 주소 적정성",
-        "대체적 절차",
-    ]
-    new_order = [s for s in desired_order if s in wb.sheetnames]
-    for idx, name in enumerate(new_order):
-        cur_idx = wb.sheetnames.index(name)
-        wb.move_sheet(name, offset=idx - cur_idx)
+    _build_sheet_summary(wb, base_ctx, ar_kd, ap_kd,
+                         all_decisions, all_replies, all_alt_procs,
+                         total_pop, total_pm)
+    _build_sheet_confirmation(wb, base_ctx, ar_kd, ap_kd,
+                              all_contacts, all_replies)
+    _build_sheet_sample_size(wb, base_ctx, ar_kd, ap_kd)
+    _build_sheet_completeness(wb, base_ctx, ar_kd, ap_kd)
+    _build_sheet_key_item_matrix(wb, base_ctx, ar_kd, ap_kd, total_pm)
+    _build_sheet_mus_detail(wb, base_ctx, ar_kd, ap_kd)
+    _build_sheet_address(wb, base_ctx, all_contacts)
+    _build_sheet_reply_tracking(wb, base_ctx, all_replies, all_decisions)
+    _build_sheet_alt_procedures(wb, base_ctx, all_alt_procs)
 
     wb.save(out_path)
 
 
 # ─────────────────────────────────────────────────────────────
-# Sheet 1: 샘플링 요약
+# Sheet 1: 요약
 # ─────────────────────────────────────────────────────────────
 
-def _build_summary(
-    wb, ctx: ReportContext,
-    size_result: SampleSizeResult,
-    decisions: list[PartyDecision],
-    population_amount: float,
+def _build_sheet_summary(
+    wb,
+    ctx: ReportContext,
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+    all_decisions: list[PartyDecision],
+    all_replies: list[ConfirmationReplyInfo],
+    alt_procs: list[AlternativeProcedureEntry],
+    total_pop: float,
     pm: float,
-    pdf_replies: list[ConfirmationReplyInfo] | None,
-    alt_procedures: list[AlternativeProcedureEntry] | None,
 ) -> None:
-    ws = wb.create_sheet("샘플링 요약")
+    ws = wb.create_sheet("요약")
 
-    # 컬럼 너비
-    for col, w in [(1, 30), (2, 18), (3, 18), (4, 18), (5, 18),
-                   (6, 12), (7, 12), (8, 14), (9, 14)]:
+    for col, w in [(1, 4), (2, 20), (3, 18), (4, 18), (5, 18),
+                   (6, 18), (7, 18), (8, 14), (9, 14)]:
         _set_col_width(ws, col, w)
 
     prep_date   = ctx.prep_date   or date.today()
     review_date = ctx.review_date or date.today()
+    kind_label  = {"receivable": "채권 조회", "payable": "채무 조회",
+                   "both": "채권채무 조회 통합"}.get(ctx.kind, ctx.kind)
 
-    # 조서 헤더 (R1~R4)
-    kind_label = {"receivable": "채권 조회", "payable": "채무 조회",
-                  "both": "채권채무 조회 통합"}.get(ctx.kind, ctx.kind)
     _write_doc_header(
         ws, ctx.company_name, f"샘플링 결과 요약 — {kind_label}",
         ctx.period_end, ctx.preparer, ctx.reviewer,
         prep_date, review_date, wp_no="요약",
     )
 
-    r = 5  # R5~: 본문
+    r = 5
 
-    # 1. 핵심 KPI
-    _subheader_row(ws, r, "1. 핵심 샘플링 파라미터", col_end=9)
+    # ── KPI 카드 4개 ──────────────────────────────────────────
+    _subheader_row(ws, r, "핵심 KPI", col_end=9)
     r += 1
 
-    ki    = [d for d in decisions if d.is_key_item and not d.is_excluded]
-    rep_d = [d for d in decisions if d.is_representative and not d.is_key_item and not d.is_excluded]
-    final = [d for d in decisions if d.final_sampled and not d.is_excluded]
-    ki_amt  = sum(d.balance for d in ki)
-    rep_amt = sum(d.balance for d in rep_d)
+    ki_all    = [d for d in all_decisions if d.is_key_item and not d.is_excluded]
+    final_all = [d for d in all_decisions if d.final_sampled and not d.is_excluded]
+    ar_size   = ar_kd.size_result if ar_kd else None
+    ap_size   = ap_kd.size_result if ap_kd else None
+    ar_pop    = ar_kd.population_amount if ar_kd else 0.0
+    ap_pop    = ap_kd.population_amount if ap_kd else 0.0
 
-    # 헤더
-    for col, h in [(1, "항목"), (2, "값")]:
-        _header_cell(ws, r, col, h, col_end=None)
+    ar_sub = f"채권 {ar_pop/1e8:.0f}억" if ar_kd else ""
+    ap_sub = f"채무 {ap_pop/1e8:.0f}억" if ap_kd else ""
+    pop_sub = (ar_sub + ("  ·  " + ap_sub if ap_sub else "")) if ar_sub else ap_sub
+
+    ki_threshold = (ar_size or ap_size).key_item_threshold if (ar_size or ap_size) else 0
+    final_n = len(final_all)
+    rep_size = (ar_size or ap_size)
+    ki_threshold_sub = f"PM × {(rep_size.key_item_ratio * 100):.0f}%" if rep_size else ""
+
+    cards = [
+        ("모집단",             total_pop,      pop_sub,       2),
+        ("수행중요성 (PM)",    pm,             "기준 금액",    5),
+        ("Key item 기준금액", ki_threshold,   ki_threshold_sub, 2),
+        ("최종 샘플링 건수",   final_n,        "Key+Rep+특관자", 5),
+    ]
+    _row_height(ws, r, 22)
+    _row_height(ws, r + 1, 28)
+    _row_height(ws, r + 2, 20)
+
+    for label, value, sub, col_start in cards:
+        fmt = NUMFMT_INT if isinstance(value, float) else "0"
+        _kpi_card(ws, r, col_start, label, value, sub=sub,
+                  col_span=2, row_span=3, fmt=fmt)
+
+    r += 4
+
+    # ── 채권/채무 분포 표 ─────────────────────────────────────
+    _subheader_row(ws, r, "채권·채무 분포 현황", col_end=9)
+    r += 1
+
+    for col_idx, h in enumerate(["구분", "모집단 건수", "모집단 금액", "Key item",
+                                  "Rep", "특관자", "발송제외", "최종 샘플"], 1):
+        _header_cell(ws, r, col_idx, h)
+    r += 1
+
+    dist_rows = []
+    if ar_kd:
+        d_list = ar_kd.decisions
+        dist_rows.append(("채권", d_list, ar_kd.population_amount))
+    if ap_kd:
+        d_list = ap_kd.decisions
+        dist_rows.append(("채무", d_list, ap_kd.population_amount))
+    if ar_kd and ap_kd:
+        dist_rows.append(("합계", all_decisions, total_pop))
+
+    for kind_lbl, d_list, pop_amt in dist_rows:
+        is_total = kind_lbl == "합계"
+        incl = [d for d in d_list if not d.is_excluded]
+        ki_n   = len([d for d in incl if d.is_key_item])
+        rep_n  = len([d for d in incl if d.is_representative and not d.is_key_item])
+        rp_n   = len([d for d in incl if d.is_related_party])
+        excl_n = len([d for d in d_list if d.is_excluded])
+        fin_n  = len([d for d in d_list if d.final_sampled and not d.is_excluded])
+
+        if is_total:
+            _total_row_cell(ws, r, 1, kind_lbl)
+            _total_row_cell(ws, r, 2, len(incl), is_num=True)
+            _total_row_cell(ws, r, 3, pop_amt, is_num=True)
+            _total_row_cell(ws, r, 4, ki_n,   is_num=True)
+            _total_row_cell(ws, r, 5, rep_n,  is_num=True)
+            _total_row_cell(ws, r, 6, rp_n,   is_num=True)
+            _total_row_cell(ws, r, 7, excl_n, is_num=True)
+            _total_row_cell(ws, r, 8, fin_n,  is_num=True)
+        else:
+            _text_cell(ws, r, 1, kind_lbl, font=FONT_BOLD)
+            _num_cell(ws, r, 2, len(incl))
+            _num_cell(ws, r, 3, pop_amt)
+            _num_cell(ws, r, 4, ki_n)
+            _num_cell(ws, r, 5, rep_n)
+            _num_cell(ws, r, 6, rp_n)
+            _num_cell(ws, r, 7, excl_n)
+            _num_cell(ws, r, 8, fin_n)
+        r += 1
+
+    # ── Step 진행 현황 ────────────────────────────────────────
+    r += 1
+    _subheader_row(ws, r, "단계별 진행 현황", col_end=9)
+    r += 1
+
+    steps = [
+        ("Step 1 — 모집단 구성 및 표본규모 결정", True),
+        ("Step 2 — UploadGuide 주소 확인",   bool(all_decisions)),
+        ("Step 3 — 조서 생성",               True),
+        ("Step 4 — 조회서 회신 처리",         bool(all_replies)),
+        ("Step 5 — 대체적 절차",             bool(alt_procs)),
+    ]
+    for col_idx, h in enumerate(["단계", "완료 여부"], 1):
+        _header_cell(ws, r, col_idx, h)
     ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=9)
     r += 1
 
-    kpi_rows = [
-        ("모집단 금액",                       population_amount),
-        ("수행중요성 (PM)",                    pm),
-        ("Key item 기준금액",                 size_result.key_item_threshold),
-        ("Key item 건수",                     len(ki)),
-        ("Key item 금액",                     ki_amt),
-        ("표본간격 (J)",                      size_result.sample_interval),
-        ("MUS 표본규모",                      size_result.final_sample_size),
-        ("최종 샘플링 건수 (Key+Rep+특관자)", len(final)),
-    ]
-    for label, value in kpi_rows:
-        _text_cell(ws, r, 1, label, bold=True)
-        is_pm_or_key = label in ("수행중요성 (PM)", "Key item 기준금액")
-        if is_pm_or_key:
-            _input_cell(ws, r, 2, value)
-        else:
-            _num_cell(ws, r, 2, value)
+    for step_label, done in steps:
+        _text_cell(ws, r, 1, step_label)
+        status_cell = ws.cell(r, 2, "완료" if done else "미완료")
+        f = FONT_GREEN if done else FONT_FADED
+        _apply(status_cell, font=f, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("left"))
         ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=9)
         r += 1
-
-    # 2. 조회서 회수 현황 (Step 4)
-    if pdf_replies:
-        r += 1
-        _subheader_row(ws, r, "2. 조회서 회수 현황", col_end=9)
-        r += 1
-
-        total_sent = len(final)
-        replied    = [x for x in pdf_replies if x.status not in ("미회신",)]
-        matched    = [x for x in pdf_replies if x.status == "matched"]
-        mismatch   = [x for x in pdf_replies if x.status == "mismatch"]
-        no_reply   = [x for x in pdf_replies if x.status == "미회신"]
-
-        for col, h in [(1, "항목"), (2, "건수")]:
-            _header_cell(ws, r, col, h)
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=9)
-        r += 1
-
-        for label, value in [
-            ("발송 건수", total_sent),
-            ("회신 수령 건수", len(replied)),
-            ("일치 건수",  len(matched)),
-            ("불일치 건수", len(mismatch)),
-            ("미회신 건수", len(no_reply)),
-        ]:
-            _text_cell(ws, r, 1, label, bold=True)
-            _num_cell(ws, r, 2, value)
-            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=9)
-            r += 1
-
-    # 3. 대체적 절차 현황 (Step 5)
-    if alt_procedures:
-        r += 1
-        _subheader_row(ws, r, "3. 대체적 절차 현황", col_end=9)
-        r += 1
-
-        sufficient = sum(1 for p in alt_procedures if p.conclusion == "충분")
-        partial    = sum(1 for p in alt_procedures if p.conclusion == "부분")
-        unresolved = sum(1 for p in alt_procedures if p.conclusion == "미해소")
-
-        for col, h in [(1, "결론"), (2, "건수")]:
-            _header_cell(ws, r, col, h)
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=9)
-        r += 1
-
-        for label, value, fill in [
-            ("충분 (커버리지 ≥ 95%)", sufficient, FILL_CONCLUSION_OK),
-            ("부분 (커버리지 50~95%)", partial,    FILL_CONCLUSION_PARTIAL),
-            ("미해소 (커버리지 < 50%)", unresolved, FILL_CONCLUSION_FAIL),
-        ]:
-            _text_cell(ws, r, 1, label, bold=True)
-            _num_cell(ws, r, 2, value, fill=fill)
-            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=9)
-            r += 1
 
 
 # ─────────────────────────────────────────────────────────────
-# Sheet 2: C100 / AA100 조회서 (control sheet)
+# Sheet 2: 조회서 (C100·AA100 통합)
 # ─────────────────────────────────────────────────────────────
 
 _AR_ACCOUNTS = ["외상매출금", "받을어음", "미수금", "선급금", "임차보증금", "장기대여금"]
 _AP_ACCOUNTS = ["외상매입금", "지급어음(외담대외상매입금)", "미지급금", "임대보증금"]
 
 
-def _build_c100(
-    wb, ctx: ReportContext,
-    decisions: list[PartyDecision],
-    contacts: list[PartyContactInfo],
-    pdf_replies: list[ConfirmationReplyInfo],
-    prefix: str,
-) -> None:
-    sheet_name = f"{prefix} 조회서"
-    ws = wb.create_sheet(sheet_name)
+@dataclass
+class _UnifiedPartyRow:
+    """채권+채무 통합 거래처 행."""
+    name: str
+    ar_by_account: dict[str, float] = field(default_factory=dict)
+    ap_by_account: dict[str, float] = field(default_factory=dict)
+    ar_total: float = 0.0
+    ap_total: float = 0.0
+    is_key_item: bool = False
+    is_representative: bool = False
+    is_related_party: bool = False
+    is_excluded: bool = False
+    final_sampled: bool = False
+    contact: PartyContactInfo | None = None
+    reply_status: str = "미회신"
 
-    # 컬럼 너비 — 7620 Control sheet 기준
-    col_widths = {1: 4.0, 2: 33.85, 3: 13.0, 4: 13.0, 5: 13.0,
-                  6: 13.0, 7: 13.0, 8: 13.0, 9: 13.0, 10: 13.0,
-                  11: 13.0, 12: 13.0, 13: 16.0, 14: 13.0, 15: 14.0}
+
+def _merge_decisions(
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+    contacts: list[PartyContactInfo],
+    replies: list[ConfirmationReplyInfo],
+) -> list[_UnifiedPartyRow]:
+    """채권/채무 decisions 를 거래처명 기준으로 통합 → _UnifiedPartyRow 리스트."""
+    contact_map = {c.name: c for c in contacts}
+    reply_map   = {rep.party_name: rep.status for rep in replies}
+
+    rows: dict[str, _UnifiedPartyRow] = {}
+
+    def _get_or_create(name: str) -> _UnifiedPartyRow:
+        if name not in rows:
+            rows[name] = _UnifiedPartyRow(
+                name=name,
+                contact=contact_map.get(name),
+                reply_status=reply_map.get(name, "미회신"),
+            )
+        return rows[name]
+
+    if ar_kd:
+        for d in ar_kd.decisions:
+            row = _get_or_create(d.name)
+            row.ar_by_account = dict(d.by_account)
+            row.ar_total = d.balance
+            row.is_key_item     |= d.is_key_item
+            row.is_representative |= d.is_representative
+            row.is_related_party  |= d.is_related_party
+            row.is_excluded       &= d.is_excluded  # 한쪽만 발송 가능 → AND
+            row.final_sampled     |= d.final_sampled
+
+    if ap_kd:
+        for d in ap_kd.decisions:
+            row = _get_or_create(d.name)
+            row.ap_by_account = dict(d.by_account)
+            row.ap_total = d.balance
+            row.is_key_item       |= d.is_key_item
+            row.is_representative |= d.is_representative
+            row.is_related_party  |= d.is_related_party
+            row.final_sampled     |= d.final_sampled
+
+    # 한쪽에만 있는 발송제외 처리: ar_kd or ap_kd에서 excluded면 표시
+    if ar_kd:
+        for d in ar_kd.decisions:
+            if d.is_excluded and d.name in rows:
+                # 채무쪽도 없으면 excluded
+                if rows[d.name].ap_total == 0:
+                    rows[d.name].is_excluded = True
+    if ap_kd:
+        for d in ap_kd.decisions:
+            if d.is_excluded and d.name in rows:
+                if rows[d.name].ar_total == 0:
+                    rows[d.name].is_excluded = True
+
+    result = list(rows.values())
+    # 최종샘플 + 발송대상 우선, 총 잔액 내림차순
+    result.sort(key=lambda r: (
+        not r.final_sampled,
+        r.is_excluded,
+        -(r.ar_total + r.ap_total),
+    ))
+    return result
+
+
+def _build_sheet_confirmation(
+    wb,
+    ctx: ReportContext,
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+    contacts: list[PartyContactInfo],
+    replies: list[ConfirmationReplyInfo],
+) -> None:
+    ws = wb.create_sheet("조회서")
+
+    # 컬럼 너비
+    col_widths = {1: 4, 2: 30, 3: 10}
+    # AR 계정 컬럼
+    ar_start = 4
+    for i in range(len(_AR_ACCOUNTS)):
+        col_widths[ar_start + i] = 13
+    ar_sum_col = ar_start + len(_AR_ACCOUNTS)
+    # AP 계정 컬럼
+    ap_start = ar_sum_col + 1
+    for i in range(len(_AP_ACCOUNTS)):
+        col_widths[ap_start + i] = 13
+    ap_sum_col = ap_start + len(_AP_ACCOUNTS)
+    col_total   = ap_sum_col + 1
+    col_cls     = col_total + 1
+    col_reply   = col_cls + 1
+    col_email   = col_reply + 1
+
+    col_widths[ar_sum_col] = 13
+    col_widths[ap_sum_col] = 13
+    col_widths[col_total]  = 13
+    col_widths[col_cls]    = 18
+    col_widths[col_reply]  = 12
+    col_widths[col_email]  = 22
+
     for c, w in col_widths.items():
         _set_col_width(ws, c, w)
 
     prep_date   = ctx.prep_date   or date.today()
     review_date = ctx.review_date or date.today()
 
-    # 조서 헤더
     _write_doc_header(
-        ws, ctx.company_name, f"{prefix} 조회서",
+        ws, ctx.company_name, "조회서 Control Sheet — 채권·채무 통합",
         ctx.period_end, ctx.preparer, ctx.reviewer,
-        prep_date, review_date, wp_no=f"{prefix}",
-        last_col=15,
+        prep_date, review_date, wp_no="조회서",
+        last_col=col_email,
     )
 
     r = 5
-    # 소제목
-    _subheader_row(ws, r, "조회서 control sheet — 발송 거래처 목록", col_end=15)
+    _subheader_row(ws, r, "발송 거래처 목록 (채권·채무 통합)", col_end=col_email)
     r += 1
 
-    # 헤더 행 구성 (계정 컬럼 동적)
-    is_ar = prefix == "C100"
-    ar_accounts = _AR_ACCOUNTS if is_ar else []
-    ap_accounts = _AP_ACCOUNTS if not is_ar else []
-
-    COL_NO   = 1
-    COL_NAME = 2
-    col_ar_start = 3
-    col_ar_end   = col_ar_start + len(ar_accounts) - 1
-    col_ar_sum   = col_ar_end + 1
-    col_ap_start = col_ar_sum + 1
-    col_ap_end   = col_ap_start + len(ap_accounts) - 1
-    col_ap_sum   = col_ap_end + 1
-    col_total    = col_ap_sum + 1
-    col_contact  = col_total + 1
-    col_mgr      = col_contact + 1
-    col_email    = col_mgr + 1
-    col_reply    = col_email + 1
-
-    _header_cell(ws, r, COL_NO,   "No")
-    _header_cell(ws, r, COL_NAME, "거래처명")
-    for i, acct in enumerate(ar_accounts):
-        _header_cell(ws, r, col_ar_start + i, acct)
-    if ar_accounts:
-        _header_cell(ws, r, col_ar_sum, "채권 계")
-    for i, acct in enumerate(ap_accounts):
-        _header_cell(ws, r, col_ap_start + i, acct)
-    if ap_accounts:
-        _header_cell(ws, r, col_ap_sum, "채무 계")
-    _header_cell(ws, r, col_total,   "합계")
-    _header_cell(ws, r, col_contact, "주소/국가")
-    _header_cell(ws, r, col_mgr,     "담당자")
-    _header_cell(ws, r, col_email,   "이메일")
-    _header_cell(ws, r, col_reply,   "회신 상태")
+    # 헤더 행
+    _header_cell(ws, r, 1,        "No")
+    _header_cell(ws, r, 2,        "거래처명")
+    _header_cell(ws, r, 3,        "구분")
+    for i, acct in enumerate(_AR_ACCOUNTS):
+        _header_cell(ws, r, ar_start + i, acct)
+    _header_cell(ws, r, ar_sum_col, "채권 계")
+    for i, acct in enumerate(_AP_ACCOUNTS):
+        _header_cell(ws, r, ap_start + i, acct)
+    _header_cell(ws, r, ap_sum_col, "채무 계")
+    _header_cell(ws, r, col_total,  "총 잔액")
+    _header_cell(ws, r, col_cls,    "분류")
+    _header_cell(ws, r, col_reply,  "회신 상태")
+    _header_cell(ws, r, col_email,  "이메일")
     r += 1
 
-    contact_map = {c.name: c for c in contacts}
-    reply_map   = {rep.party_name: rep.status for rep in pdf_replies}
+    unified = _merge_decisions(ar_kd, ap_kd, contacts, replies)
 
-    final_parties = sorted(
-        [d for d in decisions if d.final_sampled and not d.is_excluded],
-        key=lambda d: -d.balance,
-    )
-
-    totals_ar: dict[str, float] = {a: 0.0 for a in ar_accounts}
-    totals_ap: dict[str, float] = {a: 0.0 for a in ap_accounts}
+    totals_ar: dict[str, float] = {a: 0.0 for a in _AR_ACCOUNTS}
+    totals_ap: dict[str, float] = {a: 0.0 for a in _AP_ACCOUNTS}
     grand_total = 0.0
+    seq = 0
 
-    for seq, d in enumerate(final_parties, 1):
-        fill = _party_fill(d)
+    for row_data in unified:
+        is_ki   = row_data.is_key_item and not row_data.is_excluded
+        is_rep  = row_data.is_representative and not row_data.is_key_item and not row_data.is_excluded
+        is_excl = row_data.is_excluded
 
-        _text_cell(ws, r, COL_NO,   seq,    fill=fill, align="center")
-        _text_cell(ws, r, COL_NAME, d.name, fill=fill, align="left")
+        # 구분 텍스트
+        kinds = []
+        if row_data.ar_total > 0:
+            kinds.append("채권")
+        if row_data.ap_total > 0:
+            kinds.append("채무")
+        kind_str = "+".join(kinds) if kinds else "-"
 
-        ar_sum = 0.0
-        for i, acct in enumerate(ar_accounts):
-            amt = d.by_account.get(acct, 0.0)
-            if amt:
-                _num_cell(ws, r, col_ar_start + i, amt, fill=fill)
-            else:
-                _text_cell(ws, r, col_ar_start + i, "", fill=fill, align="right")
-            ar_sum += amt
-            totals_ar[acct] = totals_ar.get(acct, 0.0) + amt
+        # 분류
+        cls_parts = []
+        if is_ki:
+            cls_parts.append("Key item")
+        if is_rep:
+            cls_parts.append("Rep")
+        if row_data.is_related_party:
+            cls_parts.append("특관자")
+        if is_excl:
+            cls_parts.append("발송제외")
+        cls_str = ", ".join(cls_parts) if cls_parts else "-"
 
-        if ar_accounts:
-            _num_cell(ws, r, col_ar_sum, ar_sum or None, fill=fill)
-
-        ap_sum = 0.0
-        for i, acct in enumerate(ap_accounts):
-            amt = d.by_account.get(acct, 0.0)
-            if amt:
-                _num_cell(ws, r, col_ap_start + i, amt, fill=fill)
-            else:
-                _text_cell(ws, r, col_ap_start + i, "", fill=fill, align="right")
-            ap_sum += amt
-            totals_ap[acct] = totals_ap.get(acct, 0.0) + amt
-
-        if ap_accounts:
-            _num_cell(ws, r, col_ap_sum, ap_sum or None, fill=fill)
-
-        total_row = ar_sum + ap_sum or d.balance
-        _num_cell(ws, r, col_total, total_row, fill=fill)
-        grand_total += total_row
-
-        ct = contact_map.get(d.name)
-        _text_cell(ws, r, col_contact, ct.country        if ct else "", fill=fill, align="center")
-        _text_cell(ws, r, col_mgr,     ct.contact_person if ct else "", fill=fill, align="left")
-        _text_cell(ws, r, col_email,   ct.email          if ct else "", fill=fill, align="left")
-
-        status_raw = reply_map.get(d.name, "미회신")
+        # 회신 상태
+        status_raw = row_data.reply_status
         status_label = {
             "matched": "일치", "mismatch": "불일치",
             "needs_review": "검토필요", "미회신": "미회신",
         }.get(status_raw, status_raw)
-        status_fill = {
-            "일치":   FILL_CONCLUSION_OK,
-            "불일치": FILL_CONCLUSION_FAIL,
-        }.get(status_label)
-        _text_cell(ws, r, col_reply, status_label, fill=status_fill or fill, align="center")
+
+        # 발송제외면 strikethrough, 회신 상태 폰트 색상
+        name_font = FONT_FADED_STRIKE if is_excl else (FONT_BOLD if is_ki else FONT_BODY)
+        reply_font = (
+            FONT_GREEN  if status_label == "일치"  else
+            FONT_RED    if status_label == "불일치" else
+            FONT_AMBER  if status_label == "검토필요" else
+            FONT_FADED
+        )
+
+        if not is_excl:
+            seq += 1
+
+        seq_val = seq if not is_excl else "-"
+
+        # No
+        c = ws.cell(r, 1, seq_val)
+        _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
+               fill=FILL_WHITE,
+               border=_left_ki_border() if is_ki else _left_excl_border() if is_excl else BORDER_LIGHT,
+               alignment=_al("center"))
+        _row_height(ws, r, 22)
+
+        # 거래처명
+        c = ws.cell(r, 2, row_data.name)
+        _apply(c, font=name_font, fill=FILL_WHITE,
+               border=BORDER_LIGHT, alignment=_al("left"))
+
+        # 구분
+        c = ws.cell(r, 3, kind_str)
+        kind_font = Font(name=FONT_NAME, size=10,
+                         color=TOSS_ACCENT if "채권" in kind_str and "채무" in kind_str
+                         else TOSS_TEXT2)
+        _apply(c, font=kind_font, fill=FILL_WHITE,
+               border=BORDER_LIGHT, alignment=_al("center"))
+
+        # AR 계정 컬럼
+        for i, acct in enumerate(_AR_ACCOUNTS):
+            amt = row_data.ar_by_account.get(acct, 0.0)
+            c = ws.cell(r, ar_start + i, amt if amt else None)
+            f = FONT_FADED if is_excl else (FONT_BOLD if is_ki and amt else FONT_BODY)
+            _apply(c, font=f, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("right"), number_format=NUMFMT_INT)
+            if not is_excl:
+                totals_ar[acct] = totals_ar.get(acct, 0.0) + amt
+
+        # AR 계
+        c = ws.cell(r, ar_sum_col, row_data.ar_total if row_data.ar_total else None)
+        _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
+               fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+
+        # AP 계정 컬럼
+        for i, acct in enumerate(_AP_ACCOUNTS):
+            amt = row_data.ap_by_account.get(acct, 0.0)
+            c = ws.cell(r, ap_start + i, amt if amt else None)
+            f = FONT_FADED if is_excl else (FONT_BOLD if is_ki and amt else FONT_BODY)
+            _apply(c, font=f, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("right"), number_format=NUMFMT_INT)
+            if not is_excl:
+                totals_ap[acct] = totals_ap.get(acct, 0.0) + amt
+
+        # AP 계
+        c = ws.cell(r, ap_sum_col, row_data.ap_total if row_data.ap_total else None)
+        _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
+               fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+
+        # 총 잔액
+        total_row = row_data.ar_total + row_data.ap_total
+        c = ws.cell(r, col_total, total_row if total_row else None)
+        total_font = FONT_FADED if is_excl else (FONT_ACCENT if is_ki else FONT_BODY)
+        _apply(c, font=total_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+        if not is_excl:
+            grand_total += total_row
+
+        # 분류
+        c = ws.cell(r, col_cls, cls_str)
+        cls_font = FONT_FADED if is_excl else (FONT_ACCENT if is_ki else FONT_BODY)
+        _apply(c, font=cls_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("left"))
+
+        # 회신 상태
+        c = ws.cell(r, col_reply, status_label)
+        _apply(c, font=reply_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("center"))
+
+        # 이메일
+        ct = row_data.contact
+        c = ws.cell(r, col_email, ct.email if ct else "")
+        _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
+               fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("left"))
+
         r += 1
 
     # 합계 행
-    _total_row_cell(ws, r, COL_NO,   "")
-    _total_row_cell(ws, r, COL_NAME, "총합계")
-    for i, acct in enumerate(ar_accounts):
-        _total_row_cell(ws, r, col_ar_start + i, totals_ar.get(acct) or None, is_num=True)
-    if ar_accounts:
-        _total_row_cell(ws, r, col_ar_sum, sum(totals_ar.values()) or None, is_num=True)
-    for i, acct in enumerate(ap_accounts):
-        _total_row_cell(ws, r, col_ap_start + i, totals_ap.get(acct) or None, is_num=True)
-    if ap_accounts:
-        _total_row_cell(ws, r, col_ap_sum, sum(totals_ap.values()) or None, is_num=True)
+    _total_row_cell(ws, r, 1, "")
+    _total_row_cell(ws, r, 2, "총합계")
+    _total_row_cell(ws, r, 3, "")
+    for i, acct in enumerate(_AR_ACCOUNTS):
+        _total_row_cell(ws, r, ar_start + i, totals_ar.get(acct) or None, is_num=True)
+    _total_row_cell(ws, r, ar_sum_col, sum(totals_ar.values()) or None, is_num=True)
+    for i, acct in enumerate(_AP_ACCOUNTS):
+        _total_row_cell(ws, r, ap_start + i, totals_ap.get(acct) or None, is_num=True)
+    _total_row_cell(ws, r, ap_sum_col, sum(totals_ap.values()) or None, is_num=True)
     _total_row_cell(ws, r, col_total, grand_total or None, is_num=True)
+    for col in (col_cls, col_reply, col_email):
+        _total_row_cell(ws, r, col, "")
 
 
 # ─────────────────────────────────────────────────────────────
-# Sheet 3: C100A 조회처 주소 적정성
+# Sheet 3: 표본규모 산출
 # ─────────────────────────────────────────────────────────────
 
-def _build_c100a(
-    wb, ctx: ReportContext,
+def _build_sheet_sample_size(
+    wb,
+    ctx: ReportContext,
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+) -> None:
+    ws = wb.create_sheet("표본규모 산출")
+
+    for c, w in [(1, 35), (2, 20), (3, 18), (4, 15), (5, 15)]:
+        _set_col_width(ws, c, w)
+
+    prep_date   = ctx.prep_date   or date.today()
+    review_date = ctx.review_date or date.today()
+
+    _write_doc_header(
+        ws, ctx.company_name, "표본규모 산출 (MUS)",
+        ctx.period_end, ctx.preparer, ctx.reviewer,
+        prep_date, review_date, wp_no="규모산출",
+    )
+
+    r = 5
+    method_text = (
+        "MUS(Monetary Unit Sampling): 화폐단위를 표본단위로 사용하는 통계적 표본추출. "
+        "표본간격(J) = 잔여모집단 ÷ Final sample size. (감사기준서 530)"
+    )
+    c_cell = ws.cell(r, 1, method_text)
+    _apply(c_cell, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+           alignment=_al("left", wrap=True))
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
+    _row_height(ws, r, 36)
+    r += 2
+
+    for kd, kind_label in [(ar_kd, "채권 (C100)"), (ap_kd, "채무 (AA100)")]:
+        if kd is None:
+            continue
+
+        _subheader_row(ws, r, kind_label, col_end=5)
+        r += 1
+
+        for col_idx, h in enumerate(["항목", "값", "산식", "", ""], 1):
+            _header_cell(ws, r, col_idx, h)
+        r += 1
+
+        size = kd.size_result
+        decisions = kd.decisions
+        ki = [d for d in decisions if d.is_key_item and not d.is_excluded]
+        ki_amt = sum(d.balance for d in ki)
+
+        params = [
+            ("모집단 금액",          kd.population_amount,    "",                                   False),
+            ("수행중요성 (PM)",       kd.performance_materiality, "",                               True),
+            ("Key item 비율",        size.key_item_ratio,     "위험×통제 매트릭스",                 False, "0%"),
+            ("Key item 기준금액",    size.key_item_threshold, f"PM × {size.key_item_ratio*100:.0f}%", True),
+            ("Key item 건수",        len(ki),                 "",                                   False, NUMFMT_INT),
+            ("Key item 금액",        ki_amt,                  "",                                   False),
+            ("잔여 모집단",          size.remaining_population, "모집단 − Key item 금액",           False),
+            ("Base sample size",     size.base_sample_size,   "잔여모집단 ÷ PM",                    False, "0.0"),
+            ("신뢰계수 (CF)",        size.confidence_factor,  "AICPA Table A-1",                    False, "0.00"),
+            ("Final sample size",    size.final_sample_size,  "⌈Base × CF⌉",                       False),
+            ("표본간격 (J)",         size.sample_interval,    "잔여모집단 ÷ Final size",             False),
+        ]
+        for row_item in params:
+            label    = row_item[0]
+            value    = row_item[1]
+            formula  = row_item[2] if len(row_item) > 2 else ""
+            is_input = row_item[3] if len(row_item) > 3 else False
+            fmt      = row_item[4] if len(row_item) > 4 else NUMFMT_INT
+
+            _text_cell(ws, r, 1, label, font=FONT_BOLD if is_input else FONT_BODY)
+            if is_input:
+                _accent_num_cell(ws, r, 2, value, fmt=fmt)
+            else:
+                _num_cell(ws, r, 2, value, fmt=fmt)
+
+            c_formula = ws.cell(r, 3, formula)
+            _apply(c_formula, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("left"))
+            ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=5)
+            r += 1
+
+        r += 1
+
+
+# ─────────────────────────────────────────────────────────────
+# Sheet 4: 모집단 완전성
+# ─────────────────────────────────────────────────────────────
+
+def _build_sheet_completeness(
+    wb,
+    ctx: ReportContext,
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+) -> None:
+    ws = wb.create_sheet("모집단 완전성")
+
+    for c, w in [(1, 4), (2, 28), (3, 18), (4, 18), (5, 15), (6, 30)]:
+        _set_col_width(ws, c, w)
+
+    prep_date   = ctx.prep_date   or date.today()
+    review_date = ctx.review_date or date.today()
+
+    _write_doc_header(
+        ws, ctx.company_name, "모집단 완전성 검토",
+        ctx.period_end, ctx.preparer, ctx.reviewer,
+        prep_date, review_date, wp_no="완전성",
+        last_col=6,
+    )
+
+    r = 5
+
+    for kd, kind_label in [(ar_kd, "채권 (C100)"), (ap_kd, "채무 (AA100)")]:
+        if kd is None:
+            continue
+
+        _subheader_row(ws, r, f"{kind_label} — 회사 명세서 vs 재무제표", col_end=6)
+        r += 1
+
+        for col_idx, h in enumerate(["No", "계정과목그룹", "회사 명세서", "재무제표", "차이", "비고"], 1):
+            _header_cell(ws, r, col_idx, h)
+        r += 1
+
+        for i, row_data in enumerate(kd.completeness.by_group, 1):
+            diff = row_data["diff"]
+            _text_cell(ws, r, 1, i, align="center")
+            _text_cell(ws, r, 2, row_data["group"])
+            _num_cell(ws, r, 3, row_data["ledger"])
+            _num_cell(ws, r, 4, row_data["fs"])
+            diff_font = FONT_RED if abs(diff) > 0 else FONT_BODY
+            c_diff = ws.cell(r, 5, diff)
+            _apply(c_diff, font=diff_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("right"), number_format=NUMFMT_INT)
+            _row_height(ws, r, 22)
+            c_note = ws.cell(r, 6, row_data.get("note", "") or "")
+            _apply(c_note, font=FONT_BODY, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("left"))
+            r += 1
+
+        # 합계 행
+        _total_row_cell(ws, r, 2, "합계")
+        _total_row_cell(ws, r, 3, kd.completeness.total_ledger, is_num=True)
+        _total_row_cell(ws, r, 4, kd.completeness.total_fs,     is_num=True)
+        diff_total = kd.completeness.total_diff
+        c_tot = ws.cell(r, 5, diff_total)
+        _apply(c_tot, font=FONT_RED if abs(diff_total) > 0 else FONT_BOLD,
+               fill=FILL_BG_SUB, border=BORDER_TOTAL,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+        _row_height(ws, r, 22)
+        _total_row_cell(ws, r, 6, "")
+        r += 2
+
+        # 발송제외 거래처
+        _subheader_row(ws, r, f"{kind_label} — 발송제외 거래처", col_end=6)
+        r += 1
+
+        for col_idx, h in enumerate(["No", "거래처명", "장부가", "제외 사유", "", ""], 1):
+            _header_cell(ws, r, col_idx, h)
+        r += 1
+
+        excl_list = [d for d in kd.decisions if d.is_excluded]
+        extra_excl = [ex for ex in (kd.exclusion_rows or [])
+                      if ex.name not in {d.name for d in excl_list}]
+
+        if excl_list or extra_excl:
+            for seq, d in enumerate(excl_list, 1):
+                c = ws.cell(r, 1, seq)
+                _apply(c, font=FONT_FADED, fill=FILL_WHITE,
+                       border=_left_excl_border(), alignment=_al("center"))
+                _row_height(ws, r, 22)
+                c = ws.cell(r, 2, d.name)
+                _apply(c, font=FONT_FADED_STRIKE, fill=FILL_WHITE,
+                       border=BORDER_LIGHT, alignment=_al("left"))
+                _num_cell(ws, r, 3, d.balance, font=FONT_FADED)
+                c = ws.cell(r, 4, d.exclusion_reason or "")
+                _apply(c, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+                       alignment=_al("left"))
+                ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=6)
+                r += 1
+            for seq, ex in enumerate(extra_excl, len(excl_list) + 1):
+                c = ws.cell(r, 1, seq)
+                _apply(c, font=FONT_FADED, fill=FILL_WHITE,
+                       border=_left_excl_border(), alignment=_al("center"))
+                _row_height(ws, r, 22)
+                c = ws.cell(r, 2, ex.name)
+                _apply(c, font=FONT_FADED_STRIKE, fill=FILL_WHITE,
+                       border=BORDER_LIGHT, alignment=_al("left"))
+                _num_cell(ws, r, 3, ex.amount, font=FONT_FADED)
+                c = ws.cell(r, 4, "발송대상 제외")
+                _apply(c, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+                       alignment=_al("left"))
+                ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=6)
+                r += 1
+        else:
+            c = ws.cell(r, 2, "발송제외 거래처 없음")
+            _apply(c, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("left"))
+            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=6)
+            r += 1
+
+        r += 1
+
+
+# ─────────────────────────────────────────────────────────────
+# Sheet 5: Key item 매트릭스
+# ─────────────────────────────────────────────────────────────
+
+_AR_GROUP_COLS = {
+    "외상매출금": 4, "받을어음": 5, "미수금": 6, "선급금": 7,
+    "장기대여금": 8, "임차보증금": 9,
+}
+_AP_GROUP_COLS = {
+    "외상매입금": 10, "지급어음(외담대외상매입금)": 11,
+    "미지급금": 12, "임대보증금": 13,
+}
+
+
+def _build_sheet_key_item_matrix(
+    wb,
+    ctx: ReportContext,
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+    pm: float,
+) -> None:
+    ws = wb.create_sheet("Key item 매트릭스")
+
+    for c, w in [(1, 4), (2, 28), (3, 10)]:
+        _set_col_width(ws, c, w)
+    for c in list(_AR_GROUP_COLS.values()) + list(_AP_GROUP_COLS.values()):
+        _set_col_width(ws, c, 13)
+    sum_col = max(_AP_GROUP_COLS.values()) + 1
+    for c, w in [(sum_col, 13), (sum_col + 1, 8), (sum_col + 2, 8),
+                 (sum_col + 3, 8), (sum_col + 4, 8)]:
+        _set_col_width(ws, c, w)
+
+    last_col = sum_col + 4
+    prep_date   = ctx.prep_date   or date.today()
+    review_date = ctx.review_date or date.today()
+
+    _write_doc_header(
+        ws, ctx.company_name, "Key item 매트릭스 (채권·채무 통합)",
+        ctx.period_end, ctx.preparer, ctx.reviewer,
+        prep_date, review_date, wp_no="KI매트릭스",
+        last_col=last_col,
+    )
+
+    r = 5
+
+    # Key item 기준금액 표시
+    if ar_kd:
+        kd = ar_kd
+        c = ws.cell(r, 1, f"채권 Key item 기준금액: {kd.size_result.key_item_threshold:,.0f} 원")
+        _apply(c, font=FONT_ACCENT, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("left"))
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=last_col)
+        _row_height(ws, r, 22)
+        r += 1
+    if ap_kd:
+        kd = ap_kd
+        c = ws.cell(r, 1, f"채무 Key item 기준금액: {kd.size_result.key_item_threshold:,.0f} 원")
+        _apply(c, font=FONT_ACCENT, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("left"))
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=last_col)
+        _row_height(ws, r, 22)
+        r += 1
+
+    r += 1
+    _subheader_row(ws, r, "거래처별 계정과목 매트릭스", col_end=last_col)
+    r += 1
+
+    # 헤더 행 — 채권/채무 계정 그룹화 표시
+    _header_cell(ws, r, 1, "No")
+    _header_cell(ws, r, 2, "거래처명")
+    _header_cell(ws, r, 3, "구분")
+    for acct, col in _AR_GROUP_COLS.items():
+        _header_cell(ws, r, col, acct)
+    for acct, col in _AP_GROUP_COLS.items():
+        _header_cell(ws, r, col, acct)
+    _header_cell(ws, r, sum_col,     "합계")
+    _header_cell(ws, r, sum_col + 1, "Key")
+    _header_cell(ws, r, sum_col + 2, "Rep")
+    _header_cell(ws, r, sum_col + 3, "특관")
+    _header_cell(ws, r, sum_col + 4, "최종")
+    r += 1
+
+    # 모든 거래처 (채권 + 채무 통합)
+    all_parties_map: dict[str, tuple[PartyDecision | None, PartyDecision | None]] = {}
+
+    if ar_kd:
+        for d in ar_kd.decisions:
+            if d.name not in all_parties_map:
+                all_parties_map[d.name] = (d, None)
+            else:
+                all_parties_map[d.name] = (d, all_parties_map[d.name][1])
+    if ap_kd:
+        for d in ap_kd.decisions:
+            if d.name not in all_parties_map:
+                all_parties_map[d.name] = (None, d)
+            else:
+                all_parties_map[d.name] = (all_parties_map[d.name][0], d)
+
+    parties_sorted = sorted(
+        all_parties_map.items(),
+        key=lambda x: -(
+            (x[1][0].balance if x[1][0] else 0) +
+            (x[1][1].balance if x[1][1] else 0)
+        ),
+    )
+
+    totals_ar_cols: dict[str, float] = {g: 0.0 for g in _AR_GROUP_COLS}
+    totals_ap_cols: dict[str, float] = {g: 0.0 for g in _AP_GROUP_COLS}
+    grand_total = 0.0
+
+    for seq, (name, (ar_d, ap_d)) in enumerate(parties_sorted, 1):
+        is_ki  = bool((ar_d and ar_d.is_key_item) or (ap_d and ap_d.is_key_item))
+        is_rep = bool((ar_d and ar_d.is_representative) or (ap_d and ap_d.is_representative))
+        is_rp  = bool((ar_d and ar_d.is_related_party) or (ap_d and ap_d.is_related_party))
+        is_fin = bool((ar_d and ar_d.final_sampled) or (ap_d and ap_d.final_sampled))
+        is_excl = bool((ar_d and ar_d.is_excluded) and (ap_d is None or ap_d.is_excluded))
+
+        kind_str = (
+            "채권+채무" if ar_d and ap_d else
+            "채권" if ar_d else "채무"
+        )
+
+        total = (
+            (ar_d.balance if ar_d and not ar_d.is_excluded else 0) +
+            (ap_d.balance if ap_d and not ap_d.is_excluded else 0)
+        )
+
+        c = ws.cell(r, 1, seq)
+        b = _left_ki_border() if is_ki else _left_rep_border() if is_rep else BORDER_LIGHT
+        _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
+               fill=FILL_WHITE, border=b, alignment=_al("center"))
+        _row_height(ws, r, 22)
+
+        c = ws.cell(r, 2, name)
+        _apply(c, font=FONT_FADED_STRIKE if is_excl else (FONT_BOLD if is_ki else FONT_BODY),
+               fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("left"))
+
+        c = ws.cell(r, 3, kind_str)
+        _apply(c, font=FONT_ACCENT if kind_str == "채권+채무" else FONT_BODY,
+               fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("center"))
+
+        for acct, col in _AR_GROUP_COLS.items():
+            amt = (ar_d.by_account.get(acct, 0.0) if ar_d else 0.0)
+            c = ws.cell(r, col, amt if amt else None)
+            _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
+                   fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("right"), number_format=NUMFMT_INT)
+            if not is_excl:
+                totals_ar_cols[acct] = totals_ar_cols.get(acct, 0.0) + amt
+
+        for acct, col in _AP_GROUP_COLS.items():
+            amt = (ap_d.by_account.get(acct, 0.0) if ap_d else 0.0)
+            c = ws.cell(r, col, amt if amt else None)
+            _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
+                   fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("right"), number_format=NUMFMT_INT)
+            if not is_excl:
+                totals_ap_cols[acct] = totals_ap_cols.get(acct, 0.0) + amt
+
+        c = ws.cell(r, sum_col, total if total else None)
+        _apply(c, font=FONT_FADED if is_excl else (FONT_ACCENT if is_ki else FONT_BODY),
+               fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+        grand_total += total
+
+        for col_offset, flag, label_y, label_n in [
+            (1, is_ki,  "Y", "N"),
+            (2, is_rep, "Y", "N"),
+            (3, is_rp,  "Y", "N"),
+            (4, is_fin, "Y", "N"),
+        ]:
+            c = ws.cell(r, sum_col + col_offset, label_y if flag else label_n)
+            f = FONT_ACCENT if flag else FONT_FADED
+            _apply(c, font=f, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("center"))
+        r += 1
+
+    # 합계 행
+    _total_row_cell(ws, r, 2, "합계")
+    for acct, col in _AR_GROUP_COLS.items():
+        _total_row_cell(ws, r, col, totals_ar_cols.get(acct) or None, is_num=True)
+    for acct, col in _AP_GROUP_COLS.items():
+        _total_row_cell(ws, r, col, totals_ap_cols.get(acct) or None, is_num=True)
+    _total_row_cell(ws, r, sum_col, grand_total or None, is_num=True)
+    all_d = list(all_parties_map.values())
+    _total_row_cell(ws, r, sum_col + 1, sum(1 for a, b in all_d if (a and a.is_key_item) or (b and b.is_key_item)), is_num=True)
+    _total_row_cell(ws, r, sum_col + 2, sum(1 for a, b in all_d if (a and a.is_representative) or (b and b.is_representative)), is_num=True)
+    _total_row_cell(ws, r, sum_col + 3, sum(1 for a, b in all_d if (a and a.is_related_party) or (b and b.is_related_party)), is_num=True)
+    _total_row_cell(ws, r, sum_col + 4, sum(1 for a, b in all_d if (a and a.final_sampled) or (b and b.final_sampled)), is_num=True)
+
+
+# ─────────────────────────────────────────────────────────────
+# Sheet 6: MUS 추출 내역
+# ─────────────────────────────────────────────────────────────
+
+def _build_sheet_mus_detail(
+    wb,
+    ctx: ReportContext,
+    ar_kd: KindData | None,
+    ap_kd: KindData | None,
+) -> None:
+    ws = wb.create_sheet("MUS 추출 내역")
+
+    for c, w in [(1, 4), (2, 28), (3, 16), (4, 16), (5, 10), (6, 16), (7, 16), (8, 8)]:
+        _set_col_width(ws, c, w)
+
+    prep_date   = ctx.prep_date   or date.today()
+    review_date = ctx.review_date or date.today()
+
+    _write_doc_header(
+        ws, ctx.company_name, "MUS 추출 내역",
+        ctx.period_end, ctx.preparer, ctx.reviewer,
+        prep_date, review_date, wp_no="MUS",
+        last_col=8,
+    )
+
+    r = 5
+    method = (
+        "임의출발점(r₀) ≤ J 범위 내 난수, 이후 J마다 화폐단위 선택. "
+        "누적금액이 r₀ + k×J를 처음 초과하는 거래처 = hit. (감사기준서 530)"
+    )
+    c_cell = ws.cell(r, 1, method)
+    _apply(c_cell, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+           alignment=_al("left", wrap=True))
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
+    _row_height(ws, r, 36)
+    r += 2
+
+    for kd, kind_label in [(ar_kd, "채권 (C100)"), (ap_kd, "채무 (AA100)")]:
+        if kd is None:
+            continue
+
+        _subheader_row(ws, r, kind_label, col_end=8)
+        r += 1
+
+        size = kd.size_result
+        mus  = kd.mus_result
+
+        # 파라미터 요약
+        for label, val, fmt in [
+            ("잔여 모집단", size.remaining_population, NUMFMT_INT),
+            ("표본규모 (N)", size.final_sample_size,  NUMFMT_INT),
+            ("표본간격 (J)", size.sample_interval,    NUMFMT_INT),
+            ("임의출발점 (r₀)", mus.random_start,     NUMFMT_INT),
+        ]:
+            _text_cell(ws, r, 1, label, font=FONT_BOLD)
+            _num_cell(ws, r, 2, val, fmt=fmt)
+            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=8)
+            r += 1
+
+        r += 1
+
+        # 추출 내역 표
+        for col_idx, h in enumerate(["No", "거래처명", "잔액", "누적금액", "선택횟수", "표본간격", "잔여", "hit"], 1):
+            _header_cell(ws, r, col_idx, h)
+        r += 1
+
+        hit_total = 0
+        for i, sel in enumerate(mus.selections, 1):
+            is_hit = sel.hit
+            if is_hit:
+                hit_total += 1
+            border_l = _left_rep_border() if is_hit else BORDER_LIGHT
+            font_v   = FONT_BOLD if is_hit else FONT_BODY
+
+            c = ws.cell(r, 1, i)
+            _apply(c, font=font_v, fill=FILL_WHITE, border=border_l, alignment=_al("center"))
+            _row_height(ws, r, 22)
+            c = ws.cell(r, 2, sel.name)
+            hit_name_font = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_GREEN) if is_hit else FONT_BODY
+            _apply(c, font=hit_name_font, fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("left"))
+            _num_cell(ws, r, 3, sel.balance,    font=font_v)
+            _num_cell(ws, r, 4, sel.cumulative, font=font_v)
+            c = ws.cell(r, 5, sel.selections)
+            _apply(c, font=font_v, fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("center"))
+            _num_cell(ws, r, 6, size.sample_interval, font=FONT_FADED)
+            _num_cell(ws, r, 7, sel.remainder_after,  font=font_v)
+            hit_str = "Y" if is_hit else "N"
+            hit_font = FONT_GREEN if is_hit else FONT_FADED
+            c = ws.cell(r, 8, hit_str)
+            _apply(c, font=hit_font, fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("center"))
+            r += 1
+
+        # 합계 행
+        _total_row_cell(ws, r, 2, "합계")
+        _total_row_cell(ws, r, 3, sum(s.balance for s in mus.selections), is_num=True)
+        _total_row_cell(ws, r, 5, sum(s.selections for s in mus.selections), is_num=True)
+        _total_row_cell(ws, r, 8, f"{hit_total}건")
+        r += 2
+
+
+# ─────────────────────────────────────────────────────────────
+# Sheet 7: 주소 적정성
+# ─────────────────────────────────────────────────────────────
+
+def _build_sheet_address(
+    wb,
+    ctx: ReportContext,
     contacts: list[PartyContactInfo],
 ) -> None:
-    ws = wb.create_sheet("C100A 조회처 주소 적정성")
+    ws = wb.create_sheet("주소 적정성")
 
-    for c, w in [(1, 4.0), (2, 33.85), (3, 10.0), (4, 16.0), (5, 13.0),
-                 (6, 13.0), (7, 16.0), (8, 24.0), (9, 10.0), (10, 20.0)]:
+    for c, w in [(1, 4), (2, 28), (3, 10), (4, 16), (5, 13),
+                 (6, 13), (7, 16), (8, 22), (9, 10), (10, 20)]:
         _set_col_width(ws, c, w)
 
     prep_date   = ctx.prep_date   or date.today()
@@ -809,425 +1532,166 @@ def _build_c100a(
     r += 1
 
     headers = ["No", "거래처명", "국가", "사업자번호", "대표자명",
-               "담당자명", "전화번호", "이메일", "주소 적정성", "비고"]
+               "담당자명", "전화번호", "이메일", "적정성", "비고"]
     for i, h in enumerate(headers, 1):
         _header_cell(ws, r, i, h)
     r += 1
 
     if not contacts:
         c_cell = ws.cell(r, 2, "UploadGuide 미제공 — 주소 정보 없음")
-        _apply(c_cell, font=FONT_GRAY_ITALIC, border=BORDER_THIN, alignment=_al("left"))
+        _apply(c_cell, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("left"))
         ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=10)
         return
 
-    for seq, ct in enumerate(contacts, 1):
+    # 중복 거래처 제거
+    seen: set[str] = set()
+    unique_contacts = []
+    for ct in contacts:
+        if ct.name not in seen:
+            seen.add(ct.name)
+            unique_contacts.append(ct)
+
+    for seq, ct in enumerate(unique_contacts, 1):
+        ok = bool(ct.email or ct.phone)
+        ok_font = FONT_GREEN if ok else FONT_RED
+        ok_str  = "Y" if ok else "N"
+
         _text_cell(ws, r, 1, seq,              align="center")
-        _text_cell(ws, r, 2, ct.name,          align="left")
+        _text_cell(ws, r, 2, ct.name)
         _text_cell(ws, r, 3, ct.country,       align="center")
-        _text_cell(ws, r, 4, ct.business_no,   align="left")
-        _text_cell(ws, r, 5, ct.ceo_name,      align="left")
-        _text_cell(ws, r, 6, ct.contact_person, align="left")
-        _text_cell(ws, r, 7, ct.phone,         align="left")
-        _text_cell(ws, r, 8, ct.email,         align="left")
-        ok = "Y" if (ct.email or ct.phone) else "N"
-        fill_ok = FILL_SAMPLED if ok == "Y" else FILL_EXCLUDED
-        _text_cell(ws, r, 9, ok, fill=fill_ok, align="center")
+        _text_cell(ws, r, 4, ct.business_no)
+        _text_cell(ws, r, 5, ct.ceo_name)
+        _text_cell(ws, r, 6, ct.contact_person)
+        _text_cell(ws, r, 7, ct.phone)
+        _text_cell(ws, r, 8, ct.email)
+        c = ws.cell(r, 9, ok_str)
+        _apply(c, font=ok_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("center"))
+        _row_height(ws, r, 22)
         _text_cell(ws, r, 10, "", align="left")
         r += 1
 
 
 # ─────────────────────────────────────────────────────────────
-# Sheet 4: C100-1 표본규모 결정
+# Sheet 8: 회신 추적
 # ─────────────────────────────────────────────────────────────
 
-def _build_c100_1(
-    wb, ctx: ReportContext,
-    size_result: SampleSizeResult,
-    decisions: list[PartyDecision],
-    population_amount: float,
-    pm: float,
-    prefix: str,
+def _build_sheet_reply_tracking(
+    wb,
+    ctx: ReportContext,
+    replies: list[ConfirmationReplyInfo],
+    all_decisions: list[PartyDecision],
 ) -> None:
-    ws = wb.create_sheet(f"{prefix}-1 표본규모 결정")
+    ws = wb.create_sheet("회신 추적")
 
-    # 컬럼 너비 — 7620 C100-1 기준
-    for c, w in [(1, 33.85), (2, 19.28), (3, 16.71), (4, 13.0), (5, 13.0)]:
+    for c, w in [(1, 4), (2, 28), (3, 16), (4, 16), (5, 16), (6, 12), (7, 14)]:
         _set_col_width(ws, c, w)
 
     prep_date   = ctx.prep_date   or date.today()
     review_date = ctx.review_date or date.today()
 
     _write_doc_header(
-        ws, ctx.company_name, f"{prefix}-1 표본규모 결정 (MUS)",
+        ws, ctx.company_name, "조회서 회신 추적",
         ctx.period_end, ctx.preparer, ctx.reviewer,
-        prep_date, review_date, wp_no=f"{prefix}-1",
+        prep_date, review_date, wp_no="회신추적",
+        last_col=7,
     )
 
     r = 5
-
-    # 1. 감사목적
-    _subheader_row(ws, r, "1. 감사목적", col_end=5)
-    r += 1
-    purpose_text = (
-        "본 절차는 감사기준서 505(외부조회)에 따라 채권채무 잔액의 실재성·완전성을 "
-        "확인하기 위한 외부 조회 절차입니다. MUS(Monetary Unit Sampling)를 이용하여 "
-        "통계적 방법으로 표본을 추출합니다."
-    )
-    c = ws.cell(r, 1, purpose_text)
-    _apply(c, font=FONT_BASE, border=BORDER_THIN,
-           alignment=Alignment(horizontal="left", vertical="top", wrap_text=True))
-    ws.merge_cells(start_row=r, start_column=1, end_row=r + 1, end_column=5)
-    ws.row_dimensions[r].height = 40
-    r += 2
-
-    # 2. 조회대상 표본
-    r += 1
-    _subheader_row(ws, r, "2. 조회대상 표본", col_end=5)
+    _subheader_row(ws, r, "PDF 회신 처리 결과", col_end=7)
     r += 1
 
-    ki    = [d for d in decisions if d.is_key_item and not d.is_excluded]
-    rep_d = [d for d in decisions if d.is_representative and not d.is_key_item and not d.is_excluded]
-    final_all = [d for d in decisions if d.final_sampled and not d.is_excluded]
-    ki_amt  = sum(d.balance for d in ki)
-    rep_amt = sum(d.balance for d in rep_d)
-    total_amt = ki_amt + rep_amt
-    total_n   = len(ki) + len(rep_d)
+    # 요약 통계
+    if replies:
+        total_sent = len([d for d in all_decisions if d.final_sampled and not d.is_excluded])
+        replied    = [x for x in replies if x.status != "미회신"]
+        matched    = [x for x in replies if x.status == "matched"]
+        mismatch   = [x for x in replies if x.status == "mismatch"]
+        no_reply   = [x for x in replies if x.status == "미회신"]
 
-    for c_idx, h in enumerate(["구분", "건수", "금액", "Coverage (건수)", "Coverage (금액)"], 1):
-        _header_cell(ws, r, c_idx, h)
-    r += 1
-
-    sample_rows = [
-        ("Key item",          len(ki),   ki_amt,
-         len(ki)   / len(final_all) if final_all else 0,
-         ki_amt   / population_amount if population_amount else 0),
-        ("Representative (MUS)", len(rep_d), rep_amt,
-         len(rep_d) / len(final_all) if final_all else 0,
-         rep_amt  / population_amount if population_amount else 0),
-        ("표본 합계",         total_n,  total_amt,
-         total_n  / len(final_all) if final_all else 0,
-         total_amt / population_amount if population_amount else 0),
-        ("모집단",            len([d for d in decisions if not d.is_excluded]),
-         population_amount, 1.0, 1.0),
-    ]
-    for label, n, amt, cov_n, cov_a in sample_rows:
-        is_total = label in ("표본 합계", "모집단")
-        _text_cell(ws, r, 1, label, bold=is_total)
-        _num_cell(ws, r, 2, n)
-        _num_cell(ws, r, 3, amt)
-        _pct_cell(ws, r, 4, cov_n)
-        _pct_cell(ws, r, 5, cov_a)
-        if is_total:
-            for col in range(1, 6):
-                ws.cell(r, col).font = FONT_BOLD
-                ws.cell(r, col).fill = FILL_TOTAL_ROW
+        summary_data = [
+            ("발송 건수",  total_sent, FONT_BODY),
+            ("회신 수령",  len(replied), FONT_GREEN),
+            ("일치",       len(matched),  FONT_GREEN),
+            ("불일치",     len(mismatch), FONT_RED),
+            ("미회신",     len(no_reply), FONT_AMBER),
+        ]
+        for col_idx, (lbl, val, f) in enumerate(summary_data, 1):
+            c = ws.cell(r, col_idx, lbl)
+            _apply(c, font=FONT_FADED, fill=FILL_BG_SUB, border=BORDER_LIGHT,
+                   alignment=_al("center"))
         r += 1
+        for col_idx, (lbl, val, f) in enumerate(summary_data, 1):
+            c = ws.cell(r, col_idx, val)
+            _apply(c, font=f, fill=FILL_BG_SUB, border=BORDER_LIGHT,
+                   alignment=_al("center"), number_format=NUMFMT_INT)
+        _row_height(ws, r, 28)
+        r += 2
 
-    # 3. 표본규모 결정근거
-    r += 1
-    _subheader_row(ws, r, "3. 표본규모 결정근거", col_end=5)
+    # 상세 표
+    for col_idx, h in enumerate(["No", "거래처명", "회신 금액", "장부가", "차이", "상태", "회신일자"], 1):
+        _header_cell(ws, r, col_idx, h)
     r += 1
 
-    params = [
-        ("모집단 금액",                                     population_amount, NUMFMT_INT, False),
-        ("수행중요성 (PM)",                                 pm,                NUMFMT_INT, True),
-        ("Key item 기준금액 (PM × {}%)".format(
-            int(size_result.key_item_ratio * 100)),         size_result.key_item_threshold, NUMFMT_INT, True),
-        ("Key item 금액 (차감)",                            ki_amt,            NUMFMT_INT, False),
-        ("Key item 건수",                                   len(ki),           NUMFMT_INT, False),
-        ("Base sample size",                                size_result.base_sample_size, NUMFMT_INT, False),
-        ("신뢰계수 (CF)",                                   size_result.confidence_factor, "0.00", False),
-        ("Final sample size",                               size_result.final_sample_size, NUMFMT_INT, False),
-        ("표본간격 (J)",                                    size_result.sample_interval,   NUMFMT_INT, False),
-        ("잔여 모집단",                                     size_result.remaining_population, NUMFMT_INT, False),
-    ]
-    for label, val, fmt, is_input in params:
-        _text_cell(ws, r, 1, label,
-                   bold=("Final" in label or "Base" in label))
-        if is_input:
-            _input_cell(ws, r, 2, val, fmt=fmt)
-        else:
-            _num_cell(ws, r, 2, val, fmt=fmt)
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=5)
+    final_map = {d.name: d.balance for d in all_decisions if d.final_sampled and not d.is_excluded}
+
+    if not replies:
+        c = ws.cell(r, 2, "Step 4 미완료 — 회신 데이터 없음")
+        _apply(c, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("left"))
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=7)
+        return
+
+    for seq, rep in enumerate(replies, 1):
+        status_label = {
+            "matched": "일치", "mismatch": "불일치",
+            "needs_review": "검토필요", "미회신": "미회신",
+        }.get(rep.status, rep.status)
+
+        status_font = (
+            FONT_GREEN  if status_label == "일치"    else
+            FONT_RED    if status_label == "불일치"   else
+            FONT_AMBER  if status_label == "검토필요" else
+            FONT_FADED
+        )
+
+        ledger_bal  = final_map.get(rep.party_name, 0.0)
+        reply_amt   = rep.extracted_balance
+        diff        = (reply_amt - ledger_bal) if reply_amt is not None else None
+
+        _text_cell(ws, r, 1, seq, align="center")
+        _text_cell(ws, r, 2, rep.party_name)
+        c = ws.cell(r, 3, reply_amt)
+        _apply(c, font=FONT_BODY, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+        _row_height(ws, r, 22)
+        _num_cell(ws, r, 4, ledger_bal)
+        c = ws.cell(r, 5, diff)
+        diff_font = FONT_RED if diff and abs(diff) > 0 else FONT_BODY
+        _apply(c, font=diff_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("right"), number_format=NUMFMT_INT)
+        c = ws.cell(r, 6, status_label)
+        _apply(c, font=status_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("center"))
+        c = ws.cell(r, 7, rep.reply_date or "")
+        _apply(c, font=FONT_BODY, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("center"))
         r += 1
 
 
 # ─────────────────────────────────────────────────────────────
-# Sheet 5: C100-2 Key item 추출
+# Sheet 9: 대체적 절차
 # ─────────────────────────────────────────────────────────────
 
-_AR_GROUP_COLS = {
-    "외상매출금": 3, "받을어음": 4, "미수금": 5, "선급금": 6,
-    "장기대여금": 7, "임차보증금": 8, "기타보증금": 9,
-}
-_AP_GROUP_COLS = {
-    "외상매입금": 3, "지급어음(외담대외상매입금)": 4, "미지급금": 5,
-    "선수금": 6, "임대보증금": 7,
-}
-
-
-def _build_c100_2(
-    wb, ctx: ReportContext,
-    completeness: CompletenessCheck,
-    size_result: SampleSizeResult,
-    decisions: list[PartyDecision],
-    pm: float,
-    exclusion_rows: list[ExclusionRow],
-    prefix: str,
-) -> None:
-    ws = wb.create_sheet(f"{prefix}-2 Key item 추출")
-
-    for c, w in [(1, 2.7), (2, 33.85), (3, 19.28), (4, 16.71), (5, 13.0),
-                 (6, 13.0), (7, 13.0), (8, 13.0), (9, 13.0), (10, 13.0),
-                 (11, 10.0), (12, 8.0), (13, 8.0), (14, 8.0), (15, 8.0)]:
-        _set_col_width(ws, c, w)
-
-    prep_date   = ctx.prep_date   or date.today()
-    review_date = ctx.review_date or date.today()
-
-    _write_doc_header(
-        ws, ctx.company_name, f"{prefix}-2 Key item 추출 (MUS)",
-        ctx.period_end, ctx.preparer, ctx.reviewer,
-        prep_date, review_date, wp_no=f"{prefix}-2",
-        last_col=15,
-    )
-
-    r = 5
-
-    # 1. 모집단 완전성 검토
-    _subheader_row(ws, r, "1. 모집단 완전성 검토", col_end=15)
-    r += 1
-
-    for c_idx, h in enumerate(["No", "계정과목그룹", "회사 명세서", "재무제표", "차이", "비고"], 1):
-        _header_cell(ws, r, c_idx, h, col_end=15 if c_idx == 6 else None)
-    r += 1
-
-    for i, row_data in enumerate(completeness.by_group, 1):
-        diff_fill = FILL_EXCLUDED if abs(row_data["diff"]) > 0 else None
-        _text_cell(ws, r, 1, i, align="center")
-        _text_cell(ws, r, 2, row_data["group"])
-        _num_cell(ws, r, 3, row_data["ledger"])
-        _num_cell(ws, r, 4, row_data["fs"])
-        _num_cell(ws, r, 5, row_data["diff"], fill=diff_fill)
-        note = ws.cell(r, 6, row_data.get("note", "") or "")
-        _apply(note, font=FONT_BASE, border=BORDER_THIN, alignment=_al("left"))
-        ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=15)
-        r += 1
-
-    # 합계 행
-    _total_row_cell(ws, r, 2, "합계")
-    _total_row_cell(ws, r, 3, completeness.total_ledger, is_num=True)
-    _total_row_cell(ws, r, 4, completeness.total_fs,     is_num=True)
-    diff_color = FILL_EXCLUDED if abs(completeness.total_diff) > 0 else FILL_TOTAL_ROW
-    c_diff = ws.cell(r, 5, completeness.total_diff)
-    _apply(c_diff, font=FONT_BOLD, fill=diff_color, border=BORDER_THIN,
-           alignment=_al("right"), number_format=NUMFMT_INT)
-    r += 1
-
-    # 2. 발송제외 거래처
-    r += 1
-    _subheader_row(ws, r, "2. 발송제외 거래처", col_end=15)
-    r += 1
-
-    excl_from_dec = [d for d in decisions if d.is_excluded]
-    all_exclusions: list[tuple[str, str, float]] = []
-    for d in excl_from_dec:
-        all_exclusions.append((d.name, d.exclusion_reason or "", d.balance))
-    existing_names = {x[0] for x in all_exclusions}
-    for ex in exclusion_rows:
-        if ex.name not in existing_names:
-            all_exclusions.append((ex.name, "발송대상 제외", ex.amount))
-
-    for c_idx, h in enumerate(["No", "거래처명", "장부가", "제외 사유"], 1):
-        _header_cell(ws, r, c_idx, h, col_end=15 if c_idx == 4 else None)
-    r += 1
-
-    if all_exclusions:
-        for seq, (name, reason, bal) in enumerate(all_exclusions, 1):
-            _text_cell(ws, r, 1, seq, align="center", fill=FILL_EXCLUDED)
-            _text_cell(ws, r, 2, name, fill=FILL_EXCLUDED, align="left")
-            _num_cell(ws, r, 3, bal, fill=FILL_EXCLUDED)
-            note_c = ws.cell(r, 4, reason)
-            _apply(note_c, font=FONT_BASE, fill=FILL_EXCLUDED,
-                   border=BORDER_THIN, alignment=_al("left"))
-            ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=15)
-            r += 1
-    else:
-        c_empty = ws.cell(r, 2, "발송제외 거래처 없음")
-        _apply(c_empty, font=FONT_GRAY_ITALIC, border=BORDER_THIN, alignment=_al("left"))
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=15)
-        r += 1
-
-    # 3. Key item 기준금액 (입력값 강조)
-    r += 1
-    _subheader_row(ws, r, "3. Key item 기준금액", col_end=15)
-    r += 1
-
-    for label, val, fmt, is_input in [
-        ("수행중요성 (PM)",              pm,                         NUMFMT_INT, True),
-        ("Key item 비율",               size_result.key_item_ratio, "0%",       False),
-        ("Key item 기준금액 (PM × 비율)", size_result.key_item_threshold, NUMFMT_INT, True),
-    ]:
-        _text_cell(ws, r, 1, label, bold=True)
-        if is_input:
-            _input_cell(ws, r, 2, val, fmt=fmt)
-        else:
-            _num_cell(ws, r, 2, val, fmt=fmt)
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=15)
-        r += 1
-
-    # 4. 거래처별 매트릭스
-    r += 1
-    _subheader_row(ws, r, "4. 거래처별 매트릭스", col_end=15)
-    r += 1
-
-    is_ar = prefix == "C100"
-    group_col_map = dict(_AR_GROUP_COLS) if is_ar else dict(_AP_GROUP_COLS)
-
-    matrix_headers = [(1, "No"), (2, "거래처명")]
-    for g, c_idx in group_col_map.items():
-        matrix_headers.append((c_idx, g))
-    matrix_headers += [(10, "합계"), (11, "Key"), (12, "Rep"), (13, "특관"), (14, "최종")]
-
-    for col_idx, label in matrix_headers:
-        _header_cell(ws, r, col_idx, label)
-    r += 1
-
-    parties = sorted(
-        [d for d in decisions if not d.is_excluded and d.balance > 0],
-        key=lambda d: d.name,
-    )
-    totals: dict[str, float] = {}
-
-    for seq, d in enumerate(parties, 1):
-        fill = _party_fill(d)
-        _text_cell(ws, r, 1, seq,    fill=fill, align="center")
-        _text_cell(ws, r, 2, d.name, fill=fill, align="left")
-
-        for g, col in group_col_map.items():
-            amt = d.by_account.get(g, 0.0)
-            if amt:
-                _num_cell(ws, r, col, amt, fill=fill)
-            else:
-                _text_cell(ws, r, col, "", fill=fill, align="right")
-            totals[g] = totals.get(g, 0.0) + amt
-
-        _num_cell(ws, r, 10, d.balance, fill=fill)
-        _text_cell(ws, r, 11, "Y" if d.is_key_item       else "N", fill=fill, align="center")
-        _text_cell(ws, r, 12, "Y" if d.is_representative else "N", fill=fill, align="center")
-        _text_cell(ws, r, 13, "Y" if d.is_related_party  else "N", fill=fill, align="center")
-        _text_cell(ws, r, 14, "Y" if d.final_sampled      else "N", fill=fill, align="center")
-        r += 1
-
-    # 합계 행
-    _total_row_cell(ws, r, 2, "합계")
-    for g, col in group_col_map.items():
-        _total_row_cell(ws, r, col, totals.get(g) or None, is_num=True)
-    _total_row_cell(ws, r, 10, sum(d.balance for d in parties) or None, is_num=True)
-    _total_row_cell(ws, r, 11, len([d for d in parties if d.is_key_item]),       is_num=True)
-    _total_row_cell(ws, r, 12, len([d for d in parties if d.is_representative]), is_num=True)
-    _total_row_cell(ws, r, 13, len([d for d in parties if d.is_related_party]),  is_num=True)
-    _total_row_cell(ws, r, 14, len([d for d in parties if d.final_sampled]),     is_num=True)
-
-
-# ─────────────────────────────────────────────────────────────
-# Sheet 6: C100-3 표본 추출 (MUS)
-# ─────────────────────────────────────────────────────────────
-
-def _build_c100_3(
-    wb, ctx: ReportContext,
-    size_result: SampleSizeResult,
-    mus_result: MUSResult,
-    prefix: str,
-) -> None:
-    ws = wb.create_sheet(f"{prefix}-3 표본 추출(MUS)")
-
-    for c, w in [(1, 2.7), (2, 33.85), (3, 19.28), (4, 16.71), (5, 13.0),
-                 (6, 13.0), (7, 13.0), (8, 8.0)]:
-        _set_col_width(ws, c, w)
-
-    prep_date   = ctx.prep_date   or date.today()
-    review_date = ctx.review_date or date.today()
-
-    _write_doc_header(
-        ws, ctx.company_name, f"{prefix}-3 표본 추출 (MUS)",
-        ctx.period_end, ctx.preparer, ctx.reviewer,
-        prep_date, review_date, wp_no=f"{prefix}-3",
-    )
-
-    r = 5
-
-    # 1. 표본추출방법
-    _subheader_row(ws, r, "1. 표본추출방법", col_end=8)
-    r += 1
-    method_text = (
-        "MUS(Monetary Unit Sampling): 거래금액 단위로 임의 출발점을 설정하고 "
-        "표본간격(J)마다 화폐단위를 선택하는 통계적 표본추출 방법 (감사기준서 530)."
-    )
-    c = ws.cell(r, 1, method_text)
-    _apply(c, font=FONT_BASE, border=BORDER_THIN,
-           alignment=Alignment(horizontal="left", vertical="top", wrap_text=True))
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
-    ws.row_dimensions[r].height = 30
-    r += 1
-
-    # 2. 표본추출 모수
-    r += 1
-    _subheader_row(ws, r, "2. 표본추출 모수", col_end=8)
-    r += 1
-
-    for label, val, fmt in [
-        ("잔여 모집단 (Key item 제외)", size_result.remaining_population, NUMFMT_INT),
-        ("표본규모 (N)",               size_result.final_sample_size,    NUMFMT_INT),
-        ("표본간격 (J)",               size_result.sample_interval,      NUMFMT_INT),
-        ("임의출발점 (r₀)",            mus_result.random_start,          NUMFMT_INT),
-    ]:
-        _text_cell(ws, r, 1, label, bold=True)
-        _num_cell(ws, r, 2, val, fmt=fmt)
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=8)
-        r += 1
-
-    # 3. MUS 추출 내역
-    r += 1
-    _subheader_row(ws, r, "3. Representative sample 추출 내역", col_end=8)
-    r += 1
-
-    for c_idx, h in enumerate(
-        ["No", "거래처명", "잔액", "누적금액", "선택횟수", "표본간격", "잔여", "hit"], 1
-    ):
-        _header_cell(ws, r, c_idx, h)
-    r += 1
-
-    for i, sel in enumerate(mus_result.selections, 1):
-        fill = FILL_SAMPLED if sel.hit else None
-        _text_cell(ws, r, 1, i,              fill=fill, align="center")
-        _text_cell(ws, r, 2, sel.name,       fill=fill, align="left")
-        _num_cell(ws, r, 3, sel.balance,     fill=fill)
-        _num_cell(ws, r, 4, sel.cumulative,  fill=fill)
-        _text_cell(ws, r, 5, sel.selections, fill=fill, align="center")
-        _num_cell(ws, r, 6, size_result.sample_interval, fill=fill)
-        _num_cell(ws, r, 7, sel.remainder_after, fill=fill)
-        _text_cell(ws, r, 8, "Y" if sel.hit else "N", fill=fill, align="center")
-        r += 1
-
-    # 합계 행
-    _total_row_cell(ws, r, 2, "합계")
-    _total_row_cell(ws, r, 3, sum(s.balance for s in mus_result.selections), is_num=True)
-    _total_row_cell(ws, r, 5, sum(s.selections for s in mus_result.selections), is_num=True)
-
-
-# ─────────────────────────────────────────────────────────────
-# Sheet 7: 대체적 절차
-# ─────────────────────────────────────────────────────────────
-
-def _build_alt_procedures(
-    wb, ctx: ReportContext,
+def _build_sheet_alt_procedures(
+    wb,
+    ctx: ReportContext,
     procedures: list[AlternativeProcedureEntry],
 ) -> None:
     ws = wb.create_sheet("대체적 절차")
 
-    for c, w in [(1, 2.7), (2, 33.85), (3, 10.0), (4, 16.71), (5, 13.0),
-                 (6, 24.0), (7, 16.71), (8, 10.0), (9, 10.0), (10, 24.0)]:
+    for c, w in [(1, 4), (2, 28), (3, 10), (4, 16), (5, 14),
+                 (6, 22), (7, 14), (8, 10), (9, 10), (10, 22)]:
         _set_col_width(ws, c, w)
 
     prep_date   = ctx.prep_date   or date.today()
@@ -1251,33 +1715,32 @@ def _build_alt_procedures(
     r += 1
 
     if not procedures:
-        c_empty = ws.cell(r, 2, "대체적 절차 대상 없음 (Step 5 미완료 또는 전원 일치)")
-        _apply(c_empty, font=FONT_GRAY_ITALIC, border=BORDER_THIN, alignment=_al("left"))
+        c = ws.cell(r, 2, "대체적 절차 대상 없음 (Step 5 미완료 또는 전원 일치)")
+        _apply(c, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+               alignment=_al("left"))
         ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=10)
         r += 1
     else:
         for i, proc in enumerate(procedures, 1):
-            conclusion_fill = {
-                "충분":  FILL_CONCLUSION_OK,
-                "부분":  FILL_CONCLUSION_PARTIAL,
-                "미해소": FILL_CONCLUSION_FAIL,
-            }.get(proc.conclusion)
+            conclusion_font = {
+                "충분":  FONT_GREEN,
+                "부분":  FONT_AMBER,
+                "미해소": FONT_RED,
+            }.get(proc.conclusion, FONT_BODY)
 
             _text_cell(ws, r, 1, i, align="center")
-            _text_cell(ws, r, 2, proc.party_name, align="left")
+            _text_cell(ws, r, 2, proc.party_name)
             _text_cell(ws, r, 3, proc.reason, align="center")
             _num_cell(ws, r, 4, proc.ledger_balance)
             _text_cell(ws, r, 5, proc.procedure_type, align="center")
-            _text_cell(ws, r, 6,
-                       "; ".join(proc.evidence_names) if proc.evidence_names else "",
-                       align="left")
+            _text_cell(ws, r, 6, "; ".join(proc.evidence_names) if proc.evidence_names else "")
             _num_cell(ws, r, 7, proc.covered_amount)
-            if proc.coverage_ratio is not None:
-                _pct_cell(ws, r, 8, proc.coverage_ratio, fill=conclusion_fill)
-            else:
-                _text_cell(ws, r, 8, "", align="center")
-            _text_cell(ws, r, 9, proc.conclusion,   fill=conclusion_fill, align="center")
-            _text_cell(ws, r, 10, proc.auditor_notes or "", align="left")
+            _pct_cell(ws, r, 8, proc.coverage_ratio)
+            c = ws.cell(r, 9, proc.conclusion)
+            _apply(c, font=conclusion_font, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("center"))
+            _row_height(ws, r, 22)
+            _text_cell(ws, r, 10, proc.auditor_notes or "")
             r += 1
 
     # 집계 요약
@@ -1293,23 +1756,27 @@ def _build_alt_procedures(
         total_ledger  = sum(p.ledger_balance or 0 for p in procedures)
         overall_ratio = total_covered / total_ledger if total_ledger > 0 else None
 
-        for label, val, fmt, fill in [
-            ("충분 건수",   sufficient,    NUMFMT_INT, FILL_CONCLUSION_OK),
-            ("부분 건수",   partial,       NUMFMT_INT, FILL_CONCLUSION_PARTIAL),
-            ("미해소 건수", unresolved,    NUMFMT_INT, FILL_CONCLUSION_FAIL),
-            ("장부가 합계", total_ledger,  NUMFMT_INT, None),
-            ("커버금액 합계", total_covered, NUMFMT_INT, None),
+        for label, val, fmt, f in [
+            ("충분 건수",   sufficient,    NUMFMT_INT, FONT_GREEN),
+            ("부분 건수",   partial,       NUMFMT_INT, FONT_AMBER),
+            ("미해소 건수", unresolved,    NUMFMT_INT, FONT_RED),
+            ("장부가 합계", total_ledger,  NUMFMT_INT, FONT_BODY),
+            ("커버금액 합계", total_covered, NUMFMT_INT, FONT_BODY),
         ]:
-            _text_cell(ws, r, 1, label, bold=True)
-            _num_cell(ws, r, 2, val, fill=fill, fmt=fmt)
+            _text_cell(ws, r, 1, label, font=FONT_BOLD)
+            c = ws.cell(r, 2, val)
+            _apply(c, font=f, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("right"), number_format=fmt)
+            _row_height(ws, r, 22)
             ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=10)
             r += 1
 
         if overall_ratio is not None:
-            _text_cell(ws, r, 1, "전체 커버리지", bold=True)
-            overall_fill = (
-                FILL_CONCLUSION_OK if overall_ratio >= 0.95 else
-                (FILL_CONCLUSION_PARTIAL if overall_ratio >= 0.5 else FILL_CONCLUSION_FAIL)
+            _text_cell(ws, r, 1, "전체 커버리지", font=FONT_BOLD)
+            cov_font = (
+                FONT_GREEN if overall_ratio >= 0.95 else
+                FONT_AMBER if overall_ratio >= 0.50 else
+                FONT_RED
             )
-            _pct_cell(ws, r, 2, overall_ratio, fill=overall_fill)
+            _pct_cell(ws, r, 2, overall_ratio, font=cov_font)
             ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=10)

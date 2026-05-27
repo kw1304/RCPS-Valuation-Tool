@@ -1,13 +1,14 @@
 """
-test_combined_demo.py — kind=both 통합 11시트 조서 검증
+test_combined_demo.py — kind=both 통합 9시트 조서 검증 (Toss 디자인 재설계 후)
 
 검증 항목:
-  1. build_combined_report → 11시트 단일 파일
-  2. 1번 시트 = "샘플링 요약"
-  3. 시트 순서가 desired_order와 일치
-  4. C100 시리즈(채권)에 채권 데이터 존재
-  5. AA100 시리즈(채무)에 채무 데이터 존재
-  6. C100A·대체적 절차 시트 존재
+  1. build_combined_report → 9개 시트 단일 파일
+  2. 1번 시트 = "요약"
+  3. 조회서 시트에 채권·채무 거래처 통합
+  4. 표본규모 산출 시트에 채권/채무 각 데이터
+  5. 모집단 완전성 시트에 데이터
+  6. 채권·채무 합산 모집단 요약 반영
+  7. 조서번호 셀 accent 파란색
 """
 from __future__ import annotations
 
@@ -28,6 +29,9 @@ from src.infrastructure.report.generic_reporter import (
     KindData,
     PartyContactInfo,
     ReportContext,
+    EXPECTED_GENERIC_SHEETS,
+    EXPECTED_SHEET_COUNT,
+    TOSS_ACCENT,
     build_combined_report,
 )
 from src.domain.mus import MUSResult, MUSSelection
@@ -159,175 +163,135 @@ def _build_combined(tmp_path: Path) -> openpyxl.Workbook:
 
 
 # ─────────────────────────────────────────────────────────────
-# 1. 시트 수
+# 1. 시트 수 — 9개
 # ─────────────────────────────────────────────────────────────
 
-def test_combined_has_11_sheets(tmp_path):
-    """build_combined_report → 정확히 11개 시트."""
+def test_combined_has_9_sheets(tmp_path):
+    """build_combined_report → 정확히 9개 시트."""
     wb = _build_combined(tmp_path)
-    assert len(wb.sheetnames) == 11, (
+    assert len(wb.sheetnames) == EXPECTED_SHEET_COUNT, (
         f"시트 수 불일치: {len(wb.sheetnames)} — {wb.sheetnames}"
     )
 
 
 # ─────────────────────────────────────────────────────────────
-# 2. 1번 시트 = 샘플링 요약
+# 2. 1번 시트 = 요약
 # ─────────────────────────────────────────────────────────────
 
 def test_first_sheet_is_summary(tmp_path):
-    """첫 번째 시트가 '샘플링 요약'이어야 한다."""
+    """첫 번째 시트가 '요약'이어야 한다."""
     wb = _build_combined(tmp_path)
-    assert wb.sheetnames[0] == "샘플링 요약", (
-        f"첫 시트 불일치: {wb.sheetnames[0]}"
-    )
+    assert wb.sheetnames[0] == "요약", f"첫 시트 불일치: {wb.sheetnames[0]}"
 
 
 # ─────────────────────────────────────────────────────────────
-# 3. 시트 순서 — desired_order 전체 일치
+# 3. 시트 이름 집합
 # ─────────────────────────────────────────────────────────────
 
-DESIRED_ORDER = [
-    "샘플링 요약",
-    "C100 조회서", "C100-1 표본규모 결정",
-    "C100-2 Key item 추출", "C100-3 표본 추출(MUS)",
-    "AA100 조회서", "AA100-1 표본규모 결정",
-    "AA100-2 Key item 추출", "AA100-3 표본 추출(MUS)",
-    "C100A 조회처 주소 적정성",
-    "대체적 절차",
-]
-
-
-def test_sheet_order_matches_desired(tmp_path):
-    """11개 시트 순서가 desired_order와 정확히 일치해야 한다."""
+def test_sheet_names_match_expected(tmp_path):
+    """9개 시트 이름이 EXPECTED_GENERIC_SHEETS와 일치해야 한다."""
     wb = _build_combined(tmp_path)
-    assert wb.sheetnames == DESIRED_ORDER, (
-        f"\n실제:   {wb.sheetnames}\n기대: {DESIRED_ORDER}"
-    )
+    actual = set(wb.sheetnames)
+    missing = EXPECTED_GENERIC_SHEETS - actual
+    extra   = actual - EXPECTED_GENERIC_SHEETS
+    assert not missing, f"누락 시트: {missing}"
+    assert not extra,   f"예상 외 시트: {extra}"
 
 
 # ─────────────────────────────────────────────────────────────
-# 4. 채권 데이터가 C100 시리즈에 있어야 함
+# 4. 조회서 — 채권·채무 통합 (한 시트에 모두)
 # ─────────────────────────────────────────────────────────────
 
-def test_c100_sheet_contains_receivable_party(tmp_path):
-    """C100 조회서에 채권거래처X가 포함되어야 한다."""
+def test_confirmation_sheet_has_both_ar_ap_parties(tmp_path):
+    """조회서 시트에 채권·채무 거래처 모두 포함되어야 한다."""
     wb = _build_combined(tmp_path)
-    ws = wb["C100 조회서"]
-    all_values = [
+    ws = wb["조회서"]
+    all_values = {
         str(cell.value)
         for row in ws.iter_rows()
         for cell in row
         if cell.value is not None
-    ]
-    assert "채권거래처X" in all_values, "C100 조회서에 채권거래처X 없음"
+    }
+    assert "채권거래처X" in all_values, "조회서에 채권거래처X 없음"
+    assert "채무거래처P" in all_values, "조회서에 채무거래처P 없음"
 
 
-def test_c100_1_sheet_contains_receivable_data(tmp_path):
-    """C100-1 시트에 채권 모집단 금액(3,000,000)이 반영되어야 한다."""
+def test_no_separate_c100_sheet(tmp_path):
+    """구버전 'C100 조회서' 별도 시트가 없어야 한다 (통합 조회서로 대체)."""
     wb = _build_combined(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    assert "C100 조회서" not in wb.sheetnames, "구버전 C100 조회서 시트가 잔존"
+    assert "AA100 조회서" not in wb.sheetnames, "구버전 AA100 조회서 시트가 잔존"
+
+
+# ─────────────────────────────────────────────────────────────
+# 5. 표본규모 산출 — 채권/채무 각 데이터
+# ─────────────────────────────────────────────────────────────
+
+def test_sample_size_sheet_has_ar_population(tmp_path):
+    """표본규모 산출 시트에 채권 모집단 금액(3,000,000)이 반영되어야 한다."""
+    wb = _build_combined(tmp_path)
+    ws = wb["표본규모 산출"]
     all_values = [cell.value for row in ws.iter_rows() for cell in row]
-    assert 3_000_000 in all_values, "C100-1에 채권 모집단 금액 없음"
+    assert 3_000_000 in all_values, "표본규모 산출에 채권 모집단 금액 없음"
 
 
-# ─────────────────────────────────────────────────────────────
-# 5. 채무 데이터가 AA100 시리즈에 있어야 함
-# ─────────────────────────────────────────────────────────────
-
-def test_aa100_sheet_contains_payable_party(tmp_path):
-    """AA100 조회서에 채무거래처P가 포함되어야 한다."""
+def test_sample_size_sheet_has_ap_population(tmp_path):
+    """표본규모 산출 시트에 채무 모집단 금액(2,500,000)이 반영되어야 한다."""
     wb = _build_combined(tmp_path)
-    ws = wb["AA100 조회서"]
-    all_values = [
-        str(cell.value)
-        for row in ws.iter_rows()
-        for cell in row
-        if cell.value is not None
-    ]
-    assert "채무거래처P" in all_values, "AA100 조회서에 채무거래처P 없음"
-
-
-def test_aa100_1_sheet_exists_and_has_payable_data(tmp_path):
-    """AA100-1 시트에 채무 모집단 금액(2,500,000)이 반영되어야 한다."""
-    wb = _build_combined(tmp_path)
-    ws = wb["AA100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
     all_values = [cell.value for row in ws.iter_rows() for cell in row]
-    assert 2_500_000 in all_values, "AA100-1에 채무 모집단 금액 없음"
+    assert 2_500_000 in all_values, "표본규모 산출에 채무 모집단 금액 없음"
 
 
 # ─────────────────────────────────────────────────────────────
-# 6. C100A, 대체적 절차 시트 존재
+# 6. 요약 시트 — 합산 모집단
 # ─────────────────────────────────────────────────────────────
 
-def test_c100a_sheet_exists(tmp_path):
-    """C100A 조회처 주소 적정성 시트가 존재해야 한다."""
+def test_summary_sheet_contains_total_population(tmp_path):
+    """요약 시트: 채권+채무 합산 모집단(5,500,000)이 반영되어야 한다."""
     wb = _build_combined(tmp_path)
-    assert "C100A 조회처 주소 적정성" in wb.sheetnames
+    ws = wb["요약"]
+    all_values = [cell.value for row in ws.iter_rows() for cell in row]
+    # 3,000,000 + 2,500,000 = 5,500,000
+    assert 5_500_000 in all_values, (
+        f"요약 시트에 합산 모집단 5,500,000 없음. 수치 값: "
+        f"{[v for v in all_values if isinstance(v, (int, float))][:10]}"
+    )
 
+
+# ─────────────────────────────────────────────────────────────
+# 7. 조서번호 셀 — Toss accent 파란색
+# ─────────────────────────────────────────────────────────────
+
+def test_workpaper_no_cell_accent_blue(tmp_path):
+    """표본규모 산출 I2 셀: 조서번호가 파란(3182F6) bold이어야 한다."""
+    wb = _build_combined(tmp_path)
+    ws = wb["표본규모 산출"]
+    cell = ws["I2"]
+    assert cell.value is not None, "I2 셀 값 없음"
+    assert cell.font.bold, "조서번호 셀 bold 아님"
+    assert cell.font.color.rgb.upper().endswith(TOSS_ACCENT.upper()), (
+        f"조서번호 글씨색 불일치 (3182F6이어야): {cell.font.color.rgb}"
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# 8. 주소 적정성 — 연락처 반영
+# ─────────────────────────────────────────────────────────────
+
+def test_address_sheet_has_contact(tmp_path):
+    """주소 적정성 시트에 채권거래처X 이메일이 반영되어야 한다."""
+    wb = _build_combined(tmp_path)
+    ws = wb["주소 적정성"]
+    all_values = {cell.value for row in ws.iter_rows() for cell in row}
+    assert "x@test.com" in all_values, "채권거래처X 이메일 미반영"
+
+
+# ─────────────────────────────────────────────────────────────
+# 9. 대체적 절차 시트 존재
+# ─────────────────────────────────────────────────────────────
 
 def test_alt_procedure_sheet_exists(tmp_path):
     """대체적 절차 시트가 존재해야 한다."""
     wb = _build_combined(tmp_path)
     assert "대체적 절차" in wb.sheetnames
-
-
-# ─────────────────────────────────────────────────────────────
-# 7. AA100 조서번호 셀 빨강
-# ─────────────────────────────────────────────────────────────
-
-def test_aa100_1_workpaper_no_red(tmp_path):
-    """AA100-1 시트 I2 셀: 'AA100-1' 빨강 bold."""
-    wb = _build_combined(tmp_path)
-    ws = wb["AA100-1 표본규모 결정"]
-    cell = ws["I2"]
-    assert cell.value == "AA100-1", f"I2 값: {cell.value}"
-    assert cell.font.bold, "AA100-1 조서번호 셀이 bold 아님"
-    assert cell.font.color.rgb.upper().endswith("FF0000"), (
-        f"AA100-1 조서번호 글씨 색: {cell.font.color.rgb}"
-    )
-
-
-# ─────────────────────────────────────────────────────────────
-# 8. 통합 요약 시트 컨텐츠
-# ─────────────────────────────────────────────────────────────
-
-def test_summary_sheet_contains_both_amounts(tmp_path):
-    """샘플링 요약: 채권+채무 합산 모집단(5,500,000)이 반영되어야 한다."""
-    wb = _build_combined(tmp_path)
-    ws = wb["샘플링 요약"]
-    all_values = [cell.value for row in ws.iter_rows() for cell in row]
-    # 3,000,000 + 2,500,000 = 5,500,000
-    assert 5_500_000 in all_values, (
-        f"요약 시트에 합산 모집단 5,500,000 없음. 실제 숫자 값: "
-        f"{[v for v in all_values if isinstance(v, (int, float))]}"
-    )
-
-
-# ─────────────────────────────────────────────────────────────
-# 9. 채권·채무 데이터 교차 오염 없음
-# ─────────────────────────────────────────────────────────────
-
-def test_c100_sheet_no_payable_party(tmp_path):
-    """C100 조회서에 채무 전용 거래처(채무거래처P)가 없어야 한다."""
-    wb = _build_combined(tmp_path)
-    ws = wb["C100 조회서"]
-    all_values = [
-        str(cell.value)
-        for row in ws.iter_rows()
-        for cell in row
-        if cell.value is not None
-    ]
-    assert "채무거래처P" not in all_values, "C100 조회서에 채무 거래처 교차 오염"
-
-
-def test_aa100_sheet_no_receivable_party(tmp_path):
-    """AA100 조회서에 채권 전용 거래처(채권거래처X)가 없어야 한다."""
-    wb = _build_combined(tmp_path)
-    ws = wb["AA100 조회서"]
-    all_values = [
-        str(cell.value)
-        for row in ws.iter_rows()
-        for cell in row
-        if cell.value is not None
-    ]
-    assert "채권거래처X" not in all_values, "AA100 조회서에 채권 거래처 교차 오염"

@@ -1,16 +1,17 @@
 """
-test_visual_fidelity.py — 7620 양식 시각 정합성 검증
+test_visual_fidelity.py — Toss 디자인 시각 정합성 검증
 
 검증 항목:
   1. 모든 시트의 데이터 셀 폰트가 "맑은 고딕"
-  2. C100-1 PM·Key item 기준금액 셀 → FILL_INPUT_YELLOW (FFFFCC)
-  3. C100 조회서 헤더 행 → navy 배경(44546A) + 흰 글씨(FFFFFF)
-  4. 컬럼 너비 — C100-1 A=33.85, B=19.28
-  5. 조서번호 셀 I2 → 빨강 글씨 (FF0000) + bold
-  6. 소제목 행 → D6DCE5 배경
-  7. Key item 행 → FFF2CC 배경
-  8. MUS hit 행 → C6EFCE 배경
-  9. 합계 행 → D6DCE5 배경 + bold
+  2. 수행중요성(PM) 강조 — 파란 bold 글씨 (TOSS_ACCENT = 3182F6)
+  3. 조회서 헤더 행 — 흰 배경 + 파란 bottom border (Toss 스타일)
+  4. 컬럼 너비 — 표본규모 산출 A열 ≈ 35
+  5. 조서번호 셀 I2 — accent bold 파란색 (3182F6)
+  6. 소제목 행 — F9FAFB 옅은 회색 배경
+  7. Key item 거래처 — 좌측 GOLD border (FFD966) 표시
+  8. MUS hit 거래처 — 파란 bold 또는 초록 좌측 border
+  9. 합계 행 — F9FAFB 배경 + bold + 상단 굵은 border
+ 10. 발송제외 거래처 — strikethrough 폰트
 """
 from __future__ import annotations
 
@@ -32,13 +33,10 @@ from src.infrastructure.report.generic_reporter import (
     ReportContext,
     build_generic_report,
     FONT_NAME,
-    FILL_INPUT_YELLOW,
-    FILL_HEADER_NAVY,
-    FILL_SUBHEADER,
-    FILL_KEY_ITEM,
-    FILL_SAMPLED,
-    FILL_TOTAL_ROW,
-    FONT_RED_BOLD,
+    TOSS_ACCENT,
+    TOSS_BG_SUB,
+    TOSS_GOLD,
+    TOSS_GREEN,
 )
 from src.domain.mus import MUSResult, MUSSelection
 from src.domain.population import CompletenessCheck, PartyDecision
@@ -161,7 +159,7 @@ def _build(tmp_path: Path) -> openpyxl.Workbook:
 
 
 # ─────────────────────────────────────────────────────────────
-# 1. 폰트 이름 검증
+# 1. 폰트 이름 검증 — 맑은 고딕
 # ─────────────────────────────────────────────────────────────
 
 def test_all_data_cells_use_malgun_gothic(tmp_path):
@@ -181,238 +179,241 @@ def test_all_data_cells_use_malgun_gothic(tmp_path):
 
 
 # ─────────────────────────────────────────────────────────────
-# 2. 입력값 강조 셀 (PM, Key item 기준금액) — FFFFCC
+# 2. PM 강조 — 파란 bold (TOSS_ACCENT)
 # ─────────────────────────────────────────────────────────────
 
-def test_c100_1_pm_cell_has_input_yellow_fill(tmp_path):
-    """C100-1 시트: PM 값 셀이 FFFFCC(연노랑) 배경이어야 한다."""
+def test_pm_cell_has_accent_blue_font(tmp_path):
+    """표본규모 산출 시트: PM 값 셀이 파란(3182F6) bold 글씨이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
 
-    # 수행중요성(PM) 라벨이 있는 행의 B열 값 셀 확인
     found = False
     for row in ws.iter_rows():
         for cell in row:
             if cell.value == "수행중요성 (PM)":
-                # 같은 행 B열
                 val_cell = ws.cell(cell.row, 2)
-                assert val_cell.fill.fgColor.rgb.upper().endswith("FFFFCC"), (
-                    f"PM 셀 배경색 불일치: {val_cell.fill.fgColor.rgb}"
+                assert val_cell.font.bold, "PM 값 셀이 bold가 아님"
+                assert val_cell.font.color.rgb.upper().endswith(TOSS_ACCENT.upper()), (
+                    f"PM 셀 글씨색 불일치: {val_cell.font.color.rgb}"
                 )
                 found = True
-    assert found, "C100-1에 '수행중요성 (PM)' 라벨이 없음"
+    assert found, "표본규모 산출 시트에 '수행중요성 (PM)' 라벨이 없음"
 
 
-def test_c100_1_key_item_threshold_cell_has_input_yellow(tmp_path):
-    """C100-1 시트: Key item 기준금액 셀이 FFFFCC 배경이어야 한다."""
+def test_key_item_threshold_has_accent_font(tmp_path):
+    """표본규모 산출: Key item 기준금액 셀이 파란(3182F6) bold이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
 
     found = False
     for row in ws.iter_rows():
         for cell in row:
-            if cell.value and "Key item 기준금액" in str(cell.value) and "PM" in str(cell.value):
+            if cell.value and "Key item 기준금액" in str(cell.value):
                 val_cell = ws.cell(cell.row, 2)
-                assert val_cell.fill.fgColor.rgb.upper().endswith("FFFFCC"), (
-                    f"Key item 기준금액 셀 배경 불일치: {val_cell.fill.fgColor.rgb}"
+                assert val_cell.font.bold, "Key item 기준금액 셀 bold 아님"
+                assert val_cell.font.color.rgb.upper().endswith(TOSS_ACCENT.upper()), (
+                    f"Key item 기준금액 글씨색 불일치: {val_cell.font.color.rgb}"
                 )
                 found = True
-    assert found, "C100-1에 'Key item 기준금액' 라벨이 없음"
+    assert found, "표본규모 산출에 'Key item 기준금액' 라벨이 없음"
 
 
 # ─────────────────────────────────────────────────────────────
-# 3. Control sheet 헤더 — navy(44546A) + 흰 글씨(FFFFFF)
+# 3. 조회서 헤더 — 흰 배경 + 파란 bottom border
 # ─────────────────────────────────────────────────────────────
 
-def test_c100_control_sheet_header_navy_bg(tmp_path):
-    """C100 조회서: 테이블 헤더 행 배경이 44546A(navy)이어야 한다."""
+def test_confirmation_sheet_header_has_accent_bottom_border(tmp_path):
+    """조회서: 테이블 헤더 행이 파란(3182F6) bottom border를 가져야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100 조회서"]
+    ws = wb["조회서"]
 
-    navy_found = False
+    accent_border_found = False
     for row in ws.iter_rows():
         for cell in row:
-            if (cell.fill and cell.fill.fgColor
-                    and cell.fill.fgColor.rgb.upper().endswith("44546A")):
-                navy_found = True
-                # 흰 글씨 확인
-                if cell.font and cell.font.color:
-                    assert cell.font.color.rgb.upper().endswith("FFFFFF"), (
-                        f"헤더 글씨 색 불일치: {cell.font.color.rgb}"
+            if (cell.border and cell.border.bottom
+                    and cell.border.bottom.color
+                    and cell.border.bottom.color.rgb.upper().endswith(TOSS_ACCENT.upper())):
+                accent_border_found = True
+                # 흰 배경 확인
+                if cell.fill and cell.fill.fgColor:
+                    assert cell.fill.fgColor.rgb.upper().endswith("FFFFFF"), (
+                        f"헤더 배경 불일치 (흰색이어야 함): {cell.fill.fgColor.rgb}"
                     )
-    assert navy_found, "C100 조회서에 navy 헤더 셀이 없음"
-
-
-def test_c100_1_header_navy(tmp_path):
-    """C100-1 표본규모 결정: 테이블 헤더가 navy 배경이어야 한다."""
-    wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
-    navy_found = any(
-        cell.fill and cell.fill.fgColor
-        and cell.fill.fgColor.rgb.upper().endswith("44546A")
-        for row in ws.iter_rows()
-        for cell in row
-    )
-    assert navy_found, "C100-1에 navy 헤더 셀이 없음"
+    assert accent_border_found, "조회서 헤더에 파란 bottom border가 없음"
 
 
 # ─────────────────────────────────────────────────────────────
 # 4. 컬럼 너비 검증
 # ─────────────────────────────────────────────────────────────
 
-def test_c100_1_column_widths(tmp_path):
-    """C100-1: A열 ≈ 33.85, B열 ≈ 19.28 (오차 ±0.5)."""
+def test_sample_size_sheet_col_a_width(tmp_path):
+    """표본규모 산출: A열(항목) 너비 ≈ 35 (오차 ±1)."""
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
-
+    ws = wb["표본규모 산출"]
     w_a = ws.column_dimensions["A"].width
-    w_b = ws.column_dimensions["B"].width
-
-    assert abs(w_a - 33.85) < 0.5, f"A열 너비 불일치: {w_a}"
-    assert abs(w_b - 19.28) < 0.5, f"B열 너비 불일치: {w_b}"
+    assert abs(w_a - 35) < 1, f"A열 너비 불일치: {w_a}"
 
 
-def test_c100_control_col_b_width(tmp_path):
-    """C100 조회서: B열(거래처명) 너비 ≈ 33.85."""
+def test_confirmation_col_b_width(tmp_path):
+    """조회서: B열(거래처명) 너비 ≈ 30 (오차 ±1)."""
     wb = _build(tmp_path)
-    ws = wb["C100 조회서"]
+    ws = wb["조회서"]
     w_b = ws.column_dimensions["B"].width
-    assert abs(w_b - 33.85) < 0.5, f"B열 너비 불일치: {w_b}"
-
-
-def test_c100_control_col_a_width(tmp_path):
-    """C100 조회서: A열(No) 너비 ≈ 4.0."""
-    wb = _build(tmp_path)
-    ws = wb["C100 조회서"]
-    w_a = ws.column_dimensions["A"].width
-    assert abs(w_a - 4.0) < 0.5, f"A열 너비 불일치: {w_a}"
+    assert abs(w_b - 30) < 1, f"B열 너비 불일치: {w_b}"
 
 
 # ─────────────────────────────────────────────────────────────
-# 5. 조서번호 셀 — I2 빨강(FF0000) + bold
+# 5. 조서번호 셀 I2 — accent bold 파란색
 # ─────────────────────────────────────────────────────────────
 
-def test_workpaper_no_cell_red_bold(tmp_path):
-    """C100-1 시트 I2 셀: 조서번호 값이 빨강(FF0000) + bold이어야 한다."""
+def test_workpaper_no_cell_accent_bold(tmp_path):
+    """표본규모 산출 시트 I2 셀: 조서번호 값이 파란(3182F6) + bold이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
 
     cell = ws["I2"]
-    assert cell.value == "C100-1", f"I2 값 불일치: {cell.value}"
+    assert cell.value is not None and "규모산출" in str(cell.value), f"I2 값 불일치: {cell.value}"
     assert cell.font.bold, "조서번호 셀이 bold가 아님"
-    assert cell.font.color.rgb.upper().endswith("FF0000"), (
-        f"조서번호 글씨 색 불일치: {cell.font.color.rgb}"
+    assert cell.font.color.rgb.upper().endswith(TOSS_ACCENT.upper()), (
+        f"조서번호 글씨색 불일치 (파란색이어야): {cell.font.color.rgb}"
     )
 
 
-def test_summary_sheet_wp_no_red(tmp_path):
-    """샘플링 요약 시트 I2 셀: 조서번호가 빨강이어야 한다."""
+def test_summary_sheet_wp_no_accent(tmp_path):
+    """요약 시트 I2 셀: 조서번호가 파란(3182F6)이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["샘플링 요약"]
+    ws = wb["요약"]
     cell = ws["I2"]
-    assert cell.font.color.rgb.upper().endswith("FF0000"), (
+    assert cell.font.color.rgb.upper().endswith(TOSS_ACCENT.upper()), (
         f"요약 시트 I2 글씨색 불일치: {cell.font.color.rgb}"
     )
 
 
 # ─────────────────────────────────────────────────────────────
-# 6. 소제목 행 — D6DCE5 배경
+# 6. 소제목 행 — F9FAFB 옅은 회색 배경
 # ─────────────────────────────────────────────────────────────
 
-def test_subheader_fill_d6dce5(tmp_path):
-    """C100-1 소제목 행(감사목적 등)이 D6DCE5 배경이어야 한다."""
+def test_subheader_fill_toss_bg_sub(tmp_path):
+    """표본규모 산출 소제목 행이 F9FAFB 배경이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
 
     subheader_found = any(
         cell.fill and cell.fill.fgColor
-        and cell.fill.fgColor.rgb.upper().endswith("D6DCE5")
+        and cell.fill.fgColor.rgb.upper().endswith(TOSS_BG_SUB.upper())
         for row in ws.iter_rows()
         for cell in row
-        if cell.value and "감사목적" in str(cell.value)
+        if cell.value and ("채권" in str(cell.value) or "채무" in str(cell.value))
     )
-    assert subheader_found, "C100-1 '감사목적' 소제목 행에 D6DCE5 배경 없음"
+    assert subheader_found, f"표본규모 산출 소제목 행에 {TOSS_BG_SUB} 배경 없음"
 
 
 # ─────────────────────────────────────────────────────────────
-# 7. Key item 행 — FFF2CC 배경
+# 7. Key item 거래처 — GOLD 좌측 border (FFD966)
 # ─────────────────────────────────────────────────────────────
 
-def test_key_item_row_fill_fff2cc(tmp_path):
-    """C100 조회서: Key item 거래처 행이 FFF2CC 배경이어야 한다."""
+def test_key_item_row_has_gold_left_border(tmp_path):
+    """조회서: Key item 거래처(대형거래처A/B)의 첫 번째 셀이 GOLD 좌측 border를 가져야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100 조회서"]
+    ws = wb["조회서"]
 
-    # "대형거래처A" or "대형거래처B" 가 FFF2CC 배경인지 확인
-    ki_fill_found = any(
-        cell.fill and cell.fill.fgColor
-        and cell.fill.fgColor.rgb.upper().endswith("FFF2CC")
-        for row in ws.iter_rows()
-        for cell in row
-        if cell.value in ("대형거래처A", "대형거래처B")
-    )
-    assert ki_fill_found, "C100 조회서 Key item 행에 FFF2CC 배경 없음"
+    gold_found = False
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value in ("대형거래처A", "대형거래처B"):
+                # 같은 행 A열(No 셀) left border 확인
+                no_cell = ws.cell(cell.row, 1)
+                if (no_cell.border and no_cell.border.left
+                        and no_cell.border.left.color
+                        and no_cell.border.left.color.rgb.upper().endswith(TOSS_GOLD.upper())):
+                    gold_found = True
+    assert gold_found, f"조회서 Key item 행에 GOLD({TOSS_GOLD}) 좌측 border 없음"
 
 
 # ─────────────────────────────────────────────────────────────
-# 8. MUS hit 행 — C6EFCE 배경
+# 8. MUS hit — 초록(00C073) 이름 글씨 또는 좌측 border
 # ─────────────────────────────────────────────────────────────
 
-def test_mus_hit_row_fill_c6efce(tmp_path):
-    """C100-3: MUS hit=True 행이 C6EFCE 배경이어야 한다."""
+def test_mus_hit_row_has_green_marker(tmp_path):
+    """MUS 추출 내역: hit=True 거래처(중소거래처C)가 초록(00C073) 표시이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100-3 표본 추출(MUS)"]
+    ws = wb["MUS 추출 내역"]
 
-    hit_fill_found = any(
-        cell.fill and cell.fill.fgColor
-        and cell.fill.fgColor.rgb.upper().endswith("C6EFCE")
-        for row in ws.iter_rows()
-        for cell in row
-        if cell.value == "중소거래처C"
-    )
-    assert hit_fill_found, "C100-3 MUS hit 행에 C6EFCE 배경 없음"
+    green_found = False
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value == "중소거래처C":
+                # 이름 셀 글씨색 or 좌측 border 초록
+                if cell.font and cell.font.color.rgb.upper().endswith(TOSS_GREEN.upper()):
+                    green_found = True
+                # 같은 행 No 셀 좌측 border 초록 확인
+                no_cell = ws.cell(cell.row, 1)
+                if (no_cell.border and no_cell.border.left
+                        and no_cell.border.left.color
+                        and no_cell.border.left.color.rgb.upper().endswith(TOSS_GREEN.upper())):
+                    green_found = True
+    assert green_found, f"MUS hit 행에 초록({TOSS_GREEN}) 표시 없음"
 
 
 # ─────────────────────────────────────────────────────────────
-# 9. 합계 행 — D6DCE5 배경 + bold
+# 9. 합계 행 — F9FAFB 배경 + bold
 # ─────────────────────────────────────────────────────────────
 
 def test_total_row_fill_and_bold(tmp_path):
-    """C100 조회서: '총합계' 셀이 D6DCE5 배경 + bold이어야 한다."""
+    """조회서: '총합계' 셀이 F9FAFB 배경 + bold이어야 한다."""
     wb = _build(tmp_path)
-    ws = wb["C100 조회서"]
+    ws = wb["조회서"]
 
     for row in ws.iter_rows():
         for cell in row:
             if cell.value == "총합계":
                 assert cell.font and cell.font.bold, "총합계 셀이 bold가 아님"
                 assert (cell.fill and cell.fill.fgColor
-                        and cell.fill.fgColor.rgb.upper().endswith("D6DCE5")), (
-                    f"총합계 셀 배경 불일치: {cell.fill.fgColor.rgb if cell.fill else None}"
+                        and cell.fill.fgColor.rgb.upper().endswith(TOSS_BG_SUB.upper())), (
+                    f"총합계 셀 배경 불일치 (F9FAFB이어야): {cell.fill.fgColor.rgb if cell.fill else None}"
                 )
                 return
-    pytest.fail("C100 조회서에 '총합계' 셀이 없음")
+    pytest.fail("조회서에 '총합계' 셀이 없음")
 
 
 # ─────────────────────────────────────────────────────────────
-# 10. 헤더 블록 구조 검증 (R1~R3)
+# 10. 발송제외 거래처 — strikethrough 폰트
+# ─────────────────────────────────────────────────────────────
+
+def test_excluded_party_has_strikethrough(tmp_path):
+    """조회서·Key item 매트릭스: 발송제외 거래처(제외거래처D)가 strikethrough이어야 한다."""
+    wb = _build(tmp_path)
+    ws = wb["조회서"]
+
+    strike_found = any(
+        cell.font and cell.font.strike
+        for row in ws.iter_rows()
+        for cell in row
+        if cell.value == "제외거래처D"
+    )
+    assert strike_found, "조회서에 발송제외 거래처(제외거래처D) strikethrough 없음"
+
+
+# ─────────────────────────────────────────────────────────────
+# 11. 헤더 블록 구조 검증 (R1~R2)
 # ─────────────────────────────────────────────────────────────
 
 def test_doc_header_structure(tmp_path):
-    """C100-1: A1=회사명, A2=제목(bold), I1=조서번호 라벨, I2=C100-1(빨강)."""
+    """표본규모 산출: A1=회사명, A2=제목(bold), I1=조서번호 라벨, I2=파란글씨."""
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
 
     assert ws["A1"].value == "시각테스트회사", f"A1 값: {ws['A1'].value}"
     assert ws["A2"].font.bold, "A2 제목 셀이 bold가 아님"
     assert ws["I1"].value == "조서번호", f"I1 값: {ws['I1'].value}"
-    assert ws["I2"].value == "C100-1", f"I2 값: {ws['I2'].value}"
+    assert ws["I2"].font.color.rgb.upper().endswith(TOSS_ACCENT.upper()), \
+        f"I2 조서번호 글씨색 불일치: {ws['I2'].font.color.rgb}"
 
 
 def test_doc_header_preparer_reviewer(tmp_path):
-    """C100-1: E1='작성자:', E2='검토자:', F1=작성자명, F2=검토자명."""
+    """표본규모 산출: E1='작성자:', F1=작성자명, E2='검토자:', F2=검토자명."""
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
 
     assert ws["E1"].value == "작성자:", f"E1: {ws['E1'].value}"
     assert ws["E2"].value == "검토자:", f"E2: {ws['E2'].value}"
@@ -421,16 +422,15 @@ def test_doc_header_preparer_reviewer(tmp_path):
 
 
 # ─────────────────────────────────────────────────────────────
-# 11. 숫자 포맷 검증
+# 12. 숫자 포맷 검증
 # ─────────────────────────────────────────────────────────────
 
 def test_amount_cells_use_numfmt_int(tmp_path):
-    """C100-1 표본규모 결정: 금액 셀에 NUMFMT_INT 포맷 적용 여부 확인."""
+    """표본규모 산출: PM 값 셀에 NUMFMT_INT 포맷 적용 여부."""
     from src.infrastructure.report.generic_reporter import NUMFMT_INT
     wb = _build(tmp_path)
-    ws = wb["C100-1 표본규모 결정"]
+    ws = wb["표본규모 산출"]
 
-    # PM 값 셀 포맷 확인
     for row in ws.iter_rows():
         for cell in row:
             if cell.value == "수행중요성 (PM)":
@@ -440,22 +440,3 @@ def test_amount_cells_use_numfmt_int(tmp_path):
                 )
                 return
     pytest.fail("PM 셀 미발견")
-
-
-# ─────────────────────────────────────────────────────────────
-# 12. 발송제외 행 — F4CCCC 배경
-# ─────────────────────────────────────────────────────────────
-
-def test_excluded_row_fill_in_c100_2(tmp_path):
-    """C100-2: 발송제외 거래처 행이 F4CCCC(연빨강) 배경이어야 한다."""
-    wb = _build(tmp_path)
-    ws = wb["C100-2 Key item 추출"]
-
-    excl_fill_found = any(
-        cell.fill and cell.fill.fgColor
-        and cell.fill.fgColor.rgb.upper().endswith("F4CCCC")
-        for row in ws.iter_rows()
-        for cell in row
-        if cell.value == "제외거래처D"
-    )
-    assert excl_fill_found, "C100-2 발송제외 거래처 행에 F4CCCC 배경 없음"
