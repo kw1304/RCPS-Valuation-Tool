@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JET Auto · ISA 240 분개 테스트 자동화</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+/* ── 디자인 토큰 (RCPS index.html 동일 팔레트) ── */
+:root {
+  --bg:      #F9FAFB;
+  --bg2:     #FFFFFF;
+  --bg3:     #F2F4F6;
+  --border:  #E5E8EB;
+  --accent:  #3182F6;
+  --accent2: #1B64DA;
+  --green:   #00C073;
+  --red:     #F04452;
+  --amber:   #FF9F00;
+  --purple:  #7C3AED;
+  --text:    #191F28;
+  --text2:   #4E5968;
+  --text3:   #8B95A1;
+  --sans:    'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── 헤더 ── */
+header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hd-title { min-width: 0; }
+.hd-title h1 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.04em;
+}
+.hd-title h1 .ac { color: var(--accent); font-weight: 800; }
+.hd-title p {
+  font-size: 0.72rem;
+  color: var(--text3);
+  margin-top: 0.2rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.hd-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+.hd-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.28rem 0.8rem;
+  background: #EFF6FF;
+  color: var(--accent);
+  border-radius: 100px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* 헤더 다운로드 버튼 — RCPS .header-dl 동일 패턴 */
+.header-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4rem 0.85rem;
+  background: var(--bg2);
+  color: var(--text2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.header-dl:hover { background: #EFF6FF; border-color: var(--accent); color: var(--accent); }
+.header-dl:disabled { opacity: 0.5; cursor: not-allowed; background: var(--bg2); border-color: var(--border); color: var(--text3); }
+
+/* 헤더 회사 배지 */
+.hd-company-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.28rem 0.8rem;
+  background: var(--bg3);
+  color: var(--text2);
+  border-radius: 100px;
+  border: 1.5px solid var(--border);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 글로벌 바 ── */
+.global-bar {
+  padding: 0.45rem 2rem;
+  background: linear-gradient(90deg, #EFF6FF 0%, var(--bg2) 60%);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.78rem;
+  flex-wrap: wrap;
+}
+.global-bar .gb-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text2);
+}
+.global-bar .gb-item strong { color: var(--text); font-weight: 700; }
+.gb-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--text3);
+  flex-shrink: 0;
+}
+.gb-dot.running { background: var(--amber); animation: pulse 1.2s infinite; }
+.gb-dot.done    { background: var(--green); }
+.gb-dot.failed  { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── 레이아웃 ── */
+.layout {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+/* ── 사이드바 (폼 패널) ── */
+.sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 20px rgba(0,0,0,.06);
+}
+
+/* ── 섹션 (RCPS .sec 패턴) ── */
+.sec {
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid var(--border);
+}
+.sec:last-child { border-bottom: none; }
+
+/* ── 섹션 타이틀 (RCPS .sec-title 패턴 — accent bar) ── */
+.sec-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sec-title::before {
+  content: '';
+  width: 3px;
+  height: 13px;
+  background: var(--accent);
+  border-radius: 2px;
+  display: block;
+  flex-shrink: 0;
+}
+.sec-title-action {
+  margin-left: auto;
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: var(--text3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sans);
+  letter-spacing: -0.01em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
+  transition: background 0.15s, color 0.15s;
+}
+.sec-title-action:hover { background: var(--bg3); color: var(--text2); }
+
+/* 배지 */
+.badge-req {
+  font-size: 0.62rem; font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  background: #FEF3C7; color: #92400E;
+  border-radius: 100px;
+}
+.badge-opt {
+  font-size: 0.62rem; font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  background: #F0FDF4; color: #166534;
+  border-radius: 100px;
+}
+
+/* ── 폼 요소 (RCPS .field 패턴) ── */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 7px; }
+.row1 { display: grid; grid-template-columns: 1fr; gap: 7px; margin-bottom: 7px; }
+.field { display: flex; flex-direction: column; justify-content: flex-end; }
+.field label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text2);
+  margin-bottom: 0.28rem;
+  letter-spacing: -0.01em;
+}
+.field input, .field select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1.5px solid transparent;
+  color: var(--text);
+  padding: 0.52rem 0.75rem;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(49,130,246,.1);
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B95A1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.2rem;
+  cursor: pointer;
+}
+
+/* ── 파일 드롭존 ── */
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.file-row:last-child { margin-bottom: 0; }
+.file-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 100px;
+  background: var(--bg3);
+  color: var(--text2);
+  min-width: 40px;
+  text-align: center;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+}
+.file-tag.required { background: #EFF6FF; color: var(--accent); }
+
+.dropzone {
+  flex: 1;
+  border: 1.5px dashed var(--border);
+  border-radius: 9px;
+  padding: 0.45rem 0.75rem;
+  min-height: 36px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dropzone.has-file { border-color: var(--green); background: #F0FDF4; }
+.dropzone.dragover  { border-color: var(--accent); background: #EFF6FF; }
+.dropzone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.dropzone-label {
+  font-size: 0.7rem;
+  color: var(--text3);
+  pointer-events: none;
+  letter-spacing: -0.01em;
+}
+.dropzone.has-file .dropzone-label { color: #166534; font-weight: 600; }
+
+/* ── 룰 토글 ── */
+.rules-group-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 8px 0 4px;
+  padding: 0 2px;
+}
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rule-row:last-child { border-bottom: none; }
+.rule-toggle { position: relative; display: inline-block; width: 30px; height: 17px; flex-shrink: 0; }
+.rule-toggle input { opacity: 0; width: 0; height: 0; }
+.rule-slider {
+  position: absolute; inset: 0;
+  background: var(--border);
+  border-radius: 17px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.rule-slider::before {
+  content: '';
+  position: absolute;
+  width: 13px; height: 13px;
+  left: 2px; top: 2px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.rule-toggle input:checked + .rule-slider { background: var(--accent); }
+.rule-toggle input:checked + .rule-slider::before { transform: translateX(13px); }
+.rule-info { flex: 1; min-width: 0; }
+.rule-name  { font-size: 0.72rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.rule-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+.rule-badge.integrity { background: #EFF6FF; color: var(--accent); }
+.rule-badge.risk      { background: #FEF3C7; color: #92400E; }
+
+/* 룰 파라미터 행 */
+.rule-param-row {
+  padding: 4px 0 4px 38px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rule-param-label { font-size: 0.67rem; color: var(--text3); letter-spacing: -0.01em; }
+.rule-param-input {
+  width: 68px;
+  padding: 0.28rem 0.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: var(--bg3);
+  font-family: 'Consolas', monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.rule-param-input:focus { border-color: var(--accent); background: #fff; }
+
+/* ── 실행 버튼 (RCPS .btn-run 패턴) ── */
+.btn-run {
+  width: 100%;
+  padding: 0.78rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: -0.02em;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 10px rgba(49,130,246,.28);
+}
+.btn-run:hover { background: var(--accent2); box-shadow: 0 4px 18px rgba(49,130,246,.35); }
+.btn-run:active { transform: scale(.988); }
+.btn-run:disabled { background: var(--text3); box-shadow: none; cursor: not-allowed; }
+
+.run-wrap { padding: 0.9rem 1.15rem; }
+
+/* ── 메인 패널 ── */
+.main { flex: 1; min-width: 0; }
+
+.result-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 20px rgba(0,0,0,.06);
+}
+
+/* ── 플레이스홀더 ── */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  color: var(--text3);
+  text-align: center;
+  gap: 10px;
+}
+.placeholder svg { opacity: .18; }
+.placeholder p   { font-size: 0.88rem; color: var(--text3); letter-spacing: -0.01em; }
+.placeholder small { font-size: 0.72rem; color: var(--text3); }
+
+/* ── 섹션 타이틀 (메인 패널용) ── */
+.result-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.result-section-title::before {
+  content: '';
+  width: 3px;
+  height: 13px;
+  background: var(--accent);
+  border-radius: 2px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── 진행률 ── */
+.progress-wrap { padding: 1rem 0; }
+.progress-stage {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.progress-track {
+  height: 8px;
+  background: var(--bg3);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 10px;
+  transition: width 0.4s ease;
+}
+.progress-label { font-size: 0.7rem; color: var(--text3); text-align: right; }
+.stats-ticker {
+  font-size: 0.72rem;
+  color: var(--text3);
+  margin-top: 8px;
+  letter-spacing: -0.01em;
+}
+.stats-ticker strong { color: var(--accent); font-weight: 700; }
+
+/* 룰 체크리스트 */
+.rules-checklist {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 14px;
+}
+.rule-check-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.67rem;
+  color: var(--text3);
+  padding: 4px 8px;
+  background: var(--bg3);
+  border-radius: 6px;
+  letter-spacing: -0.01em;
+}
+.rule-check-item.done    { color: #166534; background: #F0FDF4; }
+.rule-check-item.running { color: var(--accent); background: #EFF6FF; animation: pulse 1.2s infinite; }
+
+/* ── KPI 카드 ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-bottom: 16px; }
+.kpi-card {
+  border-radius: 12px;
+  padding: 0.95rem 1.05rem;
+  background: var(--bg3);
+}
+.kpi-card.accent  { background: var(--accent); color: #fff; }
+.kpi-card.success { background: #F0FDF4; }
+.kpi-card.danger  { background: #FEF2F2; }
+.kpi-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.kpi-card.accent  .kpi-value { color: #fff; }
+.kpi-card.success .kpi-value { color: #166534; }
+.kpi-card.danger  .kpi-value { color: var(--red); }
+.kpi-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  margin-top: 4px;
+  color: var(--text3);
+  letter-spacing: -0.01em;
+}
+.kpi-card.accent  .kpi-label { color: rgba(255,255,255,.75); }
+.kpi-card.success .kpi-label { color: #166534; }
+.kpi-card.danger  .kpi-label { color: var(--red); }
+
+/* ── 시나리오 결과 테이블 ── */
+.scenario-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+.scenario-table th {
+  background: var(--bg3);
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 0.65rem;
+}
+.scenario-table th:first-child { text-align: left; }
+.scenario-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  color: var(--text2);
+}
+.scenario-table tr:last-child td { border-bottom: none; }
+.scenario-table tr.clickable { cursor: pointer; }
+.scenario-table tr.clickable:hover td { background: var(--bg); }
+.scenario-table tr.active td { background: #EFF6FF; }
+
+/* 결과 배지 */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 100px;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+.badge-pass   { background: #F0FDF4; color: #166534; }
+.badge-fail   { background: #FEF2F2; color: var(--red); }
+.badge-warn   { background: #FEF3C7; color: #92400E; }
+.badge-waived { background: var(--bg3); color: var(--text3); }
+
+/* ── 데이터 테이블 (미리보기) ── */
+.dtable-wrap { overflow-x: auto; margin-top: 10px; }
+.dtable { width: 100%; border-collapse: collapse; font-size: 0.7rem; white-space: nowrap; }
+.dtable th {
+  background: var(--bg3);
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.65rem;
+  position: sticky;
+  top: 0;
+}
+.dtable td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+}
+.dtable tr:hover td { background: var(--bg); }
+.dtable-empty { text-align: center; padding: 2.5rem 0; color: var(--text3); font-size: 0.78rem; }
+
+/* ── 탭 (미리보기용) ── */
+.preview-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 10px;
+}
+.preview-tab {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: -0.01em;
+  font-family: var(--sans);
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+.preview-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.preview-tab:hover:not(.active) { color: var(--text2); }
+
+/* ── 오류 박스 ── */
+.err-msg {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 11px;
+  padding: 1rem 1.15rem;
+  color: var(--red);
+}
+.err-msg-title { font-weight: 700; font-size: 0.83rem; margin-bottom: 6px; letter-spacing: -0.01em; }
+.err-traceback {
+  font-family: 'Consolas', monospace;
+  font-size: 0.7rem;
+  background: rgba(240,68,82,.05);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 8px 0;
+  max-height: 120px;
+  overflow: auto;
+  color: var(--text2);
+  white-space: pre-wrap;
+  border: 1px solid #FECACA;
+}
+
+/* ── 다시 시도 버튼 ── */
+.btn-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0.42rem 0.9rem;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid #FECACA;
+  background: #FEF2F2;
+  color: var(--red);
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
+}
+.btn-retry:hover { background: #fde8ea; border-color: var(--red); }
+
+/* ── 다운로드 배너 (결과 하단) ── */
+.download-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #EFF6FF;
+  border: 1px solid rgba(49,130,246,.2);
+  border-radius: 11px;
+  padding: 0.85rem 1.15rem;
+  margin-top: 16px;
+  gap: 12px;
+}
+.download-info { font-size: 0.78rem; color: var(--text2); letter-spacing: -0.01em; }
+.download-info strong { color: var(--accent); font-weight: 700; }
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: white;
+  padding: 0.42rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: var(--sans);
+  letter-spacing: -0.01em;
+  transition: background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(49,130,246,.25);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-download:hover { background: var(--accent2); box-shadow: 0 4px 14px rgba(49,130,246,.35); }
+
+/* ── 인라인 노트 (RCPS .note 패턴) ── */
+.note {
+  font-size: 0.67rem;
+  color: var(--text3);
+  line-height: 1.55;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg3);
+  border-radius: 8px;
+  border-left: 2.5px solid var(--border);
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+}
+
+/* ── 구분선 ── */
+.divider { height: 1px; background: var(--border); margin: 10px 0; }
+
+/* ── 로더 오버레이 ── */
+.loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(25,31,40,.55);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  backdrop-filter: blur(3px);
+}
+.loader.show { display: flex; }
+.spinner {
+  width: 38px; height: 38px;
+  border: 3px solid rgba(255,255,255,.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.loader p { color: #fff; font-size: 0.83rem; font-weight: 600; letter-spacing: -0.02em; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 반응형 ── */
+@media (max-width: 900px) {
+  .layout { flex-direction: column; padding: 1rem; }
+  .sidebar { width: 100%; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .rules-checklist { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  header { padding: 0.7rem 1rem; flex-wrap: wrap; gap: 0.6rem; }
+  .hd-title h1 { font-size: 0.95rem; }
+  .hd-right { width: 100%; justify-content: flex-end; }
+  .hd-badge { display: none; }
+  .global-bar { padding: 0.4rem 1rem; }
+  .kpi-grid { grid-template-columns: 1fr; }
+  .rules-checklist { grid-template-columns: repeat(2, 1fr); }
+  .row2 { grid-template-columns: 1fr; }
+}
+
+/* ── 매핑 확인 표 ── */
+.mapping-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; margin-top: 8px; }
+.mapping-table th {
+  background: var(--bg3);
+  padding: 5px 7px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.62rem;
+}
+.mapping-table td {
+  padding: 5px 7px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.mapping-table tr:last-child td { border-bottom: none; }
+.mapping-select {
+  width: 100%;
+  padding: 0.28rem 0.45rem;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-family: var(--sans);
+  background: var(--bg3);
+  color: var(--text);
+  outline: none;
+}
+.mapping-select:focus { border-color: var(--accent); background: #fff; }
+.mapping-match-ok  { color: #166534; font-weight: 600; }
+.mapping-match-err { color: var(--red); font-weight: 700; }
+.mapping-preview-val {
+  font-size: 0.62rem;
+  color: var(--text3);
+  display: block;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.mapping-warn-box {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 8px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.7rem;
+  color: #92400E;
+  margin-top: 8px;
+  letter-spacing: -0.01em;
+}
+.sec-collapsed .sec-body { display: none; }
+.sec-toggle-icon { margin-left: auto; font-size: 0.72rem; color: var(--text3); }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<header>
+  <div class="hd-title">
+    <h1><span class="ac">웅계사's</span> JET Auto <span class="ac">Tool</span></h1>
+    <p>ISA 240 기준 감사 목적 분개 테스트 자동화 — 감사조서 자동 생성</p>
+  </div>
+  <div class="hd-right">
+    <span class="hd-company-badge" id="company-badge">회사 미입력</span>
+    <span class="hd-badge">ISA 240 · JET · 조서 Excel</span>
+    <button class="header-dl" id="btn-header-dl" disabled onclick="downloadResult()" title="조서 Excel 다운로드">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      <span>조서 Excel</span>
+    </button>
+  </div>
+</header>
+
+<!-- 글로벌 바 -->
+<div class="global-bar">
+  <div class="gb-item">
+    <div class="gb-dot" id="status-dot"></div>
+    <span id="status-text">대기 중</span>
+  </div>
+  <div class="gb-item">결산일: <strong id="gb-period-end">—</strong></div>
+  <div class="gb-item">GL 행수: <strong id="gb-rows">—</strong></div>
+</div>
+
+<!-- 본문 레이아웃 -->
+<div class="layout">
+
+  <!-- 좌측 사이드바 -->
+  <aside class="sidebar">
+
+    <!-- A. 회사 정보 -->
+    <div class="sec">
+      <div class="sec-title">
+        회사 정보 <span class="badge-req">필수</span>
+        <button class="sec-title-action" id="btn-reset-company" title="입력값 초기화">초기화</button>
+      </div>
+      <div class="row1">
+        <div class="field">
+          <label for="inp-company">회사명</label>
+          <input class="form-input" id="inp-company" placeholder="예: 한국주식회사">
+        </div>
+      </div>
+      <div class="row1">
+        <div class="field">
+          <label for="inp-period-end">결산일</label>
+          <input type="date" id="inp-period-end">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="inp-preparer">작성자</label>
+          <input id="inp-preparer" placeholder="작성자 (선택)">
+        </div>
+        <div class="field">
+          <label for="inp-reviewer">검토자</label>
+          <input id="inp-reviewer" placeholder="검토자 (선택)">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="inp-wp-code">조서번호</label>
+          <input id="inp-wp-code" placeholder="예: 7400 (선택)">
+        </div>
+        <div class="field">
+          <label for="inp-wp-title">조서제목</label>
+          <input id="inp-wp-title" placeholder="예: 회계관리 입출력 (선택)">
+        </div>
+      </div>
+    </div>
+
+    <!-- B. 파일 업로드 -->
+    <div class="sec">
+      <div class="sec-title">파일 업로드 <span class="badge-req">필수</span></div>
+      <div class="file-row">
+        <span class="file-tag required">GL</span>
+        <div class="dropzone" id="dz-gl">
+          <input type="file" id="file-gl" accept=".xlsx,.xls,.csv,.txt,.parquet,.zip" multiple>
+          <span class="dropzone-label">GL 분개장 (여러 파일 선택 가능)</span>
+        </div>
+      </div>
+      <div class="file-row">
+        <span class="file-tag">HR</span>
+        <div class="dropzone" id="dz-hr">
+          <input type="file" id="file-hr" accept=".xlsx,.xls,.csv">
+          <span class="dropzone-label">HR 마스터 (선택)</span>
+        </div>
+      </div>
+      <div class="file-row">
+        <span class="file-tag">COA</span>
+        <div class="dropzone" id="dz-coa">
+          <input type="file" id="file-coa" accept=".xlsx,.xls,.csv">
+          <span class="dropzone-label">계정과목표 (선택)</span>
+        </div>
+      </div>
+      <div class="file-row">
+        <span class="file-tag">TB</span>
+        <div class="dropzone" id="dz-tb">
+          <input type="file" id="file-tb" accept=".xlsx,.xls,.csv">
+          <span class="dropzone-label">합계잔액시산표 (선택)</span>
+        </div>
+      </div>
+      <div class="file-row">
+        <span class="file-tag">전표유형</span>
+        <div class="dropzone" id="dz-doctype">
+          <input type="file" id="file-doctype" accept=".xlsx,.xls,.csv">
+          <span class="dropzone-label">전표유형 (선택)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- C. 스키마 매핑 -->
+    <div class="sec">
+      <div class="sec-title">스키마 매핑</div>
+      <div class="row1">
+        <div class="field">
+          <label for="sel-mapping">GL 컬럼 매핑</label>
+          <select id="sel-mapping">
+            <option value="">로딩 중...</option>
+          </select>
+        </div>
+      </div>
+      <div class="note" style="margin-top:6px">
+        "표준 자동 추론"은 GL 파일 헤더를 분석해 자동으로 컬럼을 매핑합니다.
+        업로드 후 아래 매핑 확인 표에서 검토·조정하세요.
+      </div>
+    </div>
+
+    <!-- D-2. 컬럼 매핑 확인 (파일 업로드 후 자동 펼침) -->
+    <div class="sec" id="sec-col-mapping" style="display:none">
+      <div class="sec-title">
+        컬럼 매핑 확인
+        <span class="sec-toggle-icon" id="col-mapping-toggle" style="cursor:pointer" title="접기/펼치기">▲</span>
+      </div>
+      <div id="col-mapping-body">
+        <div id="col-mapping-loading" style="font-size:0.7rem;color:var(--text3);padding:6px 0;letter-spacing:-0.01em">
+          GL 파일 분석 중...
+        </div>
+        <table class="mapping-table" id="mapping-table" style="display:none">
+          <thead>
+            <tr>
+              <th>표준 필드</th>
+              <th>자동 매칭</th>
+              <th>미리보기</th>
+            </tr>
+          </thead>
+          <tbody id="mapping-table-body"></tbody>
+        </table>
+        <div id="mapping-warn" class="mapping-warn-box" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- D. 룰 설정 -->
+    <div class="sec">
+      <div class="sec-title">
+        룰 설정
+        <button class="sec-title-action" id="btn-reset-rules">기본값 복원</button>
+      </div>
+      <div id="rules-list"><!-- JS로 채움 --></div>
+    </div>
+
+    <!-- E. 실행 버튼 -->
+    <div class="run-wrap">
+      <button class="btn-run" id="btn-run" disabled>JET 실행</button>
+    </div>
+
+  </aside>
+
+  <!-- 우측 메인 패널 -->
+  <main class="main">
+    <div class="result-card" id="main-panel">
+      <!-- 상태에 따라 JS로 교체 -->
+      <div class="placeholder" id="panel-idle">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M9 17H7A5 5 0 017 7h1M15 7h1a5 5 0 010 10h-1M8 12h8"/>
+        </svg>
+        <p>GL 분개장을 업로드하고<br>회사 정보를 입력한 뒤<br><strong>JET 실행</strong> 버튼을 누르세요.</p>
+        <small>ISA 240 · 데이터 품질 · 부정위험 탐지</small>
+      </div>
+    </div>
+  </main>
+
+</div><!-- /.layout -->
+
+<script>
+/* ── 전역 상태 ─────────────────────────────────────────────────────── */
+const state = {
+  runId: null,
+  pollTimer: null,
+  rules: [],           // /api/rules 응답
+  mappings: [],        // /api/schema-mappings 응답
+  ruleEnabled: {},     // code -> boolean
+  ruleParams: {},      // code -> {key: val, ...}
+  lastResult: null,
+  activeSheet: null,
+  glHeaders: [],       // GL 파일 헤더 목록 (미리보기 후 채워짐)
+  previewRows: [],     // 상위 10행
+  columnMapping: {},   // 사용자 확정 매핑 {표준필드: 원본컬럼}
+  mappingUnmapped: [], // 미매칭 필수 필드
+};
+
+/* ── API 헬퍼 ─────────────────────────────────────────────────────── */
+const api = {
+  async get(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  },
+  async post(url, formData) {
+    const r = await fetch(url, { method: 'POST', body: formData });
+    const json = await r.json();
+    if (!r.ok) throw Object.assign(new Error(json.error || 'API 오류'), { data: json });
+    return json;
+  },
+  async del(url) {
+    const r = await fetch(url, { method: 'DELETE' });
+    return r.json();
+  },
+};
+
+/* ── localStorage 헬퍼 ────────────────────────────────────────────── */
+function lsSave(key, val) {
+  try { localStorage.setItem('jet_' + key, JSON.stringify(val)); } catch {}
+}
+function lsLoad(key, def) {
+  try {
+    const v = localStorage.getItem('jet_' + key);
+    return v != null ? JSON.parse(v) : def;
+  } catch { return def; }
+}
+
+/* ── 초기화 ───────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  loadCompanyFromStorage();
+  loadMappings();
+  loadRules();
+  setupFileDropzones();
+  setupCompanyInputs();
+
+  document.getElementById('btn-run').addEventListener('click', onRunClick);
+  document.getElementById('btn-reset-rules').addEventListener('click', resetRulesToDefault);
+  document.getElementById('btn-reset-company').addEventListener('click', resetCompanyForm);
+
+  // 컬럼 매핑 패널 접기/펼치기
+  document.getElementById('col-mapping-toggle').addEventListener('click', () => {
+    const body = document.getElementById('col-mapping-body');
+    const icon = document.getElementById('col-mapping-toggle');
+    const collapsed = body.style.display === 'none';
+    body.style.display = collapsed ? '' : 'none';
+    icon.textContent = collapsed ? '▲' : '▼';
+  });
+
+  // 결산일 기본값: 직전 12월 31일
+  const today = new Date();
+  const defaultPeriodEnd = `${today.getFullYear() - 1}-12-31`;
+  const savedPeriodEnd = lsLoad('period_end', defaultPeriodEnd);
+  document.getElementById('inp-period-end').value = savedPeriodEnd;
+  updateGlobalBar();
+});
+
+/* ── 회사 정보 localStorage 연동 ──────────────────────────────────── */
+function loadCompanyFromStorage() {
+  document.getElementById('inp-company').value  = lsLoad('company', '');
+  document.getElementById('inp-preparer').value = lsLoad('preparer', '');
+  document.getElementById('inp-reviewer').value = lsLoad('reviewer', '');
+  document.getElementById('inp-wp-code').value  = lsLoad('wp_code', '');
+  document.getElementById('inp-wp-title').value = lsLoad('wp_title', '');
+}
+
+function resetCompanyForm() {
+  const fields = ['inp-company','inp-preparer','inp-reviewer','inp-wp-code','inp-wp-title'];
+  fields.forEach(id => { document.getElementById(id).value = ''; });
+  const today = new Date();
+  document.getElementById('inp-period-end').value = `${today.getFullYear() - 1}-12-31`;
+  ['company','preparer','reviewer','wp_code','wp_title','period_end'].forEach(k => {
+    try { localStorage.removeItem('jet_' + k); } catch {}
+  });
+  updateGlobalBar();
+  updateCompanyBadge();
+  validateForm();
+}
+
+function setupCompanyInputs() {
+  const fields = [
+    ['inp-company', 'company'],
+    ['inp-period-end', 'period_end'],
+    ['inp-preparer', 'preparer'],
+    ['inp-reviewer', 'reviewer'],
+    ['inp-wp-code', 'wp_code'],
+    ['inp-wp-title', 'wp_title'],
+  ];
+  fields.forEach(([id, key]) => {
+    document.getElementById(id).addEventListener('input', () => {
+      lsSave(key, document.getElementById(id).value);
+      updateGlobalBar();
+      updateCompanyBadge();
+      validateForm();
+    });
+  });
+}
+
+function updateGlobalBar() {
+  const periodEnd = document.getElementById('inp-period-end').value;
+  document.getElementById('gb-period-end').textContent = periodEnd || '—';
+  updateCompanyBadge();
+}
+
+function updateCompanyBadge() {
+  const company = document.getElementById('inp-company').value.trim();
+  document.getElementById('company-badge').textContent = company || '회사 미입력';
+}
+
+/* ── 매핑 로드 ────────────────────────────────────────────────────── */
+async function loadMappings() {
+  try {
+    const mappings = await api.get('/api/schema-mappings');
+    state.mappings = mappings;
+    const sel = document.getElementById('sel-mapping');
+    sel.innerHTML = '';
+    mappings.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      sel.appendChild(opt);
+    });
+    // 기본 선택: auto_detect
+    const saved = lsLoad('mapping_id', 'auto_detect');
+    if (saved && mappings.find(m => m.id === saved)) {
+      sel.value = saved;
+    } else {
+      const autoOpt = Array.from(sel.options).find(o => o.value === 'auto_detect');
+      if (autoOpt) sel.value = 'auto_detect';
+    }
+    sel.addEventListener('change', () => lsSave('mapping_id', sel.value));
+  } catch (e) {
+    document.getElementById('sel-mapping').innerHTML = '<option value="auto_detect">표준 자동 추론</option>';
+  }
+}
+
+/* ── 룰 로드 ─────────────────────────────────────────────────────── */
+async function loadRules() {
+  try {
+    const rules = await api.get('/api/rules');
+    state.rules = rules;
+
+    // 저장된 토글 상태 복원
+    const savedEnabled = lsLoad('rule_enabled', {});
+    const savedParams  = lsLoad('rule_params', {});
+
+    rules.forEach(r => {
+      if (r.code in savedEnabled) {
+        state.ruleEnabled[r.code] = savedEnabled[r.code];
+      } else {
+        state.ruleEnabled[r.code] = r.default_enabled;
+      }
+      state.ruleParams[r.code] = savedParams[r.code] || {};
+    });
+
+    renderRulesList();
+    validateForm();
+  } catch (e) {
+    document.getElementById('rules-list').innerHTML =
+      '<p style="color:var(--text3);font-size:0.7rem;padding:6px 0;letter-spacing:-0.01em">룰 목록 로드 실패</p>';
+  }
+}
+
+function renderRulesList() {
+  const container = document.getElementById('rules-list');
+  container.innerHTML = '';
+
+  // 카테고리별로 그룹화
+  const integrity = state.rules.filter(r => r.category === 'integrity');
+  const risk = state.rules.filter(r => r.category === 'risk');
+
+  const renderGroup = (label, rules, cat) => {
+    const header = document.createElement('div');
+    header.className = 'rules-group-label';
+    header.textContent = label;
+    container.appendChild(header);
+
+    rules.forEach(rule => {
+      const row = document.createElement('div');
+      row.className = 'rule-row';
+      row.innerHTML = `
+        <label class="rule-toggle">
+          <input type="checkbox" id="toggle-${rule.code}" ${state.ruleEnabled[rule.code] ? 'checked' : ''}>
+          <span class="rule-slider"></span>
+        </label>
+        <div class="rule-info">
+          <div class="rule-name">${rule.code} ${rule.name}</div>
+        </div>
+        <span class="rule-badge ${cat}">${cat === 'integrity' ? 'A' : 'B'}</span>
+      `;
+      container.appendChild(row);
+
+      // 토글 이벤트
+      row.querySelector(`#toggle-${rule.code}`).addEventListener('change', (e) => {
+        state.ruleEnabled[rule.code] = e.target.checked;
+        lsSave('rule_enabled', state.ruleEnabled);
+        validateForm();
+        // 파라미터 행 표시 갱신
+        const paramRow = document.getElementById(`params-${rule.code}`);
+        if (paramRow) paramRow.style.display = e.target.checked ? '' : 'none';
+      });
+
+      // 인라인 파라미터 (해당하는 룰만)
+      const schema = rule.params_schema || {};
+      const hasParams = Object.keys(schema).length > 0;
+      if (hasParams && rule.code !== 'B06') {
+        const paramRow = document.createElement('div');
+        paramRow.className = 'rule-param-row';
+        paramRow.id = `params-${rule.code}`;
+        paramRow.style.display = state.ruleEnabled[rule.code] ? '' : 'none';
+
+        Object.entries(schema).forEach(([key, spec]) => {
+          const savedVal = (state.ruleParams[rule.code] || {})[key];
+          const val = savedVal !== undefined ? savedVal : spec.default;
+          paramRow.innerHTML += `
+            <span class="rule-param-label">${spec.label}:</span>
+            <input class="rule-param-input" id="param-${rule.code}-${key}"
+              type="${spec.type === 'number' || spec.type === 'integer' ? 'number' : 'text'}"
+              value="${val}" step="${spec.type === 'number' ? '0.001' : '1'}">
+          `;
+        });
+        container.appendChild(paramRow);
+
+        // 파라미터 변경 이벤트
+        Object.keys(schema).forEach(key => {
+          const input = document.getElementById(`param-${rule.code}-${key}`);
+          if (input) {
+            input.addEventListener('input', () => {
+              if (!state.ruleParams[rule.code]) state.ruleParams[rule.code] = {};
+              const spec = schema[key];
+              let val = input.value;
+              if (spec.type === 'integer') val = parseInt(val) || spec.default;
+              if (spec.type === 'number')  val = parseFloat(val) || spec.default;
+              state.ruleParams[rule.code][key] = val;
+              lsSave('rule_params', state.ruleParams);
+            });
+          }
+        });
+      }
+    });
+  };
+
+  renderGroup('데이터 품질 (Integrity)', integrity, 'integrity');
+  renderGroup('부정위험 탐지 (Risk)', risk, 'risk');
+}
+
+function resetRulesToDefault() {
+  state.rules.forEach(r => {
+    state.ruleEnabled[r.code] = r.default_enabled;
+    state.ruleParams[r.code] = {};
+  });
+  lsSave('rule_enabled', state.ruleEnabled);
+  lsSave('rule_params', state.ruleParams);
+  renderRulesList();
+  validateForm();
+}
+
+/* ── 파일 드롭존 ─────────────────────────────────────────────────── */
+function setupFileDropzones() {
+  const zones = [
+    { dz: 'dz-gl', file: 'file-gl', key: 'gl', label: 'GL 분개장' },
+    { dz: 'dz-hr', file: 'file-hr', key: 'hr', label: 'HR 마스터' },
+    { dz: 'dz-coa', file: 'file-coa', key: 'coa', label: 'COA' },
+    { dz: 'dz-tb', file: 'file-tb', key: 'tb', label: 'TB' },
+    { dz: 'dz-doctype', file: 'file-doctype', key: 'doctype', label: '전표유형' },
+  ];
+
+  zones.forEach(({ dz, file, key, label }) => {
+    const dzEl = document.getElementById(dz);
+    const fileEl = document.getElementById(file);
+    const labelEl = dzEl.querySelector('.dropzone-label');
+
+    fileEl.addEventListener('change', () => {
+      const files = fileEl.files;
+      if (files && files.length > 0) {
+        if (files.length === 1) {
+          const mb = (files[0].size / 1024 / 1024).toFixed(1);
+          labelEl.textContent = `${files[0].name} (${mb} MB)`;
+        } else {
+          const totalMb = Array.from(files).reduce((s, f) => s + f.size, 0) / 1024 / 1024;
+          labelEl.textContent = `${files.length}개 파일 선택됨 (총 ${totalMb.toFixed(1)} MB)`;
+        }
+        dzEl.classList.add('has-file');
+      } else {
+        labelEl.textContent = key === 'gl'
+          ? 'GL 분개장 (여러 파일 선택 가능)'
+          : `${label} (.xlsx/.csv)`;
+        dzEl.classList.remove('has-file');
+      }
+      if (key === 'gl') {
+        validateForm();
+        if (files && files.length > 0) triggerGlPreview(files[0]);
+        else hideColMappingSection();
+      }
+    });
+
+    dzEl.addEventListener('dragover', e => { e.preventDefault(); dzEl.classList.add('dragover'); });
+    dzEl.addEventListener('dragleave', () => dzEl.classList.remove('dragover'));
+    dzEl.addEventListener('drop', e => {
+      e.preventDefault();
+      dzEl.classList.remove('dragover');
+      if (key === 'gl') {
+        // 다중 파일 드롭 지원
+        if (e.dataTransfer.files.length > 0) {
+          fileEl.files = e.dataTransfer.files;
+          fileEl.dispatchEvent(new Event('change'));
+        }
+      } else {
+        const f = e.dataTransfer.files[0];
+        if (f) {
+          const dt = new DataTransfer();
+          dt.items.add(f);
+          fileEl.files = dt.files;
+          fileEl.dispatchEvent(new Event('change'));
+        }
+      }
+    });
+  });
+}
+
+/* ── GL 미리보기 + 컬럼 매핑 자동 추천 ────────────────────────────── */
+async function triggerGlPreview(file) {
+  const secEl = document.getElementById('sec-col-mapping');
+  const loadingEl = document.getElementById('col-mapping-loading');
+  const tableEl = document.getElementById('mapping-table');
+  const warnEl = document.getElementById('mapping-warn');
+  const bodyEl = document.getElementById('col-mapping-body');
+
+  secEl.style.display = '';
+  loadingEl.style.display = '';
+  tableEl.style.display = 'none';
+  warnEl.style.display = 'none';
+  document.getElementById('col-mapping-toggle').textContent = '▲';
+  bodyEl.style.display = '';
+
+  const fd = new FormData();
+  fd.append('gl_file', file);
+
+  try {
+    const res = await fetch('/api/upload-gl-preview', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '미리보기 실패');
+
+    state.glHeaders   = data.headers || [];
+    state.previewRows = data.preview_rows || [];
+
+    // 자동 매핑 결과를 columnMapping에 저장
+    state.columnMapping = {};
+    if (data.suggested_mapping) {
+      Object.entries(data.suggested_mapping).forEach(([std, col]) => {
+        if (col) state.columnMapping[std] = col;
+      });
+    }
+    state.mappingUnmapped = data.unmapped_required || [];
+
+    renderMappingTable(data.suggested_mapping || {}, data.unmapped_required || []);
+    loadingEl.style.display = 'none';
+    tableEl.style.display = '';
+
+    if (state.mappingUnmapped.length > 0) {
+      warnEl.style.display = '';
+      warnEl.textContent = `필수 필드 미매칭: ${state.mappingUnmapped.join(', ')} — 아래 드롭다운에서 선택하세요.`;
+    }
+    validateForm();
+  } catch (e) {
+    loadingEl.textContent = `분석 실패: ${e.message} — 스키마 매핑을 직접 선택하거나 파일을 확인하세요.`;
+  }
+}
+
+function hideColMappingSection() {
+  document.getElementById('sec-col-mapping').style.display = 'none';
+  state.glHeaders = [];
+  state.columnMapping = {};
+  state.mappingUnmapped = [];
+}
+
+/* 표준 필드 메타 (UI 표시용) */
+const STANDARD_FIELDS_META = [
+  { key: 'entry_no',       label: '전표번호',     required: true },
+  { key: 'entry_date',     label: '전기일자',     required: true },
+  { key: 'user_id',        label: '사용자ID',     required: true },
+  { key: 'account_code',   label: '계정코드',     required: true },
+  { key: 'debit_amount',   label: '차변금액',     required: true },
+  { key: 'credit_amount',  label: '대변금액',     required: true },
+  { key: 'posting_date',   label: '입력일자',     required: false },
+  { key: 'posting_time',   label: '입력시각',     required: false },
+  { key: 'user_name',      label: '사용자명',     required: false },
+  { key: 'account_name',   label: '계정명',       required: false },
+  { key: 'description',    label: '적요',         required: false },
+  { key: 'counterparty',   label: '거래처',       required: false },
+  { key: 'doc_type',       label: '전표유형',     required: false },
+  { key: 'dept_code',      label: '부서코드',     required: false },
+];
+
+function renderMappingTable(suggested, unmapped) {
+  const tbody = document.getElementById('mapping-table-body');
+  tbody.innerHTML = '';
+
+  STANDARD_FIELDS_META.forEach(field => {
+    const matched = suggested[field.key] || null;
+    const isUnmapped = !matched;
+    const isRequired = field.required;
+    const isError = isRequired && isUnmapped;
+
+    // 상위 3개 샘플값
+    let sampleVals = '';
+    if (matched && state.glHeaders.includes(matched)) {
+      const colIdx = state.glHeaders.indexOf(matched);
+      const samples = state.previewRows
+        .slice(0, 3)
+        .map(r => r[colIdx])
+        .filter(v => v != null && v !== '')
+        .slice(0, 3);
+      if (samples.length > 0) sampleVals = samples.join(', ');
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        ${field.label}
+        ${isRequired ? '<span class="badge-req" style="margin-left:4px">필수</span>' : ''}
+      </td>
+      <td>
+        <select class="mapping-select" data-field="${field.key}" id="map-sel-${field.key}">
+          <option value="">(매핑 안 함)</option>
+          ${state.glHeaders.map(h => `<option value="${escapeHtml(h)}" ${h === matched ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('')}
+        </select>
+        ${isError ? '<span class="mapping-match-err">필수 미매칭</span>' : (matched ? `<span class="mapping-match-ok">✓</span>` : '')}
+        ${sampleVals ? `<span class="mapping-preview-val">${escapeHtml(sampleVals)}</span>` : ''}
+      </td>
+      <td style="color:var(--text3);font-size:0.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">
+        ${sampleVals ? escapeHtml(sampleVals.split(',')[0]) : '—'}
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // 드롭다운 변경 이벤트
+    tr.querySelector(`#map-sel-${field.key}`).addEventListener('change', e => {
+      const val = e.target.value;
+      if (val) {
+        state.columnMapping[field.key] = val;
+      } else {
+        delete state.columnMapping[field.key];
+      }
+      // 필수 미매칭 재계산
+      state.mappingUnmapped = STANDARD_FIELDS_META
+        .filter(f => f.required && !state.columnMapping[f.key])
+        .map(f => f.key);
+      const warnEl = document.getElementById('mapping-warn');
+      if (state.mappingUnmapped.length > 0) {
+        warnEl.style.display = '';
+        warnEl.textContent = `필수 필드 미매칭: ${state.mappingUnmapped.join(', ')}`;
+      } else {
+        warnEl.style.display = 'none';
+      }
+      validateForm();
+    });
+  });
+}
+
+/* ── 폼 검증 ─────────────────────────────────────────────────────── */
+function validateForm() {
+  const glFiles = document.getElementById('file-gl').files;
+  const company = document.getElementById('inp-company').value.trim();
+  const hasEnabledRules = state.rules.some(r => r.code !== 'B06' && state.ruleEnabled[r.code]);
+  const hasMandatoryUnmapped = state.mappingUnmapped.length > 0;
+  const ok = glFiles && glFiles.length > 0 && company && hasEnabledRules && !hasMandatoryUnmapped;
+  document.getElementById('btn-run').disabled = !ok;
+}
+
+/* ── (BTI 예시 loadDemoData 제거됨) ─────────────────────────────── */
+
+/* ── 실행 버튼 클릭 ───────────────────────────────────────────────── */
+async function onRunClick() {
+  // 이전 실행 정리
+  if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+
+  // 폼 데이터 수집
+  const formData = new FormData();
+  // 다중 GL 파일 모두 전송
+  const glFileList = document.getElementById('file-gl').files;
+  for (let i = 0; i < glFileList.length; i++) {
+    formData.append('gl_file', glFileList[i]);
+  }
+
+  const optionals = ['hr','coa','tb','doctype'];
+  optionals.forEach(k => {
+    const f = document.getElementById(`file-${k}`).files[0];
+    if (f) formData.append(`${k}_file`, f);
+  });
+
+  const workpaperSpec = {
+    company:        document.getElementById('inp-company').value.trim(),
+    period_end:     document.getElementById('inp-period-end').value,
+    preparer:       document.getElementById('inp-preparer').value.trim(),
+    reviewer:       document.getElementById('inp-reviewer').value.trim(),
+    workpaper_code: document.getElementById('inp-wp-code').value.trim() || '7400',
+    title:          document.getElementById('inp-wp-title').value.trim(),
+  };
+  formData.append('workpaper_spec', JSON.stringify(workpaperSpec));
+  formData.append('schema_mapping_id', document.getElementById('sel-mapping').value || 'auto_detect');
+  // 사용자 확정 컬럼 매핑 전송
+  if (Object.keys(state.columnMapping).length > 0) {
+    formData.append('column_mapping', JSON.stringify(state.columnMapping));
+  }
+
+  // 룰 오버라이드
+  const ruleOverrides = {};
+  state.rules.forEach(r => { ruleOverrides[r.code] = state.ruleEnabled[r.code]; });
+  formData.append('rule_overrides', JSON.stringify(ruleOverrides));
+
+  // 룰 파라미터 (실제 값 수집)
+  const ruleParams = {};
+  state.rules.forEach(r => {
+    const schema = r.params_schema || {};
+    const params = {};
+    Object.entries(schema).forEach(([key, spec]) => {
+      const inp = document.getElementById(`param-${r.code}-${key}`);
+      if (inp) {
+        let val = inp.value;
+        if (spec.type === 'integer') val = parseInt(val) || spec.default;
+        if (spec.type === 'number')  val = parseFloat(val) || spec.default;
+        params[key] = val;
+      }
+    });
+    if (Object.keys(params).length > 0) ruleParams[r.code] = params;
+  });
+  formData.append('rule_params', JSON.stringify(ruleParams));
+
+  // 버튼 비활성화 + 실행 중 패널 표시
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-header-dl').disabled = true;
+  renderRunningPanel({ stage: 'loading', pct: 0 }, 0, 0, [], 0);
+  setStatusDot('running', '실행 시작 중...');
+
+  try {
+    const resp = await api.post('/api/runs', formData);
+    state.runId = resp.run_id;
+    startPolling();
+  } catch (e) {
+    renderErrorPanel(e.message || '실행 시작 실패', '');
+    setStatusDot('failed', '실행 실패');
+    document.getElementById('btn-run').disabled = false;
+  }
+}
+
+/* ── 폴링 ─────────────────────────────────────────────────────────── */
+function startPolling() {
+  state.pollTimer = setInterval(pollStatus, 2000);
+  pollStatus(); // 즉시 1회
+}
+
+async function pollStatus() {
+  if (!state.runId) return;
+  try {
+    const status = await api.get(`/api/runs/${state.runId}/status`);
+    const p = status.progress || {};
+
+    if (status.status === 'running') {
+      renderRunningPanel(p, status.total_rows, status.normalized_rows, status.rules_done, status.rules_total);
+      setStatusDot('running', `${stageLabel(p.stage)} (${p.pct || 0}%)`);
+      document.getElementById('gb-rows').textContent = status.total_rows ? status.total_rows.toLocaleString() : '—';
+    } else if (status.status === 'done') {
+      clearInterval(state.pollTimer); state.pollTimer = null;
+      const result = await api.get(`/api/runs/${state.runId}/result`);
+      state.lastResult = result;
+      renderDonePanel(result);
+      setStatusDot('done', `완료 (${result.summary.duration_sec}초)`);
+      document.getElementById('gb-rows').textContent = result.summary.total_rows.toLocaleString();
+      document.getElementById('btn-run').disabled = false;
+      document.getElementById('btn-header-dl').disabled = false;
+    } else if (status.status === 'failed') {
+      clearInterval(state.pollTimer); state.pollTimer = null;
+      const err = status.error || {};
+      renderErrorPanel(err.message || '알 수 없는 오류', err.traceback || '');
+      setStatusDot('failed', '실행 실패');
+      document.getElementById('btn-run').disabled = false;
+    }
+  } catch (e) {
+    console.warn('폴링 오류:', e);
+  }
+}
+
+function stageLabel(stage) {
+  if (!stage) return '처리 중';
+  if (stage === 'loading')     return '파일 적재 중';
+  if (stage === 'normalizing') return '정규화 중';
+  if (stage === 'reporting')   return '조서 생성 중';
+  if (stage === 'done')        return '완료';
+  if (stage === 'failed')      return '실패';
+  if (stage.startsWith('rule:')) return `룰 ${stage.replace('rule:','')} 실행 중`;
+  return stage;
+}
+
+function setStatusDot(type, text) {
+  const dot = document.getElementById('status-dot');
+  dot.className = `gb-dot ${type}`;
+  document.getElementById('status-text').textContent = text;
+}
+
+/* ── 패널 렌더링 ─────────────────────────────────────────────────── */
+
+function renderRunningPanel(progress, totalRows, normRows, rulesDone, rulesTotal) {
+  const pct = progress.pct || 0;
+  const stage = stageLabel(progress.stage);
+  const rulesHtml = (state.rules || []).filter(r => r.code !== 'B06').map(r => {
+    const done = (rulesDone || []).includes(r.code);
+    const running = progress.stage === `rule:${r.code}`;
+    const cls = done ? 'done' : running ? 'running' : '';
+    const icon = done ? '✓' : running ? '…' : '○';
+    return `<div class="rule-check-item ${cls}">${icon} ${r.code}</div>`;
+  }).join('');
+
+  document.getElementById('main-panel').innerHTML = `
+    <div class="result-section-title">실행 중</div>
+    <div class="progress-wrap">
+      <div class="progress-stage">${stage}</div>
+      <div class="progress-track">
+        <div class="progress-bar" style="width:${pct}%"></div>
+      </div>
+      <div class="progress-label">${pct}%</div>
+      <div class="stats-ticker">
+        GL 행수: <strong>${(totalRows||0).toLocaleString()}</strong> /
+        정규화: <strong>${(normRows||0).toLocaleString()}</strong> /
+        룰 완료: <strong>${(rulesDone||[]).length}/${rulesTotal||0}</strong>
+      </div>
+    </div>
+    <div class="rules-checklist">${rulesHtml}</div>
+  `;
+}
+
+function renderDonePanel(result) {
+  const summary = result.summary;
+  const scenarios = result.scenarios || [];
+  const failCount = scenarios.filter(s => s.status === 'fail').length;
+
+  // KPI 카드
+  const kpiHtml = `
+    <div class="kpi-grid">
+      <div class="kpi-card accent">
+        <div class="kpi-value">${summary.total_rows.toLocaleString()}</div>
+        <div class="kpi-label">총 분개행</div>
+      </div>
+      <div class="kpi-card ${failCount > 0 ? 'danger' : 'success'}">
+        <div class="kpi-value">${summary.total_findings.toLocaleString()}</div>
+        <div class="kpi-label">총 적출건수</div>
+      </div>
+      <div class="kpi-card success">
+        <div class="kpi-value">${summary.duration_sec}s</div>
+        <div class="kpi-label">처리 시간</div>
+      </div>
+    </div>
+  `;
+
+  // 시나리오 결과 테이블
+  const scenRowsHtml = scenarios.map(s => {
+    const badgeClass = s.status === 'pass' ? 'pass' : s.status === 'fail' ? 'fail' : s.status === 'waived' ? 'waived' : 'warn';
+    const badgeText  = s.status === 'pass' ? 'PASS' : s.status === 'fail' ? 'FAIL' : s.status === 'waived' ? 'N/A' : '주의';
+    return `<tr class="clickable" data-code="${s.code}" onclick="onScenarioClick('${s.code}')">
+      <td><strong>${s.code}</strong></td>
+      <td>${s.name}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${s.findings.toLocaleString()}</td>
+      <td><span class="badge badge-${badgeClass}">${badgeText}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('main-panel').innerHTML = `
+    ${kpiHtml}
+    <div class="result-section-title">시나리오 결과</div>
+    <table class="scenario-table">
+      <thead><tr>
+        <th>코드</th><th>테스트명</th><th style="text-align:right">적출건수</th><th>결과</th>
+      </tr></thead>
+      <tbody>${scenRowsHtml}</tbody>
+    </table>
+
+    <div id="preview-section" style="display:none; margin-top:20px;">
+      <div class="result-section-title" id="preview-title">시트 미리보기</div>
+      <div id="preview-tabs" class="preview-tabs"></div>
+      <div id="preview-content"></div>
+    </div>
+
+    <div class="download-row">
+      <div class="download-info">
+        조서 Excel 준비 완료 —
+        <strong>${summary.output_size_mb} MB</strong>
+      </div>
+      <button class="btn-download" onclick="downloadResult()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        조서 Excel 다운로드
+      </button>
+    </div>
+  `;
+}
+
+function renderErrorPanel(message, traceStr) {
+  document.getElementById('main-panel').innerHTML = `
+    <div class="err-msg">
+      <div class="err-msg-title">실행 실패</div>
+      <div>${escapeHtml(message)}</div>
+      ${traceStr ? `<div class="err-traceback">${escapeHtml(traceStr)}</div>` : ''}
+      <button class="btn-retry" onclick="resetToIdle()">다시 시도</button>
+    </div>
+  `;
+}
+
+function resetToIdle() {
+  document.getElementById('main-panel').innerHTML = `
+    <div class="placeholder" id="panel-idle">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M9 17H7A5 5 0 017 7h1M15 7h1a5 5 0 010 10h-1M8 12h8"/>
+      </svg>
+      <p>GL 파일을 업로드하고 실행하세요.</p>
+      <small>ISA 240 · 데이터 품질 · 부정위험 탐지</small>
+    </div>`;
+  setStatusDot('', '대기 중');
+  document.getElementById('btn-header-dl').disabled = true;
+  validateForm();
+}
+
+/* ── 시나리오 클릭 → 시트 미리보기 ──────────────────────────────── */
+async function onScenarioClick(code) {
+  // 활성 행 표시
+  document.querySelectorAll('.scenario-table tr.active').forEach(r => r.classList.remove('active'));
+  const tr = document.querySelector(`.scenario-table tr[data-code="${code}"]`);
+  if (tr) tr.classList.add('active');
+
+  const previewSection = document.getElementById('preview-section');
+  const previewContent = document.getElementById('preview-content');
+  const previewTitle   = document.getElementById('preview-title');
+  const previewTabs    = document.getElementById('preview-tabs');
+
+  previewSection.style.display = '';
+  previewContent.innerHTML = '<div style="color:var(--text3);font-size:0.72rem;padding:1rem 0;letter-spacing:-0.01em">시트 로딩 중...</div>';
+  previewTabs.innerHTML = '';
+  previewTitle.textContent = `${code} 시트 미리보기`;
+
+  // 시트 목록 조회
+  try {
+    const sheetsData = await api.get(`/api/runs/${state.runId}/sheets`);
+    const allSheets = sheetsData.sheets || [];
+    // 해당 코드 관련 시트 필터링
+    const related = allSheets.filter(s => s.includes(code) || s.startsWith(code));
+    const sheetsToShow = related.length > 0 ? related : allSheets.filter(s => s.startsWith(code.replace(/\d/g, '')));
+    const targetSheets = sheetsToShow.length > 0 ? sheetsToShow : [allSheets[0]].filter(Boolean);
+
+    if (targetSheets.length === 0) {
+      previewContent.innerHTML = '<div class="dtable-empty">시트를 찾을 수 없습니다</div>';
+      return;
+    }
+
+    // 탭 렌더링
+    targetSheets.forEach((sheet, i) => {
+      const tab = document.createElement('button');
+      tab.className = 'preview-tab' + (i === 0 ? ' active' : '');
+      tab.textContent = sheet;
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('#preview-tabs .preview-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        loadSheetPreview(sheet);
+      });
+      previewTabs.appendChild(tab);
+    });
+
+    await loadSheetPreview(targetSheets[0]);
+  } catch (e) {
+    previewContent.innerHTML = `<div class="dtable-empty">미리보기 오류: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function loadSheetPreview(sheet) {
+  const previewContent = document.getElementById('preview-content');
+  previewContent.innerHTML = '<div style="color:var(--text3);font-size:0.72rem;padding:1rem 0;letter-spacing:-0.01em">로딩 중...</div>';
+
+  try {
+    const data = await api.get(`/api/runs/${state.runId}/preview/${encodeURIComponent(sheet)}`);
+    if (!data.columns || data.columns.length === 0) {
+      previewContent.innerHTML = '<div class="dtable-empty">데이터 없음</div>';
+      return;
+    }
+
+    const headerHtml = data.columns.map(c => `<th>${escapeHtml(String(c))}</th>`).join('');
+    const rowsHtml = data.rows.map(row =>
+      `<tr>${row.map(c => `<td>${escapeHtml(c == null ? '' : String(c))}</td>`).join('')}</tr>`
+    ).join('');
+
+    previewContent.innerHTML = `
+      <div style="font-size:0.67rem;color:var(--text3);margin-bottom:6px;letter-spacing:-0.01em">
+        상위 ${data.rows.length}행 / 전체 ${data.total_rows.toLocaleString()}행
+      </div>
+      <div class="dtable-wrap" style="max-height:360px;overflow-y:auto;">
+        <table class="dtable">
+          <thead><tr>${headerHtml}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) {
+    previewContent.innerHTML = `<div class="dtable-empty">미리보기 오류: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/* ── 다운로드 ─────────────────────────────────────────────────────── */
+function downloadResult() {
+  if (!state.runId) return;
+  window.location.href = `/api/runs/${state.runId}/download`;
+}
+
+/* ── 유틸 ─────────────────────────────────────────────────────────── */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
