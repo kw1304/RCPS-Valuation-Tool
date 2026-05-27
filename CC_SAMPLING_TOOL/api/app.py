@@ -27,7 +27,13 @@ from src.domain.sample_size import (
     CONFIDENCE_FACTOR_MATRIX,
     KEY_ITEM_RATIO_MATRIX,
 )
-from src.infrastructure.loaders import get_total_assets, load_fs_amounts, load_related_parties
+from src.infrastructure.loaders import (
+    get_total_assets, load_fs_amounts, load_related_parties, load_upload_guide,
+    UploadGuideData, PartyContact,
+)
+from src.infrastructure.report.generic_reporter import (
+    PartyContactInfo, ExclusionRow, ConfirmationReplyInfo, AlternativeProcedureEntry,
+)
 from src.infrastructure.schemas.ledger_schema import detect_ledger_sheets
 from src.infrastructure.persistence import (
     AlternativeProcedureRepository,
@@ -93,6 +99,8 @@ STATE: dict = {
     "ledger_path": None,
     "fs_path": None,
     "rp_path": None,
+    "upload_guide_path": None,   # UploadGuide xlsx 경로
+    "upload_guide_data": None,   # UploadGuideData 객체 캐시
     "last_result": {},   # {"receivable": {"result": ..., "params": ...}, ...}
     "current_project_id": None,
     "workpaper_ids": {},  # {kind: workpaper_id}
@@ -326,6 +334,29 @@ def upload():
                 except Exception as e:
                     log.warning(f"Artifact 저장 실패 (비치명적): {e}")
 
+    # UploadGuide 업로드 (선택) — 거래처 연락처·발송제외 자동 추출
+    ug_file = request.files.get("upload_guide")
+    if ug_file and ug_file.filename:
+        if not _validate_file_ext(ug_file.filename, _ALLOWED_EXCEL_EXTS):
+            ext = Path(ug_file.filename).suffix.lower()
+            return jsonify({
+                "error": f"'upload_guide' 파일 형식 오류: {ext}. Excel 파일(.xlsx)을 업로드하세요."
+            }), 400
+        ug_path = UPLOAD_DIR / "_upload_guide.xlsx"
+        ug_file.save(ug_path)
+        STATE["upload_guide_path"] = str(ug_path)
+        STATE["upload_guide_data"] = None  # 캐시 초기화
+        try:
+            ug_data = load_upload_guide(ug_path)
+            STATE["upload_guide_data"] = ug_data
+            result["upload_guide"] = ug_file.filename
+            result["upload_guide_send_targets"] = len(ug_data.send_targets)
+            result["upload_guide_excluded"] = len(ug_data.excluded)
+            result["upload_guide_excluded_names"] = sorted(ug_data.excluded_names())
+        except Exception as e:
+            log.warning(f"UploadGuide 파싱 실패 (비치명적): {e}")
+            result["upload_guide_warning"] = f"UploadGuide 파싱 실패: {e!s}"
+
     # project_id 없는 레거시 호출 — 임시 프로젝트 자동 생성
     if not project_id and (STATE.get("ledger_path") or STATE.get("fs_path")):
         log.warning("project_id 없는 /api/upload 호출 — 임시 프로젝트 생성 (deprecated)")
@@ -438,6 +469,18 @@ def run():
     if df.empty:
         return jsonify({"error": "거래처원장이 비어 있습니다. 데이터를 확인하세요."}), 400
 
+    # 특관자 fallback: payload에 없으면 업로드된 RP 파일에서 자동 로드 (ISA 550 — 모두 포함 원칙)
+    related_parties_data = data.get("related_parties")
+    if related_parties_data:
+        related_parties = set(related_parties_data)
+    elif STATE.get("rp_path"):
+        try:
+            related_parties = load_related_parties(STATE["rp_path"])
+        except Exception:
+            related_parties = set()
+    else:
+        related_parties = set()
+
     params = SamplingParams(
         company_name=data.get("company_name", ""),
         period_end=date.fromisoformat(data.get("period_end", "2025-12-31")),
@@ -450,7 +493,7 @@ def run():
         fs_amounts_by_group=data.get("fs_amounts_by_group") or {},
         completeness_notes=data.get("completeness_notes") or {},
         excluded_parties=data.get("excluded_parties") or {},
-        related_parties=set(data.get("related_parties") or []),
+        related_parties=related_parties,
         force_include_related=bool(data.get("force_include_related", True)),
         random_seed=_i(data.get("seed", 42)),
         preparer=data.get("preparer", ""),
@@ -752,10 +795,102 @@ def step3_build(pid: str):
             if reviewer:
                 params.reviewer = reviewer
 
+        # ── UploadGuide 연락처 로드 ──────────────────────────────
+        contacts: list[PartyContactInfo] = []
+        exclusion_rows_list: list[ExclusionRow] = []
+        ug_data: UploadGuideData | None = STATE.get("upload_guide_data")
+        if ug_data is None and STATE.get("upload_guide_path"):
+            try:
+                ug_data = load_upload_guide(STATE["upload_guide_path"])
+                STATE["upload_guide_data"] = ug_data
+            except Exception as e:
+                log.warning(f"UploadGuide 재로드 실패: {e}")
+        if ug_data:
+            contacts = [
+                PartyContactInfo(
+                    name=ct.name,
+                    country=ct.country,
+                    business_no=ct.business_no,
+                    ceo_name=ct.ceo_name,
+                    contact_person=ct.contact_person,
+                    phone=ct.phone,
+                    email=ct.email,
+                )
+                for ct in ug_data.send_targets
+            ]
+            exclusion_rows_list = [
+                ExclusionRow(
+                    name=ex.name,
+                    account_name=ex.account_name,
+                    currency=ex.currency,
+                    amount=ex.amount,
+                    kind=ex.kind,
+                )
+                for ex in ug_data.excluded
+            ]
+
+        # ── PDF 회신 결과 로드 (Step 4 완료 시) ─────────────────
+        pdf_replies_list: list[ConfirmationReplyInfo] = []
+        try:
+            with get_session() as s2:
+                wp_repo2 = WorkpaperRepository(s2)
+                wp2 = wp_repo2.get_or_create(pid, kind)
+                from src.infrastructure.persistence import ConfirmationReplyRepository
+                reply_repo2 = ConfirmationReplyRepository(s2)
+                replies_db = reply_repo2.list_by_workpaper(wp2.id)
+                for rep in replies_db:
+                    pdf_replies_list.append(ConfirmationReplyInfo(
+                        party_name=rep.party_name_matched or rep.party_name_raw,
+                        status=rep.status,
+                        extracted_balance=rep.extracted_balance,
+                        reply_date=rep.reply_date,
+                    ))
+        except Exception as e:
+            log.warning(f"PDF 회신 로드 실패 (비치명적): {e}")
+
+        # ── 대체적 절차 로드 (Step 5 완료 시) ──────────────────
+        alt_procs_list: list[AlternativeProcedureEntry] = []
+        try:
+            with get_session() as s3:
+                from src.infrastructure.persistence import AlternativeProcedureRepository
+                wp_repo3 = WorkpaperRepository(s3)
+                wp3 = wp_repo3.get_or_create(pid, kind)
+                proc_repo3 = AlternativeProcedureRepository(s3)
+                procs_db = proc_repo3.list_by_workpaper(wp3.id)
+                for proc in procs_db:
+                    import json as _json2
+                    ev_ids: list[str] = []
+                    if proc.evidence_artifact_ids:
+                        try:
+                            ev_ids = _json2.loads(proc.evidence_artifact_ids)
+                        except Exception:
+                            ev_ids = []
+                    # evidence names — artifact ID만 있으므로 ID를 이름 대용으로 표시
+                    alt_procs_list.append(AlternativeProcedureEntry(
+                        party_name=proc.party_name,
+                        reason=proc.reason,
+                        ledger_balance=proc.ledger_balance,
+                        procedure_type=proc.procedure_type,
+                        evidence_names=ev_ids,
+                        covered_amount=proc.covered_amount,
+                        coverage_ratio=proc.coverage_ratio,
+                        conclusion=proc.conclusion,
+                        auditor_notes=proc.auditor_notes,
+                    ))
+        except Exception as e:
+            log.warning(f"대체적 절차 로드 실패 (비치명적): {e}")
+
         prefix = "C100" if kind == "receivable" else "AA100"
         fname = f"{prefix}_{proj.company_name}_{proj.period_end}.xlsx"
         out_path = ROOT / "output" / fname
-        write_report(result, params, out_path, template_id=template_id)
+        write_report(
+            result, params, out_path,
+            template_id=template_id,
+            contacts=contacts or None,
+            exclusion_rows=exclusion_rows_list or None,
+            pdf_replies=pdf_replies_list or None,
+            alt_procedures=alt_procs_list or None,
+        )
 
         # Artifact 저장
         art_repo = ArtifactRepository(s)

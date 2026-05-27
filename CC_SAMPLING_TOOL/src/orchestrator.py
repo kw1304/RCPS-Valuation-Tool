@@ -30,8 +30,17 @@ from src.domain.population import (
 )
 from src.domain.sample_size import SampleSizeInput, compute_sample_size
 from src.infrastructure.reporter import build_report
-from src.infrastructure.template_reporter import (
+from src.infrastructure.report.generic_reporter import (
     ReportContext,
+    PartyContactInfo,
+    ExclusionRow,
+    ConfirmationReplyInfo,
+    AlternativeProcedureEntry,
+    build_generic_report,
+)
+# 하위 호환: template_reporter 는 7620 회귀 테스트용으로 유지 (DEPRECATED)
+from src.infrastructure.template_reporter import (
+    ReportContext as _LegacyReportContext,
     build_template_report,
 )
 
@@ -171,19 +180,26 @@ def write_report(
     params: SamplingParams,
     out_path: str | Path,
     template_id: str | None = None,
+    contacts: list[PartyContactInfo] | None = None,
+    exclusion_rows: list[ExclusionRow] | None = None,
+    pdf_replies: list[ConfirmationReplyInfo] | None = None,
+    alt_procedures: list[AlternativeProcedureEntry] | None = None,
 ) -> None:
-    """조서 출력. template_id=None 이면 기본 양식("woongkye_standard") 사용.
-    7620 회귀 PASS 유지 — 기본 동작 변경 없음.
+    """조서 출력 — 빈 워크북에서 7개 시트 직접 작성.
+
+    template_id 는 향후 시각 테마 선택용으로 유지하나 현재는 무시.
+    기존 build_template_report 는 7620 회귀 테스트에서 직접 호출 가능 (DEPRECATED).
     """
+    prefix = "C100" if params.kind == "receivable" else "AA100"
     ctx = ReportContext(
         company_name=params.company_name,
         period_end=params.period_end,
         kind=params.kind,
         preparer=params.preparer,
         reviewer=params.reviewer,
-        workpaper_no_prefix="C100" if params.kind == "receivable" else "AA100",
+        workpaper_no_prefix=prefix,
     )
-    build_template_report(
+    build_generic_report(
         out_path=out_path,
         ctx=ctx,
         completeness=out.completeness,
@@ -192,4 +208,8 @@ def write_report(
         mus_result=out.mus_result,
         performance_materiality=params.performance_materiality,
         population_amount=out.population_amount,
+        contacts=contacts,
+        exclusion_rows=exclusion_rows,
+        pdf_replies=pdf_replies,
+        alt_procedures=alt_procedures,
     )

@@ -1,4 +1,4 @@
-"""Step 3 End-to-End 테스트 (Week 2)."""
+"""Step 3 End-to-End 테스트 (v1.1.0 — generic_reporter 7시트 기준)."""
 import io
 import json
 import sys
@@ -16,7 +16,16 @@ from src.infrastructure.persistence import get_session, WorkpaperRepository
 
 LEDGER_PATH = ROOT / "input" / "회사자료" / "채권채무조회서 거래처별 원장.XLSX"
 TEMPLATE_PATH = ROOT / "input" / "조서" / "7620_코스맥스비티아이_C100_AA100 채권 채무 조회_FY25.xlsx"
-EXPECTED_SHEET_COUNT = 21   # cc_template.xlsx 시트 수 (7620 회귀 기준)
+# generic_reporter 가 생성하는 7개 시트 (채권 기준: C100 prefix)
+EXPECTED_GENERIC_SHEETS = {
+    "샘플링 요약",
+    "C100 조회서",
+    "C100A 조회처 주소 적정성",
+    "C100-1 표본규모 결정",
+    "C100-2 Key item 추출",
+    "C100-3 표본 추출(MUS)",
+    "대체적 절차",
+}
 
 
 @pytest.fixture(scope="module")
@@ -91,8 +100,11 @@ def test_step3_download_returns_excel(client, sampled_project):
     assert any(ct in r.content_type for ct in ["spreadsheetml", "application/octet-stream", "zip"])
 
 
-def test_step3_downloaded_xlsx_preserves_template_sheets(client, sampled_project, tmp_path):
-    """다운로드된 조서 xlsx에 cc_template.xlsx 시트가 모두 보존됨."""
+def test_step3_downloaded_xlsx_has_7_generic_sheets(client, sampled_project, tmp_path):
+    """다운로드된 조서 xlsx에 generic_reporter 7개 시트가 모두 존재함.
+
+    v1.1.0부터 21개 template 복사 방식을 폐기하고 7시트 직접 작성 방식으로 전환.
+    """
     pid = sampled_project
     # build 재실행 (artifact 갱신)
     r_build = client.post(f"/api/project/{pid}/step3/build", json={
@@ -109,17 +121,12 @@ def test_step3_downloaded_xlsx_preserves_template_sheets(client, sampled_project
     out = tmp_path / "workpaper.xlsx"
     out.write_bytes(r.data)
     wb = openpyxl.load_workbook(out, read_only=True)
-    sheet_count = len(wb.sheetnames)
+    actual_sheets = set(wb.sheetnames)
     wb.close()
 
-    # cc_template.xlsx 시트 수 동적으로 확인
-    from src.infrastructure.report.template_registry import get_template
-    meta = get_template("woongkye_standard")
-    wb_ref = openpyxl.load_workbook(meta.xlsx_path, read_only=True)
-    expected = len(wb_ref.sheetnames)
-    wb_ref.close()
-
-    assert sheet_count == expected, f"시트 수 불일치: {sheet_count} != {expected}"
+    missing = EXPECTED_GENERIC_SHEETS - actual_sheets
+    assert not missing, f"누락 시트: {missing} | 실제: {actual_sheets}"
+    assert len(actual_sheets) == 7, f"시트 수 불일치: {len(actual_sheets)} (기대 7)"
 
 
 def test_step3_mark_done_sets_completed_at(client, sampled_project):
