@@ -1398,9 +1398,6 @@ input[type="range"]:focus { border: none; box-shadow: none; }
       </div>
     </div>
 
-    <div class="notes-conclusion">
-      📌 본 툴은 감사 참고용 근사치 산출 도구입니다.<br>공식 평가보고서를 대체하지 않습니다.
-    </div>
     </div><!-- /notes-panel-body -->
   </div>
 
@@ -1978,7 +1975,6 @@ function exportExcel() {
     ['[면책 고지]'],
     ['본 툴은 국고채 수익률(한국은행 ECOS API)을 무위험이자율 근사값으로 사용합니다.'],
     ['실무 IRS 공정가치 평가의 표준은 CD 91일물 기반 원화 스왑 곡선이며, Bloomberg 또는 Reuters에서 제공하는 IRS 호가 데이터를 사용해야 합니다.'],
-    ['본 산출값은 감사 참고용 근사치이며, 공식 평가보고서를 대체하지 않습니다.'],
   );
   const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
   ws1['!cols'] = [{wch:28},{wch:60}];
