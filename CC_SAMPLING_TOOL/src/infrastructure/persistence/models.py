@@ -1,11 +1,12 @@
 """SQLAlchemy ORM 모델
 
-5개 테이블:
-  Project          — 감사 프로젝트 (회사·기간·회계법인)
-  Workpaper        — 채권 또는 채무 조서 1건 (샘플링 파라미터·결과 포함)
-  Artifact         — 업로드 파일 및 생성 파일 (원장·FS·조서 xlsx 등)
-  AuditTrail       — 변경 이력 로그
-  ConfirmationReply / AlternativeProcedure — Week 3-5 placeholder
+6개 테이블:
+  Project              — 감사 프로젝트 (회사·기간·회계법인)
+  Workpaper            — 채권 또는 채무 조서 1건 (샘플링 파라미터·결과 포함)
+  Artifact             — 업로드 파일 및 생성 파일 (원장·FS·조서 xlsx 등)
+  AuditTrail           — 변경 이력 로그
+  ConfirmationReply    — 조회서 회신 PDF 추출·매칭·차이판정 결과 (Week 3)
+  AlternativeProcedure — 대체적 절차 (Week 5 placeholder)
 """
 from __future__ import annotations
 
@@ -152,9 +153,9 @@ class AuditTrail(Base):
     project: Mapped[Project | None] = relationship("Project", back_populates="audit_trails")
 
 
-# ── Week 3-5 placeholder 테이블 ────────────────────────────────────────────
+# ── Week 3 ─────────────────────────────────────────────────────────────────
 class ConfirmationReply(Base):
-    """조회서 회신 (Week 4 구현 예정). 스키마 placeholder."""
+    """조회서 회신 — PDF 추출·거래처매칭·차이판정 결과 저장."""
 
     __tablename__ = "confirmation_replies"
 
@@ -162,15 +163,40 @@ class ConfirmationReply(Base):
     workpaper_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("workpapers.id", ondelete="CASCADE"), nullable=False
     )
-    party_name: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    reply_status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending")
-    reply_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
-    difference: Mapped[float | None] = mapped_column(Float, nullable=True)
-    reply_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    pdf_artifact_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # Artifact FK (소프트)
+
+    # 거래처 매칭
+    party_name_raw: Mapped[str] = mapped_column(String(500), nullable=False, default="")   # PDF 추출 원문
+    party_name_matched: Mapped[str | None] = mapped_column(String(500), nullable=True)     # 매칭된 후보명
+    party_match_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    party_match_method: Mapped[str | None] = mapped_column(String(30), nullable=True)      # "exact"|"fuzzy_partial"|"fuzzy_token"|"failed"
+
+    # 추출 잔액
+    extracted_balance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    extracted_balance_currency: Mapped[str] = mapped_column(String(10), nullable=False, default="KRW")
+    reply_date: Mapped[str | None] = mapped_column(String(10), nullable=True)   # YYYY-MM-DD
+
+    # 대사
+    ledger_balance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    difference: Mapped[float | None] = mapped_column(Float, nullable=True)      # ledger - extracted
+    difference_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending")
+    # "matched" | "mismatch" | "extraction_failed" | "pending" | "needs_review"
+
+    # 사용자 검토 확정
+    reviewer_confirmed_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # None = 미검토, "confirmed_matched" | "confirmed_mismatch" | "overridden"
+
+    # 추출 메타
+    extraction_method: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    extraction_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
+# ── Week 5 placeholder ────────────────────────────────────────────────────
 class AlternativeProcedure(Base):
     """대체적 절차 (Week 5 구현 예정). 스키마 placeholder."""
 

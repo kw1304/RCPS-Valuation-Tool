@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from .models import Artifact, AuditTrail, Project, Workpaper
+from .models import Artifact, AuditTrail, ConfirmationReply, Project, Workpaper
 
 _ROOT = Path(__file__).resolve().parents[3]  # CC_SAMPLING_TOOL/
 _ARTIFACT_BASE = _ROOT / "data" / "projects"
@@ -236,3 +236,118 @@ class ArtifactRepository:
         from sqlalchemy import select
         stmt = select(Artifact).where(Artifact.project_id == project_id)
         return list(self._s.execute(stmt).scalars())
+
+    def save_bytes(
+        self,
+        project_id: str,
+        kind: str,
+        content: bytes,
+        filename: str,
+        workpaper_id: str | None = None,
+        uploaded_by_email: str = "",
+    ) -> Artifact:
+        """bytes 데이터를 임시파일 거치지 않고 직접 저장."""
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp:
+            tmp.write(content)
+            tmp_path = Path(tmp.name)
+
+        try:
+            return self.save_file(
+                project_id=project_id,
+                kind=kind,
+                source_path=tmp_path,
+                filename=filename,
+                workpaper_id=workpaper_id,
+                uploaded_by_email=uploaded_by_email,
+            )
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+
+class ConfirmationReplyRepository:
+    """ConfirmationReply CRUD — PDF 추출·매칭·차이판정 결과 관리."""
+
+    def __init__(self, session: Session) -> None:
+        self._s = session
+
+    def create(
+        self,
+        workpaper_id: str,
+        pdf_artifact_id: str | None = None,
+        party_name_raw: str = "",
+        party_name_matched: str | None = None,
+        party_match_confidence: float | None = None,
+        party_match_method: str | None = None,
+        extracted_balance: float | None = None,
+        extracted_balance_currency: str = "KRW",
+        reply_date: str | None = None,
+        ledger_balance: float | None = None,
+        difference: float | None = None,
+        difference_pct: float | None = None,
+        status: str = "pending",
+        extraction_method: str | None = None,
+        extraction_confidence: float | None = None,
+        notes: str | None = None,
+    ) -> ConfirmationReply:
+        reply = ConfirmationReply(
+            workpaper_id=workpaper_id,
+            pdf_artifact_id=pdf_artifact_id,
+            party_name_raw=party_name_raw,
+            party_name_matched=party_name_matched,
+            party_match_confidence=party_match_confidence,
+            party_match_method=party_match_method,
+            extracted_balance=extracted_balance,
+            extracted_balance_currency=extracted_balance_currency,
+            reply_date=reply_date,
+            ledger_balance=ledger_balance,
+            difference=difference,
+            difference_pct=difference_pct,
+            status=status,
+            extraction_method=extraction_method,
+            extraction_confidence=extraction_confidence,
+            notes=notes,
+        )
+        self._s.add(reply)
+        self._s.flush()
+        return reply
+
+    def get(self, reply_id: str) -> ConfirmationReply | None:
+        return self._s.get(ConfirmationReply, reply_id)
+
+    def list_by_workpaper(self, workpaper_id: str) -> list[ConfirmationReply]:
+        from sqlalchemy import select
+        stmt = (
+            select(ConfirmationReply)
+            .where(ConfirmationReply.workpaper_id == workpaper_id)
+            .order_by(ConfirmationReply.created_at.desc())
+        )
+        return list(self._s.execute(stmt).scalars())
+
+    def update_reviewer_confirmation(
+        self,
+        reply_id: str,
+        reviewer_confirmed_status: str,
+        party_name_matched: str | None = None,
+        extracted_balance: float | None = None,
+        reply_date: str | None = None,
+        status: str | None = None,
+        notes: str | None = None,
+    ) -> ConfirmationReply | None:
+        reply = self.get(reply_id)
+        if reply is None:
+            return None
+        reply.reviewer_confirmed_status = reviewer_confirmed_status
+        if party_name_matched is not None:
+            reply.party_name_matched = party_name_matched
+        if extracted_balance is not None:
+            reply.extracted_balance = extracted_balance
+        if reply_date is not None:
+            reply.reply_date = reply_date
+        if status is not None:
+            reply.status = status
+        if notes is not None:
+            reply.notes = notes
+        reply.updated_at = _now()
+        return reply

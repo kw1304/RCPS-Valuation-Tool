@@ -1,4 +1,4 @@
-"""웅계사's CC Sampling Tool — Flask 서버 (Week 2: Send list + Template registry + Step 2/3 API)"""
+"""웅계사's CC Sampling Tool — Flask 서버 (Week 3: PDF 회신 추출·매칭·차이판정 API)"""
 from __future__ import annotations
 
 import json
@@ -32,11 +32,15 @@ from src.infrastructure.schemas.ledger_schema import detect_ledger_sheets
 from src.infrastructure.persistence import (
     ArtifactRepository,
     AuditTrail,
+    ConfirmationReplyRepository,
     ProjectRepository,
     WorkpaperRepository,
     init_db,
     get_session,
 )
+from src.infrastructure.pdf import extract_text, parse_confirmation
+from src.domain.matching import match_party
+from src.domain.reconciliation import reconcile
 from src.infrastructure.report.template_registry import list_templates, get_template
 from src.infrastructure.confirmations.send_list_builder import build_send_list
 from src.orchestrator import SamplingParams, run_sampling, write_report
@@ -735,6 +739,189 @@ def step3_mark_done(pid: str):
 
 
 # ─────────────────────────────────────────────────────────────
+# Step 4: PDF 회신 업로드·자동처리·수동보정·완료 기록
+# ─────────────────────────────────────────────────────────────
+@app.route("/api/project/<pid>/step4/upload-replies", methods=["POST"])
+def step4_upload_replies(pid: str):
+    """PDF 회신 다중 업로드 → 자동 추출·매칭·차이판정 → ConfirmationReply 생성.
+
+    multipart form-data: files[]=<pdf>, kind=receivable|payable, tolerance=0
+    """
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        kind = request.form.get("kind", "receivable")
+        try:
+            tolerance = float(request.form.get("tolerance", "0") or "0")
+        except ValueError:
+            tolerance = 0.0
+
+        # Step 1 결과에서 candidates (거래처명) + ledger_balance 가져오기
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        candidates: list[str] = []
+        ledger_map: dict[str, float] = {}  # party_name → ledger_balance
+
+        if wp.sampling_result:
+            result_dict = json.loads(wp.sampling_result)
+            for d in result_dict.get("decisions", []):
+                if d.get("final_sampled"):
+                    candidates.append(d["name"])
+                    ledger_map[d["name"]] = float(d.get("balance", 0))
+
+        files = request.files.getlist("files[]")
+        if not files:
+            return jsonify({"error": "업로드된 PDF 파일이 없습니다"}), 400
+
+        art_repo = ArtifactRepository(s)
+        reply_repo = ConfirmationReplyRepository(s)
+
+        results = []
+        for f in files:
+            if not f.filename:
+                continue
+            filename = f.filename
+
+            # 1) Artifact 저장
+            pdf_bytes = f.read()
+            artifact = art_repo.save_bytes(
+                project_id=pid,
+                kind="pdf_reply",
+                content=pdf_bytes,
+                filename=filename,
+                workpaper_id=wp.id,
+            )
+
+            # 2) 텍스트 추출
+            from pathlib import Path as _Path
+            extract_result = extract_text(_Path(artifact.stored_path))
+            ocr_warnings = extract_result.warnings
+
+            # 3) 파싱
+            parsed = parse_confirmation(extract_result.full_text, kind=kind)
+
+            # 4) 거래처 매칭
+            raw_name = parsed.extracted_name or filename
+            if candidates:
+                match_result = match_party(raw_name, candidates)
+                matched_name = match_result.matched_name
+                match_conf = match_result.confidence
+                match_method = match_result.method
+            else:
+                matched_name = None
+                match_conf = 0.0
+                match_method = "failed"
+
+            # 5) 차이 판정
+            ledger_bal = ledger_map.get(matched_name) if matched_name else None
+            recon = reconcile(
+                ledger_balance=ledger_bal if ledger_bal is not None else 0.0,
+                extracted_balance=parsed.extracted_balance,
+                tolerance=tolerance,
+            )
+            status = recon.status
+            if matched_name is None:
+                status = "needs_review"
+
+            # 6) DB 저장
+            reply = reply_repo.create(
+                workpaper_id=wp.id,
+                pdf_artifact_id=artifact.id,
+                party_name_raw=raw_name,
+                party_name_matched=matched_name,
+                party_match_confidence=match_conf,
+                party_match_method=match_method,
+                extracted_balance=parsed.extracted_balance,
+                extracted_balance_currency=parsed.balance_currency,
+                reply_date=parsed.reply_date,
+                ledger_balance=ledger_bal,
+                difference=recon.difference,
+                difference_pct=recon.difference_pct,
+                status=status,
+                extraction_method=extract_result.method,
+                extraction_confidence=extract_result.confidence,
+                notes="; ".join(ocr_warnings) if ocr_warnings else None,
+            )
+
+            _audit(s, "step4_upload_reply", "ConfirmationReply", reply.id, pid,
+                   after={
+                       "filename": filename,
+                       "status": status,
+                       "extracted_balance": parsed.extracted_balance,
+                       "party_name_raw": raw_name,
+                       "party_name_matched": matched_name,
+                   })
+
+            results.append(_serialize_reply(reply, ocr_warnings))
+
+        return jsonify(results), 201
+
+
+@app.route("/api/project/<pid>/step4/replies", methods=["GET"])
+def step4_list_replies(pid: str):
+    """워크페이퍼별 회신 일람 조회."""
+    kind = request.args.get("kind", "receivable")
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        reply_repo = ConfirmationReplyRepository(s)
+        replies = reply_repo.list_by_workpaper(wp.id)
+        return jsonify([_serialize_reply(r) for r in replies])
+
+
+@app.route("/api/project/<pid>/step4/reply/<reply_id>", methods=["PATCH"])
+def step4_patch_reply(pid: str, reply_id: str):
+    """회신 수동 보정 — party_name, extracted_balance, reply_date, status."""
+    data = request.json or {}
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+
+        reply_repo = ConfirmationReplyRepository(s)
+        reply = reply_repo.update_reviewer_confirmation(
+            reply_id=reply_id,
+            reviewer_confirmed_status="overridden",
+            party_name_matched=data.get("party_name_matched"),
+            extracted_balance=_f(data.get("extracted_balance")),
+            reply_date=data.get("reply_date"),
+            status=data.get("status"),
+            notes=data.get("notes"),
+        )
+        if reply is None:
+            return jsonify({"error": "reply not found"}), 404
+
+        _audit(s, "step4_reviewer_override", "ConfirmationReply", reply_id, pid,
+               after={k: v for k, v in data.items() if k in (
+                   "party_name_matched", "extracted_balance", "reply_date", "status", "notes"
+               )})
+
+        return jsonify(_serialize_reply(reply))
+
+
+@app.route("/api/project/<pid>/step4/mark-done", methods=["POST"])
+def step4_mark_done(pid: str):
+    """Step 4 완료 기록."""
+    data = request.json or {}
+    kind = data.get("kind", "receivable")
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        wp.step4_completed_at = datetime.now(timezone.utc)
+        wp.updated_at = datetime.now(timezone.utc)
+        _audit(s, "step4_mark_done", "Workpaper", wp.id, pid, after={"kind": kind})
+        return jsonify({"ok": True, "step4_completed_at": wp.step4_completed_at.isoformat()})
+
+
+# ─────────────────────────────────────────────────────────────
 # 9. AuditTrail 조회
 # ─────────────────────────────────────────────────────────────
 @app.route("/api/project/<pid>/audit-trail")
@@ -813,6 +1000,31 @@ def _i(v, default=None):
         return int(v)
     except Exception:
         return default
+
+
+def _serialize_reply(reply, warnings: list | None = None) -> dict:
+    return {
+        "id": reply.id,
+        "workpaper_id": reply.workpaper_id,
+        "pdf_artifact_id": reply.pdf_artifact_id,
+        "party_name_raw": reply.party_name_raw,
+        "party_name_matched": reply.party_name_matched,
+        "party_match_confidence": reply.party_match_confidence,
+        "party_match_method": reply.party_match_method,
+        "extracted_balance": reply.extracted_balance,
+        "extracted_balance_currency": reply.extracted_balance_currency,
+        "reply_date": reply.reply_date,
+        "ledger_balance": reply.ledger_balance,
+        "difference": reply.difference,
+        "difference_pct": reply.difference_pct,
+        "status": reply.status,
+        "reviewer_confirmed_status": reply.reviewer_confirmed_status,
+        "extraction_method": reply.extraction_method,
+        "extraction_confidence": reply.extraction_confidence,
+        "notes": reply.notes,
+        "created_at": reply.created_at.isoformat() if reply.created_at else None,
+        "warnings": warnings or [],
+    }
 
 
 def _serialize_result(result, params):
