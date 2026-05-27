@@ -977,17 +977,32 @@ def step4_upload_replies(pid: str):
             tolerance = 0.0
 
         # Step 1 결과에서 candidates (거래처명) + ledger_balance 가져오기
+        # Task 1: 한 거래처가 채권·채무 양쪽 final_sampled 일 수 있으므로 양쪽 합집합
         wp_repo = WorkpaperRepository(s)
         wp = wp_repo.get_or_create(pid, kind)
-        candidates: list[str] = []
-        ledger_map: dict[str, float] = {}  # party_name → ledger_balance
 
-        if wp.sampling_result:
-            result_dict = json.loads(wp.sampling_result)
-            for d in result_dict.get("decisions", []):
-                if d.get("final_sampled"):
-                    candidates.append(d["name"])
-                    ledger_map[d["name"]] = float(d.get("balance", 0))
+        # 양쪽 kind 합집합 candidates (name → {balance, kind})
+        candidates_full: dict[str, dict] = {}  # name → {balance, kind}
+        for chk_kind in ("receivable", "payable"):
+            chk_wp = wp_repo.get_or_create(pid, chk_kind)
+            if chk_wp.sampling_result:
+                result_dict = json.loads(chk_wp.sampling_result)
+                for d in result_dict.get("decisions", []):
+                    if d.get("final_sampled"):
+                        name = d["name"]
+                        bal = float(d.get("balance", 0))
+                        if name not in candidates_full:
+                            candidates_full[name] = {"balance": bal, "kind": chk_kind}
+                        else:
+                            # 이미 있으면 kind="both" 표시
+                            candidates_full[name]["kind"] = "both"
+
+        candidates: list[str] = list(candidates_full.keys())
+        ledger_map: dict[str, float] = {n: v["balance"] for n, v in candidates_full.items()}
+        kind_map: dict[str, str] = {n: v["kind"] for n, v in candidates_full.items()}
+
+        # 요청된 kind wp (Artifact FK용)
+        # wp는 이미 위에서 get_or_create(pid, kind) 완료
 
         files = request.files.getlist("files[]")
         if not files:
@@ -1096,42 +1111,76 @@ def step4_upload_replies(pid: str):
             if recon.per_account_findings:
                 per_acct_json = json.dumps(recon.per_account_findings, ensure_ascii=False)
 
-            # 6) DB 저장
-            reply = reply_repo.create(
-                workpaper_id=wp.id,
-                pdf_artifact_id=artifact.id,
-                party_name_raw=raw_name,
-                party_name_matched=matched_name,
-                party_match_confidence=match_conf,
-                party_match_method=match_method,
-                extracted_balance=parsed.extracted_balance,
-                extracted_balance_currency=parsed.balance_currency,
-                reply_date=parsed.reply_date,
-                ledger_balance=ledger_bal,
-                difference=recon.difference,
-                difference_pct=recon.difference_pct,
-                status=status,
-                extraction_method=extract_result.method,
-                extraction_confidence=extract_result.confidence,
-                notes="; ".join(ocr_warnings) if ocr_warnings else None,
-                # v2 확장 필드
-                declared_match=parsed.declared_match,
-                per_account_findings=per_acct_json,
-                original_currency=parsed.original_currency,
-                decision_basis=recon.decision_basis,
-                top3_candidates=top3_json,
-            )
+            # 6) DB 저장 — Task 1: 한 거래처가 채권·채무 양쪽에 있으면 각각 workpaper에 Reply 생성
+            matched_kinds: list[str] = []
+            if matched_name:
+                party_kind = kind_map.get(matched_name, kind)
+                if party_kind == "both":
+                    matched_kinds = ["receivable", "payable"]
+                else:
+                    matched_kinds = [party_kind]
+            else:
+                matched_kinds = [kind]  # 매칭 실패 → 요청 kind에만 저장
 
-            _audit(s, "step4_upload_reply", "ConfirmationReply", reply.id, pid,
-                   after={
-                       "filename": filename,
-                       "status": status,
-                       "extracted_balance": parsed.extracted_balance,
-                       "party_name_raw": raw_name,
-                       "party_name_matched": matched_name,
-                   })
+            for target_kind in matched_kinds:
+                target_wp = wp_repo.get_or_create(pid, target_kind)
+                # 같은 거래처·같은 PDF 중복 방지 (이미 존재하면 skip)
+                existing_replies = reply_repo.list_by_workpaper(target_wp.id)
+                already_exists = any(
+                    r.pdf_artifact_id == artifact.id and r.party_name_matched == matched_name
+                    for r in existing_replies
+                )
+                if already_exists:
+                    continue
 
-            results.append(_serialize_reply(reply, ocr_warnings))
+                # target_kind의 장부 잔액 재조회
+                target_ledger_bal = ledger_bal
+                if target_kind != kind and matched_name:
+                    target_wp_sr = target_wp.sampling_result
+                    if target_wp_sr:
+                        _sr = json.loads(target_wp_sr)
+                        for _d in _sr.get("decisions", []):
+                            if _d.get("final_sampled") and _d["name"] == matched_name:
+                                target_ledger_bal = float(_d.get("balance", 0))
+                                break
+
+                reply = reply_repo.create(
+                    workpaper_id=target_wp.id,
+                    pdf_artifact_id=artifact.id,
+                    party_name_raw=raw_name,
+                    party_name_matched=matched_name,
+                    party_match_confidence=match_conf,
+                    party_match_method=match_method,
+                    extracted_balance=parsed.extracted_balance,
+                    extracted_balance_currency=parsed.balance_currency,
+                    reply_date=parsed.reply_date,
+                    ledger_balance=target_ledger_bal,
+                    difference=recon.difference,
+                    difference_pct=recon.difference_pct,
+                    status=status,
+                    extraction_method=extract_result.method,
+                    extraction_confidence=extract_result.confidence,
+                    notes="; ".join(ocr_warnings) if ocr_warnings else None,
+                    # v2 확장 필드
+                    declared_match=parsed.declared_match,
+                    per_account_findings=per_acct_json,
+                    original_currency=parsed.original_currency,
+                    decision_basis=recon.decision_basis,
+                    top3_candidates=top3_json,
+                )
+
+                _audit(s, "step4_upload_reply", "ConfirmationReply", reply.id, pid,
+                       after={
+                           "filename": filename,
+                           "status": status,
+                           "extracted_balance": parsed.extracted_balance,
+                           "party_name_raw": raw_name,
+                           "party_name_matched": matched_name,
+                           "target_kind": target_kind,
+                       })
+
+                if target_kind == kind or len(matched_kinds) == 1:
+                    results.append(_serialize_reply(reply, ocr_warnings))
 
         return jsonify(results), 201
 
@@ -1479,13 +1528,21 @@ def step5_upload_folder(pid: str):
                 if not party:
                     party = folder.name
 
-                # Step 1 candidates + CurrencyResolver 주입
+                # Task 2: BC kind 자동 식별 — 채권·채무 양쪽 candidates 합집합
                 candidates_list: list[str] = []
-                if wp.sampling_result:
-                    _sr = json.loads(wp.sampling_result)
-                    for _d in _sr.get("decisions", []):
-                        if _d.get("final_sampled"):
-                            candidates_list.append(_d["name"])
+                candidates_kind_map: dict[str, str] = {}  # name → kind
+                for chk_kind in ("receivable", "payable"):
+                    chk_wp2 = wp_repo.get_or_create(pid, chk_kind)
+                    if chk_wp2.sampling_result:
+                        _sr2 = json.loads(chk_wp2.sampling_result)
+                        for _d2 in _sr2.get("decisions", []):
+                            if _d2.get("final_sampled"):
+                                _name = _d2["name"]
+                                if _name not in candidates_kind_map:
+                                    candidates_kind_map[_name] = chk_kind
+                                    candidates_list.append(_name)
+                                else:
+                                    candidates_kind_map[_name] = "both"
                 ug_data = STATE.get("upload_guide_data")
                 currency_resolver = CurrencyResolver(ug_data, STATE.get("manual_rates"))
 
@@ -1498,80 +1555,105 @@ def step5_upload_folder(pid: str):
                     ledger_balance_krw=_f(request.form.get("ledger_balance")),
                 )
 
-                # 각 파일을 Artifact 저장
-                artifact_ids: list[str] = []
-                for ex in agg.extracts:
-                    if ex.file_path.exists():
-                        art = art_repo.save_file(
-                            project_id=pid,
-                            kind="evidence",
-                            source_path=ex.file_path,
-                            filename=ex.file_path.name,
-                            workpaper_id=wp.id,
-                        )
-                        artifact_ids.append(art.id)
+                # Task 2: BC kind 자동 식별 — 매칭된 거래처가 어느 kind인지 결정
+                matched_bc_name = agg.matched_party_name or party
+                matched_bc_kind = candidates_kind_map.get(matched_bc_name, kind)
+                # "both"면 요청 kind를 fallback으로 사용 (양쪽 모두 등록은 아래서 처리)
+                target_kinds_bc: list[str] = (
+                    ["receivable", "payable"] if matched_bc_kind == "both"
+                    else [matched_bc_kind]
+                )
 
-                # AlternativeProcedure 생성/갱신
                 ledger_balance = _f(request.form.get("ledger_balance"))
-                coverage_ratio: float | None = None
-                if ledger_balance and ledger_balance > 0 and agg.total_amount:
-                    coverage_ratio = min(1.0, agg.total_amount / ledger_balance)
 
-                conclusion = _auto_conclusion(coverage_ratio)
-                reason = _infer_reason(s, wp.id, party)
+                for target_bc_kind in target_kinds_bc:
+                    target_bc_wp = wp_repo.get_or_create(pid, target_bc_kind)
 
-                proc = proc_repo.get_by_party(wp.id, party)
-                if proc is None:
-                    proc = proc_repo.create(
-                        workpaper_id=wp.id,
-                        party_name=party,
-                        reason=reason,
-                        ledger_balance=ledger_balance,
-                        procedure_type="auto_detected",
-                        evidence_artifact_ids=artifact_ids,
-                        covered_amount=agg.total_amount,
-                        coverage_ratio=coverage_ratio,
-                        conclusion=conclusion,
-                        status="pending",
-                    )
-                else:
-                    proc_repo.update(
-                        proc.id,
-                        evidence_artifact_ids=artifact_ids,
-                        covered_amount=agg.total_amount,
-                        coverage_ratio=coverage_ratio,
-                        conclusion=conclusion,
-                    )
+                    # target kind 장부 잔액 조회
+                    target_bc_lb = ledger_balance
+                    if target_bc_lb is None and matched_bc_name:
+                        _sr_bc = target_bc_wp.sampling_result
+                        if _sr_bc:
+                            for _d_bc in json.loads(_sr_bc).get("decisions", []):
+                                if _d_bc.get("final_sampled") and _d_bc["name"] == matched_bc_name:
+                                    target_bc_lb = float(_d_bc.get("balance", 0))
+                                    break
 
-                _audit(s, "step5_upload_folder", "AlternativeProcedure", proc.id, pid,
-                       after={
-                           "party_name": party,
-                           "bc_numbers": agg.bc_numbers,
-                           "total_amount": agg.total_amount,
-                           "total_currency": agg.total_currency,
-                           "success_count": agg.success_count,
-                           "failed_count": agg.failed_count,
-                       })
+                    # 각 파일을 Artifact 저장
+                    artifact_ids: list[str] = []
+                    for ex in agg.extracts:
+                        if ex.file_path.exists():
+                            art = art_repo.save_file(
+                                project_id=pid,
+                                kind="evidence",
+                                source_path=ex.file_path,
+                                filename=ex.file_path.name,
+                                workpaper_id=target_bc_wp.id,
+                            )
+                            artifact_ids.append(art.id)
 
-                results.append({
-                    "procedure_id": proc.id,
-                    "party_name": party,
-                    "bc_numbers": agg.bc_numbers,
-                    "total_files": agg.total_files,
-                    "success_count": agg.success_count,
-                    "failed_count": agg.failed_count,
-                    "total_amount": agg.total_amount,
-                    "total_currency": agg.total_currency,
-                    "amounts_by_currency": agg.amounts_by_currency,
-                    "conclusion": agg.conclusion,
-                    # Week 2 확장
-                    "matched_party_name": agg.matched_party_name,
-                    "match_confidence": agg.match_confidence,
-                    "match_candidates": agg.match_candidates,
-                    "covered_amount_krw": agg.covered_amount_krw,
-                    "coverage_ratio": agg.coverage_ratio,
-                    "low_confidence_files": [str(f.name) for f in agg.low_confidence_files],
-                })
+                    # AlternativeProcedure 생성/갱신
+                    coverage_ratio: float | None = None
+                    if target_bc_lb and target_bc_lb > 0 and agg.total_amount:
+                        coverage_ratio = min(1.0, agg.total_amount / target_bc_lb)
+
+                    conclusion = _auto_conclusion(coverage_ratio)
+                    reason = _infer_reason(s, target_bc_wp.id, matched_bc_name)
+
+                    proc = proc_repo.get_by_party(target_bc_wp.id, matched_bc_name)
+                    if proc is None:
+                        proc = proc_repo.create(
+                            workpaper_id=target_bc_wp.id,
+                            party_name=matched_bc_name,
+                            reason=reason,
+                            ledger_balance=target_bc_lb,
+                            procedure_type="auto_detected",
+                            evidence_artifact_ids=artifact_ids,
+                            covered_amount=agg.total_amount,
+                            coverage_ratio=coverage_ratio,
+                            conclusion=conclusion,
+                            status="pending",
+                        )
+                    else:
+                        proc_repo.update(
+                            proc.id,
+                            evidence_artifact_ids=artifact_ids,
+                            covered_amount=agg.total_amount,
+                            coverage_ratio=coverage_ratio,
+                            conclusion=conclusion,
+                        )
+
+                    _audit(s, "step5_upload_folder", "AlternativeProcedure", proc.id, pid,
+                           after={
+                               "party_name": matched_bc_name,
+                               "bc_numbers": agg.bc_numbers,
+                               "total_amount": agg.total_amount,
+                               "total_currency": agg.total_currency,
+                               "success_count": agg.success_count,
+                               "failed_count": agg.failed_count,
+                               "target_kind": target_bc_kind,
+                           })
+
+                    results.append({
+                        "procedure_id": proc.id,
+                        "party_name": matched_bc_name,
+                        "detected_kind": target_bc_kind,
+                        "bc_numbers": agg.bc_numbers,
+                        "total_files": agg.total_files,
+                        "success_count": agg.success_count,
+                        "failed_count": agg.failed_count,
+                        "total_amount": agg.total_amount,
+                        "total_currency": agg.total_currency,
+                        "amounts_by_currency": agg.amounts_by_currency,
+                        "conclusion": agg.conclusion,
+                        # Week 2 확장
+                        "matched_party_name": agg.matched_party_name,
+                        "match_confidence": agg.match_confidence,
+                        "match_candidates": agg.match_candidates,
+                        "covered_amount_krw": agg.covered_amount_krw,
+                        "coverage_ratio": agg.coverage_ratio,
+                        "low_confidence_files": [str(f.name) for f in agg.low_confidence_files],
+                    })
 
         finally:
             import shutil
@@ -1668,12 +1750,88 @@ def step5_parse_reconciliation(pid: str):
 
         summary = sheets.summary_by_party()
 
+        # Task 4: 불일치 소명 자동 통합
+        # 1) 회신-불일치 시트 → ConfirmationReply.notes + status 갱신
+        # 2) 거래처별 시트 → AlternativeProcedure 증빙/소명 자동 등록
+        proc_repo = AlternativeProcedureRepository(s)
+        reply_repo2 = ConfirmationReplyRepository(s)
+        reconcile_created = 0
+        reconcile_updated_reply = 0
+
+        for party_name, v in summary.items():
+            reasons = v.get("reasons", [])
+            reason_str = "; ".join(reasons) if reasons else "불일치 소명"
+            has_reason = bool(reasons)
+
+            # ConfirmationReply 갱신 — 채권·채무 모두 탐색
+            for chk_kind in ("receivable", "payable"):
+                chk_wp3 = wp_repo.get_or_create(pid, chk_kind)
+                replies3 = reply_repo2.list_by_workpaper(chk_wp3.id)
+                for rep3 in replies3:
+                    if rep3.party_name_matched == party_name:
+                        # 사유가 명시되어 있으면 matched로 상향 가능
+                        new_status = ("matched" if has_reason else rep3.status)
+                        new_notes = f"[불일치소명] {reason_str}"
+                        if rep3.notes:
+                            new_notes = rep3.notes + " | " + new_notes
+                        reply_repo2.update_reviewer_confirmation(
+                            rep3.id,
+                            reviewer_confirmed_status="reconciliation_applied",
+                            status=new_status,
+                            notes=new_notes,
+                        )
+                        reconcile_updated_reply += 1
+
+            # AlternativeProcedure — 거래처별 시트 있으면 자동 생성/갱신
+            if party_name in sheets.party_details:
+                detail_rows = sheets.party_details[party_name]
+                total_func = sum(
+                    abs(r.amount_func) for r in detail_rows if r.amount_func is not None
+                )
+                for chk_kind in ("receivable", "payable"):
+                    chk_wp4 = wp_repo.get_or_create(pid, chk_kind)
+                    # 해당 kind의 sampled인지 확인
+                    _is_sampled = False
+                    if chk_wp4.sampling_result:
+                        for _dd in json.loads(chk_wp4.sampling_result).get("decisions", []):
+                            if _dd.get("final_sampled") and _dd["name"] == party_name:
+                                _is_sampled = True
+                                _lb = float(_dd.get("balance", 0))
+                                break
+                    if not _is_sampled:
+                        continue
+
+                    proc4 = proc_repo.get_by_party(chk_wp4.id, party_name)
+                    if proc4 is None:
+                        proc4 = proc_repo.create(
+                            workpaper_id=chk_wp4.id,
+                            party_name=party_name,
+                            reason="차이",
+                            ledger_balance=_lb if "_lb" in dir() else None,
+                            procedure_type="불일치소명",
+                            covered_amount=total_func if total_func else None,
+                            conclusion="needs_review",
+                            auditor_notes=reason_str,
+                            status="pending",
+                        )
+                        reconcile_created += 1
+                    else:
+                        proc_repo.update(
+                            proc4.id,
+                            procedure_type="불일치소명",
+                            covered_amount=total_func if total_func else proc4.covered_amount,
+                            auditor_notes=reason_str,
+                        )
+                        reconcile_created += 1
+
         _audit(s, "step5_parse_reconciliation", "Artifact", art.id, pid,
                after={
                    "filename": f.filename,
                    "mismatch_rows": len(sheets.mismatch_rows),
                    "party_sheets": len(sheets.party_details),
                    "parties": list(summary.keys()),
+                   "reconcile_created": reconcile_created,
+                   "reconcile_updated_reply": reconcile_updated_reply,
                })
 
         return jsonify({
@@ -1782,6 +1940,94 @@ def _save_pending_alias(raw_name: str, canonical_name: str) -> None:
 
     except Exception as e:
         log.warning("pending_alias 저장 실패 (비치명적): %s", e)
+
+
+@app.route("/api/project/<pid>/step5/auto-identify-pending", methods=["POST"])
+def step5_auto_identify_pending(pid: str):
+    """미회신 거래처 자동 식별 + AlternativeProcedure placeholder 생성.
+
+    채권·채무 final_sampled 중 ConfirmationReply가 matched/mismatch 없는 거래처를
+    '미회신'으로 자동 등록. 이미 AlternativeProcedure 있으면 update.
+
+    body: {} (파라미터 없음 — 채권·채무 양쪽 자동 처리)
+    """
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        wp_repo = WorkpaperRepository(s)
+        reply_repo = ConfirmationReplyRepository(s)
+        proc_repo = AlternativeProcedureRepository(s)
+
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+        report: list[dict] = []
+
+        for chk_kind in ("receivable", "payable"):
+            chk_wp = wp_repo.get_or_create(pid, chk_kind)
+            if not chk_wp.sampling_result:
+                continue
+
+            result_dict = json.loads(chk_wp.sampling_result)
+            sampled_parties: dict[str, float] = {}
+            for d in result_dict.get("decisions", []):
+                if d.get("final_sampled"):
+                    sampled_parties[d["name"]] = float(d.get("balance", 0))
+
+            # 회신 현황 (matched 또는 mismatch = 회신 있음)
+            replies = reply_repo.list_by_workpaper(chk_wp.id)
+            replied_set: set[str] = set()
+            for r in replies:
+                if r.party_name_matched and r.status in ("matched", "mismatch"):
+                    replied_set.add(r.party_name_matched)
+
+            for party_name, ledger_balance in sampled_parties.items():
+                if party_name in replied_set:
+                    skipped_count += 1
+                    continue  # 이미 회신 처리됨
+
+                existing_proc = proc_repo.get_by_party(chk_wp.id, party_name)
+                if existing_proc is None:
+                    proc_repo.create(
+                        workpaper_id=chk_wp.id,
+                        party_name=party_name,
+                        reason="미회신",
+                        ledger_balance=ledger_balance,
+                        procedure_type="미정",
+                        status="pending",
+                        conclusion="needs_review",
+                    )
+                    created_count += 1
+                    action = "created"
+                else:
+                    # 기존 레코드 reason만 보정 (evidence 유지)
+                    if existing_proc.reason not in ("미회신", "차이"):
+                        proc_repo.update(existing_proc.id, reason="미회신")
+                    updated_count += 1
+                    action = "updated"
+
+                report.append({
+                    "party_name": party_name,
+                    "kind": chk_kind,
+                    "ledger_balance": ledger_balance,
+                    "action": action,
+                })
+
+        _audit(s, "step5_auto_identify_pending", "Project", pid, pid,
+               after={
+                   "created": created_count,
+                   "updated": updated_count,
+                   "skipped": skipped_count,
+               })
+
+        return jsonify({
+            "created": created_count,
+            "updated": updated_count,
+            "skipped_already_replied": skipped_count,
+            "pending_parties": report,
+        }), 201
 
 
 @app.route("/api/project/<pid>/step5/mark-done", methods=["POST"])

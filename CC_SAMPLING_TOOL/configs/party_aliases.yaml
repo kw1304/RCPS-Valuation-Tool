@@ -97,5 +97,53 @@ aliases:
   "뉴퓨처인터내셔널":
     - "NEW FUTURE INTERNATIONAL"
     - "New Future International Trade Co"
+    - "Xiyun (Shanghai) Trading Co., Ltd."
+    - "Xiyun Shanghai"
+    - "西云(上海)贸易有限公司"
     - "New Future"
     - "뉴퓨처"
+
+  # 우원 (국내 채무 거래처 — 파일명/회신서 표기 일치)
+  "(주)우원":
+    - "주식회사 우원"
+    - "우원"
+    - "㈜우원"
+
+  # 세로켐 (국내 원료 공급처)
+  "세로켐":
+    - "SEROKEM"
+    - "세로 켐"
+
+  # 에보닉코리아 / EVONIK KOREA
+  "에보닉코리아":
+    - "EVONIK KOREA LTD."
+    - "EVONIK KOREA"
+    - "Evonik Korea"
+    - "에보닉 코리아"
+
+  # 이엘비종합건설 (국내 건설 채무)
+  "주식회사 이엘비종합건설":
+    - "이엘비종합건설"
+    - "㈜이엘비종합건설"
+    - "(주)이엘비종합건설"
+    - "이엘비"
+
+  # 코스맥스INC (미국 모회사 계열)
+  "COSMAX INC":
+    - "코스맥스 INC"
+    - "코스맥스INC"
+    - "COSMAX Inc."
+    - "Cosmax Inc"
+
+  # 엔비티 (모바일 리워드 플랫폼)
+  "엔비티":
+    - "NBT"
+    - "㈜엔비티"
+    - "(주)엔비티"
+    - "ENBIT"
+
+  # 파마 계열 (코스맥스파마 등)
+  "코스맥스파마":
+    - "COSMAX PHARMA"
+    - "Cosmax Pharma"
+    - "코스맥스 파마"
