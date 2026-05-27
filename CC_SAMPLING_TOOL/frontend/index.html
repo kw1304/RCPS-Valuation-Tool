@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>웅계사's CC Sampling Tool · 감사기준서 530</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --bg:#F9FAFB;--bg2:#FFFFFF;--bg3:#F2F4F6;
+  --border:#E5E8EB;
+  --accent:#3182F6;--accent2:#1B64DA;
+  --green:#00C073;--red:#F04452;--amber:#FF9F00;--purple:#7C3AED;
+  --gold:#FFD966;--navy:#1F4E78;
+  --text:#191F28;--text2:#4E5968;--text3:#8B95A1;
+  --sans:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-size:14px;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── 헤더 */
+header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0.75rem 2rem;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;flex-wrap:nowrap;gap:1rem;
+}
+.hd-title{min-width:0}
+.hd-title h1{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-0.04em}
+.hd-title h1 .gold{color:var(--gold);font-weight:800;background:var(--navy);padding:1px 9px;border-radius:6px;margin-right:2px}
+.hd-title h1 .ac{color:var(--accent);font-weight:800}
+.hd-title p{font-size:0.72rem;color:var(--text3);margin-top:0.15rem;font-weight:400;letter-spacing:-0.01em}
+.hd-right{display:flex;align-items:center;gap:0.85rem;flex-wrap:nowrap;flex-shrink:0}
+
+/* 프로젝트 셀렉터 */
+.proj-selector{position:relative}
+.proj-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:0.4rem 0.9rem;background:var(--bg3);color:var(--text2);
+  border:1.5px solid var(--border);border-radius:8px;
+  font-family:var(--sans);font-size:0.76rem;font-weight:600;cursor:pointer;
+  transition:all 0.15s;letter-spacing:-0.01em;white-space:nowrap;
+}
+.proj-btn:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent)}
+.proj-btn .proj-name{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-btn svg{flex-shrink:0;color:var(--text3)}
+.proj-btn:hover svg{color:var(--accent)}
+.proj-dropdown{
+  display:none;position:absolute;top:calc(100% + 6px);right:0;
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.12);min-width:260px;z-index:200;overflow:hidden;
+}
+.proj-dropdown.open{display:block}
+.proj-dropdown-header{padding:0.7rem 1rem;font-size:0.7rem;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);letter-spacing:-0.01em}
+.proj-list{max-height:220px;overflow-y:auto}
+.proj-item{
+  padding:0.6rem 1rem;cursor:pointer;transition:background 0.1s;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.proj-item:hover{background:var(--bg3)}
+.proj-item.active-proj{background:#EFF6FF}
+.proj-item-info{min-width:0}
+.proj-item-name{font-size:0.8rem;font-weight:600;color:var(--text);letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-item-meta{font-size:0.65rem;color:var(--text3);margin-top:2px}
+.proj-new-btn{
+  display:flex;align-items:center;gap:6px;padding:0.65rem 1rem;
+  color:var(--accent);font-size:0.78rem;font-weight:700;cursor:pointer;
+  border-top:1px solid var(--border);transition:background 0.1s;
+}
+.proj-new-btn:hover{background:#EFF6FF}
+
+.hd-badge{font-size:0.68rem;font-weight:600;padding:0.28rem 0.8rem;background:#EFF6FF;color:var(--accent);border-radius:100px;letter-spacing:-0.01em}
+.header-dl{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0.4rem 0.85rem;background:var(--bg2);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:-0.01em;white-space:nowrap;flex-shrink:0;text-decoration:none}
+.header-dl:hover{background:#EFF6FF;border-color:var(--accent);color:var(--accent)}
+.header-dl svg{flex-shrink:0}
+
+/* ── Stepper */
+.stepper-bar{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0 2rem;display:flex;align-items:stretch;
+  flex-shrink:0;overflow-x:auto;
+}
+.stepper-bar::-webkit-scrollbar{height:3px}
+.stepper-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.step-item{
+  display:flex;align-items:center;gap:8px;
+  padding:0.6rem 1.2rem;cursor:pointer;
+  border-bottom:2.5px solid transparent;
+  font-size:0.78rem;font-weight:600;color:var(--text3);
+  white-space:nowrap;transition:all 0.15s;flex-shrink:0;
+  letter-spacing:-0.01em;
+}
+.step-item:hover{color:var(--text2);background:var(--bg3)}
+.step-item.active{color:var(--accent);border-bottom-color:var(--accent)}
+.step-item.done{color:var(--green)}
+.step-item.done .step-icon{background:var(--green);color:#fff}
+.step-item.active .step-icon{background:var(--accent);color:#fff}
+.step-icon{
+  width:20px;height:20px;border-radius:50%;
+  background:var(--bg3);color:var(--text3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.65rem;font-weight:800;flex-shrink:0;
+  transition:all 0.15s;
+}
+.step-sep{color:var(--border);font-size:0.9rem;flex-shrink:0;padding:0 0.15rem}
+
+/* ── 글로벌 바 */
+.global-bar{padding:0.45rem 1.5rem;background:linear-gradient(90deg,#EFF6FF 0%,var(--bg2) 60%);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:.78rem;flex-shrink:0;flex-wrap:wrap}
+.global-bar label{font-weight:600;color:var(--text2);white-space:nowrap}
+.global-bar input{padding:0.32rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-family:var(--sans);background:#fff;color:var(--text);font-weight:600;min-width:0}
+.global-bar input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(49,130,246,.1)}
+.global-bar #company_name{flex:0 1 170px}
+.global-bar #period_end{flex:0 0 auto}
+.global-bar #preparer,.global-bar #reviewer{flex:0 1 100px}
+.global-bar-hint{color:var(--text3);font-size:0.7rem;font-weight:400}
+
+/* ── 본문 */
+main{flex:1;display:flex;overflow:hidden}
+
+/* Step 화면 컨테이너 */
+.step-view{display:none;flex:1;overflow:hidden}
+.step-view.active{display:flex}
+
+/* Step 1 — 기존 레이아웃 유지 */
+.form-panel{width:360px;min-width:320px;background:var(--bg2);overflow-y:auto;border-right:1px solid var(--border);flex-shrink:0}
+.sec{padding:1rem 1.15rem;border-bottom:1px solid var(--border)}
+.sec-title{font-size:0.75rem;font-weight:700;color:var(--text2);letter-spacing:-0.02em;
+           margin-bottom:0.85rem;display:flex;align-items:center;gap:0.5rem}
+.sec-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;display:block;flex-shrink:0}
+.badge-req{font-size:0.62rem;font-weight:700;padding:0.15rem 0.55rem;background:#FEF3C7;color:#92400E;border-radius:100px}
+.badge-opt{font-size:0.62rem;font-weight:700;padding:0.15rem 0.55rem;background:#F0FDF4;color:#166534;border-radius:100px}
+.badge-auto{font-size:0.6rem;font-weight:700;padding:0.1rem 0.45rem;background:#EFF6FF;color:#3182F6;border-radius:100px;margin-left:3px;vertical-align:middle}
+
+/* 채권/채무 탭 — Step 1 내부로 이동 */
+.kind-tabs{display:flex;flex-wrap:nowrap;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:0.75rem}
+.kind-tab{padding:0.42rem 0.85rem;font-family:var(--sans);font-size:0.76rem;font-weight:700;
+          color:var(--text3);background:var(--bg2);border:none;cursor:pointer;white-space:nowrap;
+          transition:all 0.15s;letter-spacing:-0.01em}
+.kind-tab+.kind-tab{border-left:1.5px solid var(--border)}
+.kind-tab.active{background:var(--accent);color:#fff}
+.kind-tab:not(.active):hover{background:var(--bg3);color:var(--text2)}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+.row1{display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:7px}
+.field label{display:block;font-size:0.7rem;font-weight:500;color:var(--text2);margin-bottom:0.28rem;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.field input,.field select,.field textarea{
+  width:100%;background:var(--bg3);border:1.5px solid transparent;
+  color:var(--text);padding:0.52rem 0.75rem;font-family:var(--sans);
+  font-size:0.8rem;font-weight:500;border-radius:9px;outline:none;
+  transition:border-color 0.15s,background 0.15s,box-shadow 0.15s;-webkit-appearance:none;
+}
+.field textarea{font-size:0.72rem;resize:vertical;min-height:80px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(49,130,246,.1)}
+.field input.money{text-align:right;font-variant-numeric:tabular-nums}
+.field input[readonly]{background:var(--bg3);color:var(--text2);font-weight:600;cursor:default}
+.field select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B95A1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 0.75rem center;padding-right:2.2rem;cursor:pointer;
+}
+.toggle{display:flex;align-items:center;gap:0.5rem;margin-bottom:7px;cursor:pointer}
+.toggle label{font-size:0.78rem;font-weight:500;color:var(--text2);cursor:pointer;user-select:none}
+input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.note{font-size:0.67rem;color:var(--text3);line-height:1.55;padding:0.5rem 0.7rem;background:var(--bg3);border-radius:8px;border-left:2.5px solid var(--border);margin-top:4px;letter-spacing:-0.01em}
+.note b{color:var(--text2);font-weight:600}
+
+/* 파일 업로드 */
+.file-input-wrap{position:relative;margin-bottom:7px}
+.file-input-wrap input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.file-btn{
+  display:flex;align-items:center;gap:7px;padding:0.55rem 0.85rem;
+  background:var(--bg3);border:1.5px dashed var(--border);border-radius:9px;
+  font-size:0.75rem;color:var(--text2);cursor:pointer;font-weight:500;
+  transition:all 0.15s;letter-spacing:-0.01em;
+}
+.file-btn:hover{border-color:var(--accent);background:#EFF6FF;color:var(--accent)}
+.file-btn svg{flex-shrink:0;color:var(--text3)}
+.file-btn:hover svg{color:var(--accent)}
+.file-name{font-size:0.66rem;color:var(--green);margin-top:3px;font-weight:600;display:none;letter-spacing:-0.01em}
+.file-name.show{display:block}
+.upload-summary{font-size:0.68rem;color:var(--text2);padding:0.55rem 0.75rem;background:#F0FDF4;border-radius:8px;border-left:2.5px solid var(--green);margin-top:7px;display:none;line-height:1.5;letter-spacing:-0.01em}
+.upload-summary.show{display:block}
+.upload-summary b{color:var(--text);font-weight:600}
+
+/* 실행 버튼 */
+.run-wrap{padding:0.9rem 1.15rem}
+.btn-run{
+  width:100%;padding:0.78rem;background:var(--accent);color:#fff;border:none;
+  border-radius:11px;font-family:var(--sans);font-size:0.88rem;font-weight:700;
+  cursor:pointer;letter-spacing:-0.02em;
+  transition:background 0.15s,transform 0.1s,box-shadow 0.15s;
+  box-shadow:0 2px 10px rgba(49,130,246,.28);
+}
+.btn-run:hover:not(:disabled){background:var(--accent2);box-shadow:0 4px 18px rgba(49,130,246,.35)}
+.btn-run:active:not(:disabled){transform:scale(.988)}
+.btn-run:disabled{background:var(--text3);box-shadow:none;cursor:not-allowed}
+
+/* 결과 패널 */
+.res-panel{flex:1;overflow-y:auto;padding:1.5rem;background:var(--bg);display:flex;flex-direction:column;gap:14px}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;text-align:center}
+.placeholder p{font-size:0.88rem;letter-spacing:-0.01em}
+.placeholder small{font-size:0.72rem}
+.placeholder svg{opacity:.25;color:var(--text3)}
+
+/* KPI 카드 */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi-card{background:var(--bg3);border-radius:12px;padding:0.95rem 1.05rem}
+.kpi-card.highlight{background:var(--accent);color:#fff}
+.kpi-card.highlight .kpi-label{color:rgba(255,255,255,.75)}
+.kpi-card.highlight .kpi-value{color:#fff}
+.kpi-card.highlight .kpi-sub{color:rgba(255,255,255,.7)}
+.kpi-label{font-size:0.7rem;color:var(--text3);font-weight:500;margin-bottom:4px;letter-spacing:-0.01em}
+.kpi-value{font-size:1.15rem;color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.kpi-value.accent{color:var(--accent)}
+.kpi-value.green{color:var(--green)}
+.kpi-value.amber{color:var(--amber)}
+.kpi-sub{font-size:0.65rem;color:var(--text3);margin-top:3px;letter-spacing:-0.01em}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem 1.15rem}
+.card h3{font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:0.5rem;letter-spacing:-0.02em}
+.card h3::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;display:block;flex-shrink:0}
+.card h3 .h3-sub{font-size:0.68rem;color:var(--text3);font-weight:500;margin-left:6px}
+
+table{width:100%;border-collapse:collapse;font-size:0.74rem;font-variant-numeric:tabular-nums}
+table th{background:var(--bg3);color:var(--text2);padding:7px 10px;text-align:left;font-weight:600;font-size:0.68rem;border-bottom:1px solid var(--border);letter-spacing:-0.01em}
+table th.num{text-align:right}
+table th.center{text-align:center}
+table td{padding:6px 10px;border-bottom:1px solid var(--border);letter-spacing:-0.01em}
+table td.num{text-align:right}
+table td.center{text-align:center}
+table tr.key-item{background:#FFF9E6}
+table tr.sampled{background:#E8F8EE}
+table tr.excluded{background:#FBEAEA;opacity:0.7}
+table tfoot td{background:var(--bg3);font-weight:700;color:var(--text)}
+.pill{display:inline-block;padding:2px 8px;border-radius:100px;font-size:0.62rem;font-weight:700;letter-spacing:-0.01em}
+.pill.ki{background:#FEF3C7;color:#92400E}
+.pill.rep{background:#DBEAFE;color:#1E40AF}
+.pill.rp{background:#FCE7F3;color:#9F1239}
+
+/* editable mini table */
+.mini-table{width:100%;border-collapse:collapse;font-size:0.7rem;margin-top:6px}
+.mini-table th{background:var(--bg3);color:var(--text3);padding:5px 6px;text-align:center;font-size:0.62rem;font-weight:600;border-bottom:1px solid var(--border)}
+.mini-table td{padding:3px 4px;border-bottom:1px solid var(--border)}
+.mini-table td input{width:100%;border:1px solid transparent;outline:none;font-size:0.7rem;background:transparent;text-align:left;font-family:var(--sans);padding:4px 6px;border-radius:5px}
+.mini-table td input:focus{border-color:var(--accent);background:#fff}
+.mini-table td:last-child{text-align:center;width:24px}
+.btn-add{font-size:0.7rem;color:var(--accent);background:none;border:1.5px dashed #BFDBFE;border-radius:8px;padding:5px 8px;cursor:pointer;margin-top:5px;width:100%;transition:background 0.15s;font-family:var(--sans);font-weight:600}
+.btn-add:hover{background:#EFF6FF}
+.btn-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:0 3px;font-size:13px;font-family:var(--sans)}
+.btn-del:hover{color:var(--red)}
+
+/* Step placeholder 화면 */
+.step-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:12px;text-align:center;padding:2rem}
+.step-placeholder .step-ph-badge{font-size:0.7rem;font-weight:700;padding:0.3rem 1rem;background:var(--bg3);color:var(--text3);border-radius:100px;letter-spacing:-0.01em}
+.step-placeholder h2{font-size:1.2rem;font-weight:700;color:var(--text2);letter-spacing:-0.03em}
+.step-placeholder p{font-size:0.85rem;color:var(--text3);max-width:380px;line-height:1.6}
+
+/* 새 프로젝트 모달 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border-radius:16px;padding:1.75rem;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal h2{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1.2rem;letter-spacing:-0.03em}
+.modal .field{margin-bottom:10px}
+.modal-actions{display:flex;gap:8px;margin-top:1.2rem;justify-content:flex-end}
+.btn-secondary{padding:0.55rem 1.2rem;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border);border-radius:9px;font-family:var(--sans);font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s}
+.btn-secondary:hover{background:var(--border)}
+.btn-primary{padding:0.55rem 1.4rem;background:var(--accent);color:#fff;border:none;border-radius:9px;font-family:var(--sans);font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.15s;box-shadow:0 2px 8px rgba(49,130,246,.25)}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{background:var(--text3);box-shadow:none}
+
+/* 푸터 */
+footer.legal{padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;line-height:1.4}
+footer.legal b{color:var(--text2);font-weight:600}
+footer.legal .right{text-align:right;flex:1;min-width:200px}
+
+/* 모바일 반응형 */
+@media (max-width:768px){
+  body{font-size:13px}
+  header{padding:0.7rem 1rem;flex-wrap:wrap;gap:0.6rem}
+  .stepper-bar{padding:0 0.75rem}
+  .step-item{padding:0.5rem 0.75rem;font-size:0.72rem}
+  .hd-right{width:100%;flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:0.5rem}
+  .hd-badge{display:none}
+  .global-bar{padding:0.4rem 0.8rem;font-size:.72rem}
+  .global-bar-hint{flex-basis:100%;line-height:1.3}
+  main{flex-direction:column;overflow:visible}
+  .form-panel{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}
+  .res-panel{padding:1rem;flex:none}
+  .sec{padding:0.75rem 0.9rem}
+  .row2{grid-template-columns:1fr;gap:5px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .card{padding:0.85rem 0.95rem}
+  table{font-size:0.7rem}
+  table th,table td{padding:5px 7px}
+  footer.legal{flex-direction:column;align-items:flex-start;padding:8px 12px}
+  footer.legal .right{text-align:left;min-width:0;width:100%}
+}
+@media (max-width:480px){
+  .hd-title h1{font-size:0.85rem}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── 헤더 -->
+<header>
+  <div class="hd-title">
+    <h1><span class="ac">웅계사's</span> CC Sampling <span class="ac">Tool</span></h1>
+    <p>채권채무조회서 MUS 표본추출 · 감사기준서 530</p>
+  </div>
+  <div class="hd-right">
+    <!-- 프로젝트 셀렉터 -->
+    <div class="proj-selector" id="proj-selector">
+      <button class="proj-btn" onclick="toggleProjDropdown()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span class="proj-name" id="proj-name-display">프로젝트 선택</span>
+        <svg width="10" height="10" viewBox="0 0 12 7"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="proj-dropdown" id="proj-dropdown">
+        <div class="proj-dropdown-header">최근 프로젝트</div>
+        <div class="proj-list" id="proj-list"></div>
+        <div class="proj-new-btn" onclick="openNewProjModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          새 프로젝트 만들기
+        </div>
+      </div>
+    </div>
+    <span class="hd-badge">MUS 방법</span>
+    <a id="dl-btn" class="header-dl" href="#" style="display:none">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      조서 다운로드
+    </a>
+  </div>
+</header>
+
+<!-- ── 5단계 Stepper -->
+<nav class="stepper-bar" id="stepper">
+  <div class="step-item active" id="step-btn-1" onclick="goStep(1)">
+    <span class="step-icon" id="step-icon-1">1</span>
+    샘플링
+  </div>
+  <span class="step-sep">›</span>
+  <div class="step-item" id="step-btn-2" onclick="goStep(2)">
+    <span class="step-icon" id="step-icon-2">2</span>
+    전달용
+  </div>
+  <span class="step-sep">›</span>
+  <div class="step-item" id="step-btn-3" onclick="goStep(3)">
+    <span class="step-icon" id="step-icon-3">3</span>
+    조서
+  </div>
+  <span class="step-sep">›</span>
+  <div class="step-item" id="step-btn-4" onclick="goStep(4)">
+    <span class="step-icon" id="step-icon-4">4</span>
+    회신
+  </div>
+  <span class="step-sep">›</span>
+  <div class="step-item" id="step-btn-5" onclick="goStep(5)">
+    <span class="step-icon" id="step-icon-5">5</span>
+    차이·대체
+  </div>
+</nav>
+
+<!-- ── 글로벌 바 -->
+<div class="global-bar" id="step1-global-bar">
+  <label>회사명</label><input id="company_name" value="코스맥스비티아이">
+  <label>기준일</label><input id="period_end" type="date" value="2025-12-31">
+  <label>작성자</label><input id="preparer">
+  <label>검토자</label><input id="reviewer">
+  <span class="global-bar-hint">· 회계기준상 채권(실재성) · 채무(완전성)로 별도 평가</span>
+</div>
+
+<!-- ── 본문 -->
+<main>
+
+  <!-- Step 1: 샘플링 -->
+  <div class="step-view active" id="step-view-1">
+    <aside class="form-panel">
+      <!-- 채권/채무 탭 — Step 1 내부 -->
+      <div class="sec" style="padding-bottom:0.5rem">
+        <div class="kind-tabs">
+          <button class="kind-tab active" data-kind="receivable" onclick="switchKind('receivable')">채권 C100</button>
+          <button class="kind-tab" data-kind="payable" onclick="switchKind('payable')">채무 AA100</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">1. 회사자료 업로드 <span class="badge-req">필수</span></div>
+        <div class="file-input-wrap">
+          <div class="file-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            거래처별 원장
+          </div>
+          <input type="file" id="f-ledger" accept=".xlsx,.xls" onchange="uploadFiles()">
+          <div class="file-name" id="n-ledger"></div>
+        </div>
+        <div class="file-input-wrap">
+          <div class="file-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            재무제표 <span style="font-size:0.65rem;color:var(--text3)">(선택)</span>
+          </div>
+          <input type="file" id="f-fs" accept=".xlsx,.xls" onchange="uploadFiles()">
+          <div class="file-name" id="n-fs"></div>
+        </div>
+        <div class="file-input-wrap">
+          <div class="file-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="4"/></svg>
+            특관자리스트 <span style="font-size:0.65rem;color:var(--text3)">(선택)</span>
+          </div>
+          <input type="file" id="f-rp" accept=".xlsx,.xls" onchange="uploadFiles()">
+          <div class="file-name" id="n-rp"></div>
+        </div>
+        <div class="upload-summary" id="upload-summary"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">2. 수행중요성 (PM)</div>
+        <div class="row2">
+          <div class="field"><label>총자산 (원)</label><input id="total_assets" class="money" type="number"></div>
+          <div class="field"><label>중요성 비율</label><input id="materiality_ratio" type="number" value="0.005" step="0.0001"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>PM 비율</label><input id="pm_haircut" type="number" value="0.85" step="0.01"></div>
+          <div class="field"><label>최종 PM<span class="badge-auto">자동</span></label><input id="pm" class="money" type="number"></div>
+        </div>
+        <div class="note"><b>PM</b> = 총자산 × 중요성 × PM비율 (실무 통상 0.5% × 85%)</div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">3. 위험 평가</div>
+        <div class="row2">
+          <div class="field"><label>왜곡표시 위험</label>
+            <select id="risk_level" onchange="autoMatrix()">
+              <option>낮음</option><option>보통</option><option>높음</option>
+              <option selected>유의적위험</option>
+            </select>
+          </div>
+          <div class="field"><label>통제 의존</label>
+            <select id="control_reliance" onchange="autoMatrix()">
+              <option selected>Y</option><option>N</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Key 비율<span class="badge-auto">자동</span></label>
+            <input id="key_item_ratio" type="number" step="0.01" value="0.75"></div>
+          <div class="field"><label>신뢰계수 (CF)<span class="badge-auto">자동</span></label>
+            <input id="cf" type="number" step="0.1" value="1.4"></div>
+        </div>
+        <div class="note">Key item 기준금액: <b id="threshold-display">-</b></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">4. 발송제외 거래처 <span class="badge-opt">선택</span></div>
+        <table class="mini-table" id="excl-table">
+          <thead><tr><th>거래처명</th><th>사유</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="addExclRow()">+ 추가</button>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">5. 특관자리스트 <span class="badge-opt">선택</span></div>
+        <div class="toggle">
+          <input type="checkbox" id="force_rp" checked>
+          <label for="force_rp">특관자 자동 전수 포함</label>
+        </div>
+        <div class="field"><label>거래처명 (한 줄에 하나)</label>
+          <textarea id="rp_list"></textarea>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">6. 재현성</div>
+        <div class="row2">
+          <div class="field"><label>난수 시드</label><input id="seed" type="number" value="42"></div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <div class="toggle" style="margin-bottom:0"><input type="checkbox" id="use_seed" checked><label for="use_seed">시드 고정</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-wrap">
+        <button class="btn-run" id="btn-run" onclick="runSampling()" disabled>샘플링 실행</button>
+      </div>
+    </aside>
+
+    <section class="res-panel" id="res-panel">
+      <div class="placeholder" id="placeholder">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+        <p>좌측 패널에서 파일 업로드 후 <b>샘플링 실행</b></p>
+        <small>채권·채무는 상단 탭으로 전환 — 한 파일에서 양쪽 시트 자동 감지</small>
+      </div>
+    </section>
+  </div>
+
+  <!-- Step 2: 전달용 (Week 2 구현 예정) -->
+  <div class="step-view" id="step-view-2">
+    <div class="step-placeholder">
+      <div class="step-ph-badge">Step 2</div>
+      <h2>전달용 조회서 발송 목록</h2>
+      <p>샘플링된 거래처 목록을 바탕으로 발송용 주소·연락처를 정리하고 조회서 발송 준비를 합니다.</p>
+      <small style="color:var(--text3);margin-top:8px">Week 2 구현 예정 — Send list builder</small>
+    </div>
+  </div>
+
+  <!-- Step 3: 조서 (Week 2 구현 예정) -->
+  <div class="step-view" id="step-view-3">
+    <div class="step-placeholder">
+      <div class="step-ph-badge">Step 3</div>
+      <h2>감사조서 작성</h2>
+      <p>7620 양식 기반 조서를 자동 생성합니다. 완전성 검토, 표본규모 결정, MUS 추출 내역이 포함됩니다.</p>
+      <small style="color:var(--text3);margin-top:8px">Week 2 구현 예정 — Template registry</small>
+    </div>
+  </div>
+
+  <!-- Step 4: 회신 (Week 3 구현 예정) -->
+  <div class="step-view" id="step-view-4">
+    <div class="step-placeholder">
+      <div class="step-ph-badge">Step 4</div>
+      <h2>PDF 회신 처리</h2>
+      <p>거래처로부터 수령한 조회서 회신을 업로드하고 금액 차이를 자동 대사합니다.</p>
+      <small style="color:var(--text3);margin-top:8px">Week 3 구현 예정 — ConfirmationReply 처리</small>
+    </div>
+  </div>
+
+  <!-- Step 5: 차이·대체 (Week 4 구현 예정) -->
+  <div class="step-view" id="step-view-5">
+    <div class="step-placeholder">
+      <div class="step-ph-badge">Step 5</div>
+      <h2>차이소명 및 대체적 절차</h2>
+      <p>미회신·차이 발생 거래처에 대해 대체적 절차를 수행하고 결론을 기록합니다.</p>
+      <small style="color:var(--text3);margin-top:8px">Week 4 구현 예정 — AlternativeProcedure</small>
+    </div>
+  </div>
+
+</main>
+
+<footer class="legal">
+  <span><b>웅계사's CC Sampling Tool</b> · 감사기준서 530 (표본감사) + AICPA AAG-SAM</span>
+  <span class="right">MUS = Monetary Unit Sampling · Key item 전수 + 잔여모집단 MUS 추출</span>
+</footer>
+
+<!-- 새 프로젝트 모달 -->
+<div class="modal-overlay" id="new-proj-modal">
+  <div class="modal">
+    <h2>새 프로젝트 만들기</h2>
+    <div class="field"><label>회사명 *</label><input id="np-company" placeholder="예: 코스맥스비티아이"></div>
+    <div class="field"><label>감사기준일</label><input id="np-period" type="date" value="2025-12-31"></div>
+    <div class="field"><label>회계감사펌</label><input id="np-firm" placeholder="예: 삼일회계법인"></div>
+    <div class="field"><label>구분</label>
+      <select id="np-kind">
+        <option value="both">채권 + 채무</option>
+        <option value="receivable">채권만</option>
+        <option value="payable">채무만</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeNewProjModal()">취소</button>
+      <button class="btn-primary" id="np-submit" onclick="createProject()">생성</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY_ITEM_MATRIX = {
+  "낮음|Y":0.875,"낮음|N":0.375,"보통|Y":0.75,"보통|N":0.30,
+  "높음|Y":0.625,"높음|N":0.175,"유의적위험|Y":0.75,"유의적위험|N":0.15
+};
+const CF_MATRIX = {
+  "낮음|Y":0.7,"낮음|N":1.6,"보통|Y":1.2,"보통|N":2.3,
+  "높음|Y":1.9,"높음|N":2.6,"유의적위험|Y":1.4,"유의적위험|N":3.0
+};
+
+let STATE = {
+  kind: "receivable",
+  currentStep: 1,
+  sheets: {"receivable": null, "payable": null},
+  fs_amounts: {},
+  related_parties: [],
+  last_result: {"receivable": null, "payable": null},
+  currentProjectId: null,
+  stepDone: {1:false, 2:false, 3:false, 4:false, 5:false},
+};
+
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return "-"; return Math.round(n).toLocaleString("ko-KR"); }
+function fmtPct(n){ return (n*100).toFixed(1)+"%"; }
+
+// ── Stepper 네비게이션 ──────────────────────────────────────
+function goStep(n){
+  STATE.currentStep = n;
+  // 뷰 전환
+  document.querySelectorAll(".step-view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("step-view-"+n).classList.add("active");
+  // 스테퍼 강조
+  for(let i=1;i<=5;i++){
+    const btn = document.getElementById("step-btn-"+i);
+    const icon = document.getElementById("step-icon-"+i);
+    btn.classList.remove("active","done");
+    if(i===n) btn.classList.add("active");
+    else if(STATE.stepDone[i]) btn.classList.add("done");
+    // 아이콘: done이면 체크 SVG
+    if(STATE.stepDone[i] && i!==n){
+      icon.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    } else {
+      icon.textContent = i;
+    }
+  }
+  // 글로벌바 표시: Step 1에서만
+  document.getElementById("step1-global-bar").style.display = n===1 ? "flex" : "none";
+  // 다운로드 버튼: Step 1에서만
+  const dlBtn = document.getElementById("dl-btn");
+  if(n!==1) dlBtn.style.display="none";
+  else if(STATE.last_result[STATE.kind]) dlBtn.style.display="inline-flex";
+}
+
+// ── 채권/채무 탭 ───────────────────────────────────────────
+function switchKind(kind){
+  STATE.kind = kind;
+  document.querySelectorAll(".kind-tab").forEach(b=>{
+    b.classList.toggle("active", b.dataset.kind===kind);
+  });
+  const r = STATE.last_result[kind];
+  if (r) {
+    renderResult(r);
+    document.getElementById("dl-btn").style.display = "inline-flex";
+    document.getElementById("dl-btn").href = `/api/download/${kind}`;
+  } else {
+    document.getElementById("res-panel").innerHTML =
+      `<div class="placeholder">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <p>${kind==="receivable"?"채권":"채무"} 샘플링 미실행</p><small>좌측에서 실행</small></div>`;
+    document.getElementById("dl-btn").style.display = "none";
+  }
+}
+
+// ── 프로젝트 셀렉터 ────────────────────────────────────────
+function toggleProjDropdown(){
+  const dd = document.getElementById("proj-dropdown");
+  if(dd.classList.contains("open")){
+    dd.classList.remove("open");
+  } else {
+    loadProjects();
+    dd.classList.add("open");
+  }
+}
+document.addEventListener("click", e=>{
+  const sel = document.getElementById("proj-selector");
+  if(!sel.contains(e.target)){
+    document.getElementById("proj-dropdown").classList.remove("open");
+  }
+});
+
+async function loadProjects(){
+  try{
+    const r = await fetch("/api/project");
+    const list = await r.json();
+    const ul = document.getElementById("proj-list");
+    if(!list.length){
+      ul.innerHTML = `<div style="padding:0.8rem 1rem;font-size:0.75rem;color:var(--text3)">프로젝트 없음</div>`;
+      return;
+    }
+    ul.innerHTML = list.map(p=>`
+      <div class="proj-item ${p.id===STATE.currentProjectId?'active-proj':''}"
+           onclick="activateProject('${p.id}','${p.company_name}')">
+        <div class="proj-item-info">
+          <div class="proj-item-name">${p.company_name}</div>
+          <div class="proj-item-meta">${p.period_end} · ${p.kind==='both'?'채권+채무':p.kind==='receivable'?'채권':'채무'}</div>
+        </div>
+        ${p.id===STATE.currentProjectId?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+      </div>`).join("");
+  }catch(e){console.error(e)}
+}
+
+async function activateProject(id, name){
+  try{
+    const r = await fetch(`/api/project/${id}/activate`, {method:"POST"});
+    if(!r.ok) throw new Error("활성화 실패");
+    STATE.currentProjectId = id;
+    STATE.last_result = {"receivable":null,"payable":null};
+    document.getElementById("proj-name-display").textContent = name;
+    document.getElementById("proj-dropdown").classList.remove("open");
+    // 글로벌바 회사명·기준일 자동 입력
+    const data = await r.json();
+    // 프로젝트 상세에서 company_name 동기화
+    document.getElementById("company_name").value = name;
+    // 결과 패널 초기화
+    document.getElementById("res-panel").innerHTML = document.getElementById("placeholder").outerHTML;
+    document.getElementById("dl-btn").style.display="none";
+  }catch(e){alert(e.message)}
+}
+
+function openNewProjModal(){
+  document.getElementById("proj-dropdown").classList.remove("open");
+  document.getElementById("new-proj-modal").classList.add("open");
+  document.getElementById("np-company").focus();
+}
+function closeNewProjModal(){
+  document.getElementById("new-proj-modal").classList.remove("open");
+}
+document.getElementById("new-proj-modal").addEventListener("click", e=>{
+  if(e.target===document.getElementById("new-proj-modal")) closeNewProjModal();
+});
+
+async function createProject(){
+  const company = document.getElementById("np-company").value.trim();
+  if(!company){document.getElementById("np-company").focus();return;}
+  const btn = document.getElementById("np-submit");
+  btn.disabled=true; btn.textContent="생성 중...";
+  try{
+    const r = await fetch("/api/project",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        company_name: company,
+        period_end: document.getElementById("np-period").value,
+        audit_firm: document.getElementById("np-firm").value,
+        kind: document.getElementById("np-kind").value,
+      })
+    });
+    const data = await r.json();
+    if(data.error) throw new Error(data.error);
+    STATE.currentProjectId = data.id;
+    document.getElementById("proj-name-display").textContent = data.company_name;
+    document.getElementById("company_name").value = data.company_name;
+    document.getElementById("period_end").value = data.period_end;
+    closeNewProjModal();
+  }catch(e){
+    alert("생성 실패: "+e.message);
+  }finally{
+    btn.disabled=false; btn.textContent="생성";
+  }
+}
+
+// ── 파일 업로드 ────────────────────────────────────────────
+async function uploadFiles(){
+  const fd = new FormData();
+  const ledger = document.getElementById("f-ledger").files[0];
+  const fs = document.getElementById("f-fs").files[0];
+  const rp = document.getElementById("f-rp").files[0];
+  if (ledger) fd.append("ledger", ledger);
+  if (fs) fd.append("fs", fs);
+  if (rp) fd.append("rp", rp);
+  if (!ledger && !fs && !rp) return;
+
+  const pid = STATE.currentProjectId;
+  const url = pid ? `/api/upload?project_id=${pid}` : "/api/upload";
+  const r = await fetch(url, {method:"POST", body:fd});
+  const data = await r.json();
+
+  if (ledger) {
+    document.getElementById("n-ledger").classList.add("show");
+    document.getElementById("n-ledger").textContent = "✓ " + ledger.name;
+    if (data.sheet_map) STATE.sheets = data.sheet_map;
+  }
+  if (fs) {
+    document.getElementById("n-fs").classList.add("show");
+    document.getElementById("n-fs").textContent = "✓ " + fs.name;
+    if (data.total_assets) document.getElementById("total_assets").value = data.total_assets;
+    if (data.fs_amounts) STATE.fs_amounts = data.fs_amounts;
+    computePM();
+  }
+  if (rp) {
+    document.getElementById("n-rp").classList.add("show");
+    document.getElementById("n-rp").textContent = "✓ " + rp.name + " (" + (data.related_parties||[]).length + "건)";
+    STATE.related_parties = data.related_parties || [];
+    document.getElementById("rp_list").value = STATE.related_parties.join("\n");
+  }
+
+  const summary = document.getElementById("upload-summary");
+  let lines = [];
+  if (data.sheet_map) {
+    lines.push("채권: <b>" + (data.sheet_map.receivable||"미감지") + "</b>");
+    lines.push("채무: <b>" + (data.sheet_map.payable||"미감지") + "</b>");
+  }
+  if (data.total_assets) lines.push("총자산: <b>" + fmt(data.total_assets) + "</b> 원");
+  if (lines.length) { summary.classList.add("show"); summary.innerHTML = lines.join(" · "); }
+
+  document.getElementById("btn-run").disabled = !document.getElementById("n-ledger").classList.contains("show");
+}
+
+function computePM(){
+  const ta = parseFloat(document.getElementById("total_assets").value) || 0;
+  const mr = parseFloat(document.getElementById("materiality_ratio").value) || 0;
+  const ph = parseFloat(document.getElementById("pm_haircut").value) || 0;
+  const pm = ta * mr * ph;
+  document.getElementById("pm").value = Math.round(pm);
+  autoMatrix();
+}
+["total_assets","materiality_ratio","pm_haircut"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", computePM);
+});
+
+function autoMatrix(){
+  const rk = document.getElementById("risk_level").value;
+  const cr = document.getElementById("control_reliance").value;
+  const key = rk + "|" + cr;
+  document.getElementById("key_item_ratio").value = KEY_ITEM_MATRIX[key];
+  document.getElementById("cf").value = CF_MATRIX[key];
+  updateThreshold();
+}
+["key_item_ratio","pm"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", updateThreshold);
+});
+function updateThreshold(){
+  const pm = parseFloat(document.getElementById("pm").value) || 0;
+  const r = parseFloat(document.getElementById("key_item_ratio").value) || 0;
+  document.getElementById("threshold-display").textContent = fmt(pm * r) + " 원";
+}
+
+function addExclRow(name="", reason=""){
+  const tbody = document.querySelector("#excl-table tbody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" value="${name}" placeholder="거래처명"></td>
+    <td><input type="text" value="${reason}" placeholder="사유"></td>
+    <td><button class="btn-del" onclick="this.closest('tr').remove()">×</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+function getExcl(){
+  const obj = {};
+  document.querySelectorAll("#excl-table tbody tr").forEach(tr=>{
+    const ins = tr.querySelectorAll("input");
+    const n = ins[0].value.trim();
+    if (n) obj[n] = ins[1].value;
+  });
+  return obj;
+}
+
+// ── 샘플링 실행 ────────────────────────────────────────────
+async function runSampling(){
+  const kind = STATE.kind;
+  const sheet = STATE.sheets[kind];
+  if (!sheet) { alert(`${kind==="receivable"?"채권":"채무"} 시트를 찾지 못함. 원장 시트명 확인.`); return; }
+
+  const rpList = document.getElementById("rp_list").value.split("\n").map(s=>s.trim()).filter(Boolean);
+
+  const payload = {
+    kind, sheet,
+    project_id: STATE.currentProjectId,
+    company_name: document.getElementById("company_name").value,
+    period_end: document.getElementById("period_end").value,
+    preparer: document.getElementById("preparer").value,
+    reviewer: document.getElementById("reviewer").value,
+    performance_materiality: parseFloat(document.getElementById("pm").value),
+    risk_level: document.getElementById("risk_level").value,
+    control_reliance: document.getElementById("control_reliance").value,
+    key_item_ratio: parseFloat(document.getElementById("key_item_ratio").value),
+    confidence_factor: parseFloat(document.getElementById("cf").value),
+    fs_amounts_by_group: STATE.fs_amounts,
+    excluded_parties: getExcl(),
+    related_parties: rpList,
+    force_include_related: document.getElementById("force_rp").checked,
+    seed: document.getElementById("use_seed").checked ? parseInt(document.getElementById("seed").value) : null,
+  };
+
+  const btn = document.getElementById("btn-run");
+  btn.textContent = "실행 중...";
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/run", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    STATE.last_result[kind] = data;
+    STATE.stepDone[1] = true;
+    goStep(1); // 스테퍼 done 표시 갱신
+    renderResult(data);
+    document.getElementById("dl-btn").style.display = "inline-flex";
+    document.getElementById("dl-btn").href = `/api/download/${kind}`;
+  } catch (e) {
+    alert("실행 실패: " + e.message);
+  } finally {
+    btn.textContent = "샘플링 실행";
+    btn.disabled = false;
+  }
+}
+
+// ── 결과 렌더링 ────────────────────────────────────────────
+function renderResult(d){
+  const ki = d.decisions.filter(x=>x.is_key_item).length;
+  const rep = d.decisions.filter(x=>x.is_representative && !x.is_key_item).length;
+  const rp = d.decisions.filter(x=>x.is_related_party && x.final_sampled && !x.is_key_item && !x.is_representative).length;
+  const final = d.decisions.filter(x=>x.final_sampled);
+  const excl = d.decisions.filter(x=>x.is_excluded).length;
+
+  const compRows = d.completeness.rows.map(r=>`
+    <tr>
+      <td>${r.group}</td>
+      <td class="num">${fmt(r.ledger)}</td>
+      <td class="num">${fmt(r.fs)}</td>
+      <td class="num" style="color:${Math.abs(r.diff)<1?'var(--text3)':'var(--amber)'}">${fmt(r.diff)}</td>
+      <td>${r.note||""}</td>
+    </tr>`).join("");
+
+  const sampledRows = final.sort((a,b)=>b.balance-a.balance).map((d,i)=>{
+    const tags = [];
+    if(d.is_key_item) tags.push('<span class="pill ki">Key item</span>');
+    if(d.is_representative) tags.push('<span class="pill rep">Representative</span>');
+    if(d.is_related_party) tags.push('<span class="pill rp">특관자</span>');
+    const cls = d.is_key_item ? "key-item" : "sampled";
+    return `<tr class="${cls}"><td class="center">${i+1}</td><td>${d.name}</td><td class="num">${fmt(d.balance)}</td><td>${tags.join(" ")}</td></tr>`;
+  }).join("");
+
+  const musRows = d.mus.selections.map(s=>`
+    <tr class="${s.hit?'sampled':''}">
+      <td>${s.name}</td>
+      <td class="num">${fmt(s.balance)}</td>
+      <td class="num">${fmt(s.cumulative)}</td>
+      <td class="center">${s.selections}</td>
+      <td class="num">${fmt(s.remainder_after)}</td>
+      <td class="center">${s.hit?'<b style="color:var(--green)">Y</b>':'N'}</td>
+    </tr>`).join("");
+
+  document.getElementById("res-panel").innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">모집단</div><div class="kpi-value">${fmt(d.population_amount)}</div><div class="kpi-sub">원</div></div>
+      <div class="kpi-card"><div class="kpi-label">Key item 기준금액</div><div class="kpi-value accent">${fmt(d.size.key_item_threshold)}</div><div class="kpi-sub">PM × ${fmtPct(d.size.key_item_ratio)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Final sample size</div><div class="kpi-value green">${d.size.final_sample_size}</div><div class="kpi-sub">Base ${d.size.base_sample_size.toFixed(3)} × CF ${d.size.confidence_factor}</div></div>
+      <div class="kpi-card"><div class="kpi-label">표본간격</div><div class="kpi-value">${fmt(d.size.sample_interval)}</div><div class="kpi-sub">잔여 / N</div></div>
+      <div class="kpi-card"><div class="kpi-label">Key item</div><div class="kpi-value amber">${ki}건</div></div>
+      <div class="kpi-card"><div class="kpi-label">Representative</div><div class="kpi-value accent">${rep}건</div></div>
+      <div class="kpi-card"><div class="kpi-label">특관자 추가</div><div class="kpi-value">${rp}건</div></div>
+      <div class="kpi-card highlight"><div class="kpi-label">최종 샘플링</div><div class="kpi-value">${final.length}건</div><div class="kpi-sub">발송제외 ${excl}건</div></div>
+    </div>
+
+    <div class="card">
+      <h3>모집단 완전성 검토 <span class="h3-sub">회사명세서 ↔ 재무제표 대사</span></h3>
+      <table>
+        <thead><tr><th>계정그룹</th><th class="num">회사명세서</th><th class="num">재무제표</th><th class="num">차이</th><th>차이소명</th></tr></thead>
+        <tbody>${compRows}</tbody>
+        <tfoot><tr>
+          <td>합계</td><td class="num">${fmt(d.completeness.total_ledger)}</td><td class="num">${fmt(d.completeness.total_fs)}</td><td class="num">${fmt(d.completeness.total_diff)}</td><td></td>
+        </tr></tfoot>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>최종 샘플링 거래처 <span class="h3-sub">${final.length}건</span></h3>
+      <table>
+        <thead><tr><th class="center">#</th><th>거래처명</th><th class="num">잔액</th><th>구분</th></tr></thead>
+        <tbody>${sampledRows}</tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>MUS 추출 내역 <span class="h3-sub">임의출발점 ${fmt(d.mus.random_start)} · 표본간격 ${fmt(d.mus.sample_interval)}</span></h3>
+      <table>
+        <thead><tr><th>거래처명</th><th class="num">잔액</th><th class="num">누적</th><th class="center">선택수</th><th class="num">remainder</th><th class="center">Hit</th></tr></thead>
+        <tbody>${musRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── 초기화 ─────────────────────────────────────────────────
+addExclRow();
+autoMatrix();
+goStep(1);
+
+// 기존 프로젝트 목록 자동 로드 (셀렉터에 첫 번째 표시)
+(async()=>{
+  try{
+    const r = await fetch("/api/project");
+    const list = await r.json();
+    if(list.length>0){
+      // 자동 활성화하지 않고 목록만 준비 — 사용자가 선택
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
