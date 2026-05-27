@@ -16,14 +16,16 @@ from src.infrastructure.persistence import get_session, WorkpaperRepository
 
 LEDGER_PATH = ROOT / "input" / "회사자료" / "채권채무조회서 거래처별 원장.XLSX"
 TEMPLATE_PATH = ROOT / "input" / "조서" / "7620_코스맥스비티아이_C100_AA100 채권 채무 조회_FY25.xlsx"
-# generic_reporter 가 생성하는 7개 시트 (채권 기준: C100 prefix)
+# generic_reporter 가 생성하는 9개 시트 (Toss 디자인 generic reporter)
 EXPECTED_GENERIC_SHEETS = {
-    "샘플링 요약",
-    "C100 조회서",
-    "C100A 조회처 주소 적정성",
-    "C100-1 표본규모 결정",
-    "C100-2 Key item 추출",
-    "C100-3 표본 추출(MUS)",
+    "요약",
+    "조회서",
+    "표본규모 산출",
+    "모집단 완전성",
+    "Key item 매트릭스",
+    "MUS 추출 내역",
+    "주소 적정성",
+    "회신 추적",
     "대체적 절차",
 }
 
@@ -101,9 +103,9 @@ def test_step3_download_returns_excel(client, sampled_project):
 
 
 def test_step3_downloaded_xlsx_has_7_generic_sheets(client, sampled_project, tmp_path):
-    """다운로드된 조서 xlsx에 generic_reporter 7개 시트가 모두 존재함.
+    """다운로드된 조서 xlsx에 generic_reporter 9개 시트가 모두 존재함.
 
-    v1.1.0부터 21개 template 복사 방식을 폐기하고 7시트 직접 작성 방식으로 전환.
+    v1.2.0: Toss 디자인 generic reporter — 9시트 구성.
     """
     pid = sampled_project
     # build 재실행 (artifact 갱신)
@@ -126,7 +128,7 @@ def test_step3_downloaded_xlsx_has_7_generic_sheets(client, sampled_project, tmp
 
     missing = EXPECTED_GENERIC_SHEETS - actual_sheets
     assert not missing, f"누락 시트: {missing} | 실제: {actual_sheets}"
-    assert len(actual_sheets) == 7, f"시트 수 불일치: {len(actual_sheets)} (기대 7)"
+    assert len(actual_sheets) == 9, f"시트 수 불일치: {len(actual_sheets)} (기대 9)"
 
 
 def test_step3_mark_done_sets_completed_at(client, sampled_project):

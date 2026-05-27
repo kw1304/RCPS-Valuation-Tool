@@ -63,8 +63,8 @@ def both_project(client):
     return {"pid": pid, "ar_sheet": ar_sheet, "ap_sheet": ap_sheet}
 
 
-def test_step3_receivable_has_7_sheets(client, both_project, tmp_path):
-    """채권 조서 — 7개 시트."""
+def test_step3_receivable_has_9_sheets(client, both_project, tmp_path):
+    """채권 조서 — 9개 시트 (generic reporter)."""
     pid = both_project["pid"]
     r = client.post(f"/api/project/{pid}/step3/build", json={
         "kind": "receivable",
@@ -82,11 +82,11 @@ def test_step3_receivable_has_7_sheets(client, both_project, tmp_path):
     sheets = wb.sheetnames
     wb.close()
 
-    assert len(sheets) == 7, f"채권 조서 시트 수 불일치: {len(sheets)} — {sheets}"
+    assert len(sheets) == 9, f"채권 조서 시트 수 불일치: {len(sheets)} — {sheets}"
 
 
-def test_step3_receivable_c100_prefix(client, both_project, tmp_path):
-    """채권 조서 — C100 prefix 시트 존재."""
+def test_step3_receivable_has_요약_sheet(client, both_project, tmp_path):
+    """채권 조서 — '요약' 시트 존재 (generic reporter)."""
     pid = both_project["pid"]
     r_dl = client.get(f"/api/project/{pid}/step3/download/receivable")
     assert r_dl.status_code == 200
@@ -94,10 +94,10 @@ def test_step3_receivable_c100_prefix(client, both_project, tmp_path):
     out = tmp_path / "ar_workpaper2.xlsx"
     out.write_bytes(r_dl.data)
     wb = openpyxl.load_workbook(out, read_only=True)
-    c100_sheets = [s for s in wb.sheetnames if s.startswith("C100")]
+    sheets = wb.sheetnames
     wb.close()
 
-    assert c100_sheets, f"C100 prefix 시트 없음"
+    assert "요약" in sheets, f"'요약' 시트 없음: {sheets}"
 
 
 def test_step3_build_returns_filename(client, both_project):

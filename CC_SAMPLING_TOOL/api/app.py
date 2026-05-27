@@ -751,11 +751,229 @@ def step2_mark_sent(pid: str):
 # ─────────────────────────────────────────────────────────────
 # 8. Step 3 — 조서 생성
 # ─────────────────────────────────────────────────────────────
+def _step3_build_both(pid: str, proj, data: dict, session):
+    """kind=both: 채권·채무 양쪽 DB 복원 → 단일 통합 파일 생성.
+
+    STATE에 의존하지 않고 wp.sampling_result / wp.sampling_params 만 사용.
+    """
+    from src.infrastructure.report.generic_reporter import (
+        KindData, ReportContext, build_combined_report,
+    )
+    from src.domain.mus import MUSResult, MUSSelection
+    from src.domain.sample_size import SampleSizeResult
+    from src.domain.population import CompletenessCheck
+
+    preparer = data.get("preparer", "")
+    reviewer = data.get("reviewer", "")
+    template_id = data.get("template_id", "woongkye_standard")
+
+    wp_repo = WorkpaperRepository(session)
+    art_repo = ArtifactRepository(session)
+    reply_repo = ConfirmationReplyRepository(session)
+    proc_repo = AlternativeProcedureRepository(session)
+
+    kind_datas: dict[str, KindData] = {}
+
+    for chk_kind in ("receivable", "payable"):
+        wp = wp_repo.get_or_create(pid, chk_kind)
+        if not wp.sampling_result or not wp.sampling_params:
+            return jsonify({"error": f"Step 1 샘플링을 먼저 실행하세요 ({chk_kind})"}), 400
+
+        # ── params 복원 ───────────────────────────────────────────────
+        pd_raw = json.loads(wp.sampling_params)
+        params = SamplingParams(
+            company_name=pd_raw.get("company_name", proj.company_name),
+            period_end=date.fromisoformat(pd_raw.get("period_end", proj.period_end)),
+            kind=chk_kind,
+            performance_materiality=float(pd_raw.get("performance_materiality", 0)),
+            risk_level=pd_raw.get("risk_level", "유의적위험"),
+            control_reliance=pd_raw.get("control_reliance", "Y"),
+            preparer=preparer or pd_raw.get("preparer", ""),
+            reviewer=reviewer or pd_raw.get("reviewer", ""),
+        )
+
+        # ── sampling_result 역직렬화 ──────────────────────────────────
+        sr = json.loads(wp.sampling_result)
+
+        decisions = [
+            PartyDecision(
+                name=d["name"], balance=d["balance"],
+                is_excluded=d["is_excluded"], is_related_party=d["is_related_party"],
+                is_key_item=d["is_key_item"], is_representative=d["is_representative"],
+                final_sampled=d["final_sampled"], exclusion_reason=d.get("exclusion_reason"),
+            )
+            for d in sr.get("decisions", [])
+        ]
+
+        sz = sr.get("size", {})
+        size_result = SampleSizeResult(
+            key_item_threshold=sz.get("key_item_threshold", 0),
+            key_item_ratio=sz.get("key_item_ratio", 0),
+            confidence_factor=sz.get("confidence_factor", 0),
+            base_sample_size=sz.get("base_sample_size", 0),
+            final_sample_size=sz.get("final_sample_size", 0),
+            sample_interval=sz.get("sample_interval", 0),
+            remaining_population=sz.get("remaining_population", 0),
+        )
+
+        from src.domain.population import CompletenessCheck as _CC
+        comp_raw = sr.get("completeness", {})
+        completeness = _CC(
+            by_group=comp_raw.get("rows", []),
+            total_ledger=comp_raw.get("total_ledger", 0),
+            total_fs=comp_raw.get("total_fs", 0),
+            total_diff=comp_raw.get("total_diff", 0),
+        )
+
+        mus_raw = sr.get("mus", {})
+        selections = [
+            MUSSelection(
+                name=sel["name"], balance=sel["balance"], cumulative=sel["cumulative"],
+                selections=sel["selections"], remainder_after=sel["remainder_after"],
+                hit=sel["hit"],
+            )
+            for sel in mus_raw.get("selections", [])
+        ]
+        mus_result = MUSResult(
+            sample_interval=mus_raw.get("sample_interval", 0),
+            random_start=mus_raw.get("random_start", 0),
+            selections=selections,
+            sampled_names=mus_raw.get("sampled_names", []),
+        )
+
+        # ── UploadGuide 연락처 ────────────────────────────────────────
+        contacts: list[PartyContactInfo] = []
+        exclusion_rows_list: list[ExclusionRow] = []
+        ug_data = STATE.get("upload_guide_data")
+        if ug_data is None and STATE.get("upload_guide_path"):
+            try:
+                ug_data = load_upload_guide(STATE["upload_guide_path"])
+                STATE["upload_guide_data"] = ug_data
+            except Exception as e:
+                log.warning(f"UploadGuide 재로드 실패: {e}")
+        if ug_data:
+            contacts = [
+                PartyContactInfo(
+                    name=ct.name, country=ct.country, business_no=ct.business_no,
+                    ceo_name=ct.ceo_name, contact_person=ct.contact_person,
+                    phone=ct.phone, email=ct.email,
+                )
+                for ct in ug_data.send_targets
+            ]
+            exclusion_rows_list = [
+                ExclusionRow(
+                    name=ex.name, account_name=ex.account_name,
+                    currency=ex.currency, amount=ex.amount, kind=ex.kind,
+                )
+                for ex in ug_data.excluded
+            ]
+
+        # ── PDF 회신 ─────────────────────────────────────────────────
+        pdf_replies_list: list[ConfirmationReplyInfo] = []
+        try:
+            replies_db = reply_repo.list_by_workpaper(wp.id)
+            for rep in replies_db:
+                pdf_replies_list.append(ConfirmationReplyInfo(
+                    party_name=rep.party_name_matched or rep.party_name_raw,
+                    status=rep.status,
+                    extracted_balance=rep.extracted_balance,
+                    reply_date=rep.reply_date,
+                ))
+        except Exception as e:
+            log.warning(f"PDF 회신 로드 실패 ({chk_kind}): {e}")
+
+        # ── 대체적 절차 ───────────────────────────────────────────────
+        alt_procs_list: list[AlternativeProcedureEntry] = []
+        try:
+            procs_db = proc_repo.list_by_workpaper(wp.id)
+            for proc in procs_db:
+                ev_ids: list[str] = []
+                if proc.evidence_artifact_ids:
+                    try:
+                        ev_ids = json.loads(proc.evidence_artifact_ids)
+                    except Exception:
+                        ev_ids = []
+                alt_procs_list.append(AlternativeProcedureEntry(
+                    party_name=proc.party_name, reason=proc.reason,
+                    ledger_balance=proc.ledger_balance, procedure_type=proc.procedure_type,
+                    evidence_names=ev_ids, covered_amount=proc.covered_amount,
+                    coverage_ratio=proc.coverage_ratio, conclusion=proc.conclusion,
+                    auditor_notes=proc.auditor_notes,
+                ))
+        except Exception as e:
+            log.warning(f"대체적 절차 로드 실패 ({chk_kind}): {e}")
+
+        prefix = "C100" if chk_kind == "receivable" else "AA100"
+        ctx = ReportContext(
+            company_name=params.company_name,
+            period_end=params.period_end,
+            kind=chk_kind,
+            preparer=params.preparer,
+            reviewer=params.reviewer,
+            workpaper_no_prefix=prefix,
+        )
+
+        kind_datas[chk_kind] = KindData(
+            ctx=ctx,
+            completeness=completeness,
+            size_result=size_result,
+            decisions=decisions,
+            mus_result=mus_result,
+            performance_materiality=params.performance_materiality,
+            population_amount=sr.get("population_amount", 0.0),
+            contacts=contacts or None,
+            exclusion_rows=exclusion_rows_list or None,
+            pdf_replies=pdf_replies_list or None,
+            alt_procedures=alt_procs_list or None,
+        )
+
+    # ── 통합 파일 생성 ────────────────────────────────────────────────
+    # ReportContext.kind = "both" 로 덮어써서 헤더에 "채권채무 조회 통합" 표시
+    ar_kd = kind_datas.get("receivable")
+    ap_kd = kind_datas.get("payable")
+    if ar_kd:
+        ar_kd.ctx.kind = "both"
+    elif ap_kd:
+        ap_kd.ctx.kind = "both"
+
+    base_kd = ar_kd or ap_kd
+    base_params = json.loads(wp_repo.get_or_create(pid, "receivable" if ar_kd else "payable").sampling_params)
+
+    fname = f"C100AA100_{proj.company_name}_{proj.period_end}.xlsx"
+    out_path = ROOT / "output" / fname
+    build_combined_report(out_path, receivable=ar_kd, payable=ap_kd)
+
+    # ── Artifact 저장 (채권 workpaper 기준) ──────────────────────────
+    base_wp = wp_repo.get_or_create(pid, "receivable" if ar_kd else "payable")
+    art = art_repo.save_file(
+        project_id=pid,
+        kind="workpaper",
+        source_path=out_path,
+        filename=fname,
+        workpaper_id=base_wp.id,
+    )
+    base_wp.workpaper_artifact_id = art.id
+
+    from datetime import datetime, timezone
+    base_wp.updated_at = datetime.now(timezone.utc)
+
+    _audit(session, "step3_export_workpaper_both", "Workpaper", base_wp.id, pid,
+           after={"kind": "both", "template_id": template_id, "filename": fname})
+
+    return jsonify({
+        "artifact_id": art.id,
+        "download_url": f"/api/project/{pid}/step3/download/receivable",
+        "filename": fname,
+        "kind": "both",
+    }), 201
+
+
 @app.route("/api/project/<pid>/step3/build", methods=["POST"])
 def step3_build(pid: str):
     """조서 Excel 생성 + Artifact 저장.
 
     body: {kind, template_id, preparer, reviewer}
+    kind="both" → 채권+채무 단일 통합 파일
     """
     with get_session() as s:
         proj = ProjectRepository(s).get(pid)
@@ -764,6 +982,10 @@ def step3_build(pid: str):
 
         data = request.json or {}
         kind = data.get("kind", "receivable")
+
+        # kind=both: 채권+채무 단일 통합 파일 빌드
+        if kind == "both":
+            return _step3_build_both(pid, proj, data, s)
         template_id = data.get("template_id", "woongkye_standard")
         preparer = data.get("preparer", "")
         reviewer = data.get("reviewer", "")
@@ -1111,18 +1333,44 @@ def step4_upload_replies(pid: str):
             if recon.per_account_findings:
                 per_acct_json = json.dumps(recon.per_account_findings, ensure_ascii=False)
 
-            # 6) DB 저장 — Task 1: 한 거래처가 채권·채무 양쪽에 있으면 각각 workpaper에 Reply 생성
+            # 6) DB 저장 — 양쪽 표 자동 분리 + 거래처 양쪽 등록
+            # PDF per_account_rows 섹션 분석: 실제 채권/채무 표가 있는 쪽 파악
+            pdf_has_receivable = any(
+                row.section == "receivable" for row in (parsed.per_account_rows or [])
+            )
+            pdf_has_payable = any(
+                row.section == "payable" for row in (parsed.per_account_rows or [])
+            )
+            # per_account_rows 없으면 종합 extracted_balance 섹션 추정
+            if not parsed.per_account_rows:
+                pdf_has_receivable = parsed.receivable_total is not None
+                pdf_has_payable = parsed.payable_total is not None
+
+            # 채권/채무 표별 회신금액 분리
+            recv_balance = parsed.receivable_total
+            payb_balance = parsed.payable_total
+
+            # 거래처 kind 판정 (Step 1 final_sampled 기반)
             matched_kinds: list[str] = []
             if matched_name:
                 party_kind = kind_map.get(matched_name, kind)
                 if party_kind == "both":
                     matched_kinds = ["receivable", "payable"]
                 else:
+                    # PDF에 반대쪽 표도 있으면 추가 등록 시도
                     matched_kinds = [party_kind]
+                    if party_kind == "receivable" and pdf_has_payable and payb_balance is not None:
+                        matched_kinds.append("payable")
+                    elif party_kind == "payable" and pdf_has_receivable and recv_balance is not None:
+                        matched_kinds.insert(0, "receivable")
             else:
                 matched_kinds = [kind]  # 매칭 실패 → 요청 kind에만 저장
 
             for target_kind in matched_kinds:
+                # target_kind에 실제 해당 거래처가 sampled 되어 있는지 확인
+                if matched_name and matched_name not in ledger_map:
+                    pass  # 매칭 실패 케이스 — 그냥 진행
+
                 target_wp = wp_repo.get_or_create(pid, target_kind)
                 # 같은 거래처·같은 PDF 중복 방지 (이미 존재하면 skip)
                 existing_replies = reply_repo.list_by_workpaper(target_wp.id)
@@ -1133,9 +1381,18 @@ def step4_upload_replies(pid: str):
                 if already_exists:
                     continue
 
+                # target_kind 의 회신금액 선택 (표 섹션 기반)
+                if target_kind == "receivable" and recv_balance is not None:
+                    target_extracted_balance = recv_balance
+                elif target_kind == "payable" and payb_balance is not None:
+                    target_extracted_balance = payb_balance
+                else:
+                    # 하위 호환: 단일 extracted_balance 사용
+                    target_extracted_balance = parsed.extracted_balance
+
                 # target_kind의 장부 잔액 재조회
-                target_ledger_bal = ledger_bal
-                if target_kind != kind and matched_name:
+                target_ledger_bal = ledger_map.get(matched_name) if matched_name else ledger_bal
+                if target_ledger_bal is None and matched_name:
                     target_wp_sr = target_wp.sampling_result
                     if target_wp_sr:
                         _sr = json.loads(target_wp_sr)
@@ -1144,6 +1401,22 @@ def step4_upload_replies(pid: str):
                                 target_ledger_bal = float(_d.get("balance", 0))
                                 break
 
+                # 차이 재계산 (target_kind별 금액 기준)
+                if target_extracted_balance is not None and target_ledger_bal is not None:
+                    diff = target_ledger_bal - target_extracted_balance
+                    diff_pct = abs(diff / target_ledger_bal) if target_ledger_bal else None
+                    if abs(diff) <= tolerance or (diff_pct is not None and diff_pct <= 0.01):
+                        target_status = "matched"
+                    else:
+                        target_status = "mismatch"
+                else:
+                    diff = recon.difference
+                    diff_pct = recon.difference_pct
+                    target_status = status
+
+                if matched_name is None:
+                    target_status = "needs_review"
+
                 reply = reply_repo.create(
                     workpaper_id=target_wp.id,
                     pdf_artifact_id=artifact.id,
@@ -1151,13 +1424,13 @@ def step4_upload_replies(pid: str):
                     party_name_matched=matched_name,
                     party_match_confidence=match_conf,
                     party_match_method=match_method,
-                    extracted_balance=parsed.extracted_balance,
+                    extracted_balance=target_extracted_balance,
                     extracted_balance_currency=parsed.balance_currency,
                     reply_date=parsed.reply_date,
                     ledger_balance=target_ledger_bal,
-                    difference=recon.difference,
-                    difference_pct=recon.difference_pct,
-                    status=status,
+                    difference=diff,
+                    difference_pct=diff_pct,
+                    status=target_status,
                     extraction_method=extract_result.method,
                     extraction_confidence=extract_result.confidence,
                     notes="; ".join(ocr_warnings) if ocr_warnings else None,
@@ -1172,15 +1445,14 @@ def step4_upload_replies(pid: str):
                 _audit(s, "step4_upload_reply", "ConfirmationReply", reply.id, pid,
                        after={
                            "filename": filename,
-                           "status": status,
-                           "extracted_balance": parsed.extracted_balance,
+                           "status": target_status,
+                           "extracted_balance": target_extracted_balance,
                            "party_name_raw": raw_name,
                            "party_name_matched": matched_name,
                            "target_kind": target_kind,
                        })
 
-                if target_kind == kind or len(matched_kinds) == 1:
-                    results.append(_serialize_reply(reply, ocr_warnings))
+                results.append({**_serialize_reply(reply, ocr_warnings), "kind": target_kind})
 
         return jsonify(results), 201
 
@@ -1976,17 +2248,34 @@ def step5_auto_identify_pending(pid: str):
                 if d.get("final_sampled"):
                     sampled_parties[d["name"]] = float(d.get("balance", 0))
 
-            # 회신 현황 (matched 또는 mismatch = 회신 있음)
+            # 회신 현황 — matched/mismatch/needs_review 모두 회신 있음으로 처리
+            # needs_review 는 추출 실패 등이지 회신 자체가 없는 것이 아님 → placeholder 생성 skip
             replies = reply_repo.list_by_workpaper(chk_wp.id)
             replied_set: set[str] = set()
             for r in replies:
-                if r.party_name_matched and r.status in ("matched", "mismatch"):
+                if r.party_name_matched and r.status in ("matched", "mismatch", "needs_review"):
                     replied_set.add(r.party_name_matched)
+
+            # 이미 AlternativeProcedure 가 사용자 등록(evidence 있음)이면 skip
+            existing_procs_with_evidence: set[str] = set()
+            for proc in proc_repo.list_by_workpaper(chk_wp.id):
+                if proc.evidence_artifact_ids:
+                    try:
+                        ev_ids_check = json.loads(proc.evidence_artifact_ids)
+                        if ev_ids_check:
+                            existing_procs_with_evidence.add(proc.party_name)
+                    except Exception:
+                        pass
 
             for party_name, ledger_balance in sampled_parties.items():
                 if party_name in replied_set:
                     skipped_count += 1
                     continue  # 이미 회신 처리됨
+
+                # 사용자가 이미 증빙을 등록한 대체적 절차가 있으면 skip
+                if party_name in existing_procs_with_evidence:
+                    skipped_count += 1
+                    continue
 
                 existing_proc = proc_repo.get_by_party(chk_wp.id, party_name)
                 if existing_proc is None:
