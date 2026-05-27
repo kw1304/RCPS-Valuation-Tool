@@ -1264,6 +1264,11 @@ details.note-fold .note{margin-top:4px}
         가로 점선: 중앙값(파랑) · 평균(주황) · 채택 집계값(녹색).
       </div>
     </div>
+    <div id="vol-trailing-chart-wrap" style="display:none;margin-top:14px">
+      <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin-bottom:6px">기간별 σ 비교 — 1y / 2y / 3y / 5y trailing</div>
+      <div style="height:240px"><canvas id="vol-trailing-chart"></canvas></div>
+      <div id="vol-trailing-note" style="font-size:.66rem;color:var(--text3);margin-top:4px"></div>
+    </div>
   </div>
 </div><!-- /page-vol -->
 
@@ -4350,6 +4355,86 @@ function volRenderBarChart(j){
   });
 }
 
+/* 변동성 기간별 σ 비교 차트 — RCPS 잔존만기 가까운 기간 강조 */
+function volRenderTrailingChart(j){
+  const wrap = document.getElementById('vol-trailing-chart-wrap');
+  if(!wrap) return;
+  const bt = j.basket_trailings || [];
+  const valid = bt.filter(t => t.sigma != null);
+  if(!valid.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  // RCPS 잔존만기 산출
+  let rcpsT = null;
+  try {
+    const vd = new Date(document.getElementById('valuation_date')?.value);
+    const md = new Date(document.getElementById('maturity_date')?.value);
+    if(!isNaN(vd) && !isNaN(md)) rcpsT = (md - vd) / (365.25*24*3600*1000);
+  } catch(_) {}
+  // 가장 근접한 기간
+  let closestY = null;
+  if(rcpsT && rcpsT > 0){
+    let minDiff = Infinity;
+    valid.forEach(t => {
+      const d = Math.abs(t.period_years - rcpsT);
+      if(d < minDiff){ minDiff = d; closestY = t.period_years; }
+    });
+  }
+
+  // 채택 σ 라인
+  const adopted = j.sigma_pct;
+
+  dc('vol-trailing-chart');
+  CH['vol-trailing-chart'] = new Chart(document.getElementById('vol-trailing-chart').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: valid.map(t => `${t.period_years}년${t.period_years===closestY?' ⭐':''}`),
+      datasets:[
+        {
+          label:'기간별 σ (%)',
+          data: valid.map(t => t.sigma_pct),
+          backgroundColor: valid.map(t => t.period_years===closestY ? 'rgba(245,158,11,.8)' : 'rgba(49,130,246,.6)'),
+          borderRadius:4,
+        },
+        {
+          label:`채택 σ ${adopted.toFixed(2)}%`, type:'line',
+          data: valid.map(()=>adopted),
+          borderColor:'#059669', borderWidth:2, pointRadius:0, fill:false, tension:0,
+        },
+      ],
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:{size:9.5},boxWidth:14,padding:6}},
+        tooltip:{filter: ctx=>ctx.datasetIndex===0, callbacks:{
+          label: ctx => {
+            const t = valid[ctx.dataIndex];
+            return ` σ=${t.sigma_pct.toFixed(2)}% (종목 ${t.n_tickers}개${t.avg_se?`, 평균 SE ±${(t.avg_se*100).toFixed(2)}%p`:''})`;
+          },
+        }},
+      },
+      scales:{
+        x:{title:{display:true,text:'Trailing 기간',font:{size:10}},ticks:{font:{size:10}},grid:{display:false}},
+        y:{title:{display:true,text:'σ (%)',font:{size:10}},ticks:{callback:v=>v.toFixed(1)+'%',font:{size:9}},grid:{color:'#F2F4F6'}},
+      },
+    },
+  });
+
+  // 안내 노트
+  const noteEl = document.getElementById('vol-trailing-note');
+  if(noteEl){
+    let note = '';
+    if(rcpsT && closestY != null){
+      note += `RCPS 잔존 만기 <b>${rcpsT.toFixed(2)}년</b> — 가장 근접한 기간 <b>${closestY}년</b> ⭐ (주황). `;
+    }
+    const sigPcts = valid.map(t => t.sigma_pct);
+    const range = Math.max(...sigPcts) - Math.min(...sigPcts);
+    note += `기간별 σ 변동폭 ${range.toFixed(1)}%p (참고). 회색 가로선: 현재 채택 σ.`;
+    noteEl.innerHTML = note;
+  }
+}
+
 function volRenderResult(j){
   window.volLastSigmaPct=j.sigma_pct;
   window.volLastResult=j;  // Excel 다운로드용 캐시
@@ -4442,6 +4527,7 @@ function volRenderResult(j){
   document.getElementById('vol-meta').innerHTML=meta;
   document.getElementById('vol-export').style.display=window.volLastRaw?'':'none';
   volRenderBarChart(j);
+  volRenderTrailingChart(j);
   volMsg('산출 완료 — σ = '+j.sigma_pct.toFixed(2)+'%.',true);
 }
 function volApplyToRcps(){

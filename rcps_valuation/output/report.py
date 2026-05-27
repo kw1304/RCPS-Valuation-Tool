@@ -10,7 +10,7 @@ def generate_workpaper(params, initial_result, sensitivity_result, output_path,
 
     ws0 = wb.active
     ws0.title = "0.평가의견"
-    _write_executive_summary(ws0, params, initial_result, eval_result, sensitivity_result)
+    _write_executive_summary(ws0, params, initial_result, eval_result, sensitivity_result, bdt_cross=bdt_cross)
 
     ws1 = wb.create_sheet("1.발행조건")
     _write_cover(ws1, params, initial_result)
@@ -93,30 +93,44 @@ def _write_model_comparison(ws, eval_result, params):
         _cell(ws, ri, 4, vmc if vmc is not None else "-", bg=bg, num_fmt="#,##0", align="right")
         _cell(ws, ri, 5, note, bg=bg, color="718096")
 
-    # TF 본래 2-component 분해 — Tsiveriotis-Fernandes(1998) 학술 분해
+    # 위험 분리 2-component 분해 — Tsiveriotis-Fernandes(1998) 학술 분해
+    # TF·GS 각각 VE/VD 비교 (GS도 자체 E/B 산출 가능 시)
     tfE = tf.get("equity_component") if tf else None
     tfB = tf.get("bond_component") if tf else None
+    gsE = gs.get("equity_component") if gs else None
+    gsB = gs.get("bond_component") if gs else None
     if tfE is not None and tfB is not None:
         r2c = 10
-        ws.cell(row=r2c, column=1, value="■ TF 본래 2-component 분해 (Tsiveriotis-Fernandes 1998)").font = \
+        ws.cell(row=r2c, column=1, value="■ 위험 분리 2-component 분해 (Tsiveriotis-Fernandes 1998)").font = \
             Font(name="맑은 고딕", bold=True, size=10, color="0369A1")
         ws.merge_cells(start_row=r2c, start_column=1, end_row=r2c, end_column=5)
-        for i, (k, v, note) in enumerate([
-            ("VE (지분 성분, E[0])", tfE, "전환 가능성 반영"),
-            ("VD (채권 성분, B[0])", tfB, "만기상환·풋 보장"),
-            ("합계", tfE + tfB, "= TF 공정가치"),
-        ], r2c + 1):
-            bg = "F0F9FF" if i == r2c + 3 else "FFFFFF"
-            _cell(ws, i, 1, k, bg=bg, bold=(i == r2c + 3))
-            _cell(ws, i, 2, v, bg=bg, num_fmt="#,##0", align="right", bold=(i == r2c + 3))
-            _cell(ws, i, 5, note, bg=bg, color="718096")
-        ws.cell(row=r2c + 4, column=1,
-                value="※ Tsiveriotis-Fernandes(1998) 본래 분해. 위 3-way(채권/풋옵션/전환권)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점.")\
+        # 헤더
+        _hdr(ws, r2c + 1, 1, "구성요소")
+        _hdr(ws, r2c + 1, 2, "TF")
+        _hdr(ws, r2c + 1, 3, "GS")
+        _hdr(ws, r2c + 1, 4, "비고")
+        ws.merge_cells(start_row=r2c + 1, start_column=4, end_row=r2c + 1, end_column=5)
+        rows_2c = [
+            ("VE (지분 성분, E[0])", tfE, gsE, "전환 경로 가치 PV (Rf 할인)"),
+            ("VD (채권 성분, B[0])", tfB, gsB, "비전환 경로 가치 PV (Kd 할인)"),
+            ("합계", (tfE + tfB) if (tfE is not None and tfB is not None) else None,
+             (gsE + gsB) if (gsE is not None and gsB is not None) else None, "= 공정가치"),
+        ]
+        for i, (k, vtf, vgs, note) in enumerate(rows_2c, r2c + 2):
+            bold = "합계" in k
+            bg = "F0F9FF" if bold else ("F7FAFC" if i % 2 == 0 else "FFFFFF")
+            _cell(ws, i, 1, k, bg=bg, bold=bold)
+            _cell(ws, i, 2, vtf if vtf is not None else "-", bg=bg, num_fmt="#,##0", align="right", bold=bold)
+            _cell(ws, i, 3, vgs if vgs is not None else "-", bg=bg, num_fmt="#,##0", align="right", bold=bold)
+            _cell(ws, i, 4, note, bg=bg, color="718096")
+            ws.merge_cells(start_row=i, start_column=4, end_row=i, end_column=5)
+        ws.cell(row=r2c + 5, column=1,
+                value="※ Tsiveriotis-Fernandes(1998) 본래 분해. 위 3-way(채권/풋옵션/전환권)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점. 합계 = 동일 공정가치.")\
             .font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
-        ws.merge_cells(start_row=r2c + 4, start_column=1, end_row=r2c + 4, end_column=5)
+        ws.merge_cells(start_row=r2c + 5, start_column=1, end_row=r2c + 5, end_column=5)
 
     # 모형 메타정보
-    r0 = 16  # 2-comp 블록 다음 (이전 10에서 16으로 밀림)
+    r0 = 17  # 2-comp 블록 (r2c=10 ~ r2c+5=15) 다음
     ws.cell(row=r0, column=1, value="■ 모형 가정·메타").font = Font(name="맑은 고딕", bold=True, size=11)
     metas = [
         ("이항 트리 단계", str(eval_result.get("steps", "-"))),
@@ -424,7 +438,7 @@ def _hdr(ws, row, col, value):
     return c
 
 
-def _write_executive_summary(ws, params, initial, eval_result, sensitivity):
+def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_cross=None):
     """평가의견 표지 — 평가법인 보고서 1페이지 표준.
 
     구성: 평가목적·기준일·대상 → 결과요약 → 평가절차 → 핵심가정 → 분해 → 이슈사항.
@@ -485,6 +499,17 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity):
          f"참고 — 경로 {mc.get('n_paths','-')}회"
          + (f", 95% CI {int(mc.get('ci_lower',0)):,}~{int(mc.get('ci_upper',0)):,}원" if mc.get('ci_lower') else "")),
     ]
+    # BDT 풋채권 교차검증 (있을 때만)
+    if bdt_cross and bdt_cross.get("bdt_put_bond"):
+        bdt_pbv = bdt_cross.get("bdt_put_bond")
+        tf_pbv = bdt_cross.get("tf_put_bond")
+        diff_pct = ((bdt_pbv - tf_pbv) / tf_pbv * 100) if tf_pbv else None
+        diff_str = f" (TF 풋채권 대비 {diff_pct:+.2f}%)" if diff_pct is not None else ""
+        sigma_r = bdt_cross.get("rate_vol", 0) * 100
+        model_rows.append(
+            (f"BDT 풋채권 교차검증", bdt_pbv,
+             f"독립 금리트리 (σ_r={sigma_r:.1f}%){diff_str}"),
+        )
     for label, fv, note in model_rows:
         bg = "EBF8FF" if "TF" in label else ("F7FAFC" if row % 2 == 0 else "FFFFFF")
         bold = "TF" in label
