@@ -3241,7 +3241,8 @@ function waccRenderPeers(){
         const label = r2 < 0.10 ? ' (낮음)' : (r2 < 0.30 ? ' (보통)' : ' (합리적)');
         r2Html = ` <span style="color:${color}" title="R²<0.10 신뢰도 낮음(시장으로 설명력 약함) / 0.10~0.30 보통 / >0.30 합리적. Damodaran 표준.">R²=${p.betaR2}${label}</span>`;
       }
-      metaParts.push(`β ${p.betaStart}~${p.betaEnd}${p.betaFreq==='weekly'?' (주별)':''}${r2Html}`);
+      const scatterBtn = p.betaScatter ? ` <a href="#" onclick="event.preventDefault();waccBetaScatter(${i})" style="color:#0EA5E9;text-decoration:underline;font-size:.62rem" title="회귀 산점도 보기">📊 산점도</a>` : '';
+      metaParts.push(`β ${p.betaStart}~${p.betaEnd}${p.betaFreq==='weekly'?' (주별)':''}${r2Html}${scatterBtn}`);
     }
     if(p.tdSource==='bs' && p.asOf){
       metaParts.push(`D/E ${p.asOf}`);
@@ -3261,6 +3262,59 @@ function waccRenderPeers(){
   }).join('');
 }
 function waccAddPeer(){window.waccPeers.push({name:'',betaL:1.0,de:50});waccRenderPeers();waccRecalc();}
+
+/* β 회귀 산점도 모달 — peer R² 신뢰도 시각 입증 (K-IFRS 1113.93(d)) */
+function waccBetaScatter(i){
+  const p = window.waccPeers[i];
+  if(!p || !p.betaScatter){ alert('산점도 데이터 없음 — β 자동 조회 먼저 실행'); return; }
+  // 기존 모달 제거
+  const old = document.getElementById('wacc-scatter-modal'); if(old) old.remove();
+  // 모달 + 캔버스
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="wacc-scatter-modal" onclick="if(event.target.id==='wacc-scatter-modal')document.getElementById('wacc-scatter-modal').remove()" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:10px;padding:20px 24px;max-width:640px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <h3 style="margin:0;font-size:1rem;color:#1A365D">β 회귀 산점도 — ${p.name||p._code||'peer'}</h3>
+          <button onclick="document.getElementById('wacc-scatter-modal').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text2)">×</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px;line-height:1.6">
+          시장 ${p.betaMarket||''} · 표본 ${p.betaStart}~${p.betaEnd} ${p.betaFreq==='weekly'?'(주별)':'(일별)'} · n=${p.betaNObs}<br>
+          <b style="color:#1A365D">β(raw)=${p.betaRaw}</b> · <b style="color:#1A365D">β(Blume조정)=${p.betaL}</b>
+          · <b>R²=${p.betaR2}</b>${p.betaAlpha!=null?` · α=${(p.betaAlpha*100).toFixed(4)}%`:''}
+        </div>
+        <div style="height:340px"><canvas id="wacc-scatter-canvas"></canvas></div>
+        <div style="font-size:.64rem;color:var(--text3);margin-top:6px;line-height:1.5">
+          ※ X축: 시장지수 수익률 · Y축: 종목 수익률. 회귀선 = α + β × Rm.
+          R²는 종목 수익률 분산 중 시장 변동성으로 설명되는 비율 (K-IFRS 1113.93(d) input 출처 시각 입증).
+        </div>
+      </div>
+    </div>
+  `);
+  // Chart.js scatter
+  const ctx = document.getElementById('wacc-scatter-canvas').getContext('2d');
+  new Chart(ctx, {
+    type:'scatter',
+    data:{ datasets:[
+      {label:'관측치 (Rm, Ri)', data: p.betaScatter.map(([x,y])=>({x:x*100,y:y*100})),
+       backgroundColor:'rgba(49,130,246,.45)', pointRadius:3, pointHoverRadius:5},
+      {label:`회귀선 (β=${p.betaRaw})`, data: (p.betaLine||[]).map(([x,y])=>({x:x*100,y:y*100})),
+       type:'line', borderColor:'#DC2626', borderWidth:2, pointRadius:0, fill:false, showLine:true, tension:0},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:{size:10}, boxWidth:12, padding:6}},
+        tooltip:{callbacks:{label:ctx=>` Rm=${ctx.parsed.x.toFixed(2)}%, Ri=${ctx.parsed.y.toFixed(2)}%`}},
+      },
+      scales:{
+        x:{type:'linear',title:{display:true,text:'시장 수익률 Rm (%)',font:{size:10}},
+           ticks:{callback:v=>v.toFixed(1)+'%',font:{size:9}},grid:{color:'#F2F4F6'}},
+        y:{title:{display:true,text:'종목 수익률 Ri (%)',font:{size:10}},
+           ticks:{callback:v=>v.toFixed(1)+'%',font:{size:9}},grid:{color:'#F2F4F6'}},
+      },
+    },
+  });
+}
 // 평가대상 본인 BS 장부가 D/E 적용. 상장이면 yfinance, 아니면 수동 prompt.
 async function waccApplySelfDE(){
   const status=document.getElementById('w-beta-status');
@@ -3922,15 +3976,19 @@ async function waccFetchPeer(i){
     ]);
     const parts=[];
     if(bR.status==='ok' && bR.results[0] && bR.results[0].adjusted_beta!=null){
-      peer.betaL=bR.results[0].adjusted_beta;
-      // β 회귀 기간 메타 (renderPeers에서 표시)
-      peer.betaStart=bR.start||null;
-      peer.betaEnd=bR.end||null;
-      peer.betaR2=bR.results[0].r2;
-      peer.betaNObs=bR.results[0].n_obs;
-      peer.betaMarket=bR.market||null;
-      peer.betaFreq=bR.frequency||'daily';
-      parts.push(`β=${peer.betaL} (R²=${bR.results[0].r2}, n=${bR.results[0].n_obs}, ${bR.market})`);
+      const b0 = bR.results[0];
+      peer.betaL = b0.adjusted_beta;
+      peer.betaStart = b0.start || null;
+      peer.betaEnd = b0.end || null;
+      peer.betaR2 = b0.r2;
+      peer.betaNObs = b0.n_obs;
+      peer.betaMarket = b0.market || null;
+      peer.betaFreq = b0.frequency || 'daily';
+      peer.betaScatter = b0.scatter || null;
+      peer.betaLine = b0.regression_line || null;
+      peer.betaAlpha = b0.alpha || null;
+      peer.betaRaw = b0.raw_beta;
+      parts.push(`β=${peer.betaL} (R²=${b0.r2}, n=${b0.n_obs}, ${b0.market})`);
     } else {parts.push('β 실패'); peer.betaStart=null;peer.betaEnd=null;}
     let asOf=null;
     if(dR.status==='ok' && dR.results[0]){

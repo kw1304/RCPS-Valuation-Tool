@@ -2118,12 +2118,34 @@ def wacc_beta():
             corr = float(np.corrcoef(t_r, m_r)[0, 1])
             r2 = corr * corr
             beta_adj = 0.67 * beta_raw + 0.33 if adjust == "blume" else beta_raw
+            # 산점도용 좌표 (시장수익률, 종목수익률) — 모달 시각화용
+            # 큰 데이터 방지: 500개 초과 시 균등 샘플링
+            pts_n = len(m_r)
+            if pts_n > 500:
+                idx = np.linspace(0, pts_n - 1, 500).astype(int)
+                m_r_s = m_r[idx]; t_r_s = t_r[idx]
+            else:
+                m_r_s = m_r; t_r_s = t_r
+            scatter = [[float(x), float(y)] for x, y in zip(m_r_s, t_r_s)]
+            # 회귀선 끝점 (시장수익률 min·max)
+            mr_min, mr_max = float(m_r.min()), float(m_r.max())
+            alpha = float(t_r.mean() - beta_raw * m_r.mean())
+            line = [[mr_min, alpha + beta_raw * mr_min],
+                    [mr_max, alpha + beta_raw * mr_max]]
+
             results.append({
                 "ticker": code,
                 "raw_beta": round(beta_raw, 4),
                 "adjusted_beta": round(beta_adj, 4),
                 "r2": round(r2, 4),
                 "n_obs": int(len(common) - 1),
+                "alpha": round(alpha, 6),
+                "scatter": scatter,        # 산점도 점들
+                "regression_line": line,   # 회귀선 두 끝점
+                "start": common[0] if common else None,
+                "end": common[-1] if common else None,
+                "frequency": frequency,
+                "market": market,
             })
         except Exception as e:  # noqa: BLE001
             results.append({"ticker": code, "error": str(e)[:150]})
