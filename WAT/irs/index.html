@@ -30,13 +30,14 @@ body {
   color: var(--text);
   font-family: var(--sans);
   min-height: 100vh;
-  padding: 2.5rem 3rem;
+  padding: 1.5rem 1.5rem 1rem;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
 /* ── 헤더 ── */
 .header {
-  margin: -2.5rem -3rem 2rem;
+  margin: -1.5rem -1.5rem 1.5rem;
   padding: 1rem 2rem 1rem 7.25rem;
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
@@ -49,7 +50,8 @@ body {
   flex-shrink: 0;
 }
 @media (max-width:768px){
-  .header{ margin:-1rem -1rem 1rem; padding:0.7rem 1rem; min-height:0; flex-wrap:wrap; gap:0.6rem }
+  body { padding: 0.7rem 1rem; }
+  .header{ margin:-0.7rem -1rem 1rem; padding:0.7rem 1rem; min-height:0; flex-wrap:wrap; gap:0.6rem }
 }
 
 .header-left h1 {
@@ -87,22 +89,22 @@ body {
   max-width: 1600px;
 }
 
-/* ── 카드 ── */
+/* ── 카드 (RCPS .sec 양식) ── */
 .panel {
   background: var(--bg2);
-  border: none;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.06);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  box-shadow: none;
 }
 
 .panel-title {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: var(--text2);
   letter-spacing: -0.02em;
   text-transform: none;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.85rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -111,21 +113,21 @@ body {
 .panel-title::before {
   content: '';
   width: 3px;
-  height: 14px;
+  height: 13px;
   background: var(--accent);
   border-radius: 2px;
   display: block;
   flex-shrink: 0;
 }
 
-/* ── 폼 ── */
-.form-group { margin-bottom: 1.1rem; }
+/* ── 폼 (RCPS .field 양식) ── */
+.form-group { margin-bottom: 0.7rem; }
 
 .form-label {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--text2);
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.28rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -133,7 +135,7 @@ body {
 }
 
 .form-label span {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   color: var(--text3);
   font-weight: 400;
 }
@@ -143,11 +145,11 @@ input[type="number"], input[type="text"], select {
   background: var(--bg3);
   border: 1.5px solid transparent;
   color: var(--text);
-  padding: 0.65rem 0.95rem;
+  padding: 0.52rem 0.75rem;
   font-family: var(--sans);
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 500;
-  border-radius: 10px;
+  border-radius: 9px;
   outline: none;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   -webkit-appearance: none;
@@ -163,8 +165,8 @@ input[type="number"]:focus, input[type="text"]:focus, select:focus {
 select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B95A1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.9rem center;
-  padding-right: 2.4rem;
+  background-position: right 0.75rem center;
+  padding-right: 2.2rem;
   cursor: pointer;
 }
 
