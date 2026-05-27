@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>웅계사's Audit Tools · WAT</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --bg:#F9FAFB;--bg2:#FFFFFF;--bg3:#F2F4F6;
+  --border:#E5E8EB;
+  --accent:#3182F6;--accent2:#1B64DA;
+  --green:#00C073;--red:#F04452;--amber:#FF9F00;--purple:#7C3AED;
+  --gold:#FFD966;--navy:#1F4E78;
+  --text:#191F28;--text2:#4E5968;--text3:#8B95A1;
+  --sans:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;font-size:14px;
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;
+  position:relative;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(49,130,246,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(124,58,237,.04) 0%, transparent 60%);
+}
+.screen{position:relative;z-index:1}
+
+/* ── 공통 페이지 전환 */
+.screen{
+  flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:2.5rem 1.5rem;opacity:0;transform:translateY(8px);
+  transition:opacity .35s ease, transform .35s ease;
+}
+.screen.active{display:flex;opacity:1;transform:translateY(0)}
+
+/* ── Hero (랜딩) */
+.hero{
+  cursor:pointer;user-select:none;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  gap:0;padding:3.5rem 1.5rem 3rem;
+  width:100%;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1);
+}
+.hero:hover{transform:translateY(-3px)}
+
+.kicker{
+  display:flex;align-items:center;gap:.85rem;margin-bottom:2.2rem;
+  font-size:.66rem;font-weight:600;color:var(--text3);
+  letter-spacing:.32em;text-transform:uppercase;
+}
+.kicker::before,.kicker::after{
+  content:'';flex:0 0 38px;height:1px;background:var(--border);
+}
+.kicker .dot{width:4px;height:4px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(49,130,246,.12)}
+
+.wat{
+  font-size:clamp(4.5rem, 13vw, 10rem);font-weight:900;letter-spacing:-0.035em;
+  line-height:1.2;color:var(--accent);
+  white-space:nowrap;text-align:center;
+  display:flex;justify-content:center;align-items:baseline;
+  transition:color .3s;
+}
+.wat .reveal{
+  display:inline-block;
+  max-width:0;overflow:hidden;white-space:nowrap;
+  padding-bottom:.5em;margin-bottom:-.5em;
+  vertical-align:baseline;
+  transition:max-width .85s cubic-bezier(.65,0,.15,1);
+}
+.wat .reveal > .inner{
+  display:inline-block;
+  font-size:.28em;font-weight:500;letter-spacing:-0.005em;
+  color:var(--accent2);
+}
+.wat .reveal .ch{
+  display:inline-block;opacity:0;transform:translateY(.5em);
+  transition:opacity .35s ease, transform .5s cubic-bezier(.2,.8,.2,1);
+  transition-delay:calc(var(--i,0) * 30ms);
+  white-space:pre;
+}
+.wat.expanded .reveal{ max-width:20ch }
+.wat.expanded .reveal .ch{
+  opacity:.92;transform:translateY(0);
+  transition-delay:calc(var(--i,0) * 30ms + 180ms);
+}
+
+.hero .divider{
+  width:48px;height:1px;background:var(--border);margin:2rem 0 1.4rem;
+  position:relative;
+}
+.hero .divider::after{
+  content:'';position:absolute;left:50%;top:50%;
+  width:6px;height:6px;border:1px solid var(--accent);background:var(--bg);
+  transform:translate(-50%,-50%) rotate(45deg);
+}
+
+.hero h1{
+  font-size:clamp(1.1rem, 2.1vw, 1.4rem);font-weight:700;color:var(--text);
+  letter-spacing:-0.03em;
+}
+.hero h1.ac{color:var(--accent);font-weight:800}
+.hero h2{
+  font-size:clamp(.72rem, 1vw, .82rem);font-weight:400;color:var(--text3);
+  letter-spacing:.04em;margin-top:.4rem;font-feature-settings:"ss01";
+}
+.hero h2 b{color:var(--text);font-weight:700}
+
+.hero-cta{
+  margin-top:2.6rem;display:inline-flex;align-items:center;gap:.9rem;
+  padding:.5rem .2rem;color:var(--text3);background:transparent;border:0;
+  font-size:.7rem;font-weight:600;letter-spacing:.36em;text-transform:uppercase;
+  cursor:pointer;transition:color .3s ease, gap .3s ease;
+}
+.hero-cta .line{
+  display:inline-block;width:22px;height:1px;background:currentColor;
+  transition:width .45s cubic-bezier(.2,.8,.2,1), background .3s;
+}
+.hero-cta .arrow{display:none}
+.hero-cta:hover{color:var(--accent);gap:1.1rem}
+.hero-cta:hover .line{width:64px}
+
+/* ── 분류 선택 */
+.cat-head{text-align:center;margin-bottom:2rem}
+.cat-head .crumb{font-size:.72rem;color:var(--text3);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem}
+.cat-head h2{font-size:clamp(1.4rem,2.6vw,1.9rem);font-weight:800;letter-spacing:-0.035em;color:var(--text)}
+.cat-head p{font-size:.85rem;color:var(--text2);margin-top:.4rem;font-weight:500}
+
+.cat-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));
+  gap:1.2rem;max-width:1040px;width:100%;
+}
+.cat-card{
+  background:var(--bg2);border:1.5px solid var(--border);border-radius:20px;
+  padding:1.6rem 1.5rem 1.4rem;cursor:pointer;
+  display:flex;flex-direction:column;gap:1rem;text-align:left;
+  transition:border-color .15s, transform .2s, box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.cat-card::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(135deg,transparent 60%,rgba(49,130,246,.06) 100%);
+  opacity:0;transition:opacity .2s;
+}
+.cat-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 18px 40px -22px rgba(49,130,246,.4)}
+.cat-card:hover::before{opacity:1}
+
+.cat-card .ico{
+  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:-0.02em;
+}
+.cat-valuation .ico{background:linear-gradient(135deg,#3182F6,#1B64DA)}
+.cat-audit .ico{background:linear-gradient(135deg,#7C3AED,#5B21B6)}
+
+.cat-card h3{font-size:1.15rem;font-weight:800;letter-spacing:-0.03em}
+.cat-card h3 .en{font-size:.78rem;font-weight:600;color:var(--text3);margin-left:.4rem;letter-spacing:-0.01em}
+.cat-card p.desc{font-size:.78rem;color:var(--text2);line-height:1.55;font-weight:500}
+
+.tool-list{display:flex;flex-direction:column;gap:.5rem;margin-top:.2rem}
+.tool-item{
+  display:flex;align-items:center;justify-content:space-between;gap:.6rem;
+  padding:.65rem .85rem;background:var(--bg3);border-radius:10px;
+  font-size:.75rem;font-weight:600;color:var(--text2);
+  border:1px solid transparent;transition:border-color .15s, background .15s, color .15s;
+  white-space:nowrap;
+}
+.tool-item > span:first-child{
+  min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;
+  letter-spacing:-0.015em;
+}
+.tool-item:hover{background:#EFF6FF;color:var(--accent);border-color:#BFDBFE}
+.tool-item .tag{
+  font-size:.62rem;font-weight:700;padding:.18rem .55rem;border-radius:100px;
+  background:#fff;color:var(--text3);border:1px solid var(--border);letter-spacing:.02em;
+}
+.tool-item .tag.ready{color:var(--green);border-color:#A7F3D0;background:#F0FDF4}
+.tool-item .tag.soon{color:var(--amber);border-color:#FDE68A;background:#FFFBEB}
+
+.back-bar{
+  position:fixed;top:1.2rem;left:1.4rem;z-index:10;
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.5rem .9rem;
+  background:var(--bg2);border:1px solid var(--border);border-radius:100px;
+  font-size:.74rem;font-weight:600;color:var(--text2);
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 2px 8px rgba(15,23,42,.04);
+}
+.back-bar:hover{color:var(--accent);border-color:#BFDBFE;background:#EFF6FF}
+.back-bar .arr{display:inline-block;transition:transform .2s}
+.back-bar:hover .arr{transform:translateX(-2px)}
+@media (max-width:640px){.back-bar{top:.8rem;left:.9rem;padding:.4rem .75rem;font-size:.7rem}}
+
+/* ── Tool Embed Screen — 풀스크린 iframe + 작은 floating 뒤로 버튼 */
+#screenTool{padding:0;overflow:hidden}
+#screenTool.active{display:flex;flex-direction:column;width:100%;height:100%;flex:1}
+.tool-frame-wrap{flex:1;position:relative;display:flex;width:100%}
+.tool-frame{flex:1;width:100%;height:100%;border:0;background:var(--bg)}
+.tool-loading{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  color:var(--text3);font-size:.85rem;font-weight:500;pointer-events:none;
+}
+.tool-mini-back{
+  position:fixed;top:1.2rem;left:1.4rem;z-index:50;
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.5rem .9rem;
+  background:var(--bg2);border:1px solid var(--border);border-radius:100px;
+  font-size:.74rem;font-weight:600;color:var(--text2);
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 2px 8px rgba(15,23,42,.04);
+}
+.tool-mini-back:hover{color:var(--accent);border-color:#BFDBFE;background:#EFF6FF}
+.tool-mini-back .arr{display:inline-block;transition:transform .2s}
+.tool-mini-back:hover .arr{transform:translateX(-2px)}
+@media (max-width:640px){.tool-mini-back{top:.8rem;left:.9rem;padding:.4rem .75rem;font-size:.7rem}}
+
+/* ── Footer */
+footer.legal{
+  padding:.8rem 1.5rem;background:var(--bg2);border-top:1px solid var(--border);
+  font-size:.68rem;color:var(--text3);display:flex;justify-content:space-between;
+  align-items:center;gap:12px;flex-wrap:wrap;line-height:1.4;
+  position:relative;z-index:1;
+}
+footer.legal b{color:var(--text2);font-weight:600}
+body.tool-mode footer.legal{display:none}
+
+/* ── 모바일 */
+@media (max-width:640px){
+  .hero{padding:2rem 1.2rem;border-radius:22px;gap:1.2rem}
+  .cat-card{padding:1.3rem 1.2rem}
+  footer.legal{font-size:.62rem;padding:.6rem 1rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ─────────── Screen 1: Hero ─────────── -->
+<section id="screenHero" class="screen active">
+  <div class="hero" id="heroCard" role="button" tabindex="0" aria-label="툴 분류 선택으로 이동">
+    <div class="wat" aria-label="Woongcpa's Audit Tools" id="watLogo">W<span class="reveal" data-text="oongcpa's "></span>A<span class="reveal" data-text="udit "></span>T<span class="reveal" data-text="ools"></span>!</div>
+    <div class="hero-cta">
+      <span>Enter</span><span class="line"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── Screen 2: Category 선택 ─────────── -->
+<section id="screenCat" class="screen">
+  <div class="back-bar" id="backToHero"><span class="arr">←</span> 처음으로</div>
+  <div class="cat-head">
+    <div class="crumb">Step 1 / 2 · 분류 선택</div>
+    <h2>어떤 작업을 시작할까요?</h2>
+    <p>평가와 감사보조 중 진행할 영역을 선택하세요.</p>
+  </div>
+
+  <div class="cat-grid">
+    <!-- 평가 -->
+    <div class="cat-card cat-valuation" data-cat="valuation">
+      <div class="ico">V</div>
+      <h3>평가 <span class="en">Valuation</span></h3>
+      <p class="desc">K-IFRS 1109 공정가치 평가 및 현금흐름 할인 모형. RCPS·CB 등 복합금융상품과 사업가치 평가를 지원합니다.</p>
+      <div class="tool-list">
+        <a class="tool-item" href="#tool=rcps-dcf" data-tool="rcps-dcf">
+          <span>RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델</span>
+          <span class="tag ready">사용 가능</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Audit Support -->
+    <div class="cat-card cat-audit" data-cat="audit">
+      <div class="ico">A</div>
+      <h3>감사보조 <span class="en">Audit Support</span></h3>
+      <p class="desc">전표 테스트·통제검증·표본추출 등 감사 실무 자동화. 감사기준서 530 표본설계와 JET 룰 엔진을 제공합니다.</p>
+      <div class="tool-list">
+        <a class="tool-item" href="#tool=jet" data-tool="jet">
+          <span>JET Tool · Journal Entry Test</span>
+          <span class="tag ready">사용 가능</span>
+        </a>
+        <a class="tool-item" href="#" data-tool="cc">
+          <span>CC Tool · 채권채무조회서</span>
+          <span class="tag soon">작업중</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── Screen 3: Tool Embed (풀스크린) ─────────── -->
+<section id="screenTool" class="screen">
+  <button id="toolBack" class="tool-mini-back" type="button" title="분류로 돌아가기"><span class="arr">←</span> 분류로</button>
+  <div class="tool-frame-wrap">
+    <div class="tool-loading" id="toolLoading">불러오는 중…</div>
+    <iframe id="toolFrame" class="tool-frame" src="about:blank" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+  </div>
+</section>
+
+<footer class="legal">
+  <div><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</div>
+  <div>© 2026 Woongcpa</div>
+</footer>
+
+<script>
+/* ── WAT 로고: reveal 문자 단위 분해 (stagger 애니메이션용) */
+(function buildReveal(){
+  let globalIdx = 0;
+  document.querySelectorAll('.wat .reveal').forEach(seg => {
+    const txt = seg.dataset.text || '';
+    const inner = document.createElement('span');
+    inner.className = 'inner';
+    [...txt].forEach(c => {
+      const s = document.createElement('span');
+      s.className = 'ch';
+      s.style.setProperty('--i', globalIdx++);
+      s.textContent = c;
+      inner.appendChild(s);
+    });
+    seg.appendChild(inner);
+  });
+})();
+
+/* ── Enter hover → WAT 펼침 토글 */
+(function bindReveal(){
+  const watEl = document.getElementById('watLogo');
+  const cta   = document.querySelector('.hero-cta');
+  if(!watEl || !cta) return;
+  const open  = () => watEl.classList.add('expanded');
+  const close = () => watEl.classList.remove('expanded');
+  cta.addEventListener('mouseenter', open);
+  cta.addEventListener('mouseleave', close);
+  cta.addEventListener('focusin', open);
+  cta.addEventListener('focusout', close);
+})();
+
+/* ── 툴 레지스트리 (URL 수정은 여기서) */
+const TOOLS = {
+  'rcps-dcf': {
+    name: 'RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델',
+    category: 'Valuation',
+    url: 'http://127.0.0.1:5000/',
+  },
+  'jet': {
+    name: 'JET Tool · Journal Entry Test',
+    category: 'Audit Support',
+    url: 'http://127.0.0.1:5050/',
+  },
+};
+
+const hero    = document.getElementById('heroCard');
+const sHero   = document.getElementById('screenHero');
+const sCat    = document.getElementById('screenCat');
+const sTool   = document.getElementById('screenTool');
+const back    = document.getElementById('backToHero');
+const frame   = document.getElementById('toolFrame');
+const loading = document.getElementById('toolLoading');
+const tBack   = document.getElementById('toolBack');
+
+function show(target){
+  [sHero, sCat, sTool].forEach(el => el.classList.remove('active'));
+  document.body.classList.toggle('tool-mode', target === sTool);
+  requestAnimationFrame(()=>target.classList.add('active'));
+}
+function goHero(){ show(sHero); history.pushState({screen:'hero'}, '', '#'); }
+function goCat(){  show(sCat);  history.pushState({screen:'cat'},  '', '#categories'); }
+function goTool(key, pushHistory=true){
+  const t = TOOLS[key];
+  if(!t){ goCat(); return; }
+  loading.style.display = 'block';
+  frame.src = t.url;
+  document.title = t.name + ' · WAT';
+  show(sTool);
+  if(pushHistory) history.pushState({screen:'tool', key}, '', '#tool=' + key);
+}
+
+frame.addEventListener('load', () => { loading.style.display = 'none'; });
+
+hero.addEventListener('click', goCat);
+hero.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); goCat(); }});
+back.addEventListener('click', goHero);
+tBack.addEventListener('click', () => { document.title = '웅계사\'s Audit Tools · WAT'; goCat(); });
+
+window.addEventListener('popstate', e => {
+  const st = e.state;
+  if(st && st.screen === 'tool' && TOOLS[st.key]) goTool(st.key, false);
+  else if((st && st.screen === 'cat') || location.hash === '#categories') show(sCat);
+  else if(location.hash.startsWith('#tool=')){
+    const k = location.hash.split('=')[1];
+    if(TOOLS[k]) goTool(k, false); else show(sCat);
+  }
+  else show(sHero);
+});
+
+/* 초기 진입: hash 기반 */
+if(location.hash.startsWith('#tool=')){
+  const k = location.hash.split('=')[1];
+  if(TOOLS[k]) goTool(k, false); else show(sCat);
+} else if(location.hash === '#categories'){
+  show(sCat);
+}
+
+/* 툴 카드 클릭 */
+document.querySelectorAll('.tool-item').forEach(a => {
+  a.addEventListener('click', ev => {
+    ev.preventDefault();
+    const tag = a.querySelector('.tag');
+    if(tag && tag.classList.contains('soon')){
+      alert('해당 툴은 개발 중입니다.');
+      return;
+    }
+    const key = a.dataset.tool;
+    if(TOOLS[key]) goTool(key);
+  });
+});
+</script>
+
+</body>
+</html>

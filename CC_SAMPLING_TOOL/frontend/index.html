@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>웅계사's CC Sampling Tool · 감사기준서 530</title>
+<title>웅계사's CC Tool · 감사기준서 530</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root{
@@ -21,14 +21,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font
 /* ── 헤더 */
 header{
   background:var(--bg2);border-bottom:1px solid var(--border);
-  padding:0.75rem 2rem;display:flex;align-items:center;justify-content:space-between;
+  padding:1rem 2rem 1rem 7.25rem;display:flex;align-items:center;justify-content:space-between;
   flex-shrink:0;flex-wrap:nowrap;gap:1rem;
+  min-height:76px;
 }
 .hd-title{min-width:0}
 .hd-title h1{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-0.04em}
 .hd-title h1 .gold{color:var(--gold);font-weight:800;background:var(--navy);padding:1px 9px;border-radius:6px;margin-right:2px}
 .hd-title h1 .ac{color:var(--accent);font-weight:800}
-.hd-title p{font-size:0.72rem;color:var(--text3);margin-top:0.15rem;font-weight:400;letter-spacing:-0.01em}
+.hd-title p{font-size:0.72rem;color:var(--text3);margin-top:0.2rem;font-weight:400;letter-spacing:-0.01em}
 .hd-right{display:flex;align-items:center;gap:0.85rem;flex-wrap:nowrap;flex-shrink:0}
 
 /* 프로젝트 셀렉터 */
@@ -365,7 +366,7 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
 <!-- ── 헤더 -->
 <header>
   <div class="hd-title">
-    <h1><span class="ac">웅계사's</span> CC Sampling <span class="ac">Tool</span></h1>
+    <h1><span class="ac">웅계사's</span> CC <span class="ac">Tool</span></h1>
     <p>채권채무조회서 MUS 표본추출 · 감사기준서 530</p>
   </div>
   <div class="hd-right">
@@ -933,8 +934,8 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
 </main>
 
 <footer class="legal">
-  <span><b>웅계사's CC Sampling Tool</b> · 감사기준서 530 (표본감사) + AICPA AAG-SAM</span>
-  <span class="right">MUS = Monetary Unit Sampling · Key item 전수 + 잔여모집단 MUS 추출</span>
+  <span><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</span>
+  <span class="right">© 2026 Woongcpa</span>
 </footer>
 
 <!-- 새 프로젝트 모달 -->
@@ -943,7 +944,7 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
     <h2>새 프로젝트 만들기</h2>
     <div class="field"><label>회사명 *</label><input id="np-company" placeholder="예: 코스맥스비티아이"></div>
     <div class="field"><label>감사기준일</label><input id="np-period" type="date" value="2025-12-31"></div>
-    <div class="field"><label>회계감사펌</label><input id="np-firm" placeholder="예: 삼일회계법인"></div>
+    <div class="field"><label>회계감사펌</label><input id="np-firm" value="KIPCA" placeholder="예: KIPCA"></div>
     <div class="field"><label>구분</label>
       <select id="np-kind">
         <option value="both">채권 + 채무</option>

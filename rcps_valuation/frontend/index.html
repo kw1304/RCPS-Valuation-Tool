@@ -21,9 +21,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font
 /* ── 헤더 */
 header{
   background:var(--bg2);border-bottom:1px solid var(--border);
-  padding:1rem 2rem;
+  padding:1rem 2rem 1rem 7.25rem;
   display:flex;align-items:center;justify-content:space-between;
   flex-shrink:0;flex-wrap:nowrap;gap:1rem;
+  min-height:76px;
 }
 .hd-title{min-width:0}
 .hd-title h1{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-0.04em}
@@ -372,7 +373,7 @@ details.note-fold .note{margin-top:4px}
 <header>
   <div class="hd-title">
     <h1><span class="ac">웅계사's</span> RCPS/DCF Valuation <span class="ac">Tool</span></h1>
-    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다.<br>단순 확인 목적으로 사용을 권장합니다.</p>
+    <p>본 툴은 K-IFRS 1109 기준 감사 목적 참고용입니다.</p>
   </div>
   <div class="hd-right">
     <div class="header-groups">
@@ -5129,8 +5130,8 @@ if(_rd){
 </script>
 
 <footer class="legal">
-  <span>© 2026 <b>김웅(웅계사)</b> · All Rights Reserved</span>
-  <span class="right">※ 본 툴 및 산출 결과는 K-IFRS 감사 참고 목적이며, 정확성·완전성은 보증되지 않습니다. 모든 사용·해석 책임은 사용자에게 있습니다 (Disclaimer).</span>
+  <span><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</span>
+  <span class="right">© 2026 Woongcpa</span>
 </footer>
 </body>
 </html>

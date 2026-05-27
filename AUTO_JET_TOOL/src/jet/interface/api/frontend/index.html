@@ -40,7 +40,7 @@ body {
 header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  padding: 1rem 2rem;
+  padding: 1rem 2rem 1rem 7.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -49,6 +49,7 @@ header {
   position: sticky;
   top: 0;
   z-index: 100;
+  min-height: 76px;
 }
 .hd-title { min-width: 0; }
 .hd-title h1 {
@@ -520,6 +521,8 @@ header {
   border-radius: 12px;
   padding: 0.95rem 1.05rem;
   background: var(--bg3);
+  position: relative;
+  cursor: default;
 }
 .kpi-card.accent  { background: var(--accent); color: #fff; }
 .kpi-card.success { background: #F0FDF4; }
@@ -543,6 +546,27 @@ header {
 .kpi-card.accent  .kpi-label { color: rgba(255,255,255,.75); }
 .kpi-card.success .kpi-label { color: #166534; }
 .kpi-card.danger  .kpi-label { color: var(--red); }
+/* KPI 툴팁 */
+.kpi-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,20,30,0.92);
+  color: #fff;
+  font-size: 0.62rem;
+  padding: 5px 9px;
+  border-radius: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  text-align: center;
+}
+.kpi-card:hover .kpi-tooltip { opacity: 1; }
 
 /* ── 시나리오 결과 테이블 ── */
 .scenario-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
@@ -765,6 +789,188 @@ header {
   .row2 { grid-template-columns: 1fr; }
 }
 
+/* ── 자동/수동 비율 바 ── */
+.ratio-bar-wrap { margin: 10px 0 16px; }
+.ratio-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.67rem;
+  color: var(--text3);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.ratio-bar-track {
+  height: 12px;
+  background: var(--bg3);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+}
+.ratio-bar-manual {
+  background: var(--accent);
+  height: 100%;
+  transition: width 0.5s ease;
+  border-radius: 8px 0 0 8px;
+}
+.ratio-bar-auto {
+  background: var(--green);
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+/* ── 룰별 bar 차트 ── */
+.rule-bar-chart { margin: 4px 0; }
+.rule-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.rule-bar-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text3);
+  width: 34px;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+  text-align: right;
+}
+.rule-bar-track {
+  flex: 1;
+  height: 9px;
+  background: var(--bg3);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.rule-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+.rule-bar-fill.zero      { background: var(--border); }
+.rule-bar-fill.integrity { background: #22C55E; }
+.rule-bar-fill.risk      { background: var(--red); }
+.rule-bar-count {
+  font-size: 0.62rem;
+  color: var(--text3);
+  width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ── 도넛 차트 ── */
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 16px;
+}
+.donut-legend {
+  flex: 1;
+  font-size: 0.67rem;
+  color: var(--text3);
+  letter-spacing: -0.01em;
+}
+.donut-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.donut-legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Q01 토글 버튼 ── */
+.q01-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.28rem 0.8rem;
+  border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: var(--bg3);
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+  transition: background 0.15s, border-color 0.15s;
+}
+.q01-toggle-btn:hover { background: var(--bg); border-color: var(--accent); }
+.q01-toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── 페이지네이션 ── */
+.preview-pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.65rem;
+  color: var(--text3);
+}
+.preview-pagination button {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg3);
+  font-size: 0.65rem;
+  cursor: pointer;
+  color: var(--text2);
+}
+.preview-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.preview-pagination button:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
+/* ── Q01 샘플링 패널 ── */
+.sampling-panel {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--bg3);
+  border-radius: 9px;
+  border: 1px solid var(--border);
+}
+.sampling-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.sampling-row:last-child { margin-bottom: 0; }
+.sampling-label {
+  font-size: 0.67rem;
+  color: var(--text3);
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+  min-width: 70px;
+}
+.sampling-select, .sampling-input {
+  flex: 1;
+  padding: 0.28rem 0.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-family: var(--sans);
+  background: var(--bg3);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.sampling-select { cursor: pointer; }
+.sampling-select:focus, .sampling-input:focus { border-color: var(--accent); background: #fff; }
+.sampling-input { width: 60px; flex: unset; font-family: 'Consolas', monospace; }
+
 /* ── 매핑 확인 표 ── */
 .mapping-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; margin-top: 8px; }
 .mapping-table th {
@@ -984,7 +1190,38 @@ header {
       <div id="rules-list"><!-- JS로 채움 --></div>
     </div>
 
-    <!-- E. 실행 버튼 -->
+    <!-- E. Q01 표본추출 옵션 -->
+    <div class="sec">
+      <div class="sec-title">Q01 표본추출</div>
+      <div class="sampling-row">
+        <label class="rule-toggle" style="flex-shrink:0">
+          <input type="checkbox" id="chk-sampling-enabled">
+          <span class="rule-slider"></span>
+        </label>
+        <span style="font-size:0.72rem;font-weight:600;color:var(--text);letter-spacing:-0.01em">Q01 질의서 표본추출 활성</span>
+      </div>
+      <div id="sampling-options" style="display:none">
+        <div class="sampling-panel">
+          <div class="sampling-row">
+            <span class="sampling-label">추출 방식</span>
+            <select class="sampling-select" id="sel-sampling-method">
+              <option value="MUS">MUS (화폐단위)</option>
+              <option value="Random">Random (무작위)</option>
+              <option value="Systematic">Systematic (계통)</option>
+            </select>
+          </div>
+          <div class="sampling-row">
+            <span class="sampling-label">룰당 표본 수</span>
+            <input type="number" class="sampling-input" id="inp-sampling-n" value="50" min="1" max="500" step="1">
+          </div>
+        </div>
+        <div class="note" style="margin-top:6px">
+          MUS: 금액 비례 추출 (대금액 우선). Random: 균일 무작위. Systematic: 간격 계통.
+        </div>
+      </div>
+    </div>
+
+    <!-- F. 실행 버튼 -->
     <div class="run-wrap">
       <button class="btn-run" id="btn-run" disabled>JET 실행</button>
     </div>
@@ -1065,6 +1302,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-run').addEventListener('click', onRunClick);
   document.getElementById('btn-reset-rules').addEventListener('click', resetRulesToDefault);
   document.getElementById('btn-reset-company').addEventListener('click', resetCompanyForm);
+  setupSamplingToggle();
 
   // 컬럼 매핑 패널 접기/펼치기
   document.getElementById('col-mapping-toggle').addEventListener('click', () => {
@@ -1496,7 +1734,44 @@ function validateForm() {
   document.getElementById('btn-run').disabled = !ok;
 }
 
-/* ── (BTI 예시 loadDemoData 제거됨) ─────────────────────────────── */
+/* ── Q01 샘플링 토글 ─────────────────────────────────────────── */
+function setupSamplingToggle() {
+  const chk = document.getElementById('chk-sampling-enabled');
+  const opts = document.getElementById('sampling-options');
+
+  // localStorage 복원
+  const saved = lsLoad('sampling_enabled', false);
+  chk.checked = saved;
+  opts.style.display = saved ? '' : 'none';
+
+  chk.addEventListener('change', () => {
+    opts.style.display = chk.checked ? '' : 'none';
+    lsSave('sampling_enabled', chk.checked);
+  });
+
+  // 방식/수 변경도 localStorage
+  document.getElementById('sel-sampling-method').value = lsLoad('sampling_method', 'MUS');
+  document.getElementById('inp-sampling-n').value      = lsLoad('sampling_n', 50);
+
+  document.getElementById('sel-sampling-method').addEventListener('change', (e) => {
+    lsSave('sampling_method', e.target.value);
+  });
+  document.getElementById('inp-sampling-n').addEventListener('input', (e) => {
+    lsSave('sampling_n', parseInt(e.target.value) || 50);
+  });
+}
+
+function getSamplingSpec() {
+  const chk = document.getElementById('chk-sampling-enabled');
+  if (!chk || !chk.checked) return null;
+  return {
+    enabled: true,
+    method: document.getElementById('sel-sampling-method').value || 'MUS',
+    n: parseInt(document.getElementById('inp-sampling-n').value) || 50,
+  };
+}
+
+/* ── (회사 예시 로드 제거) ─────────────────────────────── */
 
 /* ── 실행 버튼 클릭 ───────────────────────────────────────────────── */
 async function onRunClick() {
@@ -1535,6 +1810,9 @@ async function onRunClick() {
   // 룰 오버라이드
   const ruleOverrides = {};
   state.rules.forEach(r => { ruleOverrides[r.code] = state.ruleEnabled[r.code]; });
+  // Q01 샘플링 스펙 포함
+  const samplingSpec = getSamplingSpec();
+  if (samplingSpec) ruleOverrides.q01_sampling = samplingSpec;
   formData.append('rule_overrides', JSON.stringify(ruleOverrides));
 
   // 룰 파라미터 (실제 값 수집)
@@ -1663,28 +1941,42 @@ function renderDonePanel(result) {
   const failCount = scenarios.filter(s => s.status === 'fail').length;
 
   // KPI 카드
+  const rulesRun = scenarios.filter(s => s.status !== 'waived').length;
+  const rulesFail = scenarios.filter(s => s.status === 'fail').length;
+  const rulesPass = scenarios.filter(s => s.status === 'pass').length;
   const kpiHtml = `
     <div class="kpi-grid">
       <div class="kpi-card accent">
+        <div class="kpi-tooltip">정규화 완료 분개행 수<br>원본 GL 전체 기준</div>
         <div class="kpi-value">${summary.total_rows.toLocaleString()}</div>
         <div class="kpi-label">총 분개행</div>
       </div>
       <div class="kpi-card ${failCount > 0 ? 'danger' : 'success'}">
+        <div class="kpi-tooltip">모든 룰의 적출건수 합계<br>중복 포함 (전표라인 기준)</div>
         <div class="kpi-value">${summary.total_findings.toLocaleString()}</div>
         <div class="kpi-label">총 적출건수</div>
       </div>
-      <div class="kpi-card success">
-        <div class="kpi-value">${summary.duration_sec}s</div>
-        <div class="kpi-label">처리 시간</div>
+      <div class="kpi-card ${rulesFail > 0 ? 'danger' : 'success'}">
+        <div class="kpi-tooltip">수행 룰 ${rulesRun}개 중 FAIL ${rulesFail}개 / PASS ${rulesPass}개</div>
+        <div class="kpi-value">${rulesFail > 0 ? rulesFail + ' FAIL' : 'ALL PASS'}</div>
+        <div class="kpi-label">적출 룰 수</div>
       </div>
     </div>
   `;
+
+  // 자동/수동 비율 차트
+  const statsAutoManual = summary.stats_auto_manual || null;
+  const ratioHtml = _buildRatioBarHtml(statsAutoManual, summary.total_rows);
+
+  // 룰별 적출건수 bar 차트
+  const barChartHtml = _buildRuleBarChartHtml(scenarios);
 
   // 시나리오 결과 테이블
   const scenRowsHtml = scenarios.map(s => {
     const badgeClass = s.status === 'pass' ? 'pass' : s.status === 'fail' ? 'fail' : s.status === 'waived' ? 'waived' : 'warn';
     const badgeText  = s.status === 'pass' ? 'PASS' : s.status === 'fail' ? 'FAIL' : s.status === 'waived' ? 'N/A' : '주의';
-    return `<tr class="clickable" data-code="${s.code}" onclick="onScenarioClick('${s.code}')">
+    const isQ01 = s.code === 'Q01';
+    return `<tr class="clickable${isQ01 ? ' q01-row' : ''}" data-code="${s.code}" data-q01="${isQ01}" onclick="onScenarioClick('${s.code}')">
       <td><strong>${s.code}</strong></td>
       <td>${s.name}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums">${s.findings.toLocaleString()}</td>
@@ -1694,8 +1986,17 @@ function renderDonePanel(result) {
 
   document.getElementById('main-panel').innerHTML = `
     ${kpiHtml}
-    <div class="result-section-title">시나리오 결과</div>
-    <table class="scenario-table">
+    ${ratioHtml}
+    <div class="result-section-title">룰별 적출 건수</div>
+    <div class="rule-bar-chart">${barChartHtml}</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;margin-bottom:4px">
+      <div class="result-section-title" style="margin:0">시나리오 결과</div>
+      <button class="q01-toggle-btn" id="q01-toggle-btn" onclick="toggleQ01Only()" title="Q01 질의서 시트만 표시">
+        Q01만 보기
+      </button>
+    </div>
+    <table class="scenario-table" id="scenario-table-el">
       <thead><tr>
         <th>코드</th><th>테스트명</th><th style="text-align:right">적출건수</th><th>결과</th>
       </tr></thead>
@@ -1706,6 +2007,7 @@ function renderDonePanel(result) {
       <div class="result-section-title" id="preview-title">시트 미리보기</div>
       <div id="preview-tabs" class="preview-tabs"></div>
       <div id="preview-content"></div>
+      <div id="preview-pagination" class="preview-pagination" style="display:none"></div>
     </div>
 
     <div class="download-row">
@@ -1719,6 +2021,221 @@ function renderDonePanel(result) {
       </button>
     </div>
   `;
+
+  // 결과 완료 후 Stats_AutoManual 포함 신규 시트 탭 추가 로드
+  _prefetchNewSheetTabs();
+}
+
+function _buildDonutSvg(slices, size) {
+  /* slices: [{color, pct}], size: px */
+  const r = size / 2 - 4;
+  const cx = size / 2, cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  let paths = '';
+  for (const s of slices) {
+    if (s.pct <= 0) continue;
+    const dash = circumference * s.pct / 100;
+    paths += `<circle cx="${cx}" cy="${cy}" r="${r}"
+      fill="none" stroke="${s.color}" stroke-width="${size * 0.18}"
+      stroke-dasharray="${dash} ${circumference}"
+      stroke-dashoffset="${-offset}"
+      style="transition:stroke-dasharray 0.5s ease"
+      transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += dash;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths}</svg>`;
+}
+
+function _buildRatioBarHtml(stats, totalRows) {
+  if (!stats) return '';
+  const manualCnt = stats.manual_count  || 0;
+  const autoCnt   = stats.auto_count    || 0;
+  const unknownCnt = stats.unknown_count || 0;
+  const total = manualCnt + autoCnt + unknownCnt || 1;
+  const manualPct  = Math.round(manualCnt  / total * 100);
+  const autoPct    = Math.round(autoCnt    / total * 100);
+  const unknownPct = 100 - manualPct - autoPct;
+
+  const slices = [
+    { color: 'var(--accent)', pct: manualPct },
+    { color: '#22C55E',       pct: autoPct   },
+    { color: '#D1D5DB',       pct: unknownPct > 0 ? unknownPct : 0 },
+  ];
+
+  const donutSvg = _buildDonutSvg(slices, 72);
+
+  return `
+    <div class="result-section-title">자동 / 수동 입력 비율</div>
+    <div class="donut-wrap">
+      ${donutSvg}
+      <div class="donut-legend">
+        <div class="donut-legend-row">
+          <span class="donut-legend-dot" style="background:var(--accent)"></span>
+          수동(M) ${manualCnt.toLocaleString()}건 (${manualPct}%)
+        </div>
+        <div class="donut-legend-row">
+          <span class="donut-legend-dot" style="background:#22C55E"></span>
+          자동(A) ${autoCnt.toLocaleString()}건 (${autoPct}%)
+        </div>
+        ${unknownPct > 0 ? `<div class="donut-legend-row">
+          <span class="donut-legend-dot" style="background:#D1D5DB"></span>
+          미분류 ${unknownCnt.toLocaleString()}건 (${unknownPct}%)
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/* 룰 카테고리 매핑: integrity 계열은 초록, risk 계열은 빨강 */
+const _RULE_CATEGORY = {
+  A01: 'integrity', A02: 'integrity', A03: 'integrity',
+  B01: 'risk', B02: 'risk', B03: 'risk', B04: 'risk', B05: 'risk',
+  B06: 'risk', B07: 'risk', B08: 'risk', B09: 'risk', B10: 'risk',
+  B11: 'risk', B12: 'risk',
+};
+
+function _buildRuleBarChartHtml(scenarios) {
+  const visible = scenarios.filter(s => s.status !== 'waived' && s.code !== 'B06');
+  if (!visible.length) return '<div style="color:var(--text3);font-size:0.7rem;padding:4px 0">모든 룰 PASS</div>';
+
+  const maxFindings = Math.max(...visible.map(s => s.findings), 1);
+
+  return visible.map(s => {
+    const pct = Math.max(Math.round(s.findings / maxFindings * 100), s.findings > 0 ? 4 : 0);
+    const isZero = s.findings === 0;
+    const cat = _RULE_CATEGORY[s.code] || 'risk';
+    const fillClass = isZero ? 'zero' : cat;
+    return `
+      <div class="rule-bar-row">
+        <span class="rule-bar-label">${s.code}</span>
+        <div class="rule-bar-track">
+          <div class="rule-bar-fill ${fillClass}" style="width:${pct}%"></div>
+        </div>
+        <span class="rule-bar-count">${s.findings.toLocaleString()}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+async function _prefetchNewSheetTabs() {
+  // Stats_AutoManual·B10·B11·B12 시트가 실제 존재하면 시나리오 테이블 클릭 없이도
+  // 탭으로 바로 접근할 수 있도록 preview-section에 fast-access 버튼을 추가한다.
+  if (!state.runId) return;
+  try {
+    const sheetsData = await api.get(`/api/runs/${state.runId}/sheets`);
+    const all = sheetsData.sheets || [];
+    const highlight = ['Stats_AutoManual', 'B10', 'B11', 'B12'];
+    const found = highlight.filter(h => all.some(s => s.includes(h)));
+    if (!found.length) return;
+
+    const previewSection = document.getElementById('preview-section');
+    if (!previewSection) return;
+    previewSection.style.display = '';
+
+    const previewTabs = document.getElementById('preview-tabs');
+    if (!previewTabs) return;
+
+    // 기존 탭이 있으면 건너뜀
+    if (previewTabs.children.length > 0) return;
+
+    document.getElementById('preview-title').textContent = '시트 미리보기';
+
+    found.forEach((h, i) => {
+      const matchedSheet = all.find(s => s.includes(h));
+      if (!matchedSheet) return;
+      const tab = document.createElement('button');
+      tab.className = 'preview-tab' + (i === 0 ? ' active' : '');
+      tab.textContent = matchedSheet;
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('#preview-tabs .preview-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        loadSheetPreview(matchedSheet);
+      });
+      previewTabs.appendChild(tab);
+    });
+
+    // 첫 번째 탭 자동 로드
+    const firstMatch = all.find(s => s.includes(found[0]));
+    if (firstMatch) await loadSheetPreview(firstMatch);
+  } catch (e) {
+    // 미리보기 prefetch 실패는 무시
+  }
+}
+
+/* ── Q01만 보기 토글 ─────────────────────────────────────────────── */
+let _q01OnlyMode = false;
+function toggleQ01Only() {
+  _q01OnlyMode = !_q01OnlyMode;
+  const btn = document.getElementById('q01-toggle-btn');
+  if (btn) btn.classList.toggle('active', _q01OnlyMode);
+
+  const table = document.getElementById('scenario-table-el');
+  if (!table) return;
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const isQ01 = tr.getAttribute('data-q01') === 'true';
+    if (_q01OnlyMode) {
+      tr.style.display = isQ01 ? '' : 'none';
+    } else {
+      tr.style.display = '';
+    }
+  });
+}
+
+/* ── 시트 미리보기 페이지네이션 상태 ──────────────────────────────── */
+const _previewState = {
+  allRows: [],
+  columns: [],
+  page: 0,
+  pageSize: 100,
+  totalRows: 0,
+};
+
+function _renderPreviewPage() {
+  const { allRows, columns, page, pageSize, totalRows } = _previewState;
+  const start = page * pageSize;
+  const end   = Math.min(start + pageSize, allRows.length);
+  const pageRows = allRows.slice(start, end);
+
+  const headerHtml = columns.map(c => `<th>${escapeHtml(String(c))}</th>`).join('');
+  const rowsHtml   = pageRows.map(row =>
+    `<tr>${row.map(c => `<td>${escapeHtml(c == null ? '' : String(c))}</td>`).join('')}</tr>`
+  ).join('');
+
+  const previewContent = document.getElementById('preview-content');
+  previewContent.innerHTML = `
+    <div style="font-size:0.67rem;color:var(--text3);margin-bottom:6px;letter-spacing:-0.01em">
+      ${start + 1}~${end}행 표시 / 미리보기 ${allRows.length}행 / 전체 ${totalRows.toLocaleString()}행
+    </div>
+    <div class="dtable-wrap" style="max-height:360px;overflow-y:auto;">
+      <table class="dtable">
+        <thead><tr>${headerHtml}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+
+  // 페이지네이션 컨트롤
+  const totalPages = Math.ceil(allRows.length / pageSize);
+  const pagEl = document.getElementById('preview-pagination');
+  if (pagEl) {
+    if (totalPages > 1) {
+      pagEl.style.display = 'flex';
+      pagEl.innerHTML = `
+        <button onclick="_changePage(-1)" ${page === 0 ? 'disabled' : ''}>&laquo; 이전</button>
+        <span>${page + 1} / ${totalPages}페이지</span>
+        <button onclick="_changePage(1)" ${page >= totalPages - 1 ? 'disabled' : ''}>다음 &raquo;</button>
+      `;
+    } else {
+      pagEl.style.display = 'none';
+    }
+  }
+}
+
+function _changePage(delta) {
+  const totalPages = Math.ceil(_previewState.allRows.length / _previewState.pageSize);
+  _previewState.page = Math.max(0, Math.min(_previewState.page + delta, totalPages - 1));
+  _renderPreviewPage();
 }
 
 function renderErrorPanel(message, traceStr) {
@@ -1804,25 +2321,18 @@ async function loadSheetPreview(sheet) {
     const data = await api.get(`/api/runs/${state.runId}/preview/${encodeURIComponent(sheet)}`);
     if (!data.columns || data.columns.length === 0) {
       previewContent.innerHTML = '<div class="dtable-empty">데이터 없음</div>';
+      const pagEl = document.getElementById('preview-pagination');
+      if (pagEl) pagEl.style.display = 'none';
       return;
     }
 
-    const headerHtml = data.columns.map(c => `<th>${escapeHtml(String(c))}</th>`).join('');
-    const rowsHtml = data.rows.map(row =>
-      `<tr>${row.map(c => `<td>${escapeHtml(c == null ? '' : String(c))}</td>`).join('')}</tr>`
-    ).join('');
-
-    previewContent.innerHTML = `
-      <div style="font-size:0.67rem;color:var(--text3);margin-bottom:6px;letter-spacing:-0.01em">
-        상위 ${data.rows.length}행 / 전체 ${data.total_rows.toLocaleString()}행
-      </div>
-      <div class="dtable-wrap" style="max-height:360px;overflow-y:auto;">
-        <table class="dtable">
-          <thead><tr>${headerHtml}</tr></thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `;
+    // 페이지네이션 상태 초기화 (상위 100행 단위)
+    _previewState.columns   = data.columns;
+    _previewState.allRows   = data.rows;
+    _previewState.page      = 0;
+    _previewState.pageSize  = 100;
+    _previewState.totalRows = data.total_rows || data.rows.length;
+    _renderPreviewPage();
   } catch (e) {
     previewContent.innerHTML = `<div class="dtable-empty">미리보기 오류: ${escapeHtml(e.message)}</div>`;
   }
@@ -1843,5 +2353,15 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 </script>
+<style>
+footer.legal{padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;line-height:1.4}
+footer.legal b{color:var(--text2);font-weight:600}
+footer.legal .right{text-align:right;flex:1;min-width:240px}
+@media (max-width:768px){footer.legal{flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px;line-height:1.35}footer.legal .right{text-align:left;min-width:0;width:100%}}
+</style>
+<footer class="legal">
+  <span><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</span>
+  <span class="right">© 2026 Woongcpa</span>
+</footer>
 </body>
 </html>
