@@ -4293,26 +4293,46 @@ function volRenderBarChart(j){
   }
   const adopted = j.sigma_pct;
 
-  // Chart.js horizontalBar 형태로 — peer가 많으면 가독성 좋음
+  // 통계 라인 — Chart.js annotation plugin 의존성 회피: 보조 line dataset 사용
+  // (모든 막대에 같은 x값 채워 수직선 효과)
+  const n = items.length;
+  const mkLineData = (v) => items.map(()=>v);
+  const lineDatasets = [];
+  if(median != null) lineDatasets.push({
+    label:`중앙값 ${median.toFixed(1)}%`, type:'line', data:mkLineData(median),
+    borderColor:'#3182F6', borderWidth:1.5, borderDash:[5,3], pointRadius:0, fill:false, tension:0,
+  });
+  if(mean != null) lineDatasets.push({
+    label:`평균 ${mean.toFixed(1)}%`, type:'line', data:mkLineData(mean),
+    borderColor:'#FF9F00', borderWidth:1.5, borderDash:[5,3], pointRadius:0, fill:false, tension:0,
+  });
+  if(adopted != null) lineDatasets.push({
+    label:`채택 σ ${adopted.toFixed(1)}%`, type:'line', data:mkLineData(adopted),
+    borderColor:'#059669', borderWidth:2, pointRadius:0, fill:false, tension:0,
+  });
+
   dc('vol-bar-chart');
   CH['vol-bar-chart'] = new Chart(document.getElementById('vol-bar-chart').getContext('2d'), {
     type: 'bar',
     data: {
       labels: items.map(x => x.label),
-      datasets: [{
-        label: '연환산 σ (%)',
-        data: items.map(x => x.sigma),
-        backgroundColor: items.map(x =>
-          x.failed ? 'rgba(156,163,175,.6)' :
-          x.outlier ? 'rgba(239,68,68,.75)' : 'rgba(49,130,246,.75)'),
-        borderRadius: 3,
-      }],
+      datasets: [
+        {
+          label: '연환산 σ (%)',
+          data: items.map(x => x.sigma),
+          backgroundColor: items.map(x =>
+            x.failed ? 'rgba(156,163,175,.6)' :
+            x.outlier ? 'rgba(239,68,68,.75)' : 'rgba(49,130,246,.75)'),
+          borderRadius: 3,
+        },
+        ...lineDatasets,
+      ],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: {
+        legend: { position:'top', labels:{font:{size:9.5},boxWidth:14,padding:6} },
+        tooltip: { filter: ctx=>ctx.datasetIndex===0, callbacks: {
           label: ctx => {
             const it = items[ctx.dataIndex];
             const v = ctx.parsed.x;
@@ -4321,20 +4341,6 @@ function volRenderBarChart(j){
               : ` σ=${v.toFixed(2)}%`;
           },
         }},
-        annotation: {
-          annotations: {
-            ...(median != null ? {
-              medianLine: {type:'line',xMin:median,xMax:median,borderColor:'#3182F6',borderWidth:1.5,borderDash:[5,3],
-                label:{enabled:true,content:`중앙값 ${median.toFixed(1)}%`,position:'end',backgroundColor:'rgba(49,130,246,.8)',color:'#fff',font:{size:9}}},
-            } : {}),
-            ...(mean != null ? {
-              meanLine: {type:'line',xMin:mean,xMax:mean,borderColor:'#FF9F00',borderWidth:1.5,borderDash:[5,3],
-                label:{enabled:true,content:`평균 ${mean.toFixed(1)}%`,position:'end',backgroundColor:'rgba(255,159,0,.8)',color:'#fff',font:{size:9}}},
-            } : {}),
-            adoptedLine: {type:'line',xMin:adopted,xMax:adopted,borderColor:'#059669',borderWidth:2,
-              label:{enabled:true,content:`채택 σ ${adopted.toFixed(1)}%`,position:'start',backgroundColor:'rgba(5,150,105,.85)',color:'#fff',font:{size:9,weight:'bold'}}},
-          },
-        },
       },
       scales: {
         x: { title:{display:true,text:'σ (%)',font:{size:10}}, ticks:{callback:v=>v.toFixed(0)+'%',font:{size:9}}, grid:{color:'#F2F4F6'} },
