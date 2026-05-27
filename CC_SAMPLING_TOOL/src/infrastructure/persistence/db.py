@@ -40,8 +40,32 @@ SessionFactory = sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def init_db() -> None:
-    """테이블 없을 시 생성 (첫 실행용). 이미 있으면 no-op."""
+    """테이블 없을 시 생성 + Week 5 v2 컬럼 마이그레이션."""
     Base.metadata.create_all(engine)
+    _migrate_v2_columns()
+
+
+def _migrate_v2_columns() -> None:
+    """Week 5 v2 신규 컬럼을 기존 DB에 ADD COLUMN (idempotent).
+
+    SQLite는 ALTER TABLE ADD COLUMN만 지원 (rename/drop 불가).
+    이미 존재하는 컬럼이면 에러를 무시.
+    """
+    new_columns = [
+        ("confirmation_replies", "declared_match",        "BOOLEAN"),
+        ("confirmation_replies", "per_account_findings",  "TEXT"),
+        ("confirmation_replies", "original_currency",     "VARCHAR(10) DEFAULT 'KRW'"),
+        ("confirmation_replies", "decision_basis",        "VARCHAR(20)"),
+        ("confirmation_replies", "top3_candidates",       "TEXT"),
+    ]
+    with engine.connect() as conn:
+        for table, col, col_type in new_columns:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                # 이미 존재하는 컬럼 — 무시
+                conn.rollback()
 
 
 @contextmanager

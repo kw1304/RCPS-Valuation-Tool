@@ -1,0 +1,16 @@
+# Golden set — 24개 PDF 회신 기대값 (Week 8에서 실데이터 기반으로 완성)
+# 각 항목: filename, expected_party_name, expected_status, expected_currency
+# Week 1에서는 placeholder만 정의
+
+metadata:
+  created: "2026-05-27"
+  version: "1.0-placeholder"
+  description: "24개 온라인 PDF 회신 기대값. Week 8 실측 후 완성 예정."
+
+expectations:
+  # 예시 형식 (실데이터 확인 후 채울 것)
+  - filename: "CC-01_*.pdf"
+    expected_party_name: null    # TBD
+    expected_status: null        # "matched" | "mismatch" | "needs_review"
+    expected_currency: null      # "KRW" | "USD" | "JPY" | "CNY"
+    notes: "placeholder"

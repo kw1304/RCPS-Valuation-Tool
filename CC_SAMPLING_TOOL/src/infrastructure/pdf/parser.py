@@ -1,10 +1,11 @@
-"""조회서 회신 텍스트 파싱 — 거래처명·금액·날짜·서명 추출 (Week 4 강화).
+"""조회서 회신 텍스트 파싱 — 거래처명·금액·날짜·서명 추출 (Week 4 강화 + Week 5 v2).
 
 삼덕회계법인 표준양식 (한국어/영문) 지원:
   - 한국어: "{거래처명} 귀중 YYYY년 MM월 DD일" 헤더
   - 영문: "TO : {거래처명} YYYY- MM- DD" 헤더
   - 계정과목별 채권/채무 잔액 추출 (표 파싱 우선, 텍스트 폴백)
   - 기준일 (현재) vs 회신일자 분리
+  - Week 5: declared_match (셀 수준), per_account_rows, original_currency 추가
 
 지원 통화: KRW, USD, EUR, JPY, CNY, SGD, AUD, MYR, THB
 금액 표기: KRW/USD/EUR/JPY + 숫자, 쉼표 구분, 괄호 음수
@@ -15,6 +16,18 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
+
+
+@dataclass
+class AccountRow:
+    """계정과목별 단일 행 파싱 결과 (parse_confirmation_v2 전용)."""
+    section: str                     # "receivable" | "payable"
+    account_name: str
+    sent_amount: Optional[float]     # 발송금액 (조회금액)
+    declared_match: Optional[bool]   # 해당 행의 일치여부 셀값
+    reply_amount: Optional[float]    # 회신금액
+    currency: str = "KRW"
+    note: str = ""
 
 
 @dataclass
@@ -30,6 +43,14 @@ class ParsedReply:
     is_match_declared: Optional[bool]           # 회신서에 "일치" 표시 여부
     has_signature: bool                         # 서명/도장 키워드 존재
     extraction_confidence: float                # 0.0~1.0
+
+    # ── Week 5 v2 확장 필드 ──────────────────────────────────────────────
+    per_account_rows: list[AccountRow] = field(default_factory=list)
+    # 계정과목별 세부 행 (표 동적 매핑 결과)
+    declared_match: Optional[bool] = None
+    # 종합 declared_match: 모든 행 일치→True, 하나라도 불일치→False, 혼합/없음→None
+    original_currency: str = "KRW"
+    # PDF에서 검출된 원통화 코드 (KRW 외에는 환산 필요)
 
     # ── 하위 호환성 (Week 3 API와 동일한 필드명 유지) ──
     @property
@@ -559,3 +580,201 @@ def parse_confirmation(
     )
     object.__setattr__(result, '_currency', currency)
     return result
+
+
+# ── Parser v2 ─────────────────────────────────────────────────────────────────
+
+def _find_column_index(header: list, keywords: list[str]) -> Optional[int]:
+    """헤더 행에서 keywords 중 하나를 포함하는 컬럼 인덱스 반환."""
+    for i, cell in enumerate(header):
+        cell_str = str(cell or "").strip().lower()
+        for kw in keywords:
+            if kw.lower() in cell_str:
+                return i
+    return None
+
+
+def _parse_declared_match_cell(cell_str: str, positive: list[str], negative: list[str]) -> Optional[bool]:
+    """셀 텍스트 → True(일치) / False(불일치) / None(공란).
+
+    주의: negative("불일치")가 positive("일치")를 포함하므로
+    negative를 먼저 체크해야 오탐을 방지한다.
+    """
+    s = cell_str.strip().lower()
+    if not s:
+        return None
+    # negative 우선 (예: "불일치"는 "일치"도 포함하므로 먼저 검사)
+    for neg in negative:
+        if neg.lower() in s:
+            return False
+    for pos in positive:
+        if pos.lower() in s:
+            return True
+    return None
+
+
+def _is_total_row(acct_raw: str) -> bool:
+    """합계 행 여부 판별."""
+    return bool(re.match(r"^(?:합계|TOTAL|Total)\s*$", acct_raw.strip()))
+
+
+def _determine_section_from_table_context(
+    table_idx: int,
+    table_text_above: str,
+    recv_kws: list[str],
+    payb_kws: list[str],
+) -> str:
+    """표 위 텍스트 + 표 순번으로 채권/채무 섹션 판별."""
+    for kw in recv_kws:
+        if re.search(kw, table_text_above, re.IGNORECASE):
+            return "receivable"
+    for kw in payb_kws:
+        if re.search(kw, table_text_above, re.IGNORECASE):
+            return "payable"
+    # 순서 기반 fallback: 첫 번째 표=채권, 두 번째=채무
+    return "receivable" if table_idx == 0 else "payable"
+
+
+def parse_confirmation_v2(
+    text: str,
+    tables: Optional[list] = None,
+    patterns=None,          # FormPatterns | None
+    filename_hint: Optional[str] = None,
+) -> ParsedReply:
+    """표 헤더 동적 매핑 기반 파싱 v2.
+
+    기존 parse_confirmation()과 동일한 ParsedReply를 반환하되
+    per_account_rows, declared_match, original_currency 필드를 추가로 채운다.
+
+    Args:
+        text:          ExtractResult.full_text
+        tables:        pdfplumber extract_tables() 결과
+        patterns:      FormPatterns — 컬럼 키워드 힌트 (None이면 기본값 사용)
+        filename_hint: 파일명 (CJK 거래처명 추론 등에 활용)
+    """
+    # ── 1단계: 기존 parse_confirmation()으로 기반 파싱 ────────────────────
+    base = parse_confirmation(text, tables=tables)
+
+    # patterns가 없으면 기본 한국어 패턴 사용
+    if patterns is None:
+        from .pattern_library import PATTERN_REGISTRY
+        patterns = PATTERN_REGISTRY.get("samduk_kr_standard")
+
+    per_account_rows: list[AccountRow] = []
+    currency = base._currency
+
+    # ── 2단계: 표 헤더 동적 매핑 ─────────────────────────────────────────
+    if tables:
+        match_col_kws   = getattr(patterns, "match_column_keywords", ["일치여부"])
+        reply_col_kws   = getattr(patterns, "reply_amount_column_keywords", ["회신금액"])
+        sent_col_kws    = getattr(patterns, "sent_amount_column_keywords", ["발송금액"])
+        recv_section_kws = getattr(patterns, "receivable_section_keywords", [r"받을\s*금액"])
+        payb_section_kws = getattr(patterns, "payable_section_keywords", [r"지급할\s*금액"])
+        match_pos = getattr(patterns, "match_positive_values", ["일치", "○", "O"])
+        match_neg = getattr(patterns, "match_negative_values", ["불일치", "×", "X"])
+
+        # 표 앞 텍스트 위치 추적 (페이지 분할 없이 단순 순서로)
+        # 표 i의 "위 텍스트"는 text 전체에서 판단
+        for table_idx, table in enumerate(tables):
+            if not table or len(table) < 2:
+                continue
+            header = table[0]
+            if not header:
+                continue
+            header_joined = " ".join(str(c or "") for c in header).lower()
+
+            # 계정과목 표인지 확인
+            has_acct = "계정과목" in header_joined or "account" in header_joined
+            if not has_acct:
+                continue
+
+            # 컬럼 인덱스 동적 결정
+            acct_col_idx = _find_column_index(header, ["계정과목", "Account"])
+            if acct_col_idx is None:
+                acct_col_idx = 0
+
+            match_col_idx  = _find_column_index(header, match_col_kws)
+            reply_col_idx  = _find_column_index(header, reply_col_kws)
+            sent_col_idx   = _find_column_index(header, sent_col_kws)
+
+            # reply_col이 없으면 column 3 (기존 fallback)
+            if reply_col_idx is None:
+                if "account" in header_joined and len(header) > 2:
+                    reply_col_idx = min(2, len(header) - 1)
+                else:
+                    reply_col_idx = min(3, len(header) - 1)
+
+            # 섹션 판별: 표 위 텍스트 (전체 텍스트에서 해당 표 index 기준으로)
+            section = _determine_section_from_table_context(
+                table_idx, text, recv_section_kws, payb_section_kws
+            )
+
+            for row in table[1:]:
+                if not row:
+                    continue
+                max_idx = max(
+                    acct_col_idx,
+                    reply_col_idx if reply_col_idx else 0,
+                    match_col_idx if match_col_idx else 0,
+                    sent_col_idx if sent_col_idx else 0,
+                )
+                if len(row) <= max_idx:
+                    continue
+
+                acct_raw = str(row[acct_col_idx] or "").strip()
+                if not acct_raw or "(cid:" in acct_raw:
+                    continue
+                if _is_total_row(acct_raw):
+                    continue
+
+                # 회신금액
+                reply_raw = str(row[reply_col_idx] or "").strip() if reply_col_idx is not None else ""
+                reply_val, row_currency = _extract_currency_amount(reply_raw)
+                if row_currency != "KRW":
+                    currency = row_currency
+
+                # 발송금액
+                sent_val = None
+                if sent_col_idx is not None and sent_col_idx < len(row):
+                    sent_raw = str(row[sent_col_idx] or "").strip()
+                    sent_val, _ = _extract_currency_amount(sent_raw)
+
+                # 일치여부
+                row_match: Optional[bool] = None
+                if match_col_idx is not None and match_col_idx < len(row):
+                    match_raw = str(row[match_col_idx] or "").strip()
+                    row_match = _parse_declared_match_cell(match_raw, match_pos, match_neg)
+
+                per_account_rows.append(AccountRow(
+                    section=section,
+                    account_name=acct_raw,
+                    sent_amount=sent_val,
+                    declared_match=row_match,
+                    reply_amount=reply_val,
+                    currency=row_currency,
+                ))
+
+    # ── 3단계: per_account 종합 declared_match 계산 ───────────────────────
+    # 우선순위: 셀 수준 declared_match → 텍스트 키워드(base.is_match_declared)
+    declared_overall: Optional[bool] = None
+
+    row_matches = [r.declared_match for r in per_account_rows if r.declared_match is not None]
+    if row_matches:
+        if all(m is True for m in row_matches):
+            declared_overall = True
+        elif any(m is False for m in row_matches):
+            declared_overall = False
+        else:
+            declared_overall = None
+    else:
+        # 셀 수준 정보 없음 → 텍스트 키워드 기반 fallback
+        declared_overall = base.is_match_declared
+
+    # ── 4단계: ParsedReply 확장 필드 채우기 ──────────────────────────────
+    base.per_account_rows = per_account_rows
+    base.declared_match = declared_overall
+    base.original_currency = currency
+    # _currency 동기화
+    object.__setattr__(base, '_currency', currency)
+
+    return base

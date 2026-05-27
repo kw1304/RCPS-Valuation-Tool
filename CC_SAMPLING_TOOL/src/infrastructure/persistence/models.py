@@ -195,6 +195,18 @@ class ConfirmationReply(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
+    # ── Week 5 v2 확장 컬럼 ──────────────────────────────────────────────────
+    declared_match: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # PDF 자체 일치 선언 여부 (True=일치, False=불일치, None=미표기)
+    per_account_findings: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    # 계정별 비교 결과 ([{account, reply_amount, ug_amount, diff, ...}])
+    original_currency: Mapped[str] = mapped_column(String(10), nullable=False, default="KRW")
+    # PDF 원통화 코드 (KRW 외 → 환산 필요)
+    decision_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # "declared" | "per_account" | "total" | "fallback"
+    top3_candidates: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    # 매칭 실패 시 상위 3 후보 목록
+
 
 # ── Week 5 ────────────────────────────────────────────────────────────────
 class AlternativeProcedure(Base):

@@ -290,6 +290,12 @@ class ConfirmationReplyRepository:
         extraction_method: str | None = None,
         extraction_confidence: float | None = None,
         notes: str | None = None,
+        # ── Week 5 v2 필드 ──────────────────────────────────────────
+        declared_match: bool | None = None,
+        per_account_findings: str | None = None,  # JSON string
+        original_currency: str = "KRW",
+        decision_basis: str | None = None,
+        top3_candidates: str | None = None,       # JSON string
     ) -> ConfirmationReply:
         reply = ConfirmationReply(
             workpaper_id=workpaper_id,
@@ -308,6 +314,11 @@ class ConfirmationReplyRepository:
             extraction_method=extraction_method,
             extraction_confidence=extraction_confidence,
             notes=notes,
+            declared_match=declared_match,
+            per_account_findings=per_account_findings,
+            original_currency=original_currency,
+            decision_basis=decision_basis,
+            top3_candidates=top3_candidates,
         )
         self._s.add(reply)
         self._s.flush()

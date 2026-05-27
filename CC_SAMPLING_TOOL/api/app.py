@@ -46,8 +46,12 @@ from src.infrastructure.persistence import (
     get_session,
 )
 from src.infrastructure.pdf import extract_text, parse_confirmation
+from src.infrastructure.pdf.form_detector import detect_form
+from src.infrastructure.pdf.pattern_library import get_patterns
+from src.infrastructure.pdf.parser import parse_confirmation_v2
 from src.domain.matching import match_party
-from src.domain.reconciliation import reconcile
+from src.domain.reconciliation import reconcile, reconcile_v2
+from src.domain.currency import CurrencyResolver
 from src.infrastructure.report.template_registry import list_templates, get_template
 from src.infrastructure.confirmations.send_list_builder import build_send_list
 from src.orchestrator import SamplingParams, run_sampling, write_report
@@ -1022,17 +1026,34 @@ def step4_upload_replies(pid: str):
             extract_result = extract_text(_Path(artifact.stored_path))
             ocr_warnings = extract_result.warnings
 
-            # 3) 파싱 — pdfplumber tables 우선 활용
-            parsed = parse_confirmation(
+            # 3a) 양식 분류
+            file_meta = {"filename": filename}
+            form_profile = detect_form(
                 extract_result.full_text,
-                kind=kind,
-                tables=extract_result.tables if extract_result.tables else None,
+                tables=extract_result.tables or None,
+                file_meta=file_meta,
+            )
+            patterns = get_patterns(form_profile.form_id)
+
+            # 3b) Parser v2 (declared_match + per_account_rows + original_currency)
+            parsed = parse_confirmation_v2(
+                extract_result.full_text,
+                tables=extract_result.tables or None,
+                patterns=patterns,
+                filename_hint=filename,
             )
 
-            # 4) 거래처 매칭
+            # 4) 거래처 매칭 v2 (UploadGuide 동적 alias + CJK + 사업자번호)
             raw_name = parsed.extracted_name or filename
+            ug_data = STATE.get("upload_guide_data")
             if candidates:
-                match_result = match_party(raw_name, candidates)
+                match_result = match_party(
+                    raw_name,
+                    candidates,
+                    upload_guide_data=ug_data,
+                    business_no=None,   # PDF에서 사업자번호 추출 미구현 → None
+                    filename_hint=filename,
+                )
                 matched_name = match_result.matched_name
                 match_conf = match_result.confidence
                 match_method = match_result.method
@@ -1040,17 +1061,39 @@ def step4_upload_replies(pid: str):
                 matched_name = None
                 match_conf = 0.0
                 match_method = "failed"
+                match_result = None
 
-            # 5) 차이 판정
+            # 5) 차이 판정 v2
             ledger_bal = ledger_map.get(matched_name) if matched_name else None
-            recon = reconcile(
-                ledger_balance=ledger_bal if ledger_bal is not None else 0.0,
-                extracted_balance=parsed.extracted_balance,
+
+            # UploadGuide 거래처 행 조회
+            upload_guide_row = None
+            if ug_data and matched_name:
+                upload_guide_row = ug_data.contact_map().get(matched_name)
+
+            currency_resolver = CurrencyResolver(ug_data, STATE.get("manual_rates"))
+
+            recon = reconcile_v2(
+                ledger_balance_krw=ledger_bal if ledger_bal is not None else 0.0,
+                parsed_reply=parsed,
+                upload_guide_row=upload_guide_row,
+                currency_resolver=currency_resolver,
                 tolerance=tolerance,
+                tolerance_pct=0.01,
             )
             status = recon.status
             if matched_name is None:
                 status = "needs_review"
+
+            # top3 candidates (매칭 실패 시)
+            top3_json = None
+            if match_result and match_result.method == "failed" and match_result.candidates:
+                top3_json = json.dumps(match_result.candidates[:3], ensure_ascii=False)
+
+            # per_account_findings JSON 직렬화
+            per_acct_json = None
+            if recon.per_account_findings:
+                per_acct_json = json.dumps(recon.per_account_findings, ensure_ascii=False)
 
             # 6) DB 저장
             reply = reply_repo.create(
@@ -1070,6 +1113,12 @@ def step4_upload_replies(pid: str):
                 extraction_method=extract_result.method,
                 extraction_confidence=extract_result.confidence,
                 notes="; ".join(ocr_warnings) if ocr_warnings else None,
+                # v2 확장 필드
+                declared_match=parsed.declared_match,
+                per_account_findings=per_acct_json,
+                original_currency=parsed.original_currency,
+                decision_basis=recon.decision_basis,
+                top3_candidates=top3_json,
             )
 
             _audit(s, "step4_upload_reply", "ConfirmationReply", reply.id, pid,
@@ -1754,6 +1803,18 @@ def _serialize_reply(reply, warnings: list | None = None) -> dict:
         "notes": reply.notes,
         "created_at": reply.created_at.isoformat() if reply.created_at else None,
         "warnings": warnings or [],
+        # v2 확장 필드
+        "declared_match": getattr(reply, "declared_match", None),
+        "original_currency": getattr(reply, "original_currency", "KRW"),
+        "decision_basis": getattr(reply, "decision_basis", None),
+        "per_account_findings": (
+            json.loads(reply.per_account_findings)
+            if getattr(reply, "per_account_findings", None) else []
+        ),
+        "top3_candidates": (
+            json.loads(reply.top3_candidates)
+            if getattr(reply, "top3_candidates", None) else []
+        ),
     }
 
 

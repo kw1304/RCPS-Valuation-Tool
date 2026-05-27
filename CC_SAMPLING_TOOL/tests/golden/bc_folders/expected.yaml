@@ -1,0 +1,13 @@
+# Golden set — 7개 BC 폴더 기대값 (Week 8에서 실데이터 기반으로 완성)
+
+metadata:
+  created: "2026-05-27"
+  version: "1.0-placeholder"
+  description: "7개 BC 폴더 대체적 절차 기대값. Week 8 실측 후 완성 예정."
+
+expectations:
+  - folder_name: "BC-01_*"
+    expected_party_name: null
+    expected_procedure_type: null
+    expected_conclusion: null
+    notes: "placeholder"
