@@ -1256,6 +1256,14 @@ details.note-fold .note{margin-top:4px}
       <button class="btn-sm dl" id="vol-export" onclick="volExportCsv()">원자료 CSV 내보내기</button>
     </div>
     <div class="note" id="vol-meta" style="margin-top:8px"></div>
+    <div id="vol-chart-wrap" style="display:none;margin-top:14px">
+      <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin-bottom:6px">종목별 σ 분포 — 중앙값·평균·집계값 비교</div>
+      <div style="height:280px"><canvas id="vol-bar-chart"></canvas></div>
+      <div style="font-size:.66rem;color:var(--text3);margin-top:4px">
+        ※ 파란색=정상 / 빨간색=outlier (필터 적용 시 제외됨) / 회색=시계열 부족·실패 종목.
+        가로 점선: 중앙값(파랑) · 평균(주황) · 채택 집계값(녹색).
+      </div>
+    </div>
   </div>
 </div><!-- /page-vol -->
 
@@ -2429,6 +2437,25 @@ function renderRightsTimeline(p){
     `<div style="position:absolute;left:${m.pos}%;top:0;bottom:0;width:2px;background:${m.color};transform:translateX(-1px);z-index:2;opacity:.7"></div>`
   ).join('');
 
+  // 리픽싱 시점 (refixing 활성 + 주기 있을 때 — 발행일~만기 사이 작은 점)
+  let refixingPoints = '';
+  if(p.refixing && p.refixing_frequency){
+    const freqMonths = {quarterly:3, 'semi-annual':6, semiannual:6, annual:12}[p.refixing_frequency];
+    if(freqMonths){
+      const dates = [];
+      let d = new Date(issue);
+      d.setMonth(d.getMonth() + freqMonths);
+      while(d < mat){
+        dates.push(new Date(d));
+        d.setMonth(d.getMonth() + freqMonths);
+      }
+      refixingPoints = dates.map(rd => {
+        const rp = pos(rd);
+        return `<div style="position:absolute;left:${rp}%;top:${CORE_H/2 - 5}px;width:8px;height:8px;background:#8B5CF6;border:1px solid #fff;border-radius:50%;transform:translateX(-4px);z-index:3" title="리픽싱 ${fmtD(rd)}"></div>`;
+      }).join('');
+    }
+  }
+
   host.innerHTML = `
     <div class="info-box" style="padding:0.85rem 1.1rem">
       <h4 style="margin-bottom:8px">계약 권리 활성 구간</h4>
@@ -2444,11 +2471,12 @@ function renderRightsTimeline(p){
         ${pCallVal != null ? `<div style="position:absolute;top:${10+(barH+barGap)*2}px;left:${pCallVal}%;right:0;height:${barH}px;background:rgba(220,38,38,.35);border-radius:2px" title="콜 권리 활성"></div>
           <div style="position:absolute;top:${10+(barH+barGap)*2}px;right:8px;font-size:.55rem;color:#DC2626;font-weight:600;line-height:${barH}px;pointer-events:none">콜 →</div>` : ''}
         ${markerPoints}
+        ${refixingPoints}
       </div>
       <!-- 하단 라벨 영역 -->
       <div style="position:relative;height:${BOT_AREA_H}px;margin:0 12px">${botLabels}</div>
       <div style="font-size:.64rem;color:var(--text3);margin-top:4px;line-height:1.5">
-        ※ 회색 막대 = 전체 평가기간 / 색상 막대 = 권리 활성 구간 / 세로 점선 = 시점 마커.
+        ※ 회색 막대 = 전체 평가기간 / 색상 막대 = 권리 활성 구간 / 세로 점선 = 시점 마커${refixingPoints ? ` / <span style="color:#8B5CF6">●</span> 보라 점 = 리픽싱 시점 (${p.refixing_frequency})` : ''}.
         평가기준일은 발행 후 <b>${((valDate-issue)/(365.25*24*3600*1000)).toFixed(2)}년</b>, 잔존 만기 <b>${((mat-valDate)/(365.25*24*3600*1000)).toFixed(2)}년</b>.
       </div>
     </div>`;
@@ -4240,6 +4268,82 @@ async function volRunCsv(){
     volMsg('CSV 산출 완료 — 종목 '+j.per_ticker.length+'개.',true);
   }catch(e){volMsg('요청 실패: '+e.message,false);}
 }
+function volRenderBarChart(j){
+  const wrap = document.getElementById('vol-chart-wrap');
+  if(!wrap) return;
+  const per = j.per_ticker || [];
+  if(!per.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  // 데이터: σ 큰 순 정렬 (시각적 직관)
+  const items = per.map(p => ({
+    label: (p.name || p.ticker) + (p.outlier ? ' ⚠' : ''),
+    sigma: p.sigma != null ? p.sigma * 100 : null,
+    outlier: !!p.outlier,
+    failed: p.sigma == null,
+  })).sort((a,b) => (b.sigma||0) - (a.sigma||0));
+
+  // 통계: 중앙값·평균 (유효+outlier 제외)
+  const validSigs = per.filter(p => p.sigma != null && !p.outlier).map(p => p.sigma * 100).sort((a,b)=>a-b);
+  let median = null, mean = null;
+  if(validSigs.length){
+    const n = validSigs.length;
+    median = n % 2 ? validSigs[(n-1)/2] : (validSigs[n/2-1] + validSigs[n/2]) / 2;
+    mean = validSigs.reduce((s,x)=>s+x, 0) / n;
+  }
+  const adopted = j.sigma_pct;
+
+  // Chart.js horizontalBar 형태로 — peer가 많으면 가독성 좋음
+  dc('vol-bar-chart');
+  CH['vol-bar-chart'] = new Chart(document.getElementById('vol-bar-chart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: items.map(x => x.label),
+      datasets: [{
+        label: '연환산 σ (%)',
+        data: items.map(x => x.sigma),
+        backgroundColor: items.map(x =>
+          x.failed ? 'rgba(156,163,175,.6)' :
+          x.outlier ? 'rgba(239,68,68,.75)' : 'rgba(49,130,246,.75)'),
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: ctx => {
+            const it = items[ctx.dataIndex];
+            const v = ctx.parsed.x;
+            return it.failed ? ' 시계열 조회 실패'
+              : it.outlier ? ` σ=${v.toFixed(2)}% (outlier 제외됨)`
+              : ` σ=${v.toFixed(2)}%`;
+          },
+        }},
+        annotation: {
+          annotations: {
+            ...(median != null ? {
+              medianLine: {type:'line',xMin:median,xMax:median,borderColor:'#3182F6',borderWidth:1.5,borderDash:[5,3],
+                label:{enabled:true,content:`중앙값 ${median.toFixed(1)}%`,position:'end',backgroundColor:'rgba(49,130,246,.8)',color:'#fff',font:{size:9}}},
+            } : {}),
+            ...(mean != null ? {
+              meanLine: {type:'line',xMin:mean,xMax:mean,borderColor:'#FF9F00',borderWidth:1.5,borderDash:[5,3],
+                label:{enabled:true,content:`평균 ${mean.toFixed(1)}%`,position:'end',backgroundColor:'rgba(255,159,0,.8)',color:'#fff',font:{size:9}}},
+            } : {}),
+            adoptedLine: {type:'line',xMin:adopted,xMax:adopted,borderColor:'#059669',borderWidth:2,
+              label:{enabled:true,content:`채택 σ ${adopted.toFixed(1)}%`,position:'start',backgroundColor:'rgba(5,150,105,.85)',color:'#fff',font:{size:9,weight:'bold'}}},
+          },
+        },
+      },
+      scales: {
+        x: { title:{display:true,text:'σ (%)',font:{size:10}}, ticks:{callback:v=>v.toFixed(0)+'%',font:{size:9}}, grid:{color:'#F2F4F6'} },
+        y: { ticks:{font:{size:9.5}}, grid:{display:false} },
+      },
+    },
+  });
+}
+
 function volRenderResult(j){
   window.volLastSigmaPct=j.sigma_pct;
   window.volLastResult=j;  // Excel 다운로드용 캐시
@@ -4331,6 +4435,7 @@ function volRenderResult(j){
   meta+='<br>※ 자동조회 값은 시점마다 달라질 수 있으니, 감사 증빙용으로 원자료 CSV를 내보내 보관하세요.';
   document.getElementById('vol-meta').innerHTML=meta;
   document.getElementById('vol-export').style.display=window.volLastRaw?'':'none';
+  volRenderBarChart(j);
   volMsg('산출 완료 — σ = '+j.sigma_pct.toFixed(2)+'%.',true);
 }
 function volApplyToRcps(){
