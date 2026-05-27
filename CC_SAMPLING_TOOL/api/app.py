@@ -30,6 +30,7 @@ from src.domain.sample_size import (
 from src.infrastructure.loaders import get_total_assets, load_fs_amounts, load_related_parties
 from src.infrastructure.schemas.ledger_schema import detect_ledger_sheets
 from src.infrastructure.persistence import (
+    AlternativeProcedureRepository,
     ArtifactRepository,
     AuditTrail,
     ConfirmationReplyRepository,
@@ -926,6 +927,509 @@ def step4_mark_done(pid: str):
 
 
 # ─────────────────────────────────────────────────────────────
+# Step 5: 대체적 절차 — 미회신·차이 자동식별, 증빙 업로드, AlternativeProcedure CRUD
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/api/project/<pid>/step5/pending", methods=["GET"])
+def step5_pending(pid: str):
+    """미회신·차이 거래처 자동 식별.
+
+    미회신 = final_sampled 거래처 중 ConfirmationReply 가 없는 것
+    차이   = ConfirmationReply.status == "mismatch"
+    """
+    kind = request.args.get("kind", "receivable")
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+
+        # Step 1 결과에서 최종 선택 거래처
+        sampled_parties: dict[str, float] = {}  # party_name → ledger_balance
+        if wp.sampling_result:
+            result_dict = json.loads(wp.sampling_result)
+            for d in result_dict.get("decisions", []):
+                if d.get("final_sampled"):
+                    sampled_parties[d["name"]] = float(d.get("balance", 0))
+
+        # 회신 현황
+        reply_repo = ConfirmationReplyRepository(s)
+        replies = reply_repo.list_by_workpaper(wp.id)
+        replied_map: dict[str, str] = {}  # matched_name → status
+        for r in replies:
+            if r.party_name_matched:
+                replied_map[r.party_name_matched] = r.status
+
+        pending: list[dict] = []
+        for party, balance in sampled_parties.items():
+            status = replied_map.get(party)
+            if status is None:
+                reason = "미회신"
+            elif status == "mismatch":
+                reason = "차이"
+            else:
+                continue  # 정상 회신 → 대체절차 불필요
+
+            # 회신값·차이 조회
+            reply_balance: float | None = None
+            difference: float | None = None
+            for r in replies:
+                if r.party_name_matched == party and r.status == "mismatch":
+                    reply_balance = r.extracted_balance
+                    difference = r.difference
+                    break
+
+            pending.append({
+                "party_name": party,
+                "reason": reason,
+                "ledger_balance": balance,
+                "reply_balance": reply_balance,
+                "difference": difference,
+            })
+
+        return jsonify({
+            "kind": kind,
+            "workpaper_id": wp.id,
+            "pending": pending,
+            "total": len(pending),
+        })
+
+
+@app.route("/api/project/<pid>/step5/upload-evidence", methods=["POST"])
+def step5_upload_evidence(pid: str):
+    """단일 거래처 증빙 다중 업로드 → 자동 추출 → AlternativeProcedure 생성/갱신.
+
+    multipart form-data:
+      files[]        — 증빙 파일 (1개 이상)
+      party_name     — 거래처명
+      kind           — receivable | payable
+      procedure_type — 후속입금 | 매출증빙 | 발주서대조 | 후속송금 | 기타
+      auditor_notes  — 감사인 메모
+      ledger_balance — 장부가 (선택)
+      reply_balance  — 회신금액 (선택)
+    """
+    from src.infrastructure.evidence.extractor import extract_evidence
+    import tempfile
+
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        kind = request.form.get("kind", "receivable")
+        party_name = (request.form.get("party_name") or "").strip()
+        procedure_type = request.form.get("procedure_type", "기타")
+        auditor_notes = request.form.get("auditor_notes", "")
+        ledger_balance = _f(request.form.get("ledger_balance"))
+        reply_balance = _f(request.form.get("reply_balance"))
+
+        if not party_name:
+            return jsonify({"error": "party_name 필수"}), 400
+
+        files = request.files.getlist("files[]")
+        if not files:
+            return jsonify({"error": "업로드 파일 없음"}), 400
+
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        art_repo = ArtifactRepository(s)
+        proc_repo = AlternativeProcedureRepository(s)
+
+        # 기존 AlternativeProcedure 조회 (동일 거래처면 갱신)
+        proc = proc_repo.get_by_party(wp.id, party_name)
+
+        # 기존 artifact_ids 유지
+        existing_ids: list[str] = []
+        if proc and proc.evidence_artifact_ids:
+            try:
+                existing_ids = json.loads(proc.evidence_artifact_ids)
+            except Exception:
+                existing_ids = []
+
+        # 파일 저장 + 추출
+        new_ids: list[str] = []
+        extracts = []
+        for f in files:
+            if not f.filename:
+                continue
+            file_bytes = f.read()
+            art = art_repo.save_bytes(
+                project_id=pid,
+                kind="evidence",
+                content=file_bytes,
+                filename=f.filename,
+                workpaper_id=wp.id,
+            )
+            new_ids.append(art.id)
+
+            # 자동 추출
+            stored_path = Path(art.stored_path)
+            ex = extract_evidence(stored_path)
+            extracts.append({
+                "artifact_id": art.id,
+                "filename": f.filename,
+                "document_type": ex.document_type,
+                "extracted_amount": ex.extracted_amount,
+                "extracted_currency": ex.extracted_currency,
+                "extracted_date": ex.extracted_date.isoformat() if ex.extracted_date else None,
+                "extraction_method": ex.extraction_method,
+                "confidence": ex.confidence,
+            })
+
+        all_ids = existing_ids + new_ids
+
+        # 커버리지 계산
+        covered_amount = _compute_covered_amount(extracts)
+        coverage_ratio: float | None = None
+        if ledger_balance and ledger_balance > 0 and covered_amount is not None:
+            coverage_ratio = min(1.0, covered_amount / ledger_balance)
+
+        # 결론 자동 판정
+        conclusion = _auto_conclusion(coverage_ratio)
+
+        if proc is None:
+            # 신규 생성
+            # reason 추론: Step 5 pending 에서 조회
+            reason = _infer_reason(s, wp.id, party_name)
+            proc = proc_repo.create(
+                workpaper_id=wp.id,
+                party_name=party_name,
+                reason=reason,
+                ledger_balance=ledger_balance,
+                reply_balance=reply_balance,
+                difference=(ledger_balance - reply_balance) if (ledger_balance and reply_balance) else None,
+                procedure_type=procedure_type,
+                evidence_artifact_ids=all_ids,
+                covered_amount=covered_amount,
+                coverage_ratio=coverage_ratio,
+                conclusion=conclusion,
+                auditor_notes=auditor_notes or None,
+                status="pending",
+            )
+        else:
+            # 갱신
+            new_covered = (proc.covered_amount or 0.0) + (covered_amount or 0.0)
+            new_lb = ledger_balance or proc.ledger_balance
+            new_ratio: float | None = None
+            if new_lb and new_lb > 0:
+                new_ratio = min(1.0, new_covered / new_lb)
+            proc_repo.update(
+                proc.id,
+                evidence_artifact_ids=all_ids,
+                covered_amount=new_covered,
+                coverage_ratio=new_ratio,
+                conclusion=_auto_conclusion(new_ratio),
+                procedure_type=procedure_type or proc.procedure_type,
+                auditor_notes=auditor_notes or proc.auditor_notes,
+            )
+
+        _audit(s, "step5_upload_evidence", "AlternativeProcedure", proc.id, pid,
+               after={
+                   "party_name": party_name,
+                   "files": len(new_ids),
+                   "covered_amount": covered_amount,
+                   "coverage_ratio": coverage_ratio,
+                   "conclusion": conclusion,
+               })
+
+        return jsonify({
+            "procedure_id": proc.id,
+            "party_name": party_name,
+            "evidence_count": len(all_ids),
+            "extracts": extracts,
+            "covered_amount": covered_amount,
+            "coverage_ratio": coverage_ratio,
+            "conclusion": conclusion,
+        }), 201
+
+
+@app.route("/api/project/<pid>/step5/upload-folder", methods=["POST"])
+def step5_upload_folder(pid: str):
+    """BC-N 폴더 zip 업로드 OR 다중 파일 (폴더명 자동 매핑).
+
+    multipart form-data:
+      folder_zip     — zip 파일 (선택)
+      files[]        — 다중 파일 (선택; folder_zip 없을 때)
+      folder_name    — 폴더명 힌트 (예: BC-14_New Future International Trade Co)
+      kind           — receivable | payable
+    """
+    import zipfile, tempfile
+
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        kind = request.form.get("kind", "receivable")
+        folder_name_hint = request.form.get("folder_name", "")
+
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        art_repo = ArtifactRepository(s)
+        proc_repo = AlternativeProcedureRepository(s)
+
+        from src.infrastructure.evidence.aggregator import aggregate_folder, parse_bc_folder_name
+        from src.infrastructure.evidence.extractor import extract_evidence
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        results: list[dict] = []
+
+        try:
+            zip_file = request.files.get("folder_zip")
+            if zip_file and zip_file.filename:
+                # zip 해제
+                zip_bytes = zip_file.read()
+                zip_path = tmp_dir / "upload.zip"
+                zip_path.write_bytes(zip_bytes)
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    zf.extractall(tmp_dir / "extracted")
+                work_dir = tmp_dir / "extracted"
+            else:
+                # 다중 파일 → 임시 폴더에 저장
+                work_dir = tmp_dir / (folder_name_hint or "evidence")
+                work_dir.mkdir(parents=True, exist_ok=True)
+                for f in request.files.getlist("files[]"):
+                    if f.filename:
+                        dst = work_dir / f.filename
+                        dst.write_bytes(f.read())
+
+            # BC-{N} 하위 폴더 탐색
+            bc_folders = [d for d in work_dir.iterdir() if d.is_dir() and d.name.startswith("BC-")]
+            if not bc_folders:
+                bc_folders = [work_dir]  # 단일 폴더
+
+            for folder in bc_folders:
+                bc_nums, party = parse_bc_folder_name(folder.name)
+                if not party and folder_name_hint:
+                    _, party = parse_bc_folder_name(folder_name_hint)
+                if not party:
+                    party = folder.name
+
+                agg = aggregate_folder(folder, party_name=party)
+
+                # 각 파일을 Artifact 저장
+                artifact_ids: list[str] = []
+                for ex in agg.extracts:
+                    if ex.file_path.exists():
+                        art = art_repo.save_file(
+                            project_id=pid,
+                            kind="evidence",
+                            source_path=ex.file_path,
+                            filename=ex.file_path.name,
+                            workpaper_id=wp.id,
+                        )
+                        artifact_ids.append(art.id)
+
+                # AlternativeProcedure 생성/갱신
+                ledger_balance = _f(request.form.get("ledger_balance"))
+                coverage_ratio: float | None = None
+                if ledger_balance and ledger_balance > 0 and agg.total_amount:
+                    coverage_ratio = min(1.0, agg.total_amount / ledger_balance)
+
+                conclusion = _auto_conclusion(coverage_ratio)
+                reason = _infer_reason(s, wp.id, party)
+
+                proc = proc_repo.get_by_party(wp.id, party)
+                if proc is None:
+                    proc = proc_repo.create(
+                        workpaper_id=wp.id,
+                        party_name=party,
+                        reason=reason,
+                        ledger_balance=ledger_balance,
+                        procedure_type="auto_detected",
+                        evidence_artifact_ids=artifact_ids,
+                        covered_amount=agg.total_amount,
+                        coverage_ratio=coverage_ratio,
+                        conclusion=conclusion,
+                        status="pending",
+                    )
+                else:
+                    proc_repo.update(
+                        proc.id,
+                        evidence_artifact_ids=artifact_ids,
+                        covered_amount=agg.total_amount,
+                        coverage_ratio=coverage_ratio,
+                        conclusion=conclusion,
+                    )
+
+                _audit(s, "step5_upload_folder", "AlternativeProcedure", proc.id, pid,
+                       after={
+                           "party_name": party,
+                           "bc_numbers": agg.bc_numbers,
+                           "total_amount": agg.total_amount,
+                           "total_currency": agg.total_currency,
+                           "success_count": agg.success_count,
+                           "failed_count": agg.failed_count,
+                       })
+
+                results.append({
+                    "procedure_id": proc.id,
+                    "party_name": party,
+                    "bc_numbers": agg.bc_numbers,
+                    "total_files": agg.total_files,
+                    "success_count": agg.success_count,
+                    "failed_count": agg.failed_count,
+                    "total_amount": agg.total_amount,
+                    "total_currency": agg.total_currency,
+                    "amounts_by_currency": agg.amounts_by_currency,
+                    "conclusion": conclusion,
+                })
+
+        finally:
+            import shutil
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        return jsonify(results), 201
+
+
+@app.route("/api/project/<pid>/step5/procedures", methods=["GET"])
+def step5_list_procedures(pid: str):
+    """AlternativeProcedure 일람."""
+    kind = request.args.get("kind", "receivable")
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        proc_repo = AlternativeProcedureRepository(s)
+        procs = proc_repo.list_by_workpaper(wp.id)
+        return jsonify([_serialize_procedure(p) for p in procs])
+
+
+@app.route("/api/project/<pid>/step5/procedure/<proc_id>", methods=["PATCH"])
+def step5_patch_procedure(pid: str, proc_id: str):
+    """AlternativeProcedure 수동 보정.
+
+    body: {procedure_type, covered_amount, conclusion, auditor_notes, status}
+    """
+    data = request.json or {}
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+
+        proc_repo = AlternativeProcedureRepository(s)
+        proc = proc_repo.update(proc_id, **{
+            k: v for k, v in data.items()
+            if k in ("procedure_type", "covered_amount", "conclusion",
+                     "auditor_notes", "status", "reason",
+                     "ledger_balance", "reply_balance")
+        })
+        if proc is None:
+            return jsonify({"error": "procedure not found"}), 404
+
+        # coverage_ratio 재계산
+        if proc.ledger_balance and proc.ledger_balance > 0 and proc.covered_amount:
+            proc.coverage_ratio = min(1.0, proc.covered_amount / proc.ledger_balance)
+
+        _audit(s, "step5_manual_update", "AlternativeProcedure", proc_id, pid,
+               after={k: v for k, v in data.items()})
+
+        return jsonify(_serialize_procedure(proc))
+
+
+@app.route("/api/project/<pid>/step5/parse-reconciliation", methods=["POST"])
+def step5_parse_reconciliation(pid: str):
+    """불일치 소명 xlsx 업로드 → 자동 인식.
+
+    multipart: file=<xlsx>
+    """
+    import tempfile
+    from src.infrastructure.evidence.reconciliation_parser import parse_reconciliation_xlsx
+
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        f = request.files.get("file")
+        if not f or not f.filename:
+            return jsonify({"error": "파일 없음"}), 400
+
+        kind = request.form.get("kind", "payable")
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        art_repo = ArtifactRepository(s)
+
+        # Artifact 저장
+        file_bytes = f.read()
+        art = art_repo.save_bytes(
+            project_id=pid,
+            kind="reconciliation",
+            content=file_bytes,
+            filename=f.filename,
+            workpaper_id=wp.id,
+        )
+
+        # 파싱
+        try:
+            sheets = parse_reconciliation_xlsx(Path(art.stored_path))
+        except Exception as e:
+            return jsonify({"error": f"파싱 실패: {e}"}), 400
+
+        summary = sheets.summary_by_party()
+
+        _audit(s, "step5_parse_reconciliation", "Artifact", art.id, pid,
+               after={
+                   "filename": f.filename,
+                   "mismatch_rows": len(sheets.mismatch_rows),
+                   "party_sheets": len(sheets.party_details),
+                   "parties": list(summary.keys()),
+               })
+
+        return jsonify({
+            "artifact_id": art.id,
+            "mismatch_rows": len(sheets.mismatch_rows),
+            "party_sheets": list(sheets.party_details.keys()),
+            "summary_by_party": {
+                party: {
+                    "currency": v.get("currency"),
+                    "sent_amount": v.get("sent_amount"),
+                    "reply_amount": v.get("reply_amount"),
+                    "difference": v.get("difference"),
+                    "reasons": v.get("reasons", []),
+                    "account_types": v.get("account_types", []),
+                    "detail_rows": len(sheets.party_details.get(party, [])),
+                }
+                for party, v in summary.items()
+            },
+            "mismatch_detail": [
+                {
+                    "party_name": r.party_name,
+                    "currency": r.currency,
+                    "account_type": r.account_type,
+                    "sent_amount": r.sent_amount,
+                    "reply_amount": r.reply_amount,
+                    "difference": r.difference,
+                    "reason": r.reason,
+                    "matched": r.matched,
+                }
+                for r in sheets.mismatch_rows
+            ],
+        })
+
+
+@app.route("/api/project/<pid>/step5/mark-done", methods=["POST"])
+def step5_mark_done(pid: str):
+    """Step 5 완료 기록."""
+    data = request.json or {}
+    kind = data.get("kind", "receivable")
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        wp.step5_completed_at = datetime.now(timezone.utc)
+        wp.updated_at = datetime.now(timezone.utc)
+        _audit(s, "step5_mark_done", "Workpaper", wp.id, pid, after={"kind": kind})
+        return jsonify({"ok": True, "step5_completed_at": wp.step5_completed_at.isoformat()})
+
+
+# ─────────────────────────────────────────────────────────────
 # 9. AuditTrail 조회
 # ─────────────────────────────────────────────────────────────
 @app.route("/api/project/<pid>/audit-trail")
@@ -1029,6 +1533,89 @@ def _serialize_reply(reply, warnings: list | None = None) -> dict:
         "created_at": reply.created_at.isoformat() if reply.created_at else None,
         "warnings": warnings or [],
     }
+
+
+def _serialize_procedure(proc) -> dict:
+    import json as _json
+    ids: list[str] = []
+    if proc.evidence_artifact_ids:
+        try:
+            ids = _json.loads(proc.evidence_artifact_ids)
+        except Exception:
+            ids = []
+    return {
+        "id": proc.id,
+        "workpaper_id": proc.workpaper_id,
+        "party_name": proc.party_name,
+        "reason": proc.reason,
+        "ledger_balance": proc.ledger_balance,
+        "reply_balance": proc.reply_balance,
+        "difference": proc.difference,
+        "procedure_type": proc.procedure_type,
+        "evidence_artifact_ids": ids,
+        "evidence_count": len(ids),
+        "covered_amount": proc.covered_amount,
+        "coverage_ratio": proc.coverage_ratio,
+        "conclusion": proc.conclusion,
+        "auditor_notes": proc.auditor_notes,
+        "status": proc.status,
+        "created_at": proc.created_at.isoformat() if proc.created_at else None,
+        "updated_at": proc.updated_at.isoformat() if proc.updated_at else None,
+    }
+
+
+def _compute_covered_amount(extracts: list[dict]) -> float | None:
+    """추출 결과 목록에서 KRW 금액 합산 (통화 혼재 시 KRW 우선)."""
+    amounts_by_cur: dict[str, float] = {}
+    for ex in extracts:
+        amt = ex.get("extracted_amount")
+        cur = ex.get("extracted_currency") or "KRW"
+        if amt and amt > 0:
+            amounts_by_cur[cur] = amounts_by_cur.get(cur, 0.0) + float(amt)
+    if not amounts_by_cur:
+        return None
+    if "KRW" in amounts_by_cur:
+        return amounts_by_cur["KRW"]
+    return sum(amounts_by_cur.values())
+
+
+def _auto_conclusion(coverage_ratio: float | None) -> str:
+    """커버리지 비율 → 결론 자동 판정.
+
+    감사실무 기준:
+      ≥ 0.95 → 충분
+      ≥ 0.50 → 부분
+      < 0.50 → 미해소
+      None   → needs_review
+    """
+    if coverage_ratio is None:
+        return "needs_review"
+    if coverage_ratio >= 0.95:
+        return "충분"
+    if coverage_ratio >= 0.50:
+        return "부분"
+    return "미해소"
+
+
+def _infer_reason(session, workpaper_id: str, party_name: str) -> str:
+    """ConfirmationReply 에서 거래처 reason 추론.
+
+    매칭된 회신이 없으면 → "미회신"
+    mismatch 있으면 → "차이"
+    """
+    from sqlalchemy import select
+    from src.infrastructure.persistence.models import ConfirmationReply
+    stmt = (
+        select(ConfirmationReply)
+        .where(ConfirmationReply.workpaper_id == workpaper_id)
+        .where(ConfirmationReply.party_name_matched == party_name)
+    )
+    reply = session.execute(stmt).scalar_one_or_none()
+    if reply is None:
+        return "미회신"
+    if reply.status == "mismatch":
+        return "차이"
+    return "기타"
 
 
 def _serialize_result(result, params):

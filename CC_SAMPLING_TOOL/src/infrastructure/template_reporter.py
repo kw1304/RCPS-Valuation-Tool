@@ -65,6 +65,20 @@ class ReportContext:
     workpaper_no_prefix: str = "C100"
 
 
+@dataclass
+class AlternativeProcedureEntry:
+    """대체적 절차 시트 기입용 데이터 클래스."""
+    party_name: str
+    reason: str           # "미회신" | "차이" | "회신거부" | "기타"
+    ledger_balance: float | None
+    procedure_type: str
+    evidence_names: list[str]       # 증빙 파일명 목록
+    covered_amount: float | None
+    coverage_ratio: float | None    # 0.0 ~ 1.0
+    conclusion: str
+    auditor_notes: str | None = None
+
+
 def build_template_report(
     out_path: str | Path,
     ctx: ReportContext,
@@ -75,6 +89,7 @@ def build_template_report(
     performance_materiality: float,
     population_amount: float,
     exclusion_rows: list[dict] | None = None,
+    alternative_procedures: list[AlternativeProcedureEntry] | None = None,
 ) -> None:
     """원본 7620 양식 그대로 채워서 출력"""
     out_path = Path(out_path)
@@ -106,7 +121,67 @@ def build_template_report(
     # Control sheet
     _fill_control_sheet(wb[SHEET_C100_CONTROL], ctx, decisions)
 
+    # 대체적 절차 시트 (있는 경우)
+    if alternative_procedures:
+        _fill_alternative_procedures(wb, ctx, alternative_procedures)
+
     wb.save(out_path)
+
+
+def _fill_alternative_procedures(
+    wb,
+    ctx: ReportContext,
+    procedures: list[AlternativeProcedureEntry],
+) -> None:
+    """대체적 절차 시트 자동 작성.
+
+    원본 템플릿에 "대체적 절차" 시트가 있으면 데이터를 채우고,
+    없으면 새 시트를 추가한다.
+    """
+    SHEET_NAME = "대체적 절차"
+
+    if SHEET_NAME in wb.sheetnames:
+        ws = wb[SHEET_NAME]
+    else:
+        ws = wb.create_sheet(SHEET_NAME)
+        # 헤더 작성
+        headers = ["No", "거래처명", "사유", "장부가", "절차유형",
+                   "증빙명세", "커버금액", "커버리지%", "결론", "감사인 메모"]
+        for i, h in enumerate(headers, 1):
+            cell = ws.cell(1, i, h)
+            cell.font = Font(bold=True, size=9)
+
+    # 데이터 시작행 탐색: 기존 내용 밑에 써야 할 수도 있으나
+    # Week 5에서는 R2부터 덮어씀 (단순 접근)
+    start_row = 2
+
+    for i, proc in enumerate(procedures):
+        r = start_row + i
+        ws.cell(r, 1, i + 1)
+        ws.cell(r, 2, proc.party_name)
+        ws.cell(r, 3, proc.reason)
+        ws.cell(r, 4, proc.ledger_balance)
+        ws.cell(r, 5, proc.procedure_type)
+        ws.cell(r, 6, "; ".join(proc.evidence_names) if proc.evidence_names else "")
+        ws.cell(r, 7, proc.covered_amount)
+        if proc.coverage_ratio is not None:
+            ws.cell(r, 8, f"{proc.coverage_ratio * 100:.1f}%")
+        ws.cell(r, 9, proc.conclusion)
+        ws.cell(r, 10, proc.auditor_notes or "")
+
+        # 결론별 배경색
+        _CONCLUSION_FILL = {
+            "충분":        PatternFill("solid", fgColor="D1FAE5"),
+            "부분":        PatternFill("solid", fgColor="FEF9C3"),
+            "미해소":      PatternFill("solid", fgColor="FEE2E2"),
+            "needs_review": PatternFill("solid", fgColor="F1F5F9"),
+        }
+        fill = _CONCLUSION_FILL.get(proc.conclusion)
+        if fill:
+            ws.cell(r, 9).fill = fill
+
+    # 헤더 행 회사명
+    ws.cell(1, 1).value = ctx.company_name if ws.cell(1, 1).value is None else ws.cell(1, 1).value
 
 
 # ─────────────────────────────────────────────────────────────

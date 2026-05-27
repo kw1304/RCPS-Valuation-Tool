@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from .models import Artifact, AuditTrail, ConfirmationReply, Project, Workpaper
+from .models import AlternativeProcedure, Artifact, AuditTrail, ConfirmationReply, Project, Workpaper
 
 _ROOT = Path(__file__).resolve().parents[3]  # CC_SAMPLING_TOOL/
 _ARTIFACT_BASE = _ROOT / "data" / "projects"
@@ -351,3 +351,94 @@ class ConfirmationReplyRepository:
             reply.notes = notes
         reply.updated_at = _now()
         return reply
+
+
+class AlternativeProcedureRepository:
+    """AlternativeProcedure CRUD — 대체적 절차 관리."""
+
+    def __init__(self, session: Session) -> None:
+        self._s = session
+
+    def create(
+        self,
+        workpaper_id: str,
+        party_name: str,
+        reason: str = "미회신",
+        ledger_balance: float | None = None,
+        reply_balance: float | None = None,
+        difference: float | None = None,
+        procedure_type: str = "기타",
+        evidence_artifact_ids: list[str] | None = None,
+        covered_amount: float | None = None,
+        coverage_ratio: float | None = None,
+        conclusion: str = "needs_review",
+        auditor_notes: str | None = None,
+        status: str = "pending",
+    ) -> AlternativeProcedure:
+        import json as _json
+        proc = AlternativeProcedure(
+            workpaper_id=workpaper_id,
+            party_name=party_name,
+            reason=reason,
+            ledger_balance=ledger_balance,
+            reply_balance=reply_balance,
+            difference=difference,
+            procedure_type=procedure_type,
+            evidence_artifact_ids=_json.dumps(evidence_artifact_ids or [], ensure_ascii=False),
+            covered_amount=covered_amount,
+            coverage_ratio=coverage_ratio,
+            conclusion=conclusion,
+            auditor_notes=auditor_notes,
+            status=status,
+        )
+        self._s.add(proc)
+        self._s.flush()
+        return proc
+
+    def get(self, proc_id: str) -> AlternativeProcedure | None:
+        return self._s.get(AlternativeProcedure, proc_id)
+
+    def list_by_workpaper(self, workpaper_id: str) -> list[AlternativeProcedure]:
+        from sqlalchemy import select
+        stmt = (
+            select(AlternativeProcedure)
+            .where(AlternativeProcedure.workpaper_id == workpaper_id)
+            .order_by(AlternativeProcedure.created_at)
+        )
+        return list(self._s.execute(stmt).scalars())
+
+    def get_by_party(self, workpaper_id: str, party_name: str) -> AlternativeProcedure | None:
+        from sqlalchemy import select
+        stmt = (
+            select(AlternativeProcedure)
+            .where(AlternativeProcedure.workpaper_id == workpaper_id)
+            .where(AlternativeProcedure.party_name == party_name)
+        )
+        return self._s.execute(stmt).scalar_one_or_none()
+
+    def update(
+        self,
+        proc_id: str,
+        **fields: Any,
+    ) -> AlternativeProcedure | None:
+        import json as _json
+        proc = self.get(proc_id)
+        if proc is None:
+            return None
+        allowed = {
+            "procedure_type", "covered_amount", "coverage_ratio",
+            "conclusion", "auditor_notes", "status",
+            "ledger_balance", "reply_balance", "difference", "reason",
+        }
+        for k, v in fields.items():
+            if k in allowed:
+                setattr(proc, k, v)
+        # evidence_artifact_ids 는 list 형태로도 업데이트 허용
+        if "evidence_artifact_ids" in fields:
+            ids = fields["evidence_artifact_ids"]
+            if isinstance(ids, list):
+                proc.evidence_artifact_ids = _json.dumps(ids, ensure_ascii=False)
+            else:
+                proc.evidence_artifact_ids = ids
+        proc.updated_at = _now()
+        return proc

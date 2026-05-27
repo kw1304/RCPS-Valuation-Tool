@@ -196,9 +196,16 @@ class ConfirmationReply(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
-# ── Week 5 placeholder ────────────────────────────────────────────────────
+# ── Week 5 ────────────────────────────────────────────────────────────────
 class AlternativeProcedure(Base):
-    """대체적 절차 (Week 5 구현 예정). 스키마 placeholder."""
+    """대체적 절차 — 미회신·차이 거래처에 대한 대체 증빙·절차 수행 결과.
+
+    reason: "미회신" | "차이" | "회신거부" | "기타"
+    procedure_type: "후속입금" | "매출증빙" | "발주서대조" | "후속송금" | "기타" | "auto_detected"
+    conclusion: "충분" | "부분" | "미해소" | "needs_review"
+    status: "pending" | "completed"
+    evidence_artifact_ids: JSON list of Artifact.id
+    """
 
     __tablename__ = "alternative_procedures"
 
@@ -206,10 +213,34 @@ class AlternativeProcedure(Base):
     workpaper_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("workpapers.id", ondelete="CASCADE"), nullable=False
     )
+
+    # 거래처 / 사유
     party_name: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    procedure_type: Mapped[str] = mapped_column(String(50), nullable=False, default="")
-    result: Mapped[str | None] = mapped_column(Text, nullable=True)
-    performed_by: Mapped[str] = mapped_column(String(200), nullable=False, default="")
-    performed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason: Mapped[str] = mapped_column(String(30), nullable=False, default="미회신")
+    # "미회신" | "차이" | "회신거부" | "기타"
+
+    # 금액
+    ledger_balance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reply_balance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    difference: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # 절차
+    procedure_type: Mapped[str] = mapped_column(String(50), nullable=False, default="기타")
+    # "후속입금" | "매출증빙" | "발주서대조" | "후속송금" | "기타" | "auto_detected"
+
+    # 증빙
+    evidence_artifact_ids: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list
+    covered_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
+    coverage_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)  # 0.0 ~ 1.0
+
+    # 결론
+    conclusion: Mapped[str] = mapped_column(String(30), nullable=False, default="needs_review")
+    # "충분" | "부분" | "미해소" | "needs_review"
+
+    # 기타
+    auditor_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    # "pending" | "completed"
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)

@@ -791,14 +791,143 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
     </section>
   </div>
 
-  <!-- Step 5: 차이·대체 (Week 4 구현 예정) -->
+  <!-- Step 5: 대체적 절차 -->
   <div class="step-view" id="step-view-5">
-    <div class="step-placeholder">
-      <div class="step-ph-badge">Step 5</div>
-      <h2>차이소명 및 대체적 절차</h2>
-      <p>미회신·차이 발생 거래처에 대해 대체적 절차를 수행하고 결론을 기록합니다.</p>
-      <small style="color:var(--text3);margin-top:8px">Week 4 구현 예정 — AlternativeProcedure</small>
-    </div>
+    <div class="two-col">
+      <!-- 좌측 폼 패널 -->
+      <div class="form-panel">
+
+        <!-- 섹션 1: 미회신·차이 자동 식별 -->
+        <section class="card" style="margin-bottom:1rem">
+          <h3 class="card-title">1. 미회신·차이 일람 자동 식별</h3>
+          <div class="field-row" style="align-items:center;gap:0.5rem;margin-bottom:0.75rem">
+            <label style="min-width:40px;font-size:0.78rem;color:var(--text2)">구분</label>
+            <select id="s5-kind" style="flex:1;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+              <option value="receivable">채권</option>
+              <option value="payable">채무</option>
+            </select>
+            <button class="btn-primary" style="padding:0.4rem 1rem;font-size:0.8rem" onclick="s5LoadPending()">자동 식별 실행</button>
+          </div>
+          <div id="s5-pending-area" style="display:none">
+            <table class="data-table" style="font-size:0.76rem">
+              <thead><tr>
+                <th>거래처명</th><th>사유</th><th>장부가</th><th>회신금액</th><th>차이</th>
+              </tr></thead>
+              <tbody id="s5-pending-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 섹션 2: 증빙 업로드 -->
+        <section class="card" style="margin-bottom:1rem">
+          <h3 class="card-title">2. 증빙 업로드</h3>
+          <div class="field" style="margin-bottom:0.6rem">
+            <label>거래처</label>
+            <select id="s5-party-sel" style="width:100%;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+              <option value="">— 선택 (자동 식별 먼저 실행) —</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0.6rem">
+            <label>절차 유형</label>
+            <select id="s5-proc-type" style="width:100%;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+              <option value="매출증빙">매출증빙 (Commercial Invoice)</option>
+              <option value="후속입금">후속입금 (입금내역)</option>
+              <option value="발주서대조">발주서대조 (PO)</option>
+              <option value="후속송금">후속송금</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0.6rem">
+            <label>증빙 파일 (다중 선택)</label>
+            <div id="s5-dropzone" style="border:2px dashed var(--border);border-radius:8px;padding:1.2rem;text-align:center;cursor:pointer;transition:border-color 0.15s;background:var(--bg3)"
+                 ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+                 ondragleave="this.style.borderColor='var(--border)'"
+                 ondrop="s5HandleDrop(event)"
+                 onclick="document.getElementById('s5-file-input').click()">
+              <div style="font-size:0.8rem;color:var(--text3)">파일을 끌어다 놓거나 클릭하여 선택</div>
+              <div style="font-size:0.72rem;color:var(--text3);margin-top:4px">xls / xlsx / pdf / png 지원</div>
+              <div id="s5-file-names" style="margin-top:8px;font-size:0.75rem;color:var(--accent)"></div>
+            </div>
+            <input id="s5-file-input" type="file" multiple accept=".xls,.xlsx,.pdf,.png,.jpg"
+                   style="display:none" onchange="s5UpdateFileNames(this.files)">
+          </div>
+          <div class="field" style="margin-bottom:0.6rem">
+            <label>감사인 메모</label>
+            <textarea id="s5-notes" rows="2" placeholder="증빙 내용 요약, 특이사항 등"
+                      style="width:100%;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;resize:vertical"></textarea>
+          </div>
+          <button class="btn-primary" style="width:100%;font-size:0.85rem" onclick="s5UploadEvidence()">업로드 + 자동 추출</button>
+          <div id="s5-upload-msg" style="margin-top:0.5rem;font-size:0.78rem;color:var(--text3)"></div>
+        </section>
+
+        <!-- 섹션 3: 불일치 소명 xlsx -->
+        <section class="card" style="margin-bottom:1rem">
+          <h3 class="card-title">3. 불일치 소명 xlsx</h3>
+          <div class="field" style="margin-bottom:0.6rem">
+            <label>소명 파일 (.xlsx)</label>
+            <input id="s5-recon-file" type="file" accept=".xlsx"
+                   style="width:100%;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+          </div>
+          <div class="field" style="margin-bottom:0.6rem">
+            <label>구분</label>
+            <select id="s5-recon-kind" style="width:100%;padding:0.38rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+              <option value="payable">채무</option>
+              <option value="receivable">채권</option>
+            </select>
+          </div>
+          <button class="btn-secondary" style="width:100%;font-size:0.85rem" onclick="s5ParseReconciliation()">자동 인식</button>
+          <div id="s5-recon-result" style="margin-top:0.75rem;font-size:0.78rem"></div>
+        </section>
+
+        <!-- Step 5 완료 -->
+        <button class="btn-primary" style="width:100%;padding:0.65rem;font-size:0.9rem;font-weight:700" onclick="s5MarkDone()">Step 5 완료</button>
+
+      </div><!-- /form-panel -->
+
+      <!-- 우측 결과 패널 -->
+      <div class="res-panel">
+
+        <!-- KPI 카드 -->
+        <div class="kpi-row" id="s5-kpi-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:1rem">
+          <div class="kpi-card" id="s5-kpi-pending">
+            <div class="kpi-label">미회신</div>
+            <div class="kpi-val" id="s5-k-not-replied">—</div>
+          </div>
+          <div class="kpi-card" id="s5-kpi-mismatch">
+            <div class="kpi-label">차이</div>
+            <div class="kpi-val" id="s5-k-mismatch">—</div>
+          </div>
+          <div class="kpi-card" id="s5-kpi-done">
+            <div class="kpi-label">절차 완료</div>
+            <div class="kpi-val" id="s5-k-done">—</div>
+          </div>
+          <div class="kpi-card" id="s5-kpi-unresolved">
+            <div class="kpi-label">미해소</div>
+            <div class="kpi-val" id="s5-k-unresolved">—</div>
+          </div>
+        </div>
+
+        <!-- 거래처별 일람표 -->
+        <div style="overflow-x:auto">
+          <table class="data-table" style="font-size:0.76rem;width:100%">
+            <thead><tr>
+              <th>거래처명</th>
+              <th>사유</th>
+              <th style="text-align:right">장부가</th>
+              <th style="text-align:right">커버금액</th>
+              <th style="text-align:right">커버리지%</th>
+              <th>절차유형</th>
+              <th>결론</th>
+              <th>증빙수</th>
+              <th>액션</th>
+            </tr></thead>
+            <tbody id="s5-proc-tbody">
+              <tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">자동 식별 후 표시됩니다</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div><!-- /res-panel -->
+    </div><!-- /two-col -->
   </div>
 
 </main>
@@ -1785,6 +1914,217 @@ async function loadTemplates() {
   } catch(e) { /* 실패 시 기본값 유지 */ }
 }
 
+// ── Step 5: 대체적 절차 ─────────────────────────────────────────────────
+
+let _s5PendingList = [];  // {party_name, reason, ledger_balance, ...}
+let _s5ProcList = [];     // AlternativeProcedure[]
+
+const _CONCLUSION_STYLE = {
+  "충분":        "background:#D1FAE5;color:#065F46;border-radius:4px;padding:1px 6px",
+  "부분":        "background:#FEF9C3;color:#854D0E;border-radius:4px;padding:1px 6px",
+  "미해소":      "background:#FEE2E2;color:#991B1B;border-radius:4px;padding:1px 6px",
+  "needs_review":"background:#F1F5F9;color:#475569;border-radius:4px;padding:1px 6px",
+};
+
+function _s5Fmt(n) {
+  if (n == null) return "—";
+  return Number(n).toLocaleString("ko-KR", {maximumFractionDigits:0});
+}
+function _s5Pct(r) {
+  if (r == null) return "—";
+  return (r * 100).toFixed(1) + "%";
+}
+
+async function s5LoadPending() {
+  const pid = STATE.project_id;
+  if (!pid) { alert("프로젝트를 먼저 선택하세요"); return; }
+  const kind = document.getElementById("s5-kind").value;
+  const r = await fetch(`/api/project/${pid}/step5/pending?kind=${kind}`);
+  if (!r.ok) { alert("조회 실패: " + r.status); return; }
+  const data = await r.json();
+  _s5PendingList = data.pending || [];
+
+  // Pending 표 렌더
+  const tbody = document.getElementById("s5-pending-tbody");
+  if (_s5PendingList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">미회신·차이 거래처 없음</td></tr>`;
+  } else {
+    tbody.innerHTML = _s5PendingList.map(p => `<tr>
+      <td>${p.party_name}</td>
+      <td><span style="${p.reason==='미회신'?'color:#1B64DA':'color:#D97706'}">${p.reason}</span></td>
+      <td style="text-align:right">${_s5Fmt(p.ledger_balance)}</td>
+      <td style="text-align:right">${p.reply_balance!=null?_s5Fmt(p.reply_balance):"—"}</td>
+      <td style="text-align:right">${p.difference!=null?_s5Fmt(p.difference):"—"}</td>
+    </tr>`).join("");
+  }
+  document.getElementById("s5-pending-area").style.display = "block";
+
+  // 거래처 드롭다운 갱신
+  const sel = document.getElementById("s5-party-sel");
+  sel.innerHTML = `<option value="">— 선택 —</option>` +
+    _s5PendingList.map(p => `<option value="${p.party_name}">${p.party_name} (${p.reason})</option>`).join("");
+
+  // KPI 갱신
+  document.getElementById("s5-k-not-replied").textContent = _s5PendingList.filter(p=>p.reason==="미회신").length;
+  document.getElementById("s5-k-mismatch").textContent = _s5PendingList.filter(p=>p.reason==="차이").length;
+
+  // 절차 목록도 갱신
+  await s5LoadProcedures();
+}
+
+async function s5LoadProcedures() {
+  const pid = STATE.project_id;
+  if (!pid) return;
+  const kind = document.getElementById("s5-kind").value;
+  const r = await fetch(`/api/project/${pid}/step5/procedures?kind=${kind}`);
+  if (!r.ok) return;
+  _s5ProcList = await r.json();
+  _s5RenderProcTable();
+
+  // KPI 계속
+  const done = _s5ProcList.filter(p => p.conclusion === "충분").length;
+  const unresolved = _s5ProcList.filter(p => p.conclusion === "미해소").length;
+  document.getElementById("s5-k-done").textContent = done;
+  document.getElementById("s5-k-unresolved").textContent = unresolved;
+}
+
+function _s5RenderProcTable() {
+  const tbody = document.getElementById("s5-proc-tbody");
+  if (_s5ProcList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">대체적 절차 결과 없음</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = _s5ProcList.map(p => {
+    const cStyle = _CONCLUSION_STYLE[p.conclusion] || _CONCLUSION_STYLE["needs_review"];
+    return `<tr id="s5-row-${p.id}">
+      <td style="font-weight:600">${p.party_name}</td>
+      <td>${p.reason || "—"}</td>
+      <td style="text-align:right">${_s5Fmt(p.ledger_balance)}</td>
+      <td style="text-align:right">${_s5Fmt(p.covered_amount)}</td>
+      <td style="text-align:right">${_s5Pct(p.coverage_ratio)}</td>
+      <td>${p.procedure_type || "—"}</td>
+      <td><span style="${cStyle}">${p.conclusion}</span></td>
+      <td style="text-align:center">${p.evidence_count || 0}</td>
+      <td>
+        <button style="font-size:0.7rem;padding:2px 6px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg3)"
+                onclick="s5EditProc('${p.id}','${p.conclusion}','${p.procedure_type}')">수정</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function s5EditProc(procId, conclusion, procType) {
+  const newConclusion = prompt("결론 변경\n(충분 / 부분 / 미해소 / needs_review)", conclusion);
+  if (!newConclusion) return;
+  const pid = STATE.project_id;
+  fetch(`/api/project/${pid}/step5/procedure/${procId}`, {
+    method: "PATCH",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ conclusion: newConclusion }),
+  }).then(r => r.json()).then(() => s5LoadProcedures());
+}
+
+function s5HandleDrop(event) {
+  event.preventDefault();
+  event.currentTarget.style.borderColor = "var(--border)";
+  const files = event.dataTransfer.files;
+  document.getElementById("s5-file-input").files = files;
+  s5UpdateFileNames(files);
+}
+
+function s5UpdateFileNames(files) {
+  const el = document.getElementById("s5-file-names");
+  if (!files || files.length === 0) { el.textContent = ""; return; }
+  el.textContent = Array.from(files).map(f => f.name).join(", ");
+}
+
+async function s5UploadEvidence() {
+  const pid = STATE.project_id;
+  if (!pid) { alert("프로젝트 선택 필요"); return; }
+  const party = document.getElementById("s5-party-sel").value;
+  if (!party) { alert("거래처를 선택하세요"); return; }
+  const kind = document.getElementById("s5-kind").value;
+  const files = document.getElementById("s5-file-input").files;
+  if (!files || files.length === 0) { alert("파일을 선택하세요"); return; }
+
+  const fd = new FormData();
+  fd.append("party_name", party);
+  fd.append("kind", kind);
+  fd.append("procedure_type", document.getElementById("s5-proc-type").value);
+  fd.append("auditor_notes", document.getElementById("s5-notes").value);
+  // ledger_balance 자동 주입
+  const pp = _s5PendingList.find(p => p.party_name === party);
+  if (pp) {
+    if (pp.ledger_balance != null) fd.append("ledger_balance", pp.ledger_balance);
+    if (pp.reply_balance != null)  fd.append("reply_balance", pp.reply_balance);
+  }
+  for (const f of files) fd.append("files[]", f);
+
+  const msgEl = document.getElementById("s5-upload-msg");
+  msgEl.textContent = "처리 중...";
+  const r = await fetch(`/api/project/${pid}/step5/upload-evidence`, { method:"POST", body:fd });
+  const data = await r.json();
+  if (!r.ok) { msgEl.style.color = "var(--red)"; msgEl.textContent = data.error || "오류"; return; }
+
+  msgEl.style.color = "var(--green)";
+  const pct = data.coverage_ratio != null ? ` (커버리지 ${(data.coverage_ratio*100).toFixed(1)}%)` : "";
+  msgEl.textContent = `완료 — 증빙 ${data.evidence_count}건, 결론: ${data.conclusion}${pct}`;
+
+  await s5LoadProcedures();
+}
+
+async function s5ParseReconciliation() {
+  const pid = STATE.project_id;
+  if (!pid) { alert("프로젝트 선택 필요"); return; }
+  const fileInput = document.getElementById("s5-recon-file");
+  if (!fileInput.files || fileInput.files.length === 0) { alert("xlsx 파일을 선택하세요"); return; }
+
+  const fd = new FormData();
+  fd.append("file", fileInput.files[0]);
+  fd.append("kind", document.getElementById("s5-recon-kind").value);
+
+  const r = await fetch(`/api/project/${pid}/step5/parse-reconciliation`, { method:"POST", body:fd });
+  const data = await r.json();
+  const el = document.getElementById("s5-recon-result");
+
+  if (!r.ok) {
+    el.innerHTML = `<span style="color:var(--red)">${data.error || "파싱 오류"}</span>`;
+    return;
+  }
+
+  const parties = Object.keys(data.summary_by_party || {});
+  let html = `<div style="color:var(--green);font-weight:600;margin-bottom:6px">인식 완료 — 불일치 ${data.mismatch_rows}행, 거래처 시트 ${data.party_sheets.length}개</div>`;
+  if (parties.length > 0) {
+    html += `<table class="data-table" style="font-size:0.73rem;width:100%">
+      <thead><tr><th>거래처명</th><th>통화</th><th style="text-align:right">발송금액</th><th style="text-align:right">회신금액</th><th style="text-align:right">차이</th><th>사유</th></tr></thead>
+      <tbody>`;
+    for (const [party, v] of Object.entries(data.summary_by_party)) {
+      html += `<tr>
+        <td>${party}</td>
+        <td>${v.currency || "—"}</td>
+        <td style="text-align:right">${_s5Fmt(v.sent_amount)}</td>
+        <td style="text-align:right">${_s5Fmt(v.reply_amount)}</td>
+        <td style="text-align:right">${_s5Fmt(v.difference)}</td>
+        <td>${(v.reasons||[]).join(", ") || "—"}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+  el.innerHTML = html;
+}
+
+async function s5MarkDone() {
+  const pid = STATE.project_id;
+  if (!pid) { alert("프로젝트 선택 필요"); return; }
+  const kind = document.getElementById("s5-kind").value;
+  const r = await fetch(`/api/project/${pid}/step5/mark-done`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({kind})
+  });
+  if (r.ok) { alert("Step 5 완료 처리됐습니다."); }
+}
+
 // Step 2 진입 시 거래처 목록 갱신
 const _origGoStep = goStep;
 function goStep(n) {
@@ -1792,6 +2132,7 @@ function goStep(n) {
   if (n === 2) { s2RefreshContacts(); }
   if (n === 3) { s3RefreshPreview(); loadTemplates(); }
   if (n === 4) { s4LoadReplies(); _auditLoaded = false; }
+  if (n === 5) { s5LoadProcedures(); }
 }
 
 // ── 초기화 ─────────────────────────────────────────────────
