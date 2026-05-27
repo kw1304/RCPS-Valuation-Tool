@@ -47,16 +47,17 @@ body {
 @media (max-width:768px){ .header{padding-left:0;min-height:0} }
 
 .header-left h1 {
-  font-size: clamp(0.75rem, 4vw, 1.5rem);
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.04em;
 }
+.header-left h1 .ac{color:var(--accent);font-weight:800}
 
 .header-left p {
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   color: var(--text3);
-  margin-top: 0.3rem;
+  margin-top: 0.2rem;
   font-weight: 400;
   letter-spacing: -0.01em;
 }
@@ -2374,5 +2375,15 @@ window.onload = () => {
   loadRates(todayString()); // 페이지 로드 시 오늘 날짜로 자동 로드
 };
 </script>
+<style>
+footer.legal{padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;line-height:1.4}
+footer.legal b{color:var(--text2);font-weight:600}
+footer.legal .right{text-align:right;flex:1;min-width:240px}
+@media (max-width:768px){footer.legal{flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px;line-height:1.35}footer.legal .right{text-align:left;min-width:0;width:100%}}
+</style>
+<footer class="legal">
+  <span><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</span>
+  <span class="right">© 2026 Woongcpa</span>
+</footer>
 </body>
 </html>
