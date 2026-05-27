@@ -279,6 +279,10 @@ body.tool-mode footer.legal{display:none}
           <span>RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델</span>
           <span class="tag ready">사용 가능</span>
         </a>
+        <a class="tool-item" href="#tool=irs" data-tool="irs">
+          <span>IRS Valuation Tool · 이자율스왑</span>
+          <span class="tag ready">사용 가능</span>
+        </a>
       </div>
     </div>
 
@@ -352,11 +356,17 @@ const IS_LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
 const TS_HOST  = 'wat.taild5874c.ts.net';
 const URL_RCPS = IS_LOCAL ? 'http://127.0.0.1:5000/' : `https://${TS_HOST}:8443/`;
 const URL_JET  = IS_LOCAL ? 'http://127.0.0.1:5050/' : `https://${TS_HOST}:10000/`;
+const URL_IRS  = 'https://irs-tool.onrender.com/';
 const TOOLS = {
   'rcps-dcf': {
     name: 'RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델',
     category: 'Valuation',
     url: URL_RCPS,
+  },
+  'irs': {
+    name: 'IRS Valuation Tool · 이자율스왑',
+    category: 'Valuation',
+    url: URL_IRS,
   },
   'jet': {
     name: 'JET Tool · Journal Entry Test',
