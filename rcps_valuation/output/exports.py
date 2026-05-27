@@ -6,54 +6,74 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from datetime import datetime
 
-# ── 공통 스타일 ────────────────────────────────────────────────
-_BORDER = Border(left=Side(style="thin", color="DDDDDD"),
-                 right=Side(style="thin", color="DDDDDD"),
-                 top=Side(style="thin", color="DDDDDD"),
-                 bottom=Side(style="thin", color="DDDDDD"))
-_NAVY = "1A365D"
-_BLUE = "3182F6"
-_LIGHT = "EBF8FF"
-_ALT = "F7FAFC"
+# ── 토스(Toss) 디자인 토큰 ─────────────────────────────────────
+_BLUE       = "3182F6"   # Toss primary blue
+_BLUE_LIGHT = "E8F3FF"   # light blue bg
+_INK        = "191F28"   # body
+_INK_2      = "4E5968"   # secondary
+_INK_3      = "8B95A1"   # muted
+_BG_GRAY    = "F2F4F6"
+_BG_GRAY_2  = "F9FAFB"   # zebra
+_BORDER_C   = "E5E8EB"
+
+_BORDER = Border(left=Side(style="thin", color=_BORDER_C),
+                 right=Side(style="thin", color=_BORDER_C),
+                 top=Side(style="thin", color=_BORDER_C),
+                 bottom=Side(style="thin", color=_BORDER_C))
+
+# 호환 alias (구코드 색상 참조)
+_NAVY = _BLUE
+_LIGHT = _BLUE_LIGHT
+_ALT = _BG_GRAY_2
+
+FONT = "맑은 고딕"
 
 
 def _cell(ws, r, c, val, *, bold=False, bg=None, fmt=None, align="left", color=None, size=10):
     cell = ws.cell(row=r, column=c, value=val)
-    kw = {"name": "맑은 고딕", "bold": bold, "size": size}
-    if color: kw["color"] = color
+    kw = {"name": FONT, "bold": bold, "size": size, "color": (color or _INK)}
     cell.font = Font(**kw)
     if bg: cell.fill = PatternFill(fill_type="solid", fgColor=bg)
     if fmt: cell.number_format = fmt
-    cell.alignment = Alignment(horizontal=align, vertical="center", wrap_text=False)
+    cell.alignment = Alignment(horizontal=align, vertical="center", wrap_text=False,
+                               indent=1 if align=="left" else 0)
     cell.border = _BORDER
     return cell
 
 
 def _hdr(ws, r, c, val):
+    """토스 테이블 컬럼 헤더: 회색 bg + 보조 텍스트색."""
     cell = ws.cell(row=r, column=c, value=val)
-    cell.font = Font(name="맑은 고딕", bold=True, size=10, color="FFFFFF")
-    cell.fill = PatternFill(fill_type="solid", fgColor=_NAVY)
+    cell.font = Font(name=FONT, bold=True, size=10, color=_INK_2)
+    cell.fill = PatternFill(fill_type="solid", fgColor=_BG_GRAY)
     cell.alignment = Alignment(horizontal="center", vertical="center")
-    cell.border = Border(left=Side(style="thin", color="FFFFFF"),
-                         right=Side(style="thin", color="FFFFFF"),
-                         top=Side(style="thin", color="FFFFFF"),
-                         bottom=Side(style="thin", color="FFFFFF"))
+    side_l = Side(style="thin", color=_BORDER_C)
+    side_b = Side(style="medium", color=_BORDER_C)
+    cell.border = Border(left=side_l, right=side_l, top=side_l, bottom=side_b)
     return cell
 
 
-def _title(ws, text, span_cols, height=32):
+def _title(ws, text, span_cols, height=44):
+    """토스 페이지 타이틀 바: blue bg + white text, 왼쪽 정렬 + 들여쓰기."""
     ws.row_dimensions[1].height = height
     t = ws.cell(row=1, column=1, value=text)
-    t.font = Font(name="맑은 고딕", bold=True, size=14, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor=_NAVY)
-    t.alignment = Alignment(horizontal="center", vertical="center")
+    t.font = Font(name=FONT, bold=True, size=16, color="FFFFFF")
+    t.fill = PatternFill(fill_type="solid", fgColor=_BLUE)
+    t.alignment = Alignment(horizontal="left", vertical="center", indent=2)
     end = chr(ord('A') + span_cols - 1)
     ws.merge_cells(f"A1:{end}1")
 
 
-def _section(ws, r, text):
+def _section(ws, r, text, span_cols=None):
+    """토스 섹션 카드 헤더: 연파랑 bg + 진한 파랑 텍스트."""
+    ws.row_dimensions[r].height = 28
     cell = ws.cell(row=r, column=1, value=text)
-    cell.font = Font(name="맑은 고딕", bold=True, size=11, color=_NAVY)
+    cell.font = Font(name=FONT, bold=True, size=12, color=_BLUE)
+    cell.fill = PatternFill(fill_type="solid", fgColor=_BLUE_LIGHT)
+    cell.alignment = Alignment(horizontal="left", vertical="center", indent=2)
+    if span_cols:
+        end = chr(ord('A') + span_cols - 1)
+        ws.merge_cells(f"A{r}:{end}{r}")
 
 
 # ══════════════════════════════════════════════════════════════

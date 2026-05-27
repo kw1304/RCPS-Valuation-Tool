@@ -4,6 +4,39 @@ from openpyxl.utils import get_column_letter
 from datetime import datetime
 
 
+# ════════════════════════════════════════════════════════════════════
+# 토스(Toss) 디자인 토큰 — 평가법인 보고서 스타일
+# ════════════════════════════════════════════════════════════════════
+T_BLUE       = "3182F6"   # primary blue (Toss)
+T_BLUE_DARK  = "1B64DA"   # hover/strong
+T_BLUE_LIGHT = "E8F3FF"   # very light blue bg
+T_BLUE_SOFT  = "F4F9FF"   # softer blue bg (subtle)
+
+T_INK        = "191F28"   # body text (near-black)
+T_INK_2      = "4E5968"   # secondary text
+T_INK_3      = "8B95A1"   # muted text
+
+T_BG         = "FFFFFF"   # white
+T_BG_GRAY    = "F2F4F6"   # section gray bg
+T_BG_GRAY_2  = "F9FAFB"   # very subtle zebra
+T_BORDER     = "E5E8EB"   # soft border
+T_BORDER_2   = "F2F4F6"   # ghost border (zebra)
+
+# 의사결정 컬러 (토스 톤)
+T_DEC = {
+    "전환":     "DEF1DE",  # 녹: 보유자 전환
+    "만기상환": "FFE8CC",  # 주: 만기 보장 상환
+    "풋상환":   "FFF4D6",  # 노: 보유자 풋
+    "콜상환":   "FFE0E0",  # 적: 발행자 콜
+    "강제전환": "CCEEDC",  # 청록: KO
+    "보유":     "F2F4F6",  # 회: 보유
+    "상환":     "FFF4D6",  # 호환
+    "콜":       "FFE0E0",
+}
+
+FONT = "맑은 고딕"
+
+
 def generate_workpaper(params, initial_result, sensitivity_result, output_path,
                        tf_tree=None, gs_tree=None, eval_result=None, bdt_cross=None):
     wb = Workbook()
@@ -48,7 +81,7 @@ def _write_model_comparison(ws, eval_result, params):
     ws.row_dimensions[1].height = 32
     t = ws.cell(row=1, column=1, value="모형별 공정가치 비교 — TF / GS / MC")
     t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.fill = PatternFill(fill_type="solid", fgColor="3182F6")
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells("A1:E1")
 
@@ -91,7 +124,7 @@ def _write_model_comparison(ws, eval_result, params):
         _cell(ws, ri, 2, vtf if vtf is not None else "-", bold=bold, bg=bg, num_fmt="#,##0", align="right")
         _cell(ws, ri, 3, vgs if vgs is not None else "-", bg=bg, num_fmt="#,##0", align="right")
         _cell(ws, ri, 4, vmc if vmc is not None else "-", bg=bg, num_fmt="#,##0", align="right")
-        _cell(ws, ri, 5, note, bg=bg, color="718096")
+        _cell(ws, ri, 5, note, bg=bg, color="8B95A1")
 
     # 위험 분리 2-component 분해 — Tsiveriotis-Fernandes(1998) 학술 분해
     # TF·GS 각각 VE/VD 비교 (GS도 자체 E/B 산출 가능 시)
@@ -102,7 +135,7 @@ def _write_model_comparison(ws, eval_result, params):
     if tfE is not None and tfB is not None:
         r2c = 10
         ws.cell(row=r2c, column=1, value="■ 위험 분리 2-component 분해 (Tsiveriotis-Fernandes 1998)").font = \
-            Font(name="맑은 고딕", bold=True, size=10, color="0369A1")
+            Font(name="맑은 고딕", bold=True, size=10, color="3182F6")
         ws.merge_cells(start_row=r2c, start_column=1, end_row=r2c, end_column=5)
         # 헤더
         _hdr(ws, r2c + 1, 1, "구성요소")
@@ -122,11 +155,11 @@ def _write_model_comparison(ws, eval_result, params):
             _cell(ws, i, 1, k, bg=bg, bold=bold)
             _cell(ws, i, 2, vtf if vtf is not None else "-", bg=bg, num_fmt="#,##0", align="right", bold=bold)
             _cell(ws, i, 3, vgs if vgs is not None else "-", bg=bg, num_fmt="#,##0", align="right", bold=bold)
-            _cell(ws, i, 4, note, bg=bg, color="718096")
+            _cell(ws, i, 4, note, bg=bg, color="8B95A1")
             ws.merge_cells(start_row=i, start_column=4, end_row=i, end_column=5)
         ws.cell(row=r2c + 5, column=1,
                 value="※ Tsiveriotis-Fernandes(1998) 본래 분해. 위 3-way(채권/풋옵션/전환권)은 K-IFRS 1109.B4.3.5 발행자 무조건 의무 관점. 합계 = 동일 공정가치.")\
-            .font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
+            .font = Font(name="맑은 고딕", size=9, color="8B95A1", italic=True)
         ws.merge_cells(start_row=r2c + 5, start_column=1, end_row=r2c + 5, end_column=5)
 
     # 모형 메타정보
@@ -210,7 +243,7 @@ def _write_bdt_cross(ws, bdt):
     ws.row_dimensions[1].height = 32
     t = ws.cell(row=1, column=1, value="BDT 교차검증 — TF vs BDT (독립 금리트리)")
     t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.fill = PatternFill(fill_type="solid", fgColor="3182F6")
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells("A1:E1")
 
@@ -242,7 +275,7 @@ def _write_bdt_cross(ws, bdt):
         _cell(ws, ri, 2, vtf if vtf is not None else "-", bg=bg, num_fmt="#,##0", align="right")
         _cell(ws, ri, 3, vbdt if vbdt is not None else "-", bg=bg, num_fmt="#,##0", align="right")
         _cell(ws, ri, 4, dpct, bg=bg, align="center")
-        _cell(ws, ri, 5, note, bg=bg, color="718096")
+        _cell(ws, ri, 5, note, bg=bg, color="8B95A1")
 
     r0 = 9
     ws.cell(row=r0, column=1, value="■ BDT 가정").font = Font(name="맑은 고딕", bold=True, size=11)
@@ -277,14 +310,14 @@ def _write_tree(ws, title, tree, params=None):
     ws.row_dimensions[1].height = 32
     t = ws.cell(row=1, column=1, value=f"이항트리 — {title}")
     t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.fill = PatternFill(fill_type="solid", fgColor="3182F6")
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=min(n + 1, 14))
 
     p_str = "(커브모드)" if isinstance(p, list) else str(p)
     info = f"steps={steps}  |  u={u}  |  d={d}  |  p={p_str}  |  RCPS 주식수={rcps_shares:,}주  |  ※ 가치 그리드는 1주(1RCPS) 기준"
     c = ws.cell(row=2, column=1, value=info)
-    c.font = Font(name="맑은 고딕", size=9, color="718096")
+    c.font = Font(name="맑은 고딕", size=9, color="8B95A1")
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=min(n + 1, 14))
 
     # 그리드 정의 — 웹 화면(renderTreeGrids)과 동일 순서/라벨
@@ -335,7 +368,7 @@ def _write_tree(ws, title, tree, params=None):
         if elided:
             head_label += "  (중간 노드 생략 · 끝노드까지 표시)"
         c = ws.cell(row=r0, column=1, value=head_label)
-        c.font = Font(name="맑은 고딕", bold=True, size=11, color="1A365D")
+        c.font = Font(name="맑은 고딕", bold=True, size=11, color="3182F6")
         # 헤더 행: i (생략 시 …)
         _hdr(ws, r0 + 1, 1, "j \\ i")
         for col_off, i_step in enumerate(idx_list, start=2):
@@ -346,12 +379,12 @@ def _write_tree(ws, title, tree, params=None):
             if j == "…":
                 _hdr(ws, row_idx, 1, "⋮")
                 for col_off, i_step in enumerate(idx_list, start=2):
-                    _cell(ws, row_idx, col_off, "⋯", bg="F7FAFC", align="center", color="A0AEC0")
+                    _cell(ws, row_idx, col_off, "⋯", bg="F7FAFC", align="center", color="8B95A1")
                 continue
             _hdr(ws, row_idx, 1, str(j))
             for col_off, i_step in enumerate(idx_list, start=2):
                 if i_step == "…":
-                    _cell(ws, row_idx, col_off, "⋯", bg="F7FAFC", align="center", color="A0AEC0")
+                    _cell(ws, row_idx, col_off, "⋯", bg="F7FAFC", align="center", color="8B95A1")
                     continue
                 if j > i_step:
                     _cell(ws, row_idx, col_off, None, bg="F7FAFC")
@@ -402,40 +435,81 @@ def _write_tree(ws, title, tree, params=None):
         next_row = _grid_block(next_row, key, label, g) + 2
 
 
-def _cell(ws, row, col, value, bold=False, bg=None, num_fmt=None, align="left", color=None):
-    # value=None / "" 인 셀에 스타일만 적용 시 openpyxl이 t="n"(빈 numeric) 또는
-    # t="inlineStr"(빈 컨텐츠)로 직렬화 → Excel "복구 필요" 오류 유발.
-    # 해결: 명시적으로 단일 공백 " " 으로 inline-string 형태 보장
+def _cell(ws, row, col, value, bold=False, bg=None, num_fmt=None, align="left", color=None, size=10):
+    """토스 스타일 데이터 셀. 부드러운 보더(E5E8EB), 본문컬러 191F28, 11pt 기본."""
     if value is None or value == "":
         cell = ws.cell(row=row, column=col, value=" ")
     else:
         cell = ws.cell(row=row, column=col, value=value)
-    # 문자열이 '=' '+' '-' '@' 로 시작하면 openpyxl이 수식으로 직렬화 → Excel 손상 경고
-    # 텍스트로 강제: quotePrefix 활성화 + data_type 명시
     if isinstance(value, str) and value[:1] in ("=", "+", "-", "@"):
         cell.data_type = "s"
-    font_kwargs = dict(name="맑은 고딕", bold=bold, size=10)
-    if color:
-        font_kwargs["color"] = color
+    font_kwargs = dict(name=FONT, bold=bold, size=size, color=(color or T_INK))
     cell.font = Font(**font_kwargs)
     if bg:
         cell.fill = PatternFill(fill_type="solid", fgColor=bg)
     if num_fmt:
         cell.number_format = num_fmt
-    cell.alignment = Alignment(horizontal=align, vertical="center", wrap_text=False)
-    side = Side(style="thin", color="DDDDDD")
+    cell.alignment = Alignment(horizontal=align, vertical="center", wrap_text=False, indent=1 if align=="left" else 0)
+    side = Side(style="thin", color=T_BORDER)
     cell.border = Border(left=side, right=side, top=side, bottom=side)
     return cell
 
 
 def _hdr(ws, row, col, value):
+    """테이블 컬럼 헤더 — 연한 회색 bg + 진한 회색 텍스트 (토스 테이블 스타일)."""
     c = ws.cell(row=row, column=col, value=value)
-    c.font = Font(name="맑은 고딕", bold=True, size=10, color="FFFFFF")
-    c.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    c.font = Font(name=FONT, bold=True, size=10, color=T_INK_2)
+    c.fill = PatternFill(fill_type="solid", fgColor=T_BG_GRAY)
     c.alignment = Alignment(horizontal="center", vertical="center")
-    side = Side(style="thin", color="FFFFFF")
-    c.border = Border(left=side, right=side, top=side, bottom=side)
+    side_b = Side(style="medium", color=T_BORDER)
+    side_l = Side(style="thin", color=T_BORDER)
+    c.border = Border(left=side_l, right=side_l, top=side_l, bottom=side_b)
     return c
+
+
+def _title_bar(ws, row, text, span=6, height=44):
+    """페이지 최상단 타이틀 바 — 토스 블루 fill, 흰 텍스트."""
+    ws.row_dimensions[row].height = height
+    t = ws.cell(row=row, column=1, value=text)
+    t.font = Font(name=FONT, bold=True, size=16, color="FFFFFF")
+    t.fill = PatternFill(fill_type="solid", fgColor=T_BLUE)
+    t.alignment = Alignment(horizontal="left", vertical="center", indent=2)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=span)
+    return t
+
+
+def _section(ws, row, text, span=6, height=30):
+    """섹션 헤더 — 연파랑 bg + 파란 텍스트 (토스 카드 헤더)."""
+    ws.row_dimensions[row].height = height
+    c = ws.cell(row=row, column=1, value=text)
+    c.font = Font(name=FONT, bold=True, size=12, color=T_BLUE)
+    c.fill = PatternFill(fill_type="solid", fgColor=T_BLUE_LIGHT)
+    c.alignment = Alignment(horizontal="left", vertical="center", indent=2)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=span)
+    return c
+
+
+def _kv(ws, row, label, value, label_col=1, value_col=2, value_span=1, bold_value=False, num_fmt=None, value_color=None, label_width=None):
+    """key-value 한 줄 (토스 정보 행). 라벨 회색, 값 진한 검정."""
+    ws.row_dimensions[row].height = 24
+    # 라벨
+    L = ws.cell(row=row, column=label_col, value=label)
+    L.font = Font(name=FONT, size=10, color=T_INK_3)
+    L.fill = PatternFill(fill_type="solid", fgColor=T_BG)
+    L.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+    L.border = Border(bottom=Side(style="thin", color=T_BORDER_2))
+    # 값
+    V = ws.cell(row=row, column=value_col, value=value)
+    V.font = Font(name=FONT, bold=bold_value, size=11, color=(value_color or T_INK))
+    V.fill = PatternFill(fill_type="solid", fgColor=T_BG)
+    V.alignment = Alignment(horizontal="left", vertical="center")
+    V.border = Border(bottom=Side(style="thin", color=T_BORDER_2))
+    if num_fmt:
+        V.number_format = num_fmt
+    if value_span > 1:
+        ws.merge_cells(start_row=row, start_column=value_col,
+                       end_row=row, end_column=value_col + value_span - 1)
+    return L, V
 
 
 def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_cross=None):
@@ -451,13 +525,13 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
     ws.row_dimensions[1].height = 38
     t = ws.cell(row=1, column=2, value="RCPS 공정가치 평가의견")
     t.font = Font(name="맑은 고딕", bold=True, size=16, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.fill = PatternFill(fill_type="solid", fgColor="3182F6")
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells("B1:F1")
 
     row = 3
     # 1. 평가 개요
-    ws.cell(row=row, column=2, value="■ 평가 개요").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.cell(row=row, column=2, value="■ 평가 개요").font = Font(name="맑은 고딕", bold=True, size=12, color="3182F6")
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
     row += 1
     overview = [
@@ -478,7 +552,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
     row += 1
 
     # 2. 평가 결과 (4모형 요약)
-    ws.cell(row=row, column=2, value="■ 평가 결과").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.cell(row=row, column=2, value="■ 평가 결과").font = Font(name="맑은 고딕", bold=True, size=12, color="3182F6")
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
     row += 1
     # 모형별 fv
@@ -517,7 +591,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
         _cell(ws, row, 3, fv if fv else "-", bold=bold, bg=bg, num_fmt="#,##0", align="right")
         per_share = (fv / n_rcps) if fv else None
         _cell(ws, row, 4, per_share if per_share else "-", bold=bold, bg=bg, num_fmt="#,##0", align="right")
-        _cell(ws, row, 5, note, bg=bg, color="718096")
+        _cell(ws, row, 5, note, bg=bg, color="8B95A1")
         ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
         row += 1
     row += 1
@@ -531,14 +605,14 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
         )
         c = ws.cell(row=row, column=2, value=opinion)
         c.font = Font(name="맑은 고딕", bold=True, size=11, color="78350F")
-        c.fill = PatternFill(fill_type="solid", fgColor="FEF3C7")
+        c.fill = PatternFill(fill_type="solid", fgColor="FFF4D6")
         c.alignment = Alignment(wrap_text=True, vertical="center")
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
         ws.row_dimensions[row].height = 32
         row += 2
 
     # 3. 평가 절차
-    ws.cell(row=row, column=2, value="■ 평가 절차").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.cell(row=row, column=2, value="■ 평가 절차").font = Font(name="맑은 고딕", bold=True, size=12, color="3182F6")
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
     row += 1
     steps_list = [
@@ -559,7 +633,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
     row += 1
 
     # 4. 핵심 가정
-    ws.cell(row=row, column=2, value="■ 핵심 가정").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.cell(row=row, column=2, value="■ 핵심 가정").font = Font(name="맑은 고딕", bold=True, size=12, color="3182F6")
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
     row += 1
     assumptions = [
@@ -576,14 +650,14 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
         bg = "F7FAFC" if row % 2 == 0 else "FFFFFF"
         _cell(ws, row, 2, k, bold=True, bg=bg)
         _cell(ws, row, 3, v, bg=bg, align="right")
-        _cell(ws, row, 5, note, bg=bg, color="718096")
+        _cell(ws, row, 5, note, bg=bg, color="8B95A1")
         ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
         row += 1
     row += 1
 
     # 5. 분해 (메인 TF 기준)
     if tf and tf.get("fair_value"):
-        ws.cell(row=row, column=2, value="■ 공정가치 분해 (TF 메인 기준)").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+        ws.cell(row=row, column=2, value="■ 공정가치 분해 (TF 메인 기준)").font = Font(name="맑은 고딕", bold=True, size=12, color="3182F6")
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
         row += 1
         _hdr(ws, row, 2, "구성요소")
@@ -603,7 +677,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
             _cell(ws, row, 3, val if val else "-", bg=bg, num_fmt="#,##0", align="right")
             pct_v = (val / main_fv * 100) if val and main_fv else 0
             _cell(ws, row, 4, f"{pct_v:.1f}%", bg=bg, align="right")
-            _cell(ws, row, 5, note, bg=bg, color="718096")
+            _cell(ws, row, 5, note, bg=bg, color="8B95A1")
             ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
             row += 1
         # 합계
@@ -618,7 +692,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
         tfB = tf.get("bond_component")
         if tfE is not None and tfB is not None:
             ws.cell(row=row, column=2, value="■ TF 본래 2-component 분해 (위험 분리)").font = \
-                Font(name="맑은 고딕", bold=True, size=11, color="0369A1")
+                Font(name="맑은 고딕", bold=True, size=11, color="3182F6")
             ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
             row += 1
             _hdr(ws, row, 2, "구성요소")
@@ -636,12 +710,12 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
                 _cell(ws, row, 3, val, bg=bg, num_fmt="#,##0", align="right")
                 pct_v = (val / main_fv * 100) if val and main_fv else 0
                 _cell(ws, row, 4, f"{pct_v:.1f}%", bg=bg, align="right")
-                _cell(ws, row, 5, disc_rate, bg=bg, color="718096")
+                _cell(ws, row, 5, disc_rate, bg=bg, color="8B95A1")
                 ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
                 row += 1
             ws.cell(row=row, column=2, value="※ 위 ①②③ 흡수형은 K-IFRS 1109.B4.3.5 부채/자본 분리 관점, "
                                               "본 2-way는 전환·비전환 경로의 위험 분리 관점. 합계는 동일.")\
-                .font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
+                .font = Font(name="맑은 고딕", size=9, color="8B95A1", italic=True)
             ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
             row += 2
 
@@ -651,7 +725,7 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
     tv_method = dcf_input.get("tv_method_used") or dcf_input.get("tv_method")
     if exit_mult and tv_method and "multiple" in str(tv_method).lower():
         ws.cell(row=row, column=2, value="■ Exit Multiple 사용 — EV/EBITDA 인용").font = \
-            Font(name="맑은 고딕", bold=True, size=11, color="0369A1")
+            Font(name="맑은 고딕", bold=True, size=11, color="3182F6")
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
         row += 1
         for k, v, note in [
@@ -661,16 +735,16 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity, bdt_
             bg = "F7FAFC" if row % 2 == 0 else "FFFFFF"
             _cell(ws, row, 2, k, bg=bg)
             _cell(ws, row, 3, v, bg=bg, align="right")
-            _cell(ws, row, 5, note, bg=bg, color="718096")
+            _cell(ws, row, 5, note, bg=bg, color="8B95A1")
             ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
             row += 1
         ws.cell(row=row, column=2, value="※ K-IFRS 1113.93(d) — 비교회사 명단·DLOM 근거를 워크페이퍼에 기록 필수")\
-            .font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
+            .font = Font(name="맑은 고딕", size=9, color="8B95A1", italic=True)
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
         row += 2
 
     # 6. 측정 불확실성 (K-IFRS 1113.93(g)·(h)(ii))
-    ws.cell(row=row, column=2, value="■ 측정 불확실성").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
+    ws.cell(row=row, column=2, value="■ 측정 불확실성").font = Font(name="맑은 고딕", bold=True, size=12, color="3182F6")
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
     row += 1
     uncertainty_notes = [
@@ -696,12 +770,12 @@ def _write_cover(ws, params, initial):
 
     t = ws.cell(row=1, column=1, value="상환전환우선주(RCPS) 공정가치 평가 조서")
     t.font = Font(name="맑은 고딕", bold=True, size=14, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.fill = PatternFill(fill_type="solid", fgColor="3182F6")
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells("A1:D1")
 
-    ws.cell(row=2, column=1, value=f"작성일: {datetime.today().strftime('%Y-%m-%d')}").font = Font(name="맑은 고딕", size=9, color="718096")
-    ws.cell(row=2, column=3, value=f"평가기준일: {params.valuation_date}").font = Font(name="맑은 고딕", size=9, color="718096")
+    ws.cell(row=2, column=1, value=f"작성일: {datetime.today().strftime('%Y-%m-%d')}").font = Font(name="맑은 고딕", size=9, color="8B95A1")
+    ws.cell(row=2, column=3, value=f"평가기준일: {params.valuation_date}").font = Font(name="맑은 고딕", size=9, color="8B95A1")
 
     ws.cell(row=4, column=1, value="■ 발행 조건").font = Font(name="맑은 고딕", bold=True, size=11)
     for i, h in enumerate(["항목", "내용", "항목", "내용"], 1):
@@ -744,7 +818,7 @@ def _write_valuation(ws, initial):
 
     t = ws.cell(row=1, column=1, value="평가 결과")
     t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.fill = PatternFill(fill_type="solid", fgColor="3182F6")
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells("A1:C1")
 
@@ -792,7 +866,7 @@ def _write_sensitivity(ws, sensitivity):
 
     t = ws.cell(row=1, column=1, value="민감도 분석")
     t.font = Font(name="맑은 고딕", bold=True, size=13, color="FFFFFF")
-    t.fill = PatternFill(fill_type="solid", fgColor="1A365D")
+    t.fill = PatternFill(fill_type="solid", fgColor="3182F6")
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.merge_cells("A1:G1")
 
