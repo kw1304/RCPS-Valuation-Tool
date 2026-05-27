@@ -2299,7 +2299,7 @@ async function loadRates(dateStr) {
 
   try {
     const apiDate = dateStr.replace(/-/g, '');
-    const res  = await fetch(`https://irs-tool.onrender.com/api/rates?date=${apiDate}`);
+    const res  = await fetch(`/api/rates?date=${apiDate}`);
     const data = await res.json();
 
     if (!res.ok || !data.success) throw new Error(data.error || '데이터 없음');
