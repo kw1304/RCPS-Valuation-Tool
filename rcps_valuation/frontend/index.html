@@ -834,9 +834,7 @@ details.note-fold .note{margin-top:4px}
       <label style="display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--text2);cursor:pointer" title="현금흐름이 연중 균등 발생 가정. 활성 시 할인 기간이 0.5년 짧아져 EV 증가. 회계 표준 강제 X, 평가 컨벤션 선택.">
         <input type="checkbox" id="a_midyear" onchange="dcfCalc()"> Mid-year Convention
       </label>
-      <span id="dcf-warn" style="font-size:.7rem;color:var(--amber);font-weight:600"></span>
     </div>
-    <div id="dcf-steady" style="margin-top:6px;font-size:.72rem;line-height:1.5"></div>
     <div class="tv-method-row">
       <div class="field">
         <label for="a_tv_method">잔존가치(TV) 산정 방식</label>
@@ -2248,22 +2246,16 @@ function renderRCPS(data){
   if(interpEl && !r.mc_only){
     const notes=[];
     if(tfFv && gsFv){
-      const d=gsFv-tfFv, dp=Math.abs(d)/tfFv*100;
-      const dpSign = d/tfFv*100;
-      if(dp<1.0)notes.push(`<b style="color:#059669">✓</b> TF·GS 거의 일치 (${d>=0?'+':''}${Math.round(d).toLocaleString()}원, ${dp.toFixed(2)}%) — 두 모형 결과가 같은 자릿수, 공정가치 신뢰도 양호`);
-      else if(dp<6.0)notes.push(`TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — TF와 GS는 본질적으로 할인 가정 차이로 인해 결과가 갈림`);
-      else notes.push(`<b style="color:#B45309">⚠</b> TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — 차이가 매우 큼(±6% 초과). 콜·풋·강제전환 약정 활성 또는 가정 검토 필요`);
+      const d=gsFv-tfFv, dpSign = d/tfFv*100;
+      notes.push(`TF·GS 차이 ${d>=0?'+':''}${Math.round(d).toLocaleString()}원 (${dpSign.toFixed(2)}%) — TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩 할인. 모형 구조 차이로 결과가 갈림.`);
     }
     if(mcFv && tfFv && mc?.ci_lower!=null && mc?.ci_upper!=null){
-      if(tfFv>=mc.ci_lower && tfFv<=mc.ci_upper)
-        notes.push(`<b style="color:#059669">✓</b> MC 신뢰구간(95%) 안에 TF 결과 포함 — 통계적으로 일치`);
-      else
-        notes.push(`<b style="color:#B45309">⚠</b> TF 결과가 MC 95% 신뢰구간(${Math.round(mc.ci_lower).toLocaleString()}~${Math.round(mc.ci_upper).toLocaleString()}원) 밖 — 경로의존 옵션이 트리에 충분히 반영되지 않은 가능성, MC 채택 검토`);
+      const tfInCi = (tfFv>=mc.ci_lower && tfFv<=mc.ci_upper);
+      notes.push(`MC 95% 신뢰구간: ${Math.round(mc.ci_lower).toLocaleString()}~${Math.round(mc.ci_upper).toLocaleString()}원. TF 결과 ${Math.round(tfFv).toLocaleString()}원 — ${tfInCi?'구간 내':'구간 밖'}.`);
     }
     if(mc?.std_error && mcFv){
       const sePct=mc.std_error/mcFv*100;
-      if(sePct<0.5)notes.push(`MC 정밀도 양호: 표본오차 ${Math.round(mc.std_error).toLocaleString()}원 (공정가치의 ${sePct.toFixed(2)}%, 실무 권장 0.5% 이내)`);
-      else notes.push(`MC 표본오차 ${Math.round(mc.std_error).toLocaleString()}원 (${sePct.toFixed(2)}%) — 권장 0.5% 초과. 경로 수를 늘리면 더 정밀해집니다 (약 ${Math.ceil((sePct/0.5)**2)}배 경로 필요)`);
+      notes.push(`MC 표본오차(SE) ${Math.round(mc.std_error).toLocaleString()}원 (공정가치의 ${sePct.toFixed(2)}%) — 경로 수 증가 시 SE는 √n에 반비례 감소.`);
     }
     interpEl.innerHTML=notes.length?
       `<div style="margin-top:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:.75rem;line-height:1.7"><b style="color:#78350F">■ 모형 간 차이 자동 해석</b><br>${notes.map(n=>'· '+n).join('<br>')}</div>`:'';
@@ -2924,16 +2916,8 @@ function dcfCalc(){
   const nd=getMoney('a_nd'),shares=getMoney('a_shares')||1,nonop=getMoney('a_nonop'),nci=getMoney('a_nci');
   const pref=getMoney('a_pref')||0;  // 다른 시리즈 우선주 청산가치 (본인 RCPS는 순환참조 제외)
   const midyear=document.getElementById('a_midyear')?.checked||false;
-  // 영구성장률 합리성 안내 — 학술 정량 임계값 없어 제거 (2026-05-27)
-  const warnEl=document.getElementById('dcf-warn');
-  if(warnEl) warnEl.textContent = '';
-  // 정상상태 4조건 점검: 학술·표준에 정량 임계값 명시 없어 제거 (2026-05-27)
-  // 점검 개념 자체는 McKinsey/Damodaran 표준이나, 구체 임계값(2%p·3%p·20% 등)이
-  // 임의 추정이라 사용자가 워크페이퍼에 인용하기 부적절.
-  const ssEl=document.getElementById('dcf-steady');
-  if(ssEl){
-    ssEl.innerHTML = '';
-  }
+  // 영구성장률 합리성 안내·정상상태 4조건 점검 모두 제거 (2026-05-27)
+  // — 학술·표준에 정량 임계값 명시 없음. 임의 임계값 기반 경고 부적절.
   const calc=dcfYears.map((y,i)=>{
     const prev=i>0?dcfYears[i-1]:null;
     const rev_gr=prev&&prev.revenue?((y.revenue-prev.revenue)/prev.revenue*100):null;

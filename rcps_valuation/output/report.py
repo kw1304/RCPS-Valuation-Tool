@@ -160,37 +160,31 @@ def _interpret_model_diff(tf: dict, gs: dict, mc: dict) -> list:
     mc_ci_low = mc.get("ci_lower") if mc else None
     mc_ci_high = mc.get("ci_upper") if mc else None
 
-    # TF vs GS 차이
+    # TF vs GS 차이 — 임의 구간 임계값 제거 (2026-05-27)
     if tf_fv and gs_fv:
         diff = gs_fv - tf_fv
-        diff_pct = abs(diff) / tf_fv * 100
-        if diff_pct < 1.0:
-            notes.append(f"• TF·GS 거의 일치 ({diff:+,.0f}원, {diff_pct:.2f}%) — 두 모형이 같은 자릿수의 결과를 산출. 공정가치 신뢰도 양호.")
-        elif diff_pct < 3.0:
-            notes.append(f"• TF·GS 차이 {diff:+,.0f}원 ({diff_pct:.2f}%) — TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩. 두 모형의 구조 차이로 통상 수준의 차이.")
-        else:
-            notes.append(f"• TF·GS 차이 {diff:+,.0f}원 ({diff_pct:.2f}%) — 차이가 상대적으로 큼. 콜·풋·강제전환 같은 옵션 권리가 활성화된 경우 두 모형의 블렌딩 방식 차이가 확대됨.")
+        diff_pct = diff / tf_fv * 100
+        notes.append(
+            f"• TF·GS 차이 {diff:+,.0f}원 ({diff_pct:+.2f}%) — "
+            f"TF는 채권·주식 분리 할인, GS는 전환확률 가중 블렌딩 할인. "
+            f"모형 구조 차이로 결과가 갈림."
+        )
 
-    # MC와 TF·GS 비교 (SE/CI 활용)
-    if mc_fv and tf_fv:
-        mc_diff = mc_fv - tf_fv
-        if mc_ci_low is not None and mc_ci_high is not None:
-            if mc_ci_low <= tf_fv <= mc_ci_high:
-                notes.append(f"• MC 결과 {mc_fv:,.0f}원 (95% 신뢰구간 {mc_ci_low:,.0f}~{mc_ci_high:,.0f}원) — TF 결과가 신뢰구간 안에 있어 통계적으로 일치.")
-            else:
-                notes.append(f"• MC 결과 {mc_fv:,.0f}원 (95% CI {mc_ci_low:,.0f}~{mc_ci_high:,.0f}원) — TF 결과가 신뢰구간 밖. 경로의존 옵션이 트리에서 충분히 반영되지 않은 가능성. 경로수 증가 또는 MC 채택 검토.")
-        else:
-            notes.append(f"• MC 결과 {mc_fv:,.0f}원 (TF 대비 {mc_diff:+,.0f}원) — 시뮬레이션 표본오차 확인 필요.")
+    # MC 신뢰구간 표시 (판단 임계값 없이 정보만)
+    if mc_fv and tf_fv and mc_ci_low is not None and mc_ci_high is not None:
+        in_ci = mc_ci_low <= tf_fv <= mc_ci_high
+        notes.append(
+            f"• MC 95% 신뢰구간: {mc_ci_low:,.0f}~{mc_ci_high:,.0f}원. "
+            f"TF 결과 {tf_fv:,.0f}원 — {'구간 내' if in_ci else '구간 밖'}."
+        )
 
-    # SE 가이드
+    # SE 표시 (정량 임계값 없이 통계적 의미만)
     if mc_se and mc_fv:
         se_pct = mc_se / mc_fv * 100
-        if se_pct < 0.3:
-            notes.append(f"• MC 표본오차 {mc_se:,.0f}원 (공정가치의 {se_pct:.2f}%) — 매우 정밀.")
-        elif se_pct < 0.7:
-            notes.append(f"• MC 표본오차 {mc_se:,.0f}원 (공정가치의 {se_pct:.2f}%) — 실무 권장 수준(0.5% 이하)에 근접.")
-        else:
-            notes.append(f"• MC 표본오차 {mc_se:,.0f}원 (공정가치의 {se_pct:.2f}%) — 권장 0.5% 초과. 경로수를 늘리면 정밀도 향상 (현재 path 수의 {int((se_pct/0.5)**2)}배 권장).")
+        notes.append(
+            f"• MC 표본오차(SE) {mc_se:,.0f}원 (공정가치의 {se_pct:.2f}%) — "
+            f"경로 수 증가 시 SE는 √n에 반비례 감소."
+        )
 
     if not notes:
         notes.append("• 모형 비교 데이터 부족 — 평가 후 자동 생성됩니다.")
