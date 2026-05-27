@@ -754,6 +754,8 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
               <thead>
                 <tr>
                   <th style="width:160px">거래처명</th>
+                  <th style="width:55px">통화</th>
+                  <th style="width:60px">일치<br>선언</th>
                   <th class="num" style="width:130px">회신 잔액</th>
                   <th class="num" style="width:120px">장부가</th>
                   <th class="num" style="width:100px">차이</th>
@@ -915,19 +917,53 @@ footer.legal .right{text-align:right;flex:1;min-width:200px}
               <th>거래처명</th>
               <th>사유</th>
               <th style="text-align:right">장부가</th>
-              <th style="text-align:right">커버금액</th>
+              <th>통화</th>
+              <th style="text-align:right">원통화 금액</th>
+              <th style="text-align:right">KRW 환산</th>
               <th style="text-align:right">커버리지%</th>
-              <th>절차유형</th>
               <th>결론</th>
+              <th>override</th>
               <th>증빙수</th>
-              <th>액션</th>
             </tr></thead>
             <tbody id="s5-proc-tbody">
-              <tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">자동 식별 후 표시됩니다</td></tr>
+              <tr><td colspan="10" style="text-align:center;color:var(--text3);padding:16px">자동 식별 후 표시됩니다</td></tr>
             </tbody>
           </table>
         </div>
+
+        <!-- low_confidence_files 섹션 -->
+        <div id="s5-low-conf-section" style="display:none;margin-top:1rem">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--amber);margin-bottom:6px">
+            수동 검토 필요 파일 (신뢰도 &lt; 50%)
+          </div>
+          <div id="s5-low-conf-list" style="font-size:0.75rem;color:var(--text2)"></div>
+        </div>
       </div><!-- /res-panel -->
+
+      <!-- BC 폴더 매핑 확정 모달 -->
+      <div id="s5-match-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:var(--bg1);border-radius:12px;padding:1.5rem;min-width:340px;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+          <h3 style="margin:0 0 1rem;font-size:0.95rem">BC 폴더 거래처 매핑 확정</h3>
+          <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.75rem">
+            자동 매칭 실패 — 올바른 거래처를 선택하거나 직접 입력하세요.
+          </p>
+          <div style="margin-bottom:0.75rem">
+            <label style="font-size:0.78rem;color:var(--text3)">후보 거래처 (top-3)</label>
+            <select id="s5-match-candidates" style="width:100%;margin-top:4px;padding:0.35rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem">
+              <option value="">— 선택 —</option>
+            </select>
+          </div>
+          <div style="margin-bottom:1rem">
+            <label style="font-size:0.78rem;color:var(--text3)">직접 입력 (위 선택 덮어씀)</label>
+            <input id="s5-match-manual" type="text" placeholder="거래처명 직접 입력"
+              style="width:100%;margin-top:4px;padding:0.35rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;box-sizing:border-box">
+          </div>
+          <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+            <button style="padding:0.4rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;font-size:0.8rem;cursor:pointer" onclick="s5CloseMatchModal()">취소</button>
+            <button class="btn-primary" style="padding:0.4rem 1rem;font-size:0.8rem" onclick="s5ConfirmMatch()">확정</button>
+          </div>
+        </div>
+      </div>
     </div><!-- /two-col -->
   </div>
 
@@ -1706,19 +1742,48 @@ function s4RenderReplies(replies) {
     const diffPct = r.difference_pct != null ? (Math.abs(r.difference_pct) * 100).toFixed(2) + "%" : "-";
     const diffColor = r.difference && Math.abs(r.difference) > 0 ? "var(--amber)" : "var(--text3)";
     const extBal = r.extracted_balance != null ? r.extracted_balance : "";
-    const curTag = r.extracted_balance_currency && r.extracted_balance_currency !== "KRW"
-      ? `<span style="font-size:0.66rem;color:var(--text3);margin-left:3px">${r.extracted_balance_currency}</span>` : "";
+
+    // 통화 태그
+    const cur = r.original_currency || r.extracted_balance_currency || "KRW";
+    const curBadge = cur !== "KRW"
+      ? `<span style="font-size:0.68rem;font-weight:700;color:var(--accent);padding:1px 5px;background:var(--bg3);border-radius:4px">${cur}</span>`
+      : `<span style="font-size:0.68rem;color:var(--text3)">KRW</span>`;
+
+    // declared_match 배지
+    const dm = r.declared_match;
+    const dmBadge = dm === true
+      ? `<span style="font-size:0.68rem;font-weight:700;color:var(--green);padding:1px 5px;background:rgba(0,192,115,.1);border-radius:4px">일치</span>`
+      : dm === false
+        ? `<span style="font-size:0.68rem;font-weight:700;color:var(--amber);padding:1px 5px;background:rgba(255,176,0,.1);border-radius:4px">불일치</span>`
+        : `<span style="font-size:0.68rem;color:var(--text3)">-</span>`;
+
+    // decision_basis 툴팁
+    const dbasis = r.decision_basis || "";
+    const dbasisLabel = {
+      declared: "PDF 선언", per_account: "계정별대사", total: "합계대사", fallback: "폴백"
+    }[dbasis] || dbasis;
+
+    // top3 후보 드롭다운 (매칭 실패 시)
+    const top3 = r.top3_candidates || [];
+    const hasTop3 = top3.length > 0 && !r.party_name_matched;
+    const nameDisplay = hasTop3
+      ? `<select class="cell-select" id="s4-name-${r.id}" title="후보 선택"
+           onchange="s4MarkDirty('${r.id}','party_name_matched',this.value)">
+           <option value="">— 후보 선택 —</option>
+           ${top3.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join("")}
+         </select>`
+      : `<input class="cell-input" id="s4-name-${r.id}" value="${escHtml(r.party_name_matched || r.party_name_raw || '')}"
+           title="추출명: ${escHtml(r.party_name_raw || '')} | 판정근거: ${dbasisLabel}"
+           oninput="s4MarkDirty('${r.id}','party_name_matched',this.value)">`;
 
     tr.innerHTML = `
-      <td>
-        <input class="cell-input" id="s4-name-${r.id}" value="${escHtml(r.party_name_matched || r.party_name_raw || '')}"
-          title="추출명: ${escHtml(r.party_name_raw || '')}"
-          oninput="s4MarkDirty('${r.id}','party_name_matched',this.value)">
-      </td>
+      <td>${nameDisplay}</td>
+      <td style="text-align:center">${curBadge}</td>
+      <td style="text-align:center">${dmBadge}</td>
       <td class="num">
         <input class="cell-input" type="number" id="s4-bal-${r.id}" value="${extBal}"
           style="text-align:right;width:110px"
-          oninput="s4MarkDirty('${r.id}','extracted_balance',parseFloat(this.value)||null)">${curTag}
+          oninput="s4MarkDirty('${r.id}','extracted_balance',parseFloat(this.value)||null)">
       </td>
       <td class="num" style="color:var(--text2);font-weight:500">${ledBal}</td>
       <td class="num" style="color:${diffColor}">${diff}</td>
@@ -1937,7 +2002,7 @@ function _s5Pct(r) {
 }
 
 async function s5LoadPending() {
-  const pid = STATE.project_id;
+  const pid = STATE.currentProjectId;
   if (!pid) { alert("프로젝트를 먼저 선택하세요"); return; }
   const kind = document.getElementById("s5-kind").value;
   const r = await fetch(`/api/project/${pid}/step5/pending?kind=${kind}`);
@@ -1974,7 +2039,7 @@ async function s5LoadPending() {
 }
 
 async function s5LoadProcedures() {
-  const pid = STATE.project_id;
+  const pid = STATE.currentProjectId;
   if (!pid) return;
   const kind = document.getElementById("s5-kind").value;
   const r = await fetch(`/api/project/${pid}/step5/procedures?kind=${kind}`);
@@ -1992,37 +2057,114 @@ async function s5LoadProcedures() {
 function _s5RenderProcTable() {
   const tbody = document.getElementById("s5-proc-tbody");
   if (_s5ProcList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">대체적 절차 결과 없음</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:16px">대체적 절차 결과 없음</td></tr>`;
     return;
   }
+
+  // low_confidence_files 집계
+  const lowConfFiles = [];
+  _s5ProcList.forEach(p => {
+    if (p.low_confidence_files && p.low_confidence_files.length > 0) {
+      lowConfFiles.push(...p.low_confidence_files.map(f => `${p.party_name}: ${f}`));
+    }
+  });
+  const lcSec = document.getElementById("s5-low-conf-section");
+  const lcList = document.getElementById("s5-low-conf-list");
+  if (lowConfFiles.length > 0) {
+    lcSec.style.display = "block";
+    lcList.innerHTML = lowConfFiles.map(f =>
+      `<div style="padding:2px 0;border-bottom:1px solid var(--border)">${f}</div>`
+    ).join("");
+  } else {
+    lcSec.style.display = "none";
+  }
+
   tbody.innerHTML = _s5ProcList.map(p => {
     const cStyle = _CONCLUSION_STYLE[p.conclusion] || _CONCLUSION_STYLE["needs_review"];
+    // 통화별 금액 표시
+    const amtsByCur = p.amounts_by_currency || {};
+    const curEntries = Object.entries(amtsByCur);
+    const curDisplay = curEntries.length > 0
+      ? curEntries.map(([c, a]) => `${c}: ${_s5Fmt(a)}`).join(" / ")
+      : _s5Fmt(p.covered_amount);
+    const mainCur = curEntries.length === 1 ? curEntries[0][0] : (curEntries.length > 1 ? "복수" : "KRW");
+    const krwDisplay = p.covered_amount_krw != null ? _s5Fmt(p.covered_amount_krw) : (p.covered_amount != null ? _s5Fmt(p.covered_amount) : "—");
+
+    // 매칭 실패 시 "매핑" 버튼 표시
+    const needsMapping = p.conclusion === "needs_review" && p.match_confidence != null && p.match_confidence < 0.5;
+    const matchBtn = needsMapping
+      ? `<button style="font-size:0.68rem;padding:1px 5px;background:var(--amber);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:4px"
+               onclick="s5OpenMatchModal('${p.id}',${JSON.stringify(p.match_candidates||[]).replace(/"/g,"&quot;")})">매핑</button>`
+      : "";
+
     return `<tr id="s5-row-${p.id}">
       <td style="font-weight:600">${p.party_name}</td>
       <td>${p.reason || "—"}</td>
       <td style="text-align:right">${_s5Fmt(p.ledger_balance)}</td>
-      <td style="text-align:right">${_s5Fmt(p.covered_amount)}</td>
+      <td><span style="font-size:0.72rem">${mainCur}</span></td>
+      <td style="text-align:right;font-size:0.75rem">${curDisplay}</td>
+      <td style="text-align:right">${krwDisplay}</td>
       <td style="text-align:right">${_s5Pct(p.coverage_ratio)}</td>
-      <td>${p.procedure_type || "—"}</td>
       <td><span style="${cStyle}">${p.conclusion}</span></td>
-      <td style="text-align:center">${p.evidence_count || 0}</td>
       <td>
+        ${matchBtn}
         <button style="font-size:0.7rem;padding:2px 6px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg3)"
-                onclick="s5EditProc('${p.id}','${p.conclusion}','${p.procedure_type}')">수정</button>
+                onclick="s5EditProc('${p.id}','${p.conclusion}')">수정</button>
       </td>
+      <td style="text-align:center">${p.evidence_count || 0}</td>
     </tr>`;
   }).join("");
 }
 
-function s5EditProc(procId, conclusion, procType) {
+function s5EditProc(procId, conclusion) {
   const newConclusion = prompt("결론 변경\n(충분 / 부분 / 미해소 / needs_review)", conclusion);
   if (!newConclusion) return;
-  const pid = STATE.project_id;
+  const pid = STATE.currentProjectId;
   fetch(`/api/project/${pid}/step5/procedure/${procId}`, {
     method: "PATCH",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ conclusion: newConclusion }),
   }).then(r => r.json()).then(() => s5LoadProcedures());
+}
+
+// ── BC 폴더 거래처 매핑 확정 모달 ─────────────────────────────────────────
+let _s5MatchProcId = null;
+
+function s5OpenMatchModal(procId, candidates) {
+  _s5MatchProcId = procId;
+  const sel = document.getElementById("s5-match-candidates");
+  sel.innerHTML = `<option value="">— 선택 —</option>` +
+    (candidates || []).map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("");
+  document.getElementById("s5-match-manual").value = "";
+  document.getElementById("s5-match-modal").style.display = "flex";
+}
+
+function s5CloseMatchModal() {
+  document.getElementById("s5-match-modal").style.display = "none";
+  _s5MatchProcId = null;
+}
+
+async function s5ConfirmMatch() {
+  const pid = STATE.currentProjectId;
+  if (!pid || !_s5MatchProcId) return;
+  const manual = document.getElementById("s5-match-manual").value.trim();
+  const selected = document.getElementById("s5-match-candidates").value;
+  const partyName = manual || selected;
+  if (!partyName) { alert("거래처명을 선택하거나 입력하세요"); return; }
+
+  try {
+    const r = await fetch(`/api/project/${pid}/step5/match-bc-folder`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ procedure_id: _s5MatchProcId, party_name: partyName }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "실패");
+    s5CloseMatchModal();
+    await s5LoadProcedures();
+  } catch(e) {
+    alert("매핑 실패: " + e.message);
+  }
 }
 
 function s5HandleDrop(event) {
@@ -2040,7 +2182,7 @@ function s5UpdateFileNames(files) {
 }
 
 async function s5UploadEvidence() {
-  const pid = STATE.project_id;
+  const pid = STATE.currentProjectId;
   if (!pid) { alert("프로젝트 선택 필요"); return; }
   const party = document.getElementById("s5-party-sel").value;
   if (!party) { alert("거래처를 선택하세요"); return; }
@@ -2075,7 +2217,7 @@ async function s5UploadEvidence() {
 }
 
 async function s5ParseReconciliation() {
-  const pid = STATE.project_id;
+  const pid = STATE.currentProjectId;
   if (!pid) { alert("프로젝트 선택 필요"); return; }
   const fileInput = document.getElementById("s5-recon-file");
   if (!fileInput.files || fileInput.files.length === 0) { alert("xlsx 파일을 선택하세요"); return; }
@@ -2115,7 +2257,7 @@ async function s5ParseReconciliation() {
 }
 
 async function s5MarkDone() {
-  const pid = STATE.project_id;
+  const pid = STATE.currentProjectId;
   if (!pid) { alert("프로젝트 선택 필요"); return; }
   const kind = document.getElementById("s5-kind").value;
   const r = await fetch(`/api/project/${pid}/step5/mark-done`, {

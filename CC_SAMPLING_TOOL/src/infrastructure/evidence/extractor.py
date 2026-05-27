@@ -1,9 +1,14 @@
-"""증빙 파일 단위 추출기 — Week 5.
+"""증빙 파일 단위 추출기 — Week 5 v2 (Week 2 정확도 강화).
 
 지원 포맷:
   .xls / .xlsx  — Commercial Invoice (BC-14, BC-15 패턴)
   .pdf          — Commercial Invoice / 인보이스 (BC-4 패턴)
   .png / .jpg   — 스캔 이미지 (BC-16, BC-26 패턴); Tesseract OCR 필요
+
+Week 2 강화:
+  - parse_from_filename_and_tables(): 텍스트 layer 빈약 시 파일명+표 조합 폴백
+  - CC-N_거래처명_... 파일명 패턴에서 거래처명·금액 강제 추출
+  - PDF 신뢰도 임계값 강화: 표+텍스트 모두 성공해야 confidence ≥ 0.75
 
 추출 결과:
   EvidenceExtract — 파일 경로, 문서유형, 금액, 통화, 날짜, 거래처명,
@@ -19,6 +24,18 @@ from pathlib import Path
 from typing import Optional
 
 log = logging.getLogger("cc_sampling.evidence.extractor")
+
+# ─── 파일명 파싱 패턴 ──────────────────────────────────────────────────────
+# CC-N_거래처명_... 패턴 (PDF 조회서 파일명)
+_FILENAME_CC_PAT = re.compile(
+    r"^CC-\d+_(.+?)_(?:\d차|채권채무|조회서|회신|reply)",
+    re.IGNORECASE,
+)
+# BC-N_거래처명 패턴 (증빙 폴더명)
+_FILENAME_BC_PAT = re.compile(
+    r"^BC-[\d,]+_(.+)$",
+    re.IGNORECASE,
+)
 
 # ─── 패턴 상수 ─────────────────────────────────────────────────────────────
 
@@ -438,6 +455,76 @@ def _extract_image(file_path: Path) -> EvidenceExtract:
     )
 
 
+# ─── 파일명 기반 거래처명 추출 ──────────────────────────────────────────────
+
+def _extract_party_from_filename(file_path: Path) -> Optional[str]:
+    """파일명 패턴 (CC-N_ / BC-N_)에서 거래처명 추출.
+
+    예:
+      CC-19_科丝美诗（中国）化妆品有限公司_1차_채권채무조회서.pdf → "科丝美诗（中国）化妆品有限公司"
+      BC-14_New Future International Trade Co.xlsx → "New Future International Trade Co"
+    """
+    stem = file_path.stem  # 확장자 제외 파일명
+    m = _FILENAME_CC_PAT.match(stem)
+    if m:
+        name = m.group(1).strip()
+        if 2 <= len(name) <= 80:
+            return name
+    m = _FILENAME_BC_PAT.match(stem)
+    if m:
+        name = m.group(1).strip()
+        if 2 <= len(name) <= 80:
+            return name
+    return None
+
+
+def parse_from_filename_and_tables(file_path: Path, result: EvidenceExtract) -> EvidenceExtract:
+    """텍스트 layer 빈약 시 파일명 + 표 조합 폴백.
+
+    적용 조건:
+      - extraction_method == "failed" 또는 confidence < 0.3
+      - 파일명에서 거래처명 추출 가능
+
+    이 함수는 기존 result를 보강(mutate)하지 않고 새 EvidenceExtract를 반환한다.
+    """
+    # 파일명에서 거래처명 시도
+    filename_party = _extract_party_from_filename(file_path)
+    if not filename_party:
+        return result  # 파일명 패턴 불일치 → 원본 반환
+
+    # 이미 성공한 추출이면 거래처명만 보완
+    if result.extraction_method != "failed" and result.confidence >= 0.3:
+        if result.extracted_party is None:
+            return EvidenceExtract(
+                file_path=result.file_path,
+                file_type=result.file_type,
+                document_type=result.document_type,
+                extracted_amount=result.extracted_amount,
+                extracted_currency=result.extracted_currency,
+                extracted_date=result.extracted_date,
+                extracted_party=filename_party,
+                extraction_method=result.extraction_method,
+                confidence=result.confidence,
+                raw_text=result.raw_text,
+            )
+        return result
+
+    # 추출 실패 케이스 — 파일명만으로 최소 정보 구성
+    log.debug("파일명 폴백 적용: %s → party=%s", file_path.name, filename_party)
+    return EvidenceExtract(
+        file_path=file_path,
+        file_type=file_path.suffix.lower().lstrip(".") or "unknown",
+        document_type="unknown",
+        extracted_amount=None,
+        extracted_currency=None,
+        extracted_date=None,
+        extracted_party=filename_party,
+        extraction_method="filename_fallback",
+        confidence=0.2,  # 파일명 전용: 금액 미검증이므로 낮게
+        raw_text=f"파일명 폴백: {filename_party}",
+    )
+
+
 # ─── 공개 진입점 ────────────────────────────────────────────────────────────
 
 def extract_evidence(file_path: Path) -> EvidenceExtract:
@@ -463,18 +550,24 @@ def extract_evidence(file_path: Path) -> EvidenceExtract:
     log.debug("증빙 추출: %s", file_path.name)
 
     if ext == ".xls":
-        return _extract_xls(file_path)
+        result = _extract_xls(file_path)
     elif ext in (".xlsx",):
-        return _extract_xlsx(file_path)
+        result = _extract_xlsx(file_path)
     elif ext == ".pdf":
-        return _extract_pdf(file_path)
+        result = _extract_pdf(file_path)
     elif ext in (".png", ".jpg", ".jpeg"):
-        return _extract_image(file_path)
+        result = _extract_image(file_path)
     else:
-        return EvidenceExtract(
+        result = EvidenceExtract(
             file_path=file_path, file_type=ext.lstrip(".") or "unknown",
             document_type=None, extracted_amount=None,
             extracted_currency=None, extracted_date=None,
             extracted_party=None, extraction_method="failed",
             confidence=0.0, raw_text=f"지원하지 않는 파일 형식: {ext}",
         )
+
+    # Week 2: 추출 실패 또는 낮은 신뢰도 시 파일명 폴백 적용
+    if result.extraction_method == "failed" or result.confidence < 0.3:
+        result = parse_from_filename_and_tables(file_path, result)
+
+    return result

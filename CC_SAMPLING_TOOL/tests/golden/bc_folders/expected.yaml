@@ -1,13 +1,57 @@
-# Golden set — 7개 BC 폴더 기대값 (Week 8에서 실데이터 기반으로 완성)
+# Golden set — BC 폴더 대체적 절차 기대값 (Week 2)
+# 추출실패 7건 거래처 패턴 보강 기준
 
 metadata:
   created: "2026-05-27"
-  version: "1.0-placeholder"
-  description: "7개 BC 폴더 대체적 절차 기대값. Week 8 실측 후 완성 예정."
+  version: "2.0"
+  description: "7개 BC 폴더 대체적 절차 결론 자동산출 기대값"
+
+# 주요 확인 항목:
+#   - matched_party_name: 거래처 매칭 결과
+#   - expected_currency: 주요 통화
+#   - expected_conclusion: "충분"|"부분"|"미해소"|"needs_review"
+#   - min_coverage: 결론 기준 커버리지 하한 (none이면 검증 생략)
 
 expectations:
-  - folder_name: "BC-01_*"
+  - folder: "BC-14_New Future International Trade Co"
+    expected_party_name: "New Future International Trade Co."
+    expected_currency: "USD"
+    expected_conclusion: "충분"
+    min_coverage: 0.95
+    notes: "xls Commercial Invoice. USD. 커버리지 ≥ 95% 목표"
+
+  - folder: "BC-15_*"
+    expected_party_name: null   # 폴더명 미확정
+    expected_currency: "USD"
+    expected_conclusion: null   # 폴더 내용에 따라 결정
+    notes: "BC-15 xls 패턴 — 파싱 후 결론 산출"
+
+  - folder: "BC-4_*"
     expected_party_name: null
-    expected_procedure_type: null
+    expected_currency: "KRW"
     expected_conclusion: null
-    notes: "placeholder"
+    notes: "pdf 인보이스 패턴 — pdfplumber 우선"
+
+  - folder: "BC-COSMAX_NBT_SHANGHAI"
+    expected_party_name: "COSMAX NBT SHANGHAI CO.LTD"
+    expected_currency: "CNY"
+    expected_conclusion: "needs_review"
+    notes: "추출실패군 — 텍스트 layer 빈약"
+
+  - folder: "BC-COSMAX_NBT_AUSTRALIA"
+    expected_party_name: "COSMAX NBT AUSTRALIA PTY. LTD"
+    expected_currency: "KRW"
+    expected_conclusion: "needs_review"
+    notes: "추출실패군"
+
+  - folder: "BC-COSMAX_NBT_SINGAPORE"
+    expected_party_name: "COSMAX NBT SINGAPORE, INC"
+    expected_currency: "KRW"
+    expected_conclusion: "needs_review"
+    notes: "추출실패군"
+
+  - folder: "BC-KESI"
+    expected_party_name: null   # 한자 거래처 — OCR 필요
+    expected_currency: "CNY"
+    expected_conclusion: "needs_review"
+    notes: "科丝美诗 중국법인 — OCR 미설치 환경에서 needs_review"

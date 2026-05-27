@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import openpyxl
 import pandas as pd
+import yaml
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
 from src.domain.population import (
@@ -1478,7 +1479,24 @@ def step5_upload_folder(pid: str):
                 if not party:
                     party = folder.name
 
-                agg = aggregate_folder(folder, party_name=party)
+                # Step 1 candidates + CurrencyResolver 주입
+                candidates_list: list[str] = []
+                if wp.sampling_result:
+                    _sr = json.loads(wp.sampling_result)
+                    for _d in _sr.get("decisions", []):
+                        if _d.get("final_sampled"):
+                            candidates_list.append(_d["name"])
+                ug_data = STATE.get("upload_guide_data")
+                currency_resolver = CurrencyResolver(ug_data, STATE.get("manual_rates"))
+
+                agg = aggregate_folder(
+                    folder,
+                    party_name=party,
+                    final_sampled_candidates=candidates_list or None,
+                    upload_guide_data=ug_data,
+                    currency_resolver=currency_resolver,
+                    ledger_balance_krw=_f(request.form.get("ledger_balance")),
+                )
 
                 # 각 파일을 Artifact 저장
                 artifact_ids: list[str] = []
@@ -1545,7 +1563,14 @@ def step5_upload_folder(pid: str):
                     "total_amount": agg.total_amount,
                     "total_currency": agg.total_currency,
                     "amounts_by_currency": agg.amounts_by_currency,
-                    "conclusion": conclusion,
+                    "conclusion": agg.conclusion,
+                    # Week 2 확장
+                    "matched_party_name": agg.matched_party_name,
+                    "match_confidence": agg.match_confidence,
+                    "match_candidates": agg.match_candidates,
+                    "covered_amount_krw": agg.covered_amount_krw,
+                    "coverage_ratio": agg.coverage_ratio,
+                    "low_confidence_files": [str(f.name) for f in agg.low_confidence_files],
                 })
 
         finally:
@@ -1681,6 +1706,82 @@ def step5_parse_reconciliation(pid: str):
                 for r in sheets.mismatch_rows
             ],
         })
+
+
+@app.route("/api/project/<pid>/step5/match-bc-folder", methods=["POST"])
+def step5_match_bc_folder(pid: str):
+    """BC 폴더 거래처 매핑 확정 — 사용자가 선택한 party_name을 AlternativeProcedure에 저장.
+
+    body: {procedure_id, party_name}
+    - AlternativeProcedure.party_name 갱신
+    - configs/party_aliases.yaml 의 pending_aliases 에 자동 저장
+    """
+    data = request.json or {}
+    procedure_id = data.get("procedure_id", "").strip()
+    confirmed_party = data.get("party_name", "").strip()
+
+    if not procedure_id or not confirmed_party:
+        return jsonify({"error": "procedure_id, party_name 필수"}), 400
+
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        proc_repo = AlternativeProcedureRepository(s)
+        proc = proc_repo.update(procedure_id, party_name=confirmed_party)
+        if proc is None:
+            return jsonify({"error": "procedure not found"}), 404
+
+        # alias 사전 자동 저장 (pending_aliases 섹션)
+        _save_pending_alias(proc.party_name, confirmed_party)
+
+        _audit(s, "step5_match_bc_folder", "AlternativeProcedure", procedure_id, pid,
+               after={"party_name": confirmed_party})
+
+        return jsonify({
+            "procedure_id": procedure_id,
+            "party_name": confirmed_party,
+            "alias_saved": True,
+        })
+
+
+def _save_pending_alias(raw_name: str, canonical_name: str) -> None:
+    """configs/party_aliases.yaml 의 pending_aliases 섹션에 alias 추가.
+
+    raw_name != canonical_name 인 경우에만 저장 (동일하면 불필요).
+    """
+    if not raw_name or not canonical_name or raw_name == canonical_name:
+        return
+
+    alias_path = ROOT / "configs" / "party_aliases.yaml"
+    try:
+        if alias_path.exists():
+            with open(alias_path, encoding="utf-8") as f:
+                config = yaml.safe_load(f) or {}
+        else:
+            config = {}
+
+        if "pending_aliases" not in config or not isinstance(config["pending_aliases"], dict):
+            config["pending_aliases"] = {}
+
+        existing = config["pending_aliases"].get(canonical_name, [])
+        if not isinstance(existing, list):
+            existing = [str(existing)]
+        if raw_name not in existing:
+            existing.append(raw_name)
+        config["pending_aliases"][canonical_name] = existing
+
+        alias_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(alias_path, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+
+        # 매칭 캐시 초기화 (다음 요청에서 신규 alias 반영)
+        from src.domain.matching import reload_aliases
+        reload_aliases()
+
+    except Exception as e:
+        log.warning("pending_alias 저장 실패 (비치명적): %s", e)
 
 
 @app.route("/api/project/<pid>/step5/mark-done", methods=["POST"])
