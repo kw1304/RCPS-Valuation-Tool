@@ -60,6 +60,8 @@ class RuleContext:
     hr_master: "HRMaster | None" = None
     tb_master: "dict[str, TrialBalance] | None" = None
     tb_master_prior: "dict[str, TrialBalance] | None" = None
+    # 자본 결산이체 보정: {계정코드: 보정금액(signed)} — A03 opening 적용용
+    equity_adjustments: dict = field(default_factory=dict)
     extra: dict = field(default_factory=dict)
 
 

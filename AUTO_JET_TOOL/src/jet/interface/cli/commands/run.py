@@ -34,6 +34,9 @@ from jet.domain.rules.b06_inappropriate_user import B06InappropriateUser
 from jet.domain.rules.b07_backdated_entry import B07BackDatedEntry
 from jet.domain.rules.b08_doc_type_account import B08DocTypeAccountCombo
 from jet.domain.rules.b09_counter_account import B09CounterAccountAnalysis
+from jet.domain.rules.b10_no_description import B10NoDescription
+from jet.domain.rules.b11_period_end_proximity import B11PeriodEndProximity
+from jet.domain.rules.b12_top_side_adjustment import B12TopSideAdjustment
 from jet.domain.rules.base import RuleContext
 from jet.infrastructure.io.sap_gl_loader import SapGlLoader
 from jet.infrastructure.reporters.excel_reporter import ExcelReporter
@@ -54,6 +57,9 @@ _RULE_CLASSES = {
     "B07": B07BackDatedEntry,
     "B08": B08DocTypeAccountCombo,
     "B09": B09CounterAccountAnalysis,
+    "B10": B10NoDescription,
+    "B11": B11PeriodEndProximity,
+    "B12": B12TopSideAdjustment,
 }
 
 
@@ -226,14 +232,27 @@ def run(
         typer.echo(f"  시스템 자동전표(SYSTEM-*): {sys_entries:,}건 (정상 처리됨)")
 
     # ── 7. 룰 실행 컨텍스트 ──────────────────────────────────────────────
+    # 결산일 파싱 (YAML 오버라이드 후 spec.period_end가 최신값)
+    try:
+        _period_end = date.fromisoformat(str(spec.period_end))
+    except (ValueError, TypeError):
+        _period_end = date(2025, 12, 31)
+    _period_start = _period_end.replace(month=1, day=1)
+
+    # equity_adjustments: spec.equity_adjustments (blank.yaml 옵션)
+    _equity_adj = dict(spec.equity_adjustments) if spec.equity_adjustments else {}
+    if _equity_adj:
+        typer.echo(f"자본보정 적용: {len(_equity_adj)}계정 ({', '.join(list(_equity_adj.keys())[:5])})")
+
     context = RuleContext(
-        period_start=date(2025, 1, 1),
-        period_end=date(2025, 12, 31),
+        period_start=_period_start,
+        period_end=_period_end,
         coa_master=coa_master,
         doc_type_master=doc_type_master,
         hr_master=hr_master,
         tb_master=tb_master,
         tb_master_prior=tb_master_prior,
+        equity_adjustments=_equity_adj,
     )
     results: dict = {}
 
@@ -269,6 +288,7 @@ def run(
         "doc_types": doc_type_master,
         "tb": tb_master,
         "user_df": user_df,
+        "entries": entries,  # Stats_AutoManual 시트용
     }
     reporter = ExcelReporter()
     final_path = reporter.write(

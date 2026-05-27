@@ -1,0 +1,223 @@
+# 범용 JET 감사조서 템플릿 — 빈 양식 (기본값)
+#
+# 회사 정보 및 기간은 UI 입력값으로 채워집니다.
+# 시나리오 설정은 UI 룰 설정 화면에서 조정 가능합니다.
+
+company: ""
+period_end: ""
+preparer: ""
+reviewer: ""
+prepared_date: ""
+reviewed_date: ""
+workpaper_code: "7400"
+title: "정보시스템조직의 회계관리 입출력"
+
+master_files:
+  hr: null
+  coa: null
+  tb: null
+  doctype: null
+
+scenarios:
+  - code: A01
+    name: "Data Integrity Test"
+    objective: "테스트 대상 분개장 Data의 필드별 무결성 검증(계정코드, 일자, 금액 등 속성에 대한 검토)"
+    rule: A01
+    enabled: true
+
+  - code: A02
+    name: "Transaction DR/CR Test"
+    objective: "각 전표번호별로 차변금액과 대변금액이 동일한지 검증"
+    rule: A02
+    enabled: true
+
+  - code: A03
+    name: "Trial Balance Rollforward"
+    objective: "Trial Balance Rollforward: 합계잔액시산표와 GL 데이터의 계정별 잔액 일치 검증"
+    rule: A03
+    enabled: true
+
+  - code: B01
+    name: "Large P/L Items Test"
+    objective: "전표 금액 기준 손익계정 분개 중 매출액 대비 중요성 금액 초과 분개 적출 및 검토"
+    rule: B01
+    enabled: true
+    params:
+      materiality_ratio: 0.005
+      sales_account_pattern: "^4"
+      # gross_credit: 대변 합계 전체(총매출) — 음수 대변이 없는 파일
+      # net_credit: 대변-차변(순매출) — 음수 대변(취소분개)이 있는 파일 기본값
+      sales_calc_mode: "net_credit"
+      # absolute_threshold: 889000000   # 회사 IS 매출 기준 외부 산정 임계치(원) 주입 시
+
+  - code: B02
+    name: "Unmatched Accounts Test"
+    objective: "계정과목표(COA)에 등록되지 않은 계정코드를 사용한 분개 적출"
+    rule: B02
+    enabled: true
+
+  - code: B03
+    name: "Newly Created Accounts Test"
+    objective: "당기 중에 새로 생성된 계정과목 및 관련 계정분개 검토"
+    rule: B03
+    enabled: true
+
+  - code: B04
+    name: "Seldom Used Accounts"
+    objective: "평소 거의 사용되지 않는 계정과목 분개 적출"
+    rule: B04
+    enabled: true
+    params:
+      max_usage_count: 5
+
+  - code: B05
+    name: "Unusual User Test"
+    objective: "HR 인사 데이터 대비 비정상적 분개 입력자(퇴직자·미등록자 등) 검출"
+    rule: B05
+    enabled: true
+    params:
+      # 시스템·인터페이스 ID — 정답조서 B05_OK R11~R13 패턴 (CEP_PO, CEP_BATCH, FF_*)
+      system_user_patterns:
+        - "^CEP_"
+        - "^FF_"
+        - "^BATCH_"
+        - "^SYSTEM[_-]"
+        - "^RFC_"
+        - "^SAP_"
+        - "^GRC_"
+        - "^WF[_-]"
+      # 그룹사 사번 패턴 — 회사별로 다르므로 기본은 빈 목록.
+      # 그룹사 사번 체계가 있는 회사는 CLI --workpaper로 별도 파일을 지정하여 패턴을 주입하세요.
+      affiliate_user_patterns: []
+
+  - code: B06
+    name: "Inappropriate User Test"
+    objective: "처리자/승인자 직무분리 위반 사용자 분개 검출 (데이터 미입수 시 Waived)"
+    rule: B06
+    enabled: false
+    params:
+      waived: true
+      waive_reason: "승인자 컬럼 미포함"
+
+  - code: B07
+    name: "Back Dated Entries Test"
+    objective: "전기일보다 늦게 입력된 소급 분개 및 역행 분개 적출"
+    rule: B07
+    enabled: true
+    params:
+      max_delay_days: 30
+      # 정답조서(B07_OK R7) 정의: "전기일 - 입력일 31일 이상 지체된 회계처리"
+      # → 지연만 적출, 역행(입력일<전기일)은 별도 검토. 기본 false 로 정답과 정렬.
+      include_backdated: false
+
+  - code: B08
+    name: "전표유형-계정분석"
+    objective: "전표유형 별로 전표를 재분류하여 전표유형별 사용계정의 이상 유무 검토"
+    rule: B08
+    enabled: true
+    # B08 v2.0: 매출 임계치 초과 라인의 전표유형 × 계정 집계표
+    params:
+      materiality_ratio: 0.005
+      sales_account_pattern: "^4"
+      sales_calc_mode: "net_credit"
+      # absolute_threshold: 889000000   # B01과 같은 임계치를 주입 가능
+
+  - code: B09
+    name: "상대계정분석"
+    objective: "당기에 기표된 전표 내의 상대계정 조합을 추출하여 이상 조합 검토"
+    rule: B09
+    enabled: true
+    params:
+      # sub_scenarios 미정의 시 룰 코드의 기본값(한국 표준 계정코드 체계) 사용.
+      # 회사별 계정코드 체계가 다른 경우 아래 주석을 해제하고 패턴을 수정하세요.
+      # sub_scenarios:
+      #   - code: B09-1
+      #     name: "매출 증가/감소 상대계정"
+      #     main_account_patterns: ["^4"]
+      #   - code: B09-2
+      #     name: "매출채권 증가/감소 상대계정"
+      #     main_account_patterns: ["^11201"]
+      #   - code: B09-3
+      #     name: "선급금 증가 상대계정"
+      #     main_account_patterns: ["^1170"]
+      #   - code: B09-4
+      #     name: "선수금 감소 상대계정"
+      #     main_account_patterns: ["^21502"]
+      #   - code: B09-5
+      #     name: "유형자산 증가/감소 (가공자산 위험)"
+      #     main_account_patterns: ["^12302","^12303","^12304","^12305","^12306","^12307","^12308"]
+      #   - code: B09-6
+      #     name: "건설중인자산 증가/감소"
+      #     main_account_patterns: ["^12309"]
+
+  - code: B10
+    name: "적요 부재·짧음·모호 분개"
+    objective: "ISA 240 §A43 — 적요가 없거나 너무 짧거나 의미 없는 키워드만 포함된 분개 적출"
+    rule: B10
+    enabled: true
+    params:
+      min_length: 5
+      vague_keywords:
+        - "정정"
+        - "수정"
+        - "임시"
+        - "TBD"
+        - "테스트"
+        - "확인"
+        - "."
+
+  - code: B11
+    name: "결산일 인접 분개"
+    objective: "ISA 240 §A43 — 회계연도 종료일(결산일) ±10일 이내 분개 및 결산 후 소급입력 분개 적출"
+    rule: B11
+    enabled: true
+    params:
+      days_before: 10
+      days_after: 10
+
+  - code: B12
+    name: "결산조정 분개"
+    objective: "ISA 240 §A43 — 결산조정 전표유형(SA·SU·CA·C2·M3~M8 등) 사용 분개 중 결산일 ±10일 이내 또는 결산일 이후 분개 적출"
+    rule: B12
+    enabled: true
+    params:
+      closing_doc_types:
+        - "SA"
+        - "SU"
+        - "CA"
+        - "C2"
+        - "M3"
+        - "M4"
+        - "M5"
+        - "M6"
+        - "M7"
+        - "M8"
+      days_around_period_end: 10
+
+  - code: Q01
+    name: "이상전표 질의서"
+    objective: "각 룰에서 적출된 이상전표를 통합하여 회사로부터 소명을 받는 양식"
+    rule: null
+    enabled: true
+
+# ── Q01 표본추출 설정 (ISA 530 §A23 금액비례확률추출) ──────────────────────────
+# enabled: true 로 변경하면 룰별 적출에서 n_per_rule 건만 Q01에 포함된다.
+# method: mus(금액 가중·기본), random(무작위), systematic(계통)
+# n_per_rule: 룰당 표본 수 (총 적출 < n이면 전체 포함)
+# seed: 무작위·MUS 재현성용 난수 시드
+q01_sampling:
+  enabled: false
+  method: "mus"
+  n_per_rule: 50
+  seed: 42
+
+# ── 자본 결산이체 보정 (전기 결산이체분 TB col[1] 미반영 보정) ──────────────────
+# 이익잉여금 등 자본 계정의 기초잔액이 전기 결산이체로 인해 TB와 GL이 불일치할 때 사용.
+# 회사 측 손익계산서·이익잉여금처분계산서에서 이체금액을 입수하여 기재한다.
+# 형식: account_code: 보정금액 (signed — 음수 가산 시 음수 입력)
+# 미입력 시 동작 변경 없음.
+#
+# 예시:
+# equity_adjustments:
+#   "30503010": -8665461601   # 전기 당기순이익 이익잉여금 이체분 (음수 가산)
+equity_adjustments: {}

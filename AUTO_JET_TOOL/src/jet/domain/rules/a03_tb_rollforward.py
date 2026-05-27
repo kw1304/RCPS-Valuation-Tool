@@ -30,6 +30,7 @@ from jet.domain.entities.journal_entry import JournalEntry
 from jet.domain.entities.rule_result import Finding, RuleResult
 from jet.domain.exceptions import RuleConfigurationError
 from jet.domain.rules.base import Rule, RuleContext
+from jet.domain.services.account_classifier import is_pl_account
 
 logger = logging.getLogger(__name__)
 
@@ -112,11 +113,15 @@ class A03TBRollforward(Rule):
 
         gl_debit: dict[str, float] = {}
         gl_credit: dict[str, float] = {}
+        # 계정명 캐시: 손익계정 판별에 활용 (COA 미제공 fallback 강화)
+        gl_account_name: dict[str, str] = {}
 
         for e in all_entries:
             code = e.account_code.lstrip("0") or e.account_code
             gl_debit[code] = gl_debit.get(code, 0.0) + float(e.debit_amount)
             gl_credit[code] = gl_credit.get(code, 0.0) + float(e.credit_amount)
+            if e.account_name and code not in gl_account_name:
+                gl_account_name[code] = e.account_name
 
         tb = context.tb_master
         mismatches: list[TbMismatch] = []
@@ -131,6 +136,13 @@ class A03TBRollforward(Rule):
                 len(tb_missing_in_gl),
             )
 
+        # 자본 결산이체 보정 맵 — 코드는 leading-zero 제거 후 비교
+        equity_adjustments: dict[str, float] = {
+            k.lstrip("0") or k: float(v)
+            for k, v in (context.equity_adjustments or {}).items()
+        }
+        adjusted_codes: list[str] = []
+
         for code in sorted(all_codes):
             tb_rec = tb.get(code)
             if tb_rec is None:
@@ -143,13 +155,21 @@ class A03TBRollforward(Rule):
                 tb_dr = tb_rec.period_debit
                 tb_cr = tb_rec.period_credit
 
+            # 자본 결산이체 보정 — TB col[1] 미반영 이체분을 기초잔액에 가산
+            adj = equity_adjustments.get(code, 0.0)
+            if adj != 0.0:
+                opening += adj
+                adjusted_codes.append(code)
+
             # 손익계정은 회계연도 시작 시 결산이체를 통해 0으로 초기화된다.
             # 따라서 A03 검증 시 기초잔액을 0으로 강제 처리한다.
             #
             # 판단 우선순위:
             #   1. COA 마스터의 account_type == 'P' (손익계정 명시)
-            #   2. COA 미제공 시 계정코드 첫자리 fallback: 4·5·6·7·8
-            if self._is_income_statement_account(code, context):
+            #   2. 계정과목명 키워드 (account_classifier) — COA 미제공 시 2차 기준
+            #   3. 계정코드 첫자리 fallback: 4·5·6·7·8
+            acct_name_hint = gl_account_name.get(code, "")
+            if self._is_income_statement_account(code, context, acct_name_hint):
                 opening = 0.0
 
             period_dr = gl_debit.get(code, 0.0)
@@ -212,11 +232,22 @@ class A03TBRollforward(Rule):
                 )
                 logger.warning("A03 회사 범위 불일치 의심: %s", scope_mismatch_warning)
 
+        if adjusted_codes:
+            logger.info(
+                "A03 자본보정 적용 %d계정: %s",
+                len(adjusted_codes),
+                ", ".join(adjusted_codes[:10]),
+            )
+
         result = self._make_result(
             started,
             len(all_entries),
             findings,
-            {"tolerance": _TOLERANCE, "accounts_checked": len(all_codes)},
+            {
+                "tolerance": _TOLERANCE,
+                "accounts_checked": len(all_codes),
+                "equity_adjusted_count": len(adjusted_codes),
+            },
         )
         result.extra["tb_mismatches"] = mismatches
         result.extra["accounts_checked"] = len(all_codes)
@@ -226,26 +257,33 @@ class A03TBRollforward(Rule):
         result.extra["gl_total_credit"] = gl_cr_total
         result.extra["tb_total_debit"] = tb_dr_total
         result.extra["tb_total_credit"] = tb_cr_total
+        result.extra["equity_adjusted_codes"] = adjusted_codes
 
         logger.info("A03 완료: %d계정 검증 / 불일치 %d건", len(all_codes), len(mismatches))
         return result
 
     @staticmethod
-    def _is_income_statement_account(code: str, context: RuleContext) -> bool:
+    def _is_income_statement_account(
+        code: str,
+        context: RuleContext,
+        account_name: str = "",
+    ) -> bool:
         """손익계정 여부를 판별한다.
 
         판단 우선순위:
             1. COA 마스터의 account_type == 'P' — 명시적 손익계정
-            2. COA 미제공 또는 해당 코드 없음 → 계정코드 첫자리 fallback:
-               '4'·'5'·'6'·'7'·'8' → 손익 (K-IFRS 표준 계정 체계)
+            2. 계정과목명 키워드 (account_classifier.is_pl_account) — COA 미제공 시
+            3. 계정코드 첫자리 fallback: '4'·'5'·'6'·'7'·'8'
 
-        '7'·'8'을 포함하는 이유:
-            한국 SAP 표준에서 기타손익(7)·금융손익(8)도 연초 결산이체 대상.
-            COA 미제공 시 보수적으로 포함하여 오적출 방지.
+        계정과목명 키워드를 2차 기준으로 추가한 이유:
+            에스트래픽 등 COA 없이 실행하는 경우 "FVPL금융자산평가이익"처럼
+            계정명으로 손익을 명확히 판별할 수 있는 계정이 코드 첫자리 fallback에서
+            누락되는 사례를 방지하기 위함.
 
         Args:
             code: 정규화된 계정코드
             context: 룰 실행 컨텍스트 (coa_master 참조)
+            account_name: 계정과목명 (없으면 빈 문자열)
 
         Returns:
             손익계정이면 True
@@ -253,13 +291,17 @@ class A03TBRollforward(Rule):
         if not code:
             return False
 
-        # COA 마스터에 명시된 계정유형 우선
+        # 1. COA 마스터에 명시된 계정유형 우선
         if context.coa_master is not None:
             master = context.coa_master.get(code)
             if master is not None:
                 return master.account_type == "P"
 
-        # COA 미제공: 계정코드 첫자리 fallback
+        # 2. 계정과목명 키워드 (account_classifier) — COA 미제공 시
+        if account_name:
+            return is_pl_account(account_name)
+
+        # 3. 계정코드 첫자리 fallback
         stripped = code.lstrip("0")
         if stripped:
             return stripped[0] in ("4", "5", "6", "7", "8")
