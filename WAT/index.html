@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>웅계사's Audit Tools · WAT</title>
+<title>WAT!</title>
+<meta name="description" content="WAT!">
+<meta property="og:title" content="WAT!">
+<meta property="og:description" content="WAT!">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WAT!">
+<meta property="og:url" content="https://desktop-s2rkqki.taild5874c.ts.net/">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="WAT!">
+<meta name="twitter:description" content="WAT!">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root{
@@ -375,7 +385,7 @@ function goTool(key, pushHistory=true){
   if(!t){ goCat(); return; }
   loading.style.display = 'block';
   frame.src = t.url;
-  document.title = t.name + ' · WAT';
+  document.title = 'WAT!';
   show(sTool);
   if(pushHistory) history.pushState({screen:'tool', key}, '', '#tool=' + key);
 }
@@ -385,7 +395,7 @@ frame.addEventListener('load', () => { loading.style.display = 'none'; });
 hero.addEventListener('click', goCat);
 hero.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); goCat(); }});
 back.addEventListener('click', goHero);
-tBack.addEventListener('click', () => { document.title = '웅계사\'s Audit Tools · WAT'; goCat(); });
+tBack.addEventListener('click', () => { document.title = 'WAT!'; goCat(); });
 
 window.addEventListener('popstate', e => {
   const st = e.state;
