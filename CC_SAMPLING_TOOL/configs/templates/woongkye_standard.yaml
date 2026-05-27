@@ -1,0 +1,68 @@
+id: woongkye_standard
+name: "웅계회계 표준"
+firm_name: "웅계회계법인"
+template_xlsx_path: "templates/cc_template.xlsx"
+
+sheet_mapping:
+  control: "C100 조회서 control sheet (MUS)"
+  size: "C100-1 표본규모 결정 (MUS)"
+  key_item: "C100-2 Key item 추출 (MUS)"
+  mus: "C100-3 표본 추출(MUS)"
+
+cell_anchors:
+  company_name: [1, 1]      # row, col
+  period_end: [3, 1]
+  preparer: [1, 5]
+  reviewer: [2, 5]
+  prep_date: [1, 7]
+  review_date: [2, 7]
+  control_preparer: [1, 12]
+  control_reviewer: [2, 12]
+  control_prep_date: [1, 14]
+  control_review_date: [2, 14]
+
+column_anchors_c100_2:
+  receivable:
+    외상매출금: 3
+    받을어음: 4
+    미수금: 5
+    선급금: 6
+    장기대여금: 7
+    임차보증금: 8
+    기타보증금: 9
+  payable:
+    외상매입금: 3
+    지급어음(외담대외상매입금): 4
+    미지급금: 5
+    선수금: 6
+    임대보증금: 7
+
+party_matrix_start_row: 47
+
+size_sheet_anchors:
+  population: [23, 5]
+  pm: [24, 5]
+  key_item_threshold: [25, 5]
+  key_item_amount: [26, 5]
+  key_item_count: [27, 5]
+  base_sample_size: [28, 5]
+  confidence_factor: [29, 5]
+  final_sample_size: [32, 5]
+  summary_ki_count: [11, 4]
+  summary_ki_amount: [11, 5]
+  summary_ki_coverage: [11, 7]
+  summary_rep_count: [12, 4]
+  summary_rep_amount: [12, 5]
+  summary_total_count: [13, 4]
+  summary_total_amount: [13, 5]
+  summary_pop_count: [14, 4]
+  summary_pop_amount: [14, 5]
+  coverage_count: [15, 4]
+  coverage_amount: [15, 5]
+
+mus_sheet_anchors:
+  remaining_population: [13, 4]
+  final_sample_size: [14, 4]
+  sample_interval: [15, 4]
+  random_start: [16, 4]
+  data_start_row: 22

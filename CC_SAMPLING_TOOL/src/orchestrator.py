@@ -163,8 +163,15 @@ def run_sampling(df_ledger: pd.DataFrame, params: SamplingParams) -> SamplingOut
     )
 
 
-def write_report(out: SamplingOutput, params: SamplingParams, out_path: str | Path) -> None:
-    """원본 7620 양식 그대로 출력 (템플릿 기반)"""
+def write_report(
+    out: SamplingOutput,
+    params: SamplingParams,
+    out_path: str | Path,
+    template_id: str | None = None,
+) -> None:
+    """조서 출력. template_id=None 이면 기본 양식("woongkye_standard") 사용.
+    7620 회귀 PASS 유지 — 기본 동작 변경 없음.
+    """
     ctx = ReportContext(
         company_name=params.company_name,
         period_end=params.period_end,

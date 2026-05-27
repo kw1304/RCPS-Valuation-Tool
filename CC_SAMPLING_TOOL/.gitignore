@@ -1,0 +1,28 @@
+# DB / 생성물 / 업로드
+data/
+output/
+input/_uploads/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 임시 파일
+*.tmp
+_inspect.out
+_sheets.txt

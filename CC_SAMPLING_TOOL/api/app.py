@@ -1,11 +1,12 @@
-"""웅계사's CC Sampling Tool — Flask 서버 (Week 1: SQLite + Project CRUD)"""
+"""웅계사's CC Sampling Tool — Flask 서버 (Week 2: Send list + Template registry + Step 2/3 API)"""
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from io import BytesIO
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from flask import Flask, jsonify, request, send_file, send_from_directory
 from src.domain.population import (
     ACCOUNT_GROUP_MAP_PAYABLE,
     ACCOUNT_GROUP_MAP_RECEIVABLE,
+    PartyDecision,
     aggregate_by_party,
     load_ledger_rows,
 )
@@ -29,11 +31,14 @@ from src.infrastructure.loaders import get_total_assets, load_fs_amounts, load_r
 from src.infrastructure.schemas.ledger_schema import detect_ledger_sheets
 from src.infrastructure.persistence import (
     ArtifactRepository,
+    AuditTrail,
     ProjectRepository,
     WorkpaperRepository,
     init_db,
     get_session,
 )
+from src.infrastructure.report.template_registry import list_templates, get_template
+from src.infrastructure.confirmations.send_list_builder import build_send_list
 from src.orchestrator import SamplingParams, run_sampling, write_report
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,9 +59,11 @@ STATE: dict = {
     "ledger_path": None,
     "fs_path": None,
     "rp_path": None,
-    "last_result": {},   # {"receivable": {...}, "payable": {...}}
+    "last_result": {},   # {"receivable": {"result": ..., "params": ...}, ...}
     "current_project_id": None,
     "workpaper_ids": {},  # {kind: workpaper_id}
+    "kind": "receivable",
+    "sheets": {},        # {"receivable": sheet_name, "payable": sheet_name}
 }
 
 
@@ -290,6 +297,8 @@ def upload():
         result["sheets"] = sheets
         sheet_map = detect_ledger_sheets(sheets)
         result["sheet_map"] = sheet_map
+        # STATE에 시트명 기록 (Step 3 build 시 재사용)
+        STATE["sheets"] = sheet_map
 
     # 재무제표 자동 — 총자산
     if STATE.get("fs_path"):
@@ -396,8 +405,17 @@ def run():
             "performance_materiality": params.performance_materiality,
             "risk_level": params.risk_level,
             "control_reliance": params.control_reliance,
+            "preparer": params.preparer,
+            "reviewer": params.reviewer,
         }
         wp_repo.save_sampling_result(wp.id, params_dict, serialized)
+        # AuditTrail: step1_sampling
+        _audit(s, "step1_sampling", "Workpaper", wp.id, project_id,
+               after={
+                   "kind": kind,
+                   "final_sample_size": result.size_result.final_sample_size,
+                   "population_amount": result.population_amount,
+               })
 
     return jsonify(serialized)
 
@@ -449,8 +467,322 @@ def matrix():
 
 
 # ─────────────────────────────────────────────────────────────
+# 6. Template 목록
+# ─────────────────────────────────────────────────────────────
+@app.route("/api/templates")
+def get_templates():
+    """등록된 조서 양식 목록 반환 (Step 3 드롭다운용)."""
+    templates = list_templates()
+    return jsonify([
+        {"id": t.id, "name": t.name, "firm_name": t.firm_name}
+        for t in templates
+    ])
+
+
+# ─────────────────────────────────────────────────────────────
+# 7. Step 2 — 발송명단
+# ─────────────────────────────────────────────────────────────
+@app.route("/api/project/<pid>/step2/build", methods=["POST"])
+def step2_build(pid: str):
+    """발송명단 Excel 생성 + Artifact 저장.
+
+    body: {kind, reply_deadline, contact_info, party_contacts}
+    """
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        data = request.json or {}
+        kind = data.get("kind", STATE.get("kind") or "receivable")
+        reply_deadline_str = data.get("reply_deadline")
+        contact_info = data.get("contact_info") or {}
+        party_contacts = data.get("party_contacts") or {}
+
+        # Step 1 결과에서 decisions 복원
+        # STATE cache는 현재 활성 프로젝트 데이터일 때만 사용 (다른 프로젝트 데이터 오염 방지)
+        cached = STATE["last_result"].get(kind) if STATE.get("current_project_id") == pid else None
+        if not cached:
+            # DB에서 복원 — 해당 pid/kind workpaper의 sampling_result
+            wp_repo = WorkpaperRepository(s)
+            wp = wp_repo.get_or_create(pid, kind)
+            if not wp.sampling_result:
+                return jsonify({"error": "Step 1 샘플링을 먼저 실행하세요"}), 400
+            result_dict = json.loads(wp.sampling_result)
+            decisions = [
+                PartyDecision(
+                    name=d["name"],
+                    balance=d["balance"],
+                    is_excluded=d["is_excluded"],
+                    is_related_party=d["is_related_party"],
+                    is_key_item=d["is_key_item"],
+                    is_representative=d["is_representative"],
+                    final_sampled=d["final_sampled"],
+                    exclusion_reason=d.get("exclusion_reason"),
+                )
+                for d in result_dict.get("decisions", [])
+            ]
+        else:
+            decisions = cached["result"].decisions
+            result_dict = _serialize_result(cached["result"], cached["params"])
+
+        # 파싱
+        try:
+            reply_deadline = (
+                date.fromisoformat(reply_deadline_str) if reply_deadline_str else None
+            )
+        except ValueError:
+            reply_deadline = None
+
+        project_info = {
+            "company_name": proj.company_name,
+            "period_end": proj.period_end,
+            "audit_firm": proj.audit_firm,
+            "preparer": contact_info.get("preparer", ""),
+        }
+
+        kind_label = "채권" if kind == "receivable" else "채무"
+        fname = f"발송명단_{proj.company_name}_{proj.period_end}_{kind_label}.xlsx"
+        out_dir = ROOT / "output"
+        out_dir.mkdir(exist_ok=True)
+        out_path = out_dir / fname
+
+        build_send_list(
+            out_path=out_path,
+            project_info=project_info,
+            decisions=decisions,
+            kind=kind,
+            reply_deadline=reply_deadline,
+            contact_info=contact_info,
+            party_contacts=party_contacts,
+        )
+
+        # Artifact 저장
+        art_repo = ArtifactRepository(s)
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        art = art_repo.save_file(
+            project_id=pid,
+            kind="send_list",
+            source_path=out_path,
+            filename=fname,
+            workpaper_id=wp.id,
+        )
+        wp.send_list_artifact_id = art.id
+        wp.updated_at = datetime.now(timezone.utc)
+
+        # AuditTrail
+        _audit(s, "step2_build_send_list", "Workpaper", wp.id, pid,
+               after={"kind": kind, "filename": fname, "parties": len([d for d in decisions if d.final_sampled])})
+
+        return jsonify({
+            "artifact_id": art.id,
+            "download_url": f"/api/project/{pid}/step2/download/{kind}",
+            "filename": fname,
+            "party_count": len([d for d in decisions if d.final_sampled]),
+        }), 201
+
+
+@app.route("/api/project/<pid>/step2/download/<kind>")
+def step2_download(pid: str, kind: str):
+    """생성된 발송명단 다운로드."""
+    with get_session() as s:
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        if not wp.send_list_artifact_id:
+            return jsonify({"error": "발송명단 미생성 — 먼저 build 실행"}), 404
+        art = ArtifactRepository(s).get(wp.send_list_artifact_id)
+        if art is None or not Path(art.stored_path).exists():
+            return jsonify({"error": "파일 없음"}), 404
+        return send_file(
+            art.stored_path,
+            as_attachment=True,
+            download_name=art.filename,
+        )
+
+
+@app.route("/api/project/<pid>/step2/mark-sent", methods=["POST"])
+def step2_mark_sent(pid: str):
+    """발송명단 회사 송부 완료 기록."""
+    data = request.json or {}
+    kind = data.get("kind", "receivable")
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        wp.step2_completed_at = datetime.now(timezone.utc)
+        wp.updated_at = datetime.now(timezone.utc)
+        _audit(s, "step2_mark_sent", "Workpaper", wp.id, pid, after={"kind": kind})
+        return jsonify({"ok": True, "step2_completed_at": wp.step2_completed_at.isoformat()})
+
+
+# ─────────────────────────────────────────────────────────────
+# 8. Step 3 — 조서 생성
+# ─────────────────────────────────────────────────────────────
+@app.route("/api/project/<pid>/step3/build", methods=["POST"])
+def step3_build(pid: str):
+    """조서 Excel 생성 + Artifact 저장.
+
+    body: {kind, template_id, preparer, reviewer}
+    """
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None or proj.status == "archived":
+            return jsonify({"error": "not found"}), 404
+
+        data = request.json or {}
+        kind = data.get("kind", "receivable")
+        template_id = data.get("template_id", "woongkye_standard")
+        preparer = data.get("preparer", "")
+        reviewer = data.get("reviewer", "")
+
+        # Step 1 결과 복원
+        cached = STATE["last_result"].get(kind)
+        if not cached:
+            wp_repo = WorkpaperRepository(s)
+            wp = wp_repo.get_or_create(pid, kind)
+            if not wp.sampling_result or not wp.sampling_params:
+                return jsonify({"error": "Step 1 샘플링을 먼저 실행하세요"}), 400
+            params_dict = json.loads(wp.sampling_params)
+            params = SamplingParams(
+                company_name=params_dict.get("company_name", proj.company_name),
+                period_end=date.fromisoformat(params_dict.get("period_end", proj.period_end)),
+                kind=kind,
+                performance_materiality=float(params_dict.get("performance_materiality", 0)),
+                risk_level=params_dict.get("risk_level", "유의적위험"),
+                control_reliance=params_dict.get("control_reliance", "Y"),
+                preparer=preparer or params_dict.get("preparer", ""),
+                reviewer=reviewer or params_dict.get("reviewer", ""),
+            )
+            # DB 재실행 없이 임시 빌드를 위해 ledger 재로드 필요 — STATE 미캐시 상황
+            # 이미 STATE에 ledger가 있으면 재실행, 없으면 에러
+            if not STATE.get("ledger_path"):
+                return jsonify({"error": "서버 재기동 후 Step 1을 다시 실행하세요"}), 400
+            df = pd.read_excel(STATE["ledger_path"], sheet_name=STATE["sheets"].get(kind))
+            result = run_sampling(df, params)
+        else:
+            result = cached["result"]
+            params = cached["params"]
+            if preparer:
+                params.preparer = preparer
+            if reviewer:
+                params.reviewer = reviewer
+
+        prefix = "C100" if kind == "receivable" else "AA100"
+        fname = f"{prefix}_{proj.company_name}_{proj.period_end}.xlsx"
+        out_path = ROOT / "output" / fname
+        write_report(result, params, out_path, template_id=template_id)
+
+        # Artifact 저장
+        art_repo = ArtifactRepository(s)
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        art = art_repo.save_file(
+            project_id=pid,
+            kind="workpaper",
+            source_path=out_path,
+            filename=fname,
+            workpaper_id=wp.id,
+        )
+        wp.workpaper_artifact_id = art.id
+        wp.updated_at = datetime.now(timezone.utc)
+
+        _audit(s, "step3_export_workpaper", "Workpaper", wp.id, pid,
+               after={"kind": kind, "template_id": template_id, "filename": fname})
+
+        return jsonify({
+            "artifact_id": art.id,
+            "download_url": f"/api/project/{pid}/step3/download/{kind}",
+            "filename": fname,
+        }), 201
+
+
+@app.route("/api/project/<pid>/step3/download/<kind>")
+def step3_download(pid: str, kind: str):
+    """생성된 조서 다운로드."""
+    with get_session() as s:
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        if not wp.workpaper_artifact_id:
+            return jsonify({"error": "조서 미생성 — 먼저 build 실행"}), 404
+        art = ArtifactRepository(s).get(wp.workpaper_artifact_id)
+        if art is None or not Path(art.stored_path).exists():
+            return jsonify({"error": "파일 없음"}), 404
+        return send_file(
+            art.stored_path,
+            as_attachment=True,
+            download_name=art.filename,
+        )
+
+
+@app.route("/api/project/<pid>/step3/mark-done", methods=["POST"])
+def step3_mark_done(pid: str):
+    """조서 작성 완료 기록."""
+    data = request.json or {}
+    kind = data.get("kind", "receivable")
+    with get_session() as s:
+        proj = ProjectRepository(s).get(pid)
+        if proj is None:
+            return jsonify({"error": "not found"}), 404
+        wp_repo = WorkpaperRepository(s)
+        wp = wp_repo.get_or_create(pid, kind)
+        wp.step3_completed_at = datetime.now(timezone.utc)
+        wp.updated_at = datetime.now(timezone.utc)
+        _audit(s, "step3_mark_done", "Workpaper", wp.id, pid, after={"kind": kind})
+        return jsonify({"ok": True, "step3_completed_at": wp.step3_completed_at.isoformat()})
+
+
+# ─────────────────────────────────────────────────────────────
+# 9. AuditTrail 조회
+# ─────────────────────────────────────────────────────────────
+@app.route("/api/project/<pid>/audit-trail")
+def get_audit_trail(pid: str):
+    """프로젝트 변경 이력 조회."""
+    from sqlalchemy import select
+    with get_session() as s:
+        stmt = (
+            select(AuditTrail)
+            .where(AuditTrail.project_id == pid)
+            .order_by(AuditTrail.timestamp.desc())
+        )
+        trails = list(s.execute(stmt).scalars())
+        return jsonify([
+            {
+                "id": t.id,
+                "timestamp": t.timestamp.isoformat(),
+                "user_email": t.user_email,
+                "action": t.action,
+                "entity_type": t.entity_type,
+                "entity_id": t.entity_id,
+                "notes": t.notes,
+                "after_value": t.after_value,
+            }
+            for t in trails
+        ])
+
+
+# ─────────────────────────────────────────────────────────────
 # helpers
 # ─────────────────────────────────────────────────────────────
+def _audit(session, action: str, entity_type: str, entity_id: str | None,
+           project_id: str | None, before=None, after=None, notes: str | None = None,
+           user_email: str = "") -> None:
+    """AuditTrail 레코드 추가 — 모든 중요 변경 지점에서 호출."""
+    trail = AuditTrail(
+        project_id=project_id,
+        user_email=user_email,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        before_value=json.dumps(before, ensure_ascii=False) if before is not None else None,
+        after_value=json.dumps(after, ensure_ascii=False) if after is not None else None,
+        notes=notes,
+    )
+    session.add(trail)
+
+
 def _serialize_project(proj) -> dict:
     return {
         "id": proj.id,
