@@ -1022,7 +1022,7 @@ details.note-fold .note{margin-top:4px}
         <thead><tr><th style="width:40%">유사기업</th><th>β_L</th><th>D/E (%)</th><th>β_U</th><th></th></tr></thead>
         <tbody id="w-peers-body"></tbody>
       </table>
-      <div id="w-peer-search-drop" style="display:none;position:absolute;z-index:50;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:280px"></div>
+      <div id="w-peer-search-drop" style="display:none;position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:280px"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
       <button class="btn-sm add" onclick="waccAddPeer()">+ 유사기업 추가</button>
@@ -2667,26 +2667,28 @@ function renderTreeGrids(){
     <span style="color:var(--text3)">&nbsp;|&nbsp; ${perShare?'모든 가치 그리드 = 1주 기준':'주식수 미입력 → 총액 기준'}</span>
   </div>`;
 
-  // Grid definitions per model
+  // Grid definitions per model — 강의파일(TF/GS 실습) 시트 순서·명칭 통일
   const tfGrids = [
-    {key:'stock',          label:'① 주가 트리'},
-    {key:'decision',       label:'의사결정'},
-    {key:'conv_intrinsic', label:'전환 내재가치 (즉시 전환 시)'},
-    {key:'bond_intrinsic', label:'채권 내재가치 (즉시 풋·만기상환 시)'},
-    {key:'rcps_value',     label:'RCPS 가치 (의사결정 후 채택)'},
-    {key:'hold_value',     label:'보유가치(연속보유)'},
-    {key:'equity_comp',    label:'지분가치(실현)'},
-    {key:'bond_comp',      label:'채권가치(실현)'},
-    {key:'equity_hold',    label:'지분 보유가치'},
-    {key:'bond_hold',      label:'채권 보유가치'},
+    {key:'stock',          label:'① 주가이항과정'},
+    {key:'conv_intrinsic', label:'② 전환(주식) 내재가치'},
+    {key:'bond_intrinsic', label:'③ 채권(상환) 내재가치'},
+    {key:'decision',       label:'④ 의사결정'},
+    {key:'rcps_value',     label:'⑤ RCPS 가치 = MAX(내재가치, 보유가치)'},
+    {key:'hold_value',     label:'⑥ RCPS 보유가치 = 지분 보유가치 + 채권 보유가치'},
+    {key:'equity_hold',    label:'⑦ 지분가치 (보유)'},
+    {key:'bond_hold',      label:'⑧ 채권가치 (보유)'},
+    {key:'equity_comp',    label:'⑨ 지분가치 (실현)'},
+    {key:'bond_comp',      label:'⑩ 채권가치 (실현)'},
   ];
   const gsGrids = [
-    {key:'stock',          label:'① 주가 트리'},
-    {key:'decision',       label:'의사결정'},
-    {key:'conv_prob',      label:'전환확률'},
-    {key:'disc_factor',    label:'할인계수'},
-    {key:'rcps_value',     label:'RCPS 가치 (의사결정 후 채택)'},
-    {key:'hold_value',     label:'보유가치(연속보유)'},
+    {key:'stock',          label:'① 주가이항과정'},
+    {key:'conv_intrinsic', label:'② 전환(주식) 내재가치'},
+    {key:'bond_intrinsic', label:'③ 채권(상환) 내재가치'},
+    {key:'decision',       label:'④ 의사결정'},
+    {key:'rcps_value',     label:'⑤ RCPS 가치 = MAX(내재가치, 보유가치)'},
+    {key:'hold_value',     label:'⑥ RCPS 보유가치 = RCPS 가치 기댓값의 현가'},
+    {key:'conv_prob',      label:'⑦ 전환확률'},
+    {key:'disc_factor',    label:'⑧ 할인계수'},
   ];
   const grids = modelKey==='tf' ? tfGrids : gsGrids;
 
@@ -4043,13 +4045,15 @@ function waccPeerSearch(i, inputEl){
       if(j.status!=='ok'||!j.results.length){drop.style.display='none';return;}
       // 입력값이 그 사이 바뀌었으면 잔상 방지
       if((inputEl.value||'').trim()!==q){drop.style.display='none';return;}
-      // 입력칸 위치에 드롭다운 정렬
+      // 입력칸 위치에 드롭다운 정렬 (position:fixed — viewport 좌표 직접 사용)
       const rect=inputEl.getBoundingClientRect();
-      const parent=drop.offsetParent || document.body;
-      const pRect=parent.getBoundingClientRect();
-      drop.style.left=(rect.left-pRect.left)+'px';
-      drop.style.top =(rect.bottom-pRect.top+2)+'px';
+      drop.style.left=rect.left+'px';
+      drop.style.top =(rect.bottom+2)+'px';
       drop.style.width=Math.max(rect.width,280)+'px';
+      // viewport 우측·하단 잘림 방지
+      const vw=window.innerWidth, vh=window.innerHeight;
+      if(rect.left+280>vw) drop.style.left=(vw-290)+'px';
+      if(rect.bottom+250>vh) drop.style.top=(rect.top-242)+'px';
       drop.innerHTML=j.results.slice(0,12).map(x=>{
         const nm=(x.name||'').replace(/'/g,'’').replace(/</g,'&lt;');
         return `<div onmousedown="waccPeerPick(${i},'${(x.code||'').replace(/'/g,'’')}','${nm}')" style="padding:6px 10px;cursor:pointer;font-size:0.74rem;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''"><b>${nm}</b> <span style="color:var(--text3)">${x.code} · ${x.market||''}</span></div>`;
@@ -4062,6 +4066,9 @@ function waccHidePeerDrop(){
   const drop=document.getElementById('w-peer-search-drop');
   if(drop)drop.style.display='none';
 }
+// 스크롤·리사이즈 시 드롭 자동 숨김 (position:fixed 라 입력칸과 위치 어긋남 방지)
+window.addEventListener('scroll', ()=>{ const d=document.getElementById('w-peer-search-drop'); if(d&&d.style.display!=='none') d.style.display='none'; }, true);
+window.addEventListener('resize', ()=>{ const d=document.getElementById('w-peer-search-drop'); if(d) d.style.display='none'; });
 function waccPeerPick(i, code, name){
   if(!window.waccPeers[i])return;
   window.waccPeers[i].name = name ? `${name} (${code})` : code;
