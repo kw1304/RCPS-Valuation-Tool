@@ -57,6 +57,35 @@ log = logging.getLogger("cc_sampling")
 # DB 초기화 (첫 실행 시 테이블 생성)
 init_db()
 
+
+# ── 전역 에러 핸들러 ──────────────────────────────────────────────────────────
+@app.errorhandler(Exception)
+def handle_unhandled_exception(e):
+    """처리되지 않은 예외 → JSON 500 응답 (trace_id 포함)."""
+    trace_id = str(uuid.uuid4())
+    log.exception(f"[trace_id={trace_id}] Unhandled exception: {e}")
+    return jsonify({"error": "내부 서버 오류가 발생했습니다", "trace_id": trace_id}), 500
+
+
+@app.errorhandler(400)
+def handle_bad_request(e):
+    return jsonify({"error": str(e.description) if hasattr(e, "description") else "잘못된 요청"}), 400
+
+
+@app.errorhandler(404)
+def handle_not_found(e):
+    return jsonify({"error": "요청한 리소스를 찾을 수 없습니다"}), 404
+
+
+# ── 파일 확장자 유효성 검증 헬퍼 ──────────────────────────────────────────────
+_ALLOWED_EXCEL_EXTS = {".xlsx", ".xls", ".xlsm"}
+_ALLOWED_PDF_EXT = {".pdf"}
+
+
+def _validate_file_ext(filename: str, allowed: set[str]) -> bool:
+    """파일명 확장자가 허용 목록에 있는지 확인."""
+    return Path(filename).suffix.lower() in allowed
+
 # ── in-memory STATE — Week 1 동안 DB와 병행 운영 ──────────────────────────
 # 기존 /api/upload, /api/run, /api/download 는 project_id 연동으로 확장.
 # project_id 없는 호출은 deprecation warning 로그 + 임시 프로젝트 자동 생성.
@@ -266,6 +295,13 @@ def upload():
     for kind in ("ledger", "fs", "rp"):
         f = request.files.get(kind)
         if f and f.filename:
+            # 파일 형식 검증 — Excel(.xlsx/.xls/.xlsm)만 허용
+            if not _validate_file_ext(f.filename, _ALLOWED_EXCEL_EXTS):
+                ext = Path(f.filename).suffix.lower()
+                return jsonify({
+                    "error": f"'{kind}' 파일 형식 오류: {ext} 파일은 지원하지 않습니다. "
+                             f"Excel 파일(.xlsx/.xls/.xlsm)을 업로드하세요."
+                }), 400
             path = UPLOAD_DIR / f"_{kind}.xlsx"
             f.save(path)
             STATE[f"{kind}_path"] = str(path)
@@ -296,33 +332,46 @@ def upload():
 
     # ledger 시트 감지
     if STATE.get("ledger_path"):
-        wb = openpyxl.load_workbook(STATE["ledger_path"], read_only=True, data_only=True)
-        sheets = wb.sheetnames
-        wb.close()
-        result["sheets"] = sheets
-        sheet_map = detect_ledger_sheets(sheets)
-        result["sheet_map"] = sheet_map
-        # STATE에 시트명 기록 (Step 3 build 시 재사용)
-        STATE["sheets"] = sheet_map
+        try:
+            wb = openpyxl.load_workbook(STATE["ledger_path"], read_only=True, data_only=True)
+            sheets = wb.sheetnames
+            wb.close()
+            result["sheets"] = sheets
+            sheet_map = detect_ledger_sheets(sheets)
+            result["sheet_map"] = sheet_map
+            STATE["sheets"] = sheet_map
+        except Exception as e:
+            log.warning(f"거래처원장 시트 감지 실패: {e}")
+            result["sheets_warning"] = f"시트 자동 감지 실패: {e!s}. 시트명을 직접 지정하세요."
 
     # 재무제표 자동 — 총자산
     if STATE.get("fs_path"):
-        fs = load_fs_amounts(STATE["fs_path"])
-        result["total_assets"] = get_total_assets(fs)
-        result["fs_amounts"] = {
-            k: v for k, v in fs.items() if any(g in k for g in [
-                "외상매출금", "받을어음", "미수금", "선급금", "대여금",
-                "임차보증금", "기타보증금", "외상매입금", "지급어음",
-                "미지급금", "선수금", "임대보증금",
-            ])
-        }
+        try:
+            fs = load_fs_amounts(STATE["fs_path"])
+            if not fs:
+                result["fs_warning"] = "재무제표에서 금액 데이터를 읽지 못했습니다. 파일 구조를 확인하세요."
+            else:
+                result["total_assets"] = get_total_assets(fs)
+                result["fs_amounts"] = {
+                    k: v for k, v in fs.items() if any(g in k for g in [
+                        "외상매출금", "받을어음", "미수금", "선급금", "대여금",
+                        "임차보증금", "기타보증금", "외상매입금", "지급어음",
+                        "미지급금", "선수금", "임대보증금",
+                    ])
+                }
+        except Exception as e:
+            log.warning(f"재무제표 로드 실패: {e}")
+            result["fs_warning"] = f"재무제표 파싱 실패: {e!s}"
 
     if STATE.get("rp_path"):
-        wb = openpyxl.load_workbook(STATE["rp_path"], read_only=True, data_only=True)
-        sheets_rp = wb.sheetnames
-        wb.close()
-        rp = load_related_parties(STATE["rp_path"])
-        result["related_parties"] = sorted(rp)
+        try:
+            wb = openpyxl.load_workbook(STATE["rp_path"], read_only=True, data_only=True)
+            wb.close()
+            rp = load_related_parties(STATE["rp_path"])
+            result["related_parties"] = sorted(rp)
+        except Exception as e:
+            log.warning(f"특관자리스트 로드 실패: {e}")
+            result["rp_warning"] = f"특관자리스트 파싱 실패: {e!s}"
 
     return jsonify(result)
 
@@ -366,20 +415,34 @@ def run():
     project_id = data.get("project_id") or STATE.get("current_project_id")
 
     if not STATE.get("ledger_path"):
-        return jsonify({"error": "ledger not uploaded"}), 400
+        return jsonify({"error": "거래처원장 파일을 먼저 업로드하세요 (Step 0)"}), 400
+
+    pm_raw = data.get("performance_materiality", 0)
+    try:
+        pm = float(pm_raw)
+    except (TypeError, ValueError):
+        return jsonify({"error": f"수행 중요성(performance_materiality) 값이 잘못되었습니다: {pm_raw}"}), 400
+    if pm <= 0:
+        return jsonify({"error": "수행 중요성(PM)은 0보다 커야 합니다"}), 400
 
     if project_id is None:
         log.warning("project_id 없는 /api/run 호출 — 임시 프로젝트 생성 (deprecated)")
         with get_session() as s:
             project_id, _ = _get_or_create_temp_project(s, kind)
 
-    df = pd.read_excel(STATE["ledger_path"], sheet_name=sheet)
+    try:
+        df = pd.read_excel(STATE["ledger_path"], sheet_name=sheet)
+    except Exception as e:
+        return jsonify({"error": f"거래처원장 파일 읽기 실패: {e!s}. 파일을 다시 업로드하세요."}), 400
+
+    if df.empty:
+        return jsonify({"error": "거래처원장이 비어 있습니다. 데이터를 확인하세요."}), 400
 
     params = SamplingParams(
         company_name=data.get("company_name", ""),
         period_end=date.fromisoformat(data.get("period_end", "2025-12-31")),
         kind=kind,
-        performance_materiality=float(data.get("performance_materiality", 0)),
+        performance_materiality=pm,
         risk_level=data.get("risk_level", "유의적위험"),
         control_reliance=data.get("control_reliance", "Y"),
         key_item_ratio_override=_f(data.get("key_item_ratio")),
@@ -395,6 +458,20 @@ def run():
     )
 
     result = run_sampling(df, params)
+
+    # Edge case: 모집단 0 또는 거래처 0건 → 사용자에게 명확한 안내
+    if result.population_amount <= 0:
+        kind_label = "채권" if kind == "receivable" else "채무"
+        return jsonify({
+            "error": (
+                f"{kind_label} 모집단 잔액이 0입니다. "
+                f"올바른 시트를 선택했는지 확인하세요. "
+                f"(선택된 시트: {sheet or '자동감지'})"
+            ),
+            "population_amount": 0,
+            "hint": "거래처원장 시트명이 채권/채무 중 어느 쪽인지 확인 후 sheet 파라미터를 명시적으로 지정해보세요.",
+        }), 400
+
     serialized = _serialize_result(result, params)
     STATE["last_result"][kind] = {"result": result, "params": params}
 
@@ -779,6 +856,13 @@ def step4_upload_replies(pid: str):
         art_repo = ArtifactRepository(s)
         reply_repo = ConfirmationReplyRepository(s)
 
+        # PDF 형식 검증
+        non_pdf = [f.filename for f in files if f.filename and not _validate_file_ext(f.filename, _ALLOWED_PDF_EXT)]
+        if non_pdf:
+            return jsonify({
+                "error": f"PDF 파일이 아닌 파일이 포함되어 있습니다: {', '.join(non_pdf)}. PDF(.pdf)만 업로드하세요."
+            }), 400
+
         results = []
         for f in files:
             if not f.filename:
@@ -787,6 +871,9 @@ def step4_upload_replies(pid: str):
 
             # 1) Artifact 저장
             pdf_bytes = f.read()
+            if len(pdf_bytes) == 0:
+                results.append({"filename": filename, "status": "error", "error": "빈 파일입니다"})
+                continue
             artifact = art_repo.save_bytes(
                 project_id=pid,
                 kind="pdf_reply",

@@ -55,14 +55,14 @@ def detect_ledger_sheets(sheetnames: list[str]) -> dict[str, Optional[str]]:
 
 # ── 컬럼 키워드 사전 ────────────────────────────────────────────────────────
 _COL_KEYWORDS: dict[str, list[str]] = {
-    "code_col":      ["코드", "거래처코드", "고객코드", "공급업체코드", "vendorcode", "customercode"],
-    "name_col":      ["거래처명", "고객명", "공급업체명", "거래처", "name", "vendorname", "customername"],
-    "account_code":  ["계정과목", "계정코드", "accountcode"],
+    "code_col":      ["코드", "거래처코드", "고객코드", "공급업체코드", "vendorcode", "customercode", "code"],
+    "name_col":      ["거래처명", "고객명", "공급업체명", "거래처", "vendorname", "customername", "name"],
+    "account_code":  ["계정과목", "계정코드", "accountcode", "account"],
     "account_name":  ["계정과목명", "계정명", "accountname"],
     "currency":      ["통화", "currency", "ccy"],
-    "beginning":     ["기초", "기초잔액", "전기말", "beginningbalance", "openingbalance"],
+    "beginning":     ["기초", "기초잔액", "전기말", "beginningbalance", "openingbalance", "opening balance", "opening"],
     "change":        ["증감", "증감액", "당기증감", "change", "movement"],
-    "ending":        ["기말", "잔액", "기말잔액", "당기말", "endingbalance", "closingbalance"],
+    "ending":        ["기말", "잔액", "기말잔액", "당기말", "endingbalance", "closingbalance", "closing balance", "closing"],
 }
 
 

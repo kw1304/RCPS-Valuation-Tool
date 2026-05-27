@@ -68,7 +68,10 @@ class SamplingOutput:
 
 def run_sampling(df_ledger: pd.DataFrame, params: SamplingParams) -> SamplingOutput:
     # 1. 거래처별 집계
-    rows = load_ledger_rows(df_ledger, kind=params.kind)
+    # 컬럼 자동 감지 — 7620 이외 클라이언트 대응 (시트 헤더 키워드 기반)
+    from src.infrastructure.schemas.ledger_schema import detect_ledger_columns
+    col_map = detect_ledger_columns(df_ledger)
+    rows = load_ledger_rows(df_ledger, kind=params.kind, col_map=col_map)
     parties_all = aggregate_by_party(rows, kind=params.kind, sign_normalize=True)
 
     # 발송제외 적용 후 모집단
