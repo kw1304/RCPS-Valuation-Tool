@@ -618,6 +618,29 @@ def _is_total_row(acct_raw: str) -> bool:
     return bool(re.match(r"^(?:합계|TOTAL|Total)\s*$", acct_raw.strip()))
 
 
+# 영문 계정과목명 → 한국어 표준 그룹 변환 (캐시)
+_ACCOUNT_GROUP_CACHE: dict[str, dict[str, str]] = {}
+
+
+def _resolve_account_name(acct_raw: str, section: str) -> str:
+    """영문/약어 계정과목명을 한국어 표준 그룹명으로 변환.
+
+    영문 회신서(AR, AP, Accounts Receivable 등)가 들어와도
+    population.aggregate_by_party와 동일한 그룹 키로 통일한다.
+    """
+    global _ACCOUNT_GROUP_CACHE
+    if section not in _ACCOUNT_GROUP_CACHE:
+        try:
+            from src.domain.population import _load_account_group_map
+            _ACCOUNT_GROUP_CACHE[section] = _load_account_group_map(section)
+        except Exception:
+            _ACCOUNT_GROUP_CACHE[section] = {}
+
+    norm_key = acct_raw.strip().lower()
+    mapped = _ACCOUNT_GROUP_CACHE[section].get(norm_key)
+    return mapped if mapped else acct_raw
+
+
 def _determine_section_from_table_context(
     table_idx: int,
     table_text_above: str,
@@ -745,9 +768,12 @@ def parse_confirmation_v2(
                     match_raw = str(row[match_col_idx] or "").strip()
                     row_match = _parse_declared_match_cell(match_raw, match_pos, match_neg)
 
+                # 영문 계정과목명을 한국어 표준 그룹으로 변환
+                resolved_acct = _resolve_account_name(acct_raw, section)
+
                 per_account_rows.append(AccountRow(
                     section=section,
-                    account_name=acct_raw,
+                    account_name=resolved_acct,
                     sent_amount=sent_val,
                     declared_match=row_match,
                     reply_amount=reply_val,

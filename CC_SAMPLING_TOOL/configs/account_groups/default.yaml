@@ -1,8 +1,9 @@
 # 계정과목 그룹 매핑 — 원장 계정과목명 → 표준 그룹명
-# 키: 원장에 기재된 계정과목명 (정확 일치)
+# 키: 원장에 기재된 계정과목명 (정확 일치, 대소문자 무관 — normalize 후 매칭)
 # 값: 그룹명 (완전성 검토 및 조서 표시에 사용)
 
 receivable:
+  # ── 한국어 ──────────────────────────────────────────────
   외상매출금: 외상매출금
   외상매출금(국내): 외상매출금
   외상매출금(관계사): 외상매출금
@@ -17,8 +18,38 @@ receivable:
   장기대여금: 장기대여금
   임차보증금: 임차보증금
   기타보증금: 기타보증금
+  # ── 영문 약어·풀네임 (대소문자 무관으로 normalize 후 매핑) ──
+  Accounts Receivable: 외상매출금
+  Trade Receivables: 외상매출금
+  Trade Receivable: 외상매출금
+  AR: 외상매출금
+  A/R: 외상매출금
+  Notes Receivable: 받을어음
+  Bills Receivable: 받을어음
+  NR: 받을어음
+  N/R: 받을어음
+  Other Receivables: 미수금
+  Non-Trade Receivables: 미수금
+  Misc Receivables: 미수금
+  Miscellaneous Receivables: 미수금
+  Advances: 선급금
+  Advance Payments: 선급금
+  Prepaid Expenses: 선급금
+  Prepayments: 선급금
+  Short-term Loans: 단기대여금
+  Short-term Loan Receivables: 단기대여금
+  ST Loans: 단기대여금
+  Long-term Loans: 장기대여금
+  Long-term Loan Receivables: 장기대여금
+  LT Loans: 장기대여금
+  Lease Deposit: 임차보증금
+  Security Deposit: 임차보증금
+  Rental Deposit: 임차보증금
+  Guarantee Deposit: 기타보증금
+  Other Deposits: 기타보증금
 
 payable:
+  # ── 한국어 ──────────────────────────────────────────────
   외상매입금: 외상매입금
   외상매입금(국내): 외상매입금
   외상매입금(관계사): 외상매입금
@@ -31,3 +62,24 @@ payable:
   외담대미지급금: 미지급금
   선수금: 선수금
   임대보증금: 임대보증금
+  # ── 영문 약어·풀네임 ────────────────────────────────────
+  Accounts Payable: 외상매입금
+  Trade Payables: 외상매입금
+  Trade Payable: 외상매입금
+  AP: 외상매입금
+  A/P: 외상매입금
+  Notes Payable: 지급어음(외담대외상매입금)
+  Bills Payable: 지급어음(외담대외상매입금)
+  NP: 지급어음(외담대외상매입금)
+  N/P: 지급어음(외담대외상매입금)
+  Other Payables: 미지급금
+  Accrued Expenses: 미지급금
+  Accrued Liabilities: 미지급금
+  Misc Payables: 미지급금
+  Miscellaneous Payables: 미지급금
+  Customer Advances: 선수금
+  Deferred Income: 선수금
+  Advance Receipts: 선수금
+  Lease Deposit Received: 임대보증금
+  Security Deposit Received: 임대보증금
+  Rental Deposit Received: 임대보증금

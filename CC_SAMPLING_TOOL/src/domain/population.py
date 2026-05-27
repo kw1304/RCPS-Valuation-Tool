@@ -17,9 +17,20 @@ from typing import Iterable
 import pandas as pd
 
 
+def _normalize_account_name(name: str) -> str:
+    """계정과목명 정규화 — 영문 대소문자·공백·특수문자 통일.
+
+    예: "Accounts Receivable" → "accounts receivable"
+        "A/R" → "a/r"
+    """
+    return name.strip().lower()
+
+
 def _load_account_group_map(kind: str) -> dict[str, str]:
     """configs/account_groups/default.yaml 로드.
     파일 없거나 파싱 실패 시 하드코딩 dict fallback 사용.
+
+    반환값: {normalize(원장계정과목명) → 표준그룹명} — case-insensitive 검색용.
     """
     _CONFIG = (
         Path(__file__).resolve().parents[2]
@@ -31,13 +42,14 @@ def _load_account_group_map(kind: str) -> dict[str, str]:
             data = yaml.safe_load(f)
         section = data.get(kind, {})
         if isinstance(section, dict) and section:
-            return section
+            # normalize 키 → 대소문자 무관 매핑 구축
+            return {_normalize_account_name(k): v for k, v in section.items()}
     except Exception:
         pass
     # fallback: 하드코딩 dict (하단 정의)
     if kind == "receivable":
-        return _FALLBACK_RECEIVABLE
-    return _FALLBACK_PAYABLE
+        return {_normalize_account_name(k): v for k, v in _FALLBACK_RECEIVABLE.items()}
+    return {_normalize_account_name(k): v for k, v in _FALLBACK_PAYABLE.items()}
 
 
 # 표준 계정 그룹 매핑 (원장 계정과목명 → 그룹)
@@ -151,10 +163,11 @@ def aggregate_by_party(
     sign_normalize: bool = True,
 ) -> dict[str, PartyBalance]:
     """거래처별 그룹화. 채무는 음수로 적재되므로 sign_normalize=True 시 절대값화."""
-    group_map = _load_account_group_map(kind)
+    group_map = _load_account_group_map(kind)  # keys are normalized (lowercase)
     parties: dict[str, PartyBalance] = {}
     for r in rows:
-        group = group_map.get(r.account_name, r.account_name)
+        norm_acct = _normalize_account_name(r.account_name)
+        group = group_map.get(norm_acct, r.account_name)
         amt = abs(r.ending) if sign_normalize else r.ending
         if r.name not in parties:
             parties[r.name] = PartyBalance(name=r.name)

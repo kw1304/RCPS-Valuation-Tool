@@ -55,14 +55,56 @@ def detect_ledger_sheets(sheetnames: list[str]) -> dict[str, Optional[str]]:
 
 # ── 컬럼 키워드 사전 ────────────────────────────────────────────────────────
 _COL_KEYWORDS: dict[str, list[str]] = {
-    "code_col":      ["코드", "거래처코드", "고객코드", "공급업체코드", "vendorcode", "customercode", "code"],
-    "name_col":      ["거래처명", "고객명", "공급업체명", "거래처", "vendorname", "customername", "name"],
-    "account_code":  ["계정과목", "계정코드", "accountcode", "account"],
-    "account_name":  ["계정과목명", "계정명", "accountname"],
-    "currency":      ["통화", "currency", "ccy"],
-    "beginning":     ["기초", "기초잔액", "전기말", "beginningbalance", "openingbalance", "opening balance", "opening"],
-    "change":        ["증감", "증감액", "당기증감", "change", "movement"],
-    "ending":        ["기말", "잔액", "기말잔액", "당기말", "endingbalance", "closingbalance", "closing balance", "closing"],
+    "code_col":      [
+        # 한국어 (긴 것 먼저 — 짧은 키워드가 다른 컬럼과 충돌 방지)
+        "거래처코드", "고객코드", "공급업체코드",
+        # 영문 구체적
+        "vendorcode", "customercode", "vendor code", "customer code",
+        "party code", "bp code",
+        # 짧은 영문 (단독 컬럼명인 경우)
+        "code",
+        # 한국어 짧은 것 (마지막 fallback)
+        "코드",
+    ],
+    "name_col":      [
+        # 한국어 (긴 것 먼저 — "거래처"가 "거래처코드"에 포함되지 않도록 "거래처명" 우선)
+        "거래처명", "고객명", "공급업체명",
+        # 영문 구체적
+        "vendorname", "customername", "vendor name", "customer name",
+        "company name", "party name", "bp name",
+        # 짧은 영문 (단독 컬럼명인 경우)
+        "name",
+        # 한국어 단독 약칭 ("명" — 7620 원장 표기)
+        "명",
+        # 주의: "거래처"는 "거래처코드"에도 포함되므로 등록하지 않음
+    ],
+    "account_code":  [
+        "계정과목코드", "계정코드",
+        "accountcode", "gl account code", "account code",
+        "gl code", "gl account",
+        # "account" 단독은 너무 광범위 — "account name"에도 포함되므로 마지막
+        "계정과목", "account",
+    ],
+    "account_name":  [
+        "계정과목명", "계정명",
+        "accountname", "gl account name", "account name",
+        "account description",
+    ],
+    "currency":      ["통화", "currency", "ccy", "curr"],
+    "beginning":     [
+        "기초", "기초잔액", "전기말",
+        "beginningbalance", "openingbalance", "opening balance", "opening",
+        "beginning balance", "beg balance", "beg bal",
+    ],
+    "change":        [
+        "증감", "증감액", "당기증감",
+        "change", "movement", "net change", "net movement",
+    ],
+    "ending":        [
+        "기말", "잔액", "기말잔액", "당기말",
+        "endingbalance", "closingbalance", "closing balance", "closing",
+        "ending balance", "end balance", "end bal", "balance",
+    ],
 }
 
 

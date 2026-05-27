@@ -38,26 +38,48 @@ class MatchResult:
 
 
 _STRIP_PATTERN = re.compile(
-    r"[\s\-_]|㈜|\(주\)|주식회사|Co\.|Ltd\.|Inc\.|Corp\.|LLC|LLP"
-    r"|Sdn\.|Bhd\.|SDN\.|BHD\.|Pty\.|PTY\.|Ltd$|Co$",
+    # 공백·특수문자
+    r"[\s\-_]"
+    # 한국 법인 접미사
+    r"|㈜|\(주\)|주식회사|주식\s*회사|주식$|회사$"
+    # 영문 법인 접미사 (순서 중요: 긴 패턴 먼저)
+    r"|CO\.,?\s*LTD\.?|CO\s*,\s*LTD\.?"        # Co., Ltd. / Co.,Ltd / CO, LTD
+    r"|CORPORATION|COMPANY"
+    r"|LIMITED"
+    r"|Co\.|Ltd\.|Inc\.|Corp\.|LLC|LLP"
+    r"|Sdn\.|Bhd\.|SDN\.|BHD\.|Pty\.|PTY\."
+    r"|Ltd$|Co$|Inc$|Corp$"
+    # 점·쉼표 (법인 접미사 제거 후 남는 고립된 구두점)
+    r"|[.,]",
     re.IGNORECASE,
 )
 
 # 별칭 사전 캐시
-_ALIAS_CACHE: dict[str, dict[str, str]] | None = None  # normalized_alias → canonical_name
+# normalized_alias → list[canonical_name]
+# 동일 normalize key에 여러 canonical이 매핑될 수 있음 (예: "cosmax" → ["코스맥스㈜", "COSMAX INC", ...])
+_ALIAS_CACHE: dict[str, list[str]] | None = None
+# 직접 alias 역방향: normalized_alias → canonical (alias_list에 명시적으로 등록된 경우만)
+# canonical 자신의 normalized key는 여기에 포함되지 않음
+_ALIAS_DIRECT_CACHE: dict[str, str] | None = None
+# 직접 alias 원문 길이 추적 (충돌 해소용): normalized_alias → len(alias_raw)
+_ALIAS_DIRECT_LEN_CACHE: dict[str, int] | None = None
 _ALIAS_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "configs" / "party_aliases.yaml"
 
 
-def _load_aliases() -> dict[str, str]:
-    """alias 사전 로드 — {normalized_alias: canonical_name} 매핑 반환.
+def _load_aliases() -> dict[str, list[str]]:
+    """alias 사전 로드 — {normalized_alias: [canonical_name, ...]} 매핑 반환.
 
+    동일 normalized key에 여러 canonical이 존재할 수 있으므로 list로 보관.
+    candidates와 교집합으로 disambiguation.
     파일 없으면 빈 dict 반환 (graceful).
     """
-    global _ALIAS_CACHE
+    global _ALIAS_CACHE, _ALIAS_DIRECT_CACHE, _ALIAS_DIRECT_LEN_CACHE
     if _ALIAS_CACHE is not None:
         return _ALIAS_CACHE
 
     _ALIAS_CACHE = {}
+    _ALIAS_DIRECT_CACHE = {}
+    _ALIAS_DIRECT_LEN_CACHE = {}
     if not _ALIAS_CONFIG_PATH.exists():
         return _ALIAS_CACHE
 
@@ -68,20 +90,95 @@ def _load_aliases() -> dict[str, str]:
         for canonical, alias_list in aliases_section.items():
             if not alias_list:
                 continue
-            # canonical 자신도 등록
-            _ALIAS_CACHE[_normalize(canonical)] = canonical
+            # canonical 자신도 등록 (일반 캐시에만)
+            norm_c = _normalize(canonical)
+            if norm_c not in _ALIAS_CACHE:
+                _ALIAS_CACHE[norm_c] = []
+            if canonical not in _ALIAS_CACHE[norm_c]:
+                _ALIAS_CACHE[norm_c].append(canonical)
             for alias in alias_list:
-                _ALIAS_CACHE[_normalize(str(alias))] = canonical
+                norm_a = _normalize(str(alias))
+                if norm_a not in _ALIAS_CACHE:
+                    _ALIAS_CACHE[norm_a] = []
+                if canonical not in _ALIAS_CACHE[norm_a]:
+                    _ALIAS_CACHE[norm_a].append(canonical)
+                # 직접 alias 역방향 (canonical 자신 제외)
+                if norm_a != norm_c:
+                    alias_raw_len = len(str(alias))
+                    if norm_a not in _ALIAS_DIRECT_CACHE:
+                        _ALIAS_DIRECT_CACHE[norm_a] = canonical
+                        _ALIAS_DIRECT_LEN_CACHE[norm_a] = alias_raw_len
+                    else:
+                        # 충돌 시: 더 긴 alias 원문 = 더 구체적 매핑 → 우선
+                        prev_len = _ALIAS_DIRECT_LEN_CACHE.get(norm_a, 0)
+                        if alias_raw_len > prev_len:
+                            _ALIAS_DIRECT_CACHE[norm_a] = canonical
+                            _ALIAS_DIRECT_LEN_CACHE[norm_a] = alias_raw_len
     except Exception:
         pass  # 파싱 실패 → 빈 사전으로 진행
 
     return _ALIAS_CACHE
 
 
+def _load_direct_aliases() -> dict[str, str]:
+    """직접 alias 역방향 사전 — alias_list에 명시된 항목만."""
+    _load_aliases()  # 사이드 이펙트로 _ALIAS_DIRECT_CACHE 초기화
+    return _ALIAS_DIRECT_CACHE or {}
+
+
+def _lookup_alias(norm_query: str, candidates: list[str]) -> Optional[str]:
+    """alias 사전에서 norm_query와 일치하는 canonical을 candidates 중에서 찾는다.
+
+    전략:
+    1. norm_query → canonicals 목록 조회
+    2. 각 candidate를 역방향 조회: candidate의 모든 alias canonical이 norm_query 집합과 교집합이면 매칭
+    3. candidates 중 원본 문자열이 canonical list에 있는 경우 우선 반환
+
+    이렇게 하면 "COSMAX USA Corp." → candidates["COSMAX USA CORP", "코스맥스USA"] 중
+    "COSMAX USA CORP"가 "COSMAX USA Corp."를 alias로 직접 보유하므로 우선 매칭.
+    """
+    aliases = _load_aliases()
+    canonicals = aliases.get(norm_query)
+    if not canonicals:
+        return None
+
+    norm_map = {c: _normalize(c) for c in candidates}
+    canonical_norms = {_normalize(c) for c in canonicals}
+
+    # 역방향: 각 candidate에서 해당 candidate가 보유한 canonical set과 교집합 확인
+    # 동시에 candidate 자신이 canonical_norms에 있는지도 확인
+    matched_cands: list[tuple[int, str]] = []  # (priority_score, candidate)
+
+    for cand, norm_cand in norm_map.items():
+        # candidate의 norm이 canonical_norms에 있으면 매칭
+        if norm_cand in canonical_norms:
+            # 우선순위: norm_query가 candidate_aliases에 직접 포함되어 있으면 score 높음
+            cand_aliases = aliases.get(norm_cand, [])
+            cand_alias_norms = set()
+            for cc in cand_aliases:
+                cand_alias_norms.add(_normalize(cc))
+
+            # candidate 자신의 alias set이 norm_query를 포함하면 직접 매칭 (highest priority)
+            if norm_query in cand_alias_norms:
+                # candidate가 norm_query를 own alias로 가짐 → 가장 구체적
+                matched_cands.append((2, cand))
+            else:
+                # candidate의 norm이 그냥 canonical_norms에 포함
+                matched_cands.append((1, cand))
+
+    if matched_cands:
+        matched_cands.sort(key=lambda x: x[0], reverse=True)
+        return matched_cands[0][1]
+
+    return None
+
+
 def reload_aliases() -> None:
     """별칭 사전 캐시 초기화 (파일 수정 후 리로드용)."""
-    global _ALIAS_CACHE
+    global _ALIAS_CACHE, _ALIAS_DIRECT_CACHE, _ALIAS_DIRECT_LEN_CACHE
     _ALIAS_CACHE = None
+    _ALIAS_DIRECT_CACHE = None
+    _ALIAS_DIRECT_LEN_CACHE = None
 
 
 def _normalize(name: str) -> str:
@@ -206,27 +303,13 @@ def match_party(
                     if _normalize(cand) == _normalize(contact.name):
                         return MatchResult(matched_name=cand, confidence=1.0, method="alias")
 
-    aliases = _load_aliases()
     norm_query = _normalize(extracted_name)
     norm_map = {c: _normalize(c) for c in candidates}
 
     # ── 2. 정적 alias 사전 ───────────────────────────────────────────────
-    canonical = aliases.get(norm_query)
-    if canonical:
-        for cand in candidates:
-            if _normalize(cand) == _normalize(canonical):
-                return MatchResult(matched_name=cand, confidence=1.0, method="alias")
-        for cand in candidates:
-            cand_aliases_canonical = aliases.get(_normalize(cand))
-            if cand_aliases_canonical and _normalize(cand_aliases_canonical) == _normalize(canonical):
-                return MatchResult(matched_name=cand, confidence=1.0, method="alias")
-
-    # candidates에서 alias를 통한 매핑 확인
-    for cand, norm_cand in norm_map.items():
-        cand_canonical = aliases.get(norm_cand)
-        if cand_canonical:
-            if aliases.get(norm_query) and _normalize(aliases.get(norm_query, "")) == _normalize(cand_canonical):
-                return MatchResult(matched_name=cand, confidence=1.0, method="alias")
+    matched_from_alias = _lookup_alias(norm_query, candidates)
+    if matched_from_alias:
+        return MatchResult(matched_name=matched_from_alias, confidence=1.0, method="alias")
 
     # ── 3. UploadGuide 동적 alias ────────────────────────────────────────
     if upload_guide_data is not None:
