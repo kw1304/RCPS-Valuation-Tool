@@ -817,11 +817,6 @@ input[type="range"]:focus { border: none; box-shadow: none; }
     <p>이자율스왑 공정가치 평가 검증</p>
   </div>
   <div class="header-right">
-    <div class="date-picker-group">
-      <span class="date-label">평가기준일</span>
-      <input type="date" id="eval-date">
-      <div class="spinner" id="rate-spinner" style="display:none"></div>
-    </div>
     <div class="rate-status" id="rate-status"></div>
     <div class="badge">KRW · DCF · v1.0</div>
   </div>
@@ -835,6 +830,11 @@ input[type="range"]:focus { border: none; box-shadow: none; }
     <div class="form-group">
       <div class="form-label">명목 원금 <span>원</span></div>
       <input type="text" id="notional" value="10,000,000,000" inputmode="numeric">
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">평가기준일 <span class="spinner" id="rate-spinner" style="display:none"></span></div>
+      <input type="date" id="eval-date">
     </div>
 
     <div class="form-group">
