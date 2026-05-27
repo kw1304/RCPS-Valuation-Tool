@@ -2500,6 +2500,73 @@ async function loadTree(){
   }
 }
 
+/* 트리 노드 클릭 상세 모달 */
+function treeNodeDetail(i, j){
+  if(!window._treeResp) return;
+  const modelKey = document.querySelector('input[name="tree-model"]:checked')?.value || 'tf';
+  const t = window._treeResp[modelKey];
+  if(!t || t.error) return;
+
+  // 1주 기준 변환
+  const rsRaw = (document.getElementById('rcps_shares')?.value||'').replace(/,/g,'');
+  const rcps = parseFloat(rsRaw);
+  const perShare = (!isNaN(rcps) && rcps > 0);
+  const divisor = perShare ? rcps : 1;
+  const VK = new Set(['conv_intrinsic','bond_intrinsic','rcps_value','hold_value','equity_comp','bond_comp','equity_hold','bond_hold']);
+
+  // 노드 데이터 수집
+  const get = (key) => { const g = t[key]; return (g && g[i] && g[i][j]!=null) ? g[i][j] : null; };
+  const fmt = (v, key) => {
+    if(v == null) return '—';
+    if(typeof v !== 'number') return String(v);
+    const shown = VK.has(key) ? v/divisor : v;
+    return shown.toLocaleString('ko-KR', {maximumFractionDigits:2}) + (VK.has(key) ? '원' : '');
+  };
+
+  const rows = [
+    ['주가 (S)', get('stock'), 'stock'],
+    ['희석 주가', get('diluted'), 'stock'],
+    ['의사결정', get('decision'), 'decision'],
+    ['전환 내재가치 (즉시 전환)', get('conv_intrinsic'), 'conv_intrinsic'],
+    ['채권 내재가치 (즉시 풋·만기)', get('bond_intrinsic'), 'bond_intrinsic'],
+    ['RCPS 가치 (의사결정 후)', get('rcps_value'), 'rcps_value'],
+    ['보유가치 (연속보유)', get('hold_value'), 'hold_value'],
+    ['지분 성분 (실현)', get('equity_comp'), 'equity_comp'],
+    ['채권 성분 (실현)', get('bond_comp'), 'bond_comp'],
+    ['지분 보유가치', get('equity_hold'), 'equity_hold'],
+    ['채권 보유가치', get('bond_hold'), 'bond_hold'],
+    ['전환확률 cp (GS)', get('conv_prob'), 'conv_prob'],
+    ['할인계수 df (GS)', get('disc_factor'), 'disc_factor'],
+  ].filter(r => r[1] != null);
+
+  const stepFraction = (t.steps > 0) ? (i / t.steps) : 0;
+  const modelLabel = modelKey === 'tf' ? 'TF (Tsiveriotis-Fernandes)' : 'GS (Goldman Sachs)';
+
+  const modalHtml = `
+    <div id="tree-modal" onclick="if(event.target.id==='tree-modal')document.getElementById('tree-modal').remove()" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:10px;padding:20px 24px;max-width:520px;width:90%;max-height:80vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="margin:0;font-size:1rem;color:#1A365D">트리 노드 (i=${i}, j=${j})</h3>
+          <button onclick="document.getElementById('tree-modal').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text2)">×</button>
+        </div>
+        <div style="font-size:.74rem;color:var(--text3);margin-bottom:10px;line-height:1.5">
+          <b>${modelLabel}</b> · 단계 ${i}/${t.steps} (${(stepFraction*100).toFixed(1)}%)
+          · 상승 ${i-j}회 / 하락 ${j}회 ${perShare ? `<br>가치 표시: <b>1RCPS(1주) 기준</b>` : `<br>가치 표시: 총액 기준 (주식수 미입력)`}
+        </div>
+        <table style="width:100%;font-size:.74rem;border-collapse:collapse">
+          <tbody>
+            ${rows.map(r => `<tr style="border-bottom:1px solid #F2F4F6"><td style="padding:5px 8px;color:var(--text2)">${r[0]}</td><td style="padding:5px 8px;text-align:right;font-weight:600">${fmt(r[1], r[2])}</td></tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="font-size:.66rem;color:var(--text3);margin-top:8px;padding:6px 8px;background:#F9FAFB;border-radius:4px;line-height:1.5">
+          ※ (i, j) 좌표: i=단계 인덱스(0=루트, ${t.steps}=만기), j=하락 횟수(0=최상단, i=최하단).
+          노드 주가 = S₀ × u<sup>i−j</sup> × d<sup>j</sup>.
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
 function renderTreeGrids(){
   const wrap = document.getElementById('tree-grids');
   if(!window._treeResp){ wrap.innerHTML='<p style="color:var(--text3);font-size:.8rem;padding:12px">먼저 "트리 생성" 버튼을 누르세요.</p>'; return; }
@@ -2609,7 +2676,7 @@ function renderTreeGrids(){
           } else {
             display = val!=null?String(val):'';
           }
-          html += `<td style="padding:2px 6px;border:1px solid var(--border);text-align:right;${bg}">${display}</td>`;
+          html += `<td onclick="treeNodeDetail(${i},${j})" style="padding:2px 6px;border:1px solid var(--border);text-align:right;cursor:pointer;${bg}" title="(i=${i}, j=${j}) — 클릭: 상세">${display}</td>`;
         }
       }
       html += '</tr>';
@@ -3319,30 +3386,56 @@ function waccRecalc(){
   // β_D>0: Full Hamada — β_U = [β_L + β_D·(1−t)·D/E] / [1 + (1−t)·D/E]
   const betaD = (parseFloat(document.getElementById('w_beta_d')?.value)||0);
 
-  // 국가별 세율 매핑 (Damodaran 2024 기준 marginal corporate tax rate, source: pages.stern.nyu.edu/~adamodar)
+  // 국가별 세율 매핑 — Damodaran 2024 marginal corporate tax (pages.stern.nyu.edu/~adamodar)
   // unlever는 peer 국가 세율, relever는 평가대상 세율 (Damodaran Investment Valuation 3e Ch.8)
-  // yfinance info.country 표기 변형(예: "Korea, Republic of") 매핑 확장
+  // yfinance info.country 표기 변형(예: "Korea, Republic of") 매핑 확장 — 80+ 국가
   const _COUNTRY_TAX = {
-    // 한국
+    // 동아시아
     'South Korea':0.242,'Korea':0.242,'Korea, Republic of':0.242,'Republic of Korea':0.242,
-    // 미국·캐나다
-    'United States':0.25,'USA':0.25,'United States of America':0.25,'US':0.25,
-    'Canada':0.265,
-    // 일본·중화권
     'Japan':0.30,
-    'China':0.25,"People's Republic of China":0.25,'Hong Kong':0.165,'Hong Kong SAR':0.165,
+    'China':0.25,"People's Republic of China":0.25,
+    'Hong Kong':0.165,'Hong Kong SAR':0.165,
     'Taiwan':0.20,'Taiwan, Province of China':0.20,
-    'Singapore':0.17,
-    // 유럽
+    'Mongolia':0.25,
+    // 동남아
+    'Singapore':0.17,'Malaysia':0.24,'Thailand':0.20,'Vietnam':0.20,
+    'Indonesia':0.22,'Philippines':0.25,'Cambodia':0.20,'Laos':0.20,
+    'Myanmar':0.22,'Brunei':0.185,
+    // 남아시아
+    'India':0.252,'Pakistan':0.29,'Bangladesh':0.275,'Sri Lanka':0.30,
+    // 북미
+    'United States':0.25,'USA':0.25,'United States of America':0.25,'US':0.25,
+    'Canada':0.265,'Mexico':0.30,
+    // 중남미
+    'Brazil':0.34,'Argentina':0.35,'Chile':0.27,'Colombia':0.35,
+    'Peru':0.295,'Venezuela':0.34,'Uruguay':0.25,'Ecuador':0.25,
+    'Bolivia':0.25,'Paraguay':0.10,'Costa Rica':0.30,'Panama':0.25,
+    // 서유럽
     'United Kingdom':0.25,'UK':0.25,'Great Britain':0.25,
-    'Germany':0.30,'France':0.258,'Italy':0.278,
-    'Netherlands':0.258,'Switzerland':0.18,'Sweden':0.206,'Norway':0.22,'Denmark':0.22,
-    'Spain':0.25,'Belgium':0.25,'Ireland':0.125,
-    // 기타 주요국
-    'India':0.252,'Brazil':0.34,'Australia':0.30,'New Zealand':0.28,
-    'Mexico':0.30,'South Africa':0.27,'Israel':0.23,'Turkey':0.25,
-    'Russia':0.20,'Indonesia':0.22,'Thailand':0.20,'Vietnam':0.20,
-    'Malaysia':0.24,'Philippines':0.25,'Saudi Arabia':0.20,'United Arab Emirates':0.09,
+    'Germany':0.30,'France':0.258,'Italy':0.278,'Spain':0.25,
+    'Netherlands':0.258,'Belgium':0.25,'Luxembourg':0.2494,
+    'Switzerland':0.18,'Austria':0.23,'Ireland':0.125,
+    'Portugal':0.31,'Greece':0.22,
+    // 북유럽
+    'Sweden':0.206,'Norway':0.22,'Denmark':0.22,'Finland':0.20,
+    'Iceland':0.20,
+    // 동유럽·러시아
+    'Russia':0.20,'Russian Federation':0.20,'Ukraine':0.18,'Poland':0.19,
+    'Czech Republic':0.19,'Czechia':0.19,'Hungary':0.09,'Slovakia':0.21,
+    'Slovenia':0.19,'Romania':0.16,'Bulgaria':0.10,'Croatia':0.18,
+    'Serbia':0.15,'Estonia':0.20,'Latvia':0.20,'Lithuania':0.15,
+    // 중동·터키
+    'Israel':0.23,'Turkey':0.25,'Türkiye':0.25,
+    'Saudi Arabia':0.20,'United Arab Emirates':0.09,'UAE':0.09,
+    'Qatar':0.10,'Kuwait':0.15,'Bahrain':0,'Oman':0.15,
+    'Jordan':0.20,'Lebanon':0.17,'Iraq':0.15,'Iran':0.25,
+    'Egypt':0.225,
+    // 아프리카
+    'South Africa':0.27,'Nigeria':0.30,'Kenya':0.30,'Morocco':0.32,
+    'Tunisia':0.15,'Algeria':0.26,'Ethiopia':0.30,'Ghana':0.25,
+    'Zimbabwe':0.245,
+    // 오세아니아
+    'Australia':0.30,'New Zealand':0.28,
   };
   // SPC(특수목적법인) 등록국 — 실질 사업국과 다를 가능성 高. 사용자 주의 환기.
   const _SPC_COUNTRIES = new Set([

@@ -588,6 +588,62 @@ def _write_executive_summary(ws, params, initial, eval_result, sensitivity):
         _cell(ws, row, 4, "100.0%", bold=True, bg=bg, align="right")
         row += 2
 
+        # TF 본래 2-component 분해 (학술 — Tsiveriotis-Fernandes 1998)
+        tfE = tf.get("equity_component")
+        tfB = tf.get("bond_component")
+        if tfE is not None and tfB is not None:
+            ws.cell(row=row, column=2, value="■ TF 본래 2-component 분해 (위험 분리)").font = \
+                Font(name="맑은 고딕", bold=True, size=11, color="0369A1")
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+            row += 1
+            _hdr(ws, row, 2, "구성요소")
+            _hdr(ws, row, 3, "금액")
+            _hdr(ws, row, 4, "비중")
+            _hdr(ws, row, 5, "할인율")
+            ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+            row += 1
+            for label, val, disc_rate in [
+                ("지분 성분 (VE)", tfE, "Rf (전환 경로)"),
+                ("채권 성분 (VD)", tfB, "Kd (비전환 경로)"),
+            ]:
+                bg = "F7FAFC" if row % 2 == 0 else "FFFFFF"
+                _cell(ws, row, 2, label, bg=bg)
+                _cell(ws, row, 3, val, bg=bg, num_fmt="#,##0", align="right")
+                pct_v = (val / main_fv * 100) if val and main_fv else 0
+                _cell(ws, row, 4, f"{pct_v:.1f}%", bg=bg, align="right")
+                _cell(ws, row, 5, disc_rate, bg=bg, color="718096")
+                ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+                row += 1
+            ws.cell(row=row, column=2, value="※ 위 ①②③ 흡수형은 K-IFRS 1109.B4.3.5 부채/자본 분리 관점, "
+                                              "본 2-way는 전환·비전환 경로의 위험 분리 관점. 합계는 동일.")\
+                .font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+            row += 2
+
+    # EV/EBITDA 자동 인용 (Exit Multiple TV 사용 시)
+    dcf_input = (eval_result or {}).get("dcf_input") or {}
+    exit_mult = dcf_input.get("exit_multiple")
+    tv_method = dcf_input.get("tv_method_used") or dcf_input.get("tv_method")
+    if exit_mult and tv_method and "multiple" in str(tv_method).lower():
+        ws.cell(row=row, column=2, value="■ Exit Multiple 사용 — EV/EBITDA 인용").font = \
+            Font(name="맑은 고딕", bold=True, size=11, color="0369A1")
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        row += 1
+        for k, v, note in [
+            ("EV/EBITDA 배수", f"{exit_mult:.2f}배", "산정 절차 — 동종업계 상장사 평균 + 비유동성 할인"),
+            ("TV 산정 방식", tv_method, "Gordon · Exit Multiple · Weighted 중 채택"),
+        ]:
+            bg = "F7FAFC" if row % 2 == 0 else "FFFFFF"
+            _cell(ws, row, 2, k, bg=bg)
+            _cell(ws, row, 3, v, bg=bg, align="right")
+            _cell(ws, row, 5, note, bg=bg, color="718096")
+            ws.merge_cells(start_row=row, start_column=5, end_row=row, end_column=6)
+            row += 1
+        ws.cell(row=row, column=2, value="※ K-IFRS 1113.93(d) — 비교회사 명단·DLOM 근거를 워크페이퍼에 기록 필수")\
+            .font = Font(name="맑은 고딕", size=9, color="718096", italic=True)
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        row += 2
+
     # 6. 측정 불확실성 (K-IFRS 1113.93(g)·(h)(ii))
     ws.cell(row=row, column=2, value="■ 측정 불확실성").font = Font(name="맑은 고딕", bold=True, size=12, color="1A365D")
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
