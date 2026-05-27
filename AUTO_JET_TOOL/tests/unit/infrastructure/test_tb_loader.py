@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -277,3 +278,91 @@ class TestA03WithCoa:
         )
         result = rule.apply(entries, ctx)
         assert result.finding_count == 0
+
+
+# ── TbLoader.load_with_prior 단위 테스트 ─────────────────────────────────
+
+class TestLoadWithPrior:
+    """load_with_prior: (당기 TB, 전기 TB) 쌍 반환 검증."""
+
+    def _make_multiheader_xl(self, sheets: dict[str, pd.DataFrame]):
+        """멀티헤더 양식 ExcelFile 모킹용 임시 파일을 생성한다."""
+        import tempfile
+        import os
+
+        # 임시 엑셀 파일 생성
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            tmp_path = Path(f.name)
+
+        with pd.ExcelWriter(tmp_path, engine="openpyxl") as writer:
+            for sheet_name, df in sheets.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
+
+        return tmp_path
+
+    def _multiheader_df(self, rows: list[dict]) -> pd.DataFrame:
+        """멀티헤더 양식 DataFrame을 생성한다.
+
+        R0: 계정코드 / 계정명 / 차변 / 차변 / 차변 / 대변 / 대변 / 대변
+        R1: ''       / ''     / 이월 / 당기 / 잔액 / 이월 / 당기 / 잔액
+        R2~: 데이터
+        """
+        header0 = ["계정코드", "계정명", "차변", "차변", "차변", "대변", "대변", "대변"]
+        header1 = ["", "", "이월", "당기", "잔액", "이월", "당기", "잔액"]
+        data_rows = [
+            [r["code"], r["name"], r["odrs"], r["pdr"], r["cdr"],
+             r["ocr"], r["pcr"], r["ccr"]]
+            for r in rows
+        ]
+        return pd.DataFrame([header0, header1] + data_rows)
+
+    def test_multiheader_two_sheets_returns_current_and_prior(self):
+        """멀티헤더 2시트(2025년·2024년)에서 (당기, 전기) 쌍이 반환된다."""
+        rows_2025 = [{"code": "11101010", "name": "현금",
+                      "odrs": 80_000, "pdr": 100_000, "cdr": 150_000,
+                      "ocr": 0, "pcr": 50_000, "ccr": 0}]
+        rows_2024 = [{"code": "11101010", "name": "현금",
+                      "odrs": 60_000, "pdr": 80_000, "cdr": 80_000,
+                      "ocr": 0, "pcr": 40_000, "ccr": 0},
+                     {"code": "11901010", "name": "구계정",
+                      "odrs": 5_000, "pdr": 0, "cdr": 5_000,
+                      "ocr": 0, "pcr": 0, "ccr": 0}]
+
+        tmp_path = self._make_multiheader_xl({
+            "2025년": self._multiheader_df(rows_2025),
+            "2024년": self._multiheader_df(rows_2024),
+        })
+        try:
+            loader = TbLoader()
+            current, prior = loader.load_with_prior(tmp_path)
+            assert "11101010" in current
+            assert prior is not None
+            assert "11101010" in prior
+            assert "11901010" in prior   # 전기에만 있는 계정
+            assert "11901010" not in current  # 당기에는 없음
+        finally:
+            import gc; gc.collect()  # Windows: 파일 핸들 해제 후 삭제
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except PermissionError:
+                pass
+
+    def test_multiheader_single_sheet_returns_none_prior(self):
+        """멀티헤더 시트가 1개뿐이면 prior=None이 반환된다."""
+        rows = [{"code": "11101010", "name": "현금",
+                 "odrs": 80_000, "pdr": 100_000, "cdr": 150_000,
+                 "ocr": 0, "pcr": 50_000, "ccr": 0}]
+        tmp_path = self._make_multiheader_xl({
+            "2025년": self._multiheader_df(rows),
+        })
+        try:
+            loader = TbLoader()
+            current, prior = loader.load_with_prior(tmp_path)
+            assert "11101010" in current
+            assert prior is None
+        finally:
+            import gc; gc.collect()
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except PermissionError:
+                pass

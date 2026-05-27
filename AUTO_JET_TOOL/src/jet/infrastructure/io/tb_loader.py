@@ -29,6 +29,13 @@ import pandas as pd
 if TYPE_CHECKING:
     from jet.infrastructure.io.coa_loader import AccountMaster
 
+# account_classifier import — 계정과목명 기반 부호 보조
+try:
+    from jet.domain.services.account_classifier import sign_from_account_name as _sign_from_name
+except ImportError:
+    def _sign_from_name(name: str) -> int | None:  # type: ignore[misc]
+        return None
+
 logger = logging.getLogger(__name__)
 
 # 계정코드 추출 정규식 (앞 공백 + 코드 + 공백 + 명칭)
@@ -119,6 +126,156 @@ class TbLoader:
                         None이면 계정코드 첫자리로 fallback.
         """
         self._coa = coa_master or {}
+
+    def load_with_prior(
+        self, path: Path
+    ) -> tuple[dict[str, TrialBalance], dict[str, TrialBalance] | None]:
+        """합계잔액시산표 엑셀을 읽어 (당기 TB, 전기 TB) 쌍을 반환한다.
+
+        B03 신규계정 fallback 용도:
+            COA created_date 없을 때 전기 TB와 당기 TB를 비교하여
+            전기에 없고 당기에 새로 나타난 계정을 신규계정으로 식별한다.
+
+        시트 감지 전략:
+            - 멀티헤더 양식(에스트래픽 등): 연도명 시트 전체를 최신→오래된 순으로 정렬,
+              첫 번째=당기, 두 번째=전기.
+            - 단일헤더 양식: 기말 시트=당기, 기초 시트의 closing_balance=전기 closing.
+              (기초 시트가 없으면 prior=None)
+
+        Args:
+            path: 합계잔액시산표 엑셀 파일 경로
+
+        Returns:
+            (current_tb, prior_tb) 쌍.
+            prior_tb는 전기 시트가 없으면 None.
+        """
+        if not path.exists():
+            raise FileNotFoundError(f"TB 파일을 찾을 수 없습니다: {path}")
+
+        xl = pd.ExcelFile(path, engine="openpyxl")
+
+        # 멀티헤더 양식 감지
+        if self._is_multiheader_format(xl):
+            return self._load_multiheader_with_prior(xl)
+
+        # 단일헤더 분할시트 양식 감지
+        first_sheet = xl.sheet_names[0] if xl.sheet_names else None
+        if first_sheet:
+            df_probe = pd.read_excel(xl, sheet_name=first_sheet, header=None, nrows=1, dtype=str)
+            r0 = [self._safe_str(v) for v in df_probe.iloc[0]] if df_probe.shape[0] > 0 else []
+            if self._detect_split_header_format(r0):
+                current = self._load_split_header_tb(xl)
+                return current, None
+
+        # 레거시 양식
+        current = self.load(path)
+        return current, None
+
+    def _load_multiheader_with_prior(
+        self, xl: pd.ExcelFile
+    ) -> tuple[dict[str, TrialBalance], dict[str, TrialBalance] | None]:
+        """멀티헤더 양식에서 당기·전기 시트를 각각 적재한다.
+
+        시트명을 내림차순으로 정렬하여 첫 번째를 당기, 두 번째를 전기로 사용한다.
+        (예: ['2025년', '2024년'] → 2025년=당기, 2024년=전기)
+        """
+        sorted_sheets = sorted(xl.sheet_names, reverse=True)
+        current = self._load_multiheader_single_sheet(xl, sorted_sheets[0])
+        prior: dict[str, TrialBalance] | None = None
+        if len(sorted_sheets) >= 2:
+            prior = self._load_multiheader_single_sheet(xl, sorted_sheets[1])
+            logger.info(
+                "TB prior 시트 적재 완료: %d계정 (시트: %s)",
+                len(prior), sorted_sheets[1],
+            )
+        return current, prior
+
+    def _load_multiheader_single_sheet(
+        self, xl: pd.ExcelFile, sheet_name: str
+    ) -> dict[str, TrialBalance]:
+        """멀티헤더 단일 시트를 적재한다 (_load_multiheader_tb 내부 로직 분리)."""
+        result: dict[str, TrialBalance] = {}
+        df_raw = pd.read_excel(xl, sheet_name=sheet_name, header=None, dtype=object)
+        if df_raw.shape[0] < 3:
+            return result
+
+        r1 = [self._safe_str(v) for v in df_raw.iloc[0]]
+        r2 = [self._safe_str(v) for v in df_raw.iloc[1]]
+        combined_cols: list[str] = []
+        prev_r1 = ""
+        for a, b in zip(r1, r2):
+            top = a if a else prev_r1
+            if a:
+                prev_r1 = a
+            if top and b:
+                combined_cols.append(f"{top}_{b}")
+            elif b:
+                combined_cols.append(b)
+            elif top:
+                combined_cols.append(top)
+            else:
+                combined_cols.append("")
+
+        col_idx: dict[str, int] = {}
+        for i, col in enumerate(combined_cols):
+            col_norm = col.lower()
+            if "계정코드" in col_norm and "계정코드" not in col_idx:
+                col_idx["account_code"] = i
+            elif "계정명" in col_norm and "account_name" not in col_idx:
+                col_idx["account_name"] = i
+            elif "차변_이월" in col_norm:
+                col_idx["opening_dr"] = i
+            elif "대변_이월" in col_norm:
+                col_idx["opening_cr"] = i
+            elif "차변_당기" in col_norm:
+                col_idx["period_dr"] = i
+            elif "대변_당기" in col_norm:
+                col_idx["period_cr"] = i
+            elif "차변_잔액" in col_norm:
+                col_idx["closing_dr"] = i
+            elif "대변_잔액" in col_norm:
+                col_idx["closing_cr"] = i
+
+        for _, row in df_raw.iloc[2:].iterrows():
+            code_raw = ""
+            if "account_code" in col_idx:
+                code_raw = self._safe_str(row.iloc[col_idx["account_code"]])
+            if not code_raw or not re.search(r"\d", code_raw):
+                continue
+
+            code_clean = re.sub(r"[^\d]", "", code_raw).strip()
+            if not code_clean or len(code_clean) < 4:
+                continue
+
+            name = ""
+            if "account_name" in col_idx:
+                name = self._safe_str(row.iloc[col_idx["account_name"]])
+
+            opening_dr = self._to_float(row.iloc[col_idx["opening_dr"]] if "opening_dr" in col_idx else None)
+            opening_cr = self._to_float(row.iloc[col_idx["opening_cr"]] if "opening_cr" in col_idx else None)
+            period_dr = self._to_float(row.iloc[col_idx["period_dr"]] if "period_dr" in col_idx else None)
+            period_cr = self._to_float(row.iloc[col_idx["period_cr"]] if "period_cr" in col_idx else None)
+            closing_dr = self._to_float(row.iloc[col_idx["closing_dr"]] if "closing_dr" in col_idx else None)
+            closing_cr = self._to_float(row.iloc[col_idx["closing_cr"]] if "closing_cr" in col_idx else None)
+
+            opening_balance = opening_dr - opening_cr
+            closing_balance = closing_dr - closing_cr
+
+            result[code_clean] = TrialBalance(
+                account_code=code_clean,
+                account_name=name,
+                opening_balance=opening_balance,
+                period_debit=period_dr,
+                period_credit=period_cr,
+                closing_balance=closing_balance,
+                opening_dr=opening_dr,
+                opening_cr=opening_cr,
+                closing_dr=closing_dr,
+                closing_cr=closing_cr,
+            )
+
+        logger.info("TB 멀티헤더 단일시트 적재 완료: %d계정 (시트: %s)", len(result), sheet_name)
+        return result
 
     def load(self, path: Path) -> dict[str, TrialBalance]:
         """합계잔액시산표 엑셀을 읽어 계정코드→TrialBalance 딕셔너리를 반환한다.
@@ -273,8 +430,8 @@ class TbLoader:
                 row.iloc[cr_idx] if cr_idx is not None else None
             )
 
-            # 부호 결정: 계정코드 첫자리 기준
-            sign = self._resolve_sign(account_code)
+            # 부호 결정: 계정코드 첫자리 기준 (계정명 보조)
+            sign = self._resolve_sign(account_code, account_name)
 
             opening_balance = opening_raw * sign
             period_debit = abs(period_dr_raw)
@@ -374,29 +531,35 @@ class TbLoader:
 
         return col_map
 
-    def _resolve_sign(self, account_code: str) -> int:
-        """계정코드에 대한 부호 인수를 반환한다.
+    def _resolve_sign(self, account_code: str, account_name: str = "") -> int:
+        """계정코드·계정명에 대한 부호 인수를 반환한다.
+
+        부호 결정 우선순위:
+            1. 계정코드 첫자리 테이블 (_SIGN_BY_PREFIX) — 직접적·안정적
+            2. 계정과목명 키워드 (account_classifier) — 코드 불명확 시 보조
+            3. 기본값 -1
 
         재무상태표(B) 계정은 자산(차변잔액)과 부채·자본(대변잔액)이 혼재하므로
         COA account_type 'B'만으로 부호를 결정할 수 없다.
-        코드 첫자리가 더 직접적인 신호이므로 항상 첫자리 테이블을 기준으로 사용한다.
-
-        COA account_type은 A03의 손익계정 판별(_is_income_statement_account)에서
-        활용하며, TB 부호 결정에는 관여하지 않는다.
-
-        부호 결정: 계정코드 첫자리 테이블 (_SIGN_BY_PREFIX):
-            '1', '9' → +1 (자산·명세; 차변잔액 계정)
-            '2'~'8' → -1 (부채·자본·손익; 대변잔액 계정)
+        코드 첫자리가 더 직접적인 신호이므로 항상 첫자리 테이블을 1차 기준으로 사용한다.
 
         Args:
             account_code: 정규화된 계정코드 문자열
+            account_name: 계정과목명 (없으면 빈 문자열)
 
         Returns:
             +1 또는 -1
         """
         stripped = account_code.lstrip("0")
-        if stripped:
-            return _SIGN_BY_PREFIX.get(stripped[0], -1)
+        if stripped and stripped[0] in _SIGN_BY_PREFIX:
+            return _SIGN_BY_PREFIX[stripped[0]]
+
+        # 코드로 판단 불가 → 계정명 키워드 보조
+        if account_name:
+            sign = _sign_from_name(account_name)
+            if sign is not None:
+                return sign
+
         return -1
 
     @staticmethod
@@ -482,105 +645,10 @@ class TbLoader:
 
         연도별 시트가 있으면 최신 연도(시트 이름 최대값) 시트를 사용한다.
         """
-        # 최신 연도 시트 탐색 (숫자가 가장 큰 시트명)
-        result: dict[str, TrialBalance] = {}
         year_sheets = sorted(xl.sheet_names, reverse=True)
         target = year_sheets[0]
-
         logger.info("TB 멀티헤더 적재 시트: %s", target)
-
-        df_raw = pd.read_excel(xl, sheet_name=target, header=None, dtype=object)
-        if df_raw.shape[0] < 3:
-            return result
-
-        # R1·R2 결합 컬럼명 생성
-        r1 = [self._safe_str(v) for v in df_raw.iloc[0]]
-        r2 = [self._safe_str(v) for v in df_raw.iloc[1]]
-        combined_cols: list[str] = []
-        prev_r1 = ""
-        for a, b in zip(r1, r2):
-            top = a if a else prev_r1  # R1이 빈 경우 병합 셀 처리 (이전 값 유지)
-            if a:
-                prev_r1 = a
-            if top and b:
-                combined_cols.append(f"{top}_{b}")
-            elif b:
-                combined_cols.append(b)
-            elif top:
-                combined_cols.append(top)
-            else:
-                combined_cols.append("")
-
-        logger.debug("TB 멀티헤더 결합 컬럼: %s", combined_cols)
-
-        # 표준 필드 매핑
-        col_idx: dict[str, int] = {}
-        for i, col in enumerate(combined_cols):
-            col_norm = col.lower()
-            if "계정코드" in col_norm and "계정코드" not in col_idx:
-                col_idx["account_code"] = i
-            elif "계정명" in col_norm and "account_name" not in col_idx:
-                col_idx["account_name"] = i
-            elif "차변_이월" in col_norm:
-                col_idx["opening_dr"] = i
-            elif "대변_이월" in col_norm:
-                col_idx["opening_cr"] = i
-            elif "차변_당기" in col_norm:
-                col_idx["period_dr"] = i
-            elif "대변_당기" in col_norm:
-                col_idx["period_cr"] = i
-            elif "차변_잔액" in col_norm:
-                col_idx["closing_dr"] = i
-            elif "대변_잔액" in col_norm:
-                col_idx["closing_cr"] = i
-
-        logger.debug("TB 멀티헤더 컬럼 인덱스: %s", col_idx)
-
-        # R3~ 데이터 행 처리
-        for _, row in df_raw.iloc[2:].iterrows():
-            # 계정코드 추출
-            code_raw = ""
-            if "account_code" in col_idx:
-                code_raw = self._safe_str(row.iloc[col_idx["account_code"]])
-            if not code_raw or not re.search(r"\d", code_raw):
-                continue
-
-            # 숫자만 추출하여 계정코드로 사용
-            code_clean = re.sub(r"[^\d]", "", code_raw).strip()
-            if not code_clean:
-                continue
-
-            name = ""
-            if "account_name" in col_idx:
-                name = self._safe_str(row.iloc[col_idx["account_name"]])
-
-            opening_dr = self._to_float(row.iloc[col_idx["opening_dr"]] if "opening_dr" in col_idx else None)
-            opening_cr = self._to_float(row.iloc[col_idx["opening_cr"]] if "opening_cr" in col_idx else None)
-            period_dr = self._to_float(row.iloc[col_idx["period_dr"]] if "period_dr" in col_idx else None)
-            period_cr = self._to_float(row.iloc[col_idx["period_cr"]] if "period_cr" in col_idx else None)
-            closing_dr = self._to_float(row.iloc[col_idx["closing_dr"]] if "closing_dr" in col_idx else None)
-            closing_cr = self._to_float(row.iloc[col_idx["closing_cr"]] if "closing_cr" in col_idx else None)
-
-            # 기초잔액: 차변 이월 - 대변 이월 (순잔액)
-            opening_balance = opening_dr - opening_cr
-            # 기말잔액: 차변 잔액 - 대변 잔액 (순잔액)
-            closing_balance = closing_dr - closing_cr
-
-            result[code_clean] = TrialBalance(
-                account_code=code_clean,
-                account_name=name,
-                opening_balance=opening_balance,
-                period_debit=period_dr,
-                period_credit=period_cr,
-                closing_balance=closing_balance,
-                opening_dr=opening_dr,
-                opening_cr=opening_cr,
-                closing_dr=closing_dr,
-                closing_cr=closing_cr,
-            )
-
-        logger.info("TB 멀티헤더 적재 완료: %d계정 (시트: %s)", len(result), target)
-        return result
+        return self._load_multiheader_single_sheet(xl, target)
 
     @staticmethod
     def _detect_tb_sheets(sheet_names: list[str]) -> tuple[str | None, str | None]:

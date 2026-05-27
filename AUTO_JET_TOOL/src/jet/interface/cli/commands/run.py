@@ -172,13 +172,17 @@ def run(
     else:
         typer.echo("HR 마스터 없음 — B05 제한적 실행")
 
+    tb_master_prior = None
     if _tb_path and _tb_path.exists():
         typer.echo(f"TB 마스터 적재: {_tb_path}")
         from jet.infrastructure.io.tb_loader import TbLoader
-        # COA 마스터를 주입하여 계정유형(B/P) 기반 부호 결정 활성화.
-        # COA 없으면 계정코드 첫자리 fallback으로 동작.
-        tb_master = TbLoader(coa_master=coa_master).load(_tb_path)
-        typer.echo(f"  TB 적재 완료: {len(tb_master):,}계정")
+        # load_with_prior()로 당기·전기 TB를 동시에 적재.
+        # B03 신규계정 fallback(COA created_date 없을 때 TB 비교)에 전기 TB 사용.
+        # COA 없으면 계정코드 첫자리 fallback으로 부호 결정.
+        tb_loader = TbLoader(coa_master=coa_master)
+        tb_master, tb_master_prior = tb_loader.load_with_prior(_tb_path)
+        prior_msg = f" / 전기 {len(tb_master_prior):,}계정" if tb_master_prior else " / 전기 없음"
+        typer.echo(f"  TB 적재 완료: 당기 {len(tb_master):,}계정{prior_msg}")
 
     # USER 리스트 (USR02) 로드
     user_path = Path("INPUT/extracted/8. 사용자리스트 USR02.XLSX")
@@ -229,6 +233,7 @@ def run(
         doc_type_master=doc_type_master,
         hr_master=hr_master,
         tb_master=tb_master,
+        tb_master_prior=tb_master_prior,
     )
     results: dict = {}
 
@@ -315,7 +320,8 @@ def _print_rule_result(code: str, result: "RuleResult", echo: typer.echo) -> Non
         extra_info = (
             f"미등록 {result.extra.get('not_registered_count', 0):,}건 / "
             f"퇴직후 {result.extra.get('post_retirement_count', 0):,}건 / "
-            f"시스템 {result.extra.get('system_account_count', 0):,}건"
+            f"시스템 {result.extra.get('system_account_count', 0):,}건 / "
+            f"외부계약직 {result.extra.get('external_count', 0):,}건"
         )
     elif code == "B06":
         extra_info = "데이터 미입수 (Waived)"
