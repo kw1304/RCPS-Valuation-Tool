@@ -1193,13 +1193,20 @@ details.note-fold .note{margin-top:4px}
         </select>
       </div>
       <div class="field"><label for="vol_outlier">이상치 제거 (유사기업 σ)</label>
-        <select id="vol_outlier" onchange="volOutlierChange()">
+        <select id="vol_outlier" onchange="volOutlierChange()" title="IQR=분포 형상 기반, MAD=중앙값 거리 기반. 합집합=둘 중 하나라도 outlier (적극 제거), 교집합=둘 다 outlier여야 제외 (보수적).">
           <option value="none">없음 (기본)</option>
           <option value="iqr">IQR (Tukey k·IQR)</option>
           <option value="mad">MAD (k·MAD)</option>
+          <option value="iqr_or_mad">IQR ∪ MAD (합집합 — 적극 제거)</option>
+          <option value="iqr_and_mad">IQR ∩ MAD (교집합 — 둘 다 잡힌 것만)</option>
         </select>
       </div>
-      <div class="field" id="vol-outlier-k-field" style="display:none"><label>임계 배수 k <span style="color:var(--text3);font-weight:400">(기본 IQR 1.5 · MAD 3.0)</span></label><input type="number" id="vol_outlier_k" value="1.5" step="0.1" min="0.1"></div>
+      <div class="field" id="vol-outlier-k-field" style="display:none"><label>임계 배수 k <span style="color:var(--text3);font-weight:400">(IQR 1.5 / MAD 3.0)</span></label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="vol_outlier_k" value="1.5" step="0.1" min="0.1" title="IQR 임계" style="flex:1">
+          <input type="number" id="vol_outlier_k_mad" value="3.0" step="0.1" min="0.1" title="MAD 임계 (병행 모드에서만 사용)" style="flex:1;display:none">
+        </div>
+      </div>
       <div class="field"><label for="vol_source">데이터 소스</label>
         <select id="vol_source" onchange="volToggleSource()">
           <option value="auto">자동조회 (KRX+해외)</option>
@@ -4010,13 +4017,18 @@ function _volTdParam(){
   if(m==='custom')return parseInt(document.getElementById('vol_tradingdays').value)||252;
   return parseInt(m);
 }
-// 이상치 제거(유사기업 σ): IQR/MAD 선택 시 임계 배수 k 입력 노출 + 방식별 기본값 자동
+// 이상치 제거(유사기업 σ): IQR/MAD/병행 선택. 병행 시 k_mad 입력 추가 노출.
 function volOutlierChange(){
   const m=document.getElementById('vol_outlier').value;
   const f=document.getElementById('vol-outlier-k-field');
   f.style.display=(m==='none')?'none':'';
-  if(m==='iqr')document.getElementById('vol_outlier_k').value='1.5';
-  else if(m==='mad')document.getElementById('vol_outlier_k').value='3.0';
+  const kMad=document.getElementById('vol_outlier_k_mad');
+  if(m==='iqr'){document.getElementById('vol_outlier_k').value='1.5';kMad.style.display='none';}
+  else if(m==='mad'){document.getElementById('vol_outlier_k').value='3.0';kMad.style.display='none';}
+  else if(m==='iqr_or_mad'||m==='iqr_and_mad'){
+    document.getElementById('vol_outlier_k').value='1.5';
+    kMad.value='3.0';kMad.style.display='';
+  }
 }
 function volRenderBasket(per){
   const body=document.getElementById('vol-basket-body');
@@ -4051,6 +4063,7 @@ async function volRun(){
         method:document.getElementById('vol_method').value,
         outlier_method:document.getElementById('vol_outlier').value,
         outlier_k:parseFloat(document.getElementById('vol_outlier_k').value)||null,
+        outlier_k_mad:parseFloat(document.getElementById('vol_outlier_k_mad').value)||null,
       })});
     const j=await r.json();
     if(j.status!=='ok'){volMsg('오류: '+j.message,false); if(j.per_ticker)volRenderBasket(j.per_ticker); return;}
@@ -4095,8 +4108,15 @@ function volRenderResult(j){
   let meta=`집계방식 <b>${methodLabel}</b> · 사용종목 <b>${usedN}개</b>(유효 ${okN}) · 연 거래일 <b>${tdLabel}</b>`;
   if(j.start||j.end)meta+=` · 구간 ${j.start||'?'} ~ ${j.end||'?'}`;
   if(oi.applied){
-    const mk={iqr:'IQR',mad:'MAD'}[oi.method]||oi.method;
-    meta+=`<br>이상치 제거 <b>${mk} ${oi.k}×</b> 적용 — 제외 <b>${olNames.length}종목</b>${olNames.length?` (${olNames.join(', ')})`:''}`;
+    const mk={iqr:'IQR',mad:'MAD',iqr_or_mad:'IQR∪MAD (합집합)',iqr_and_mad:'IQR∩MAD (교집합)'}[oi.method]||oi.method;
+    const kInfo = (oi.method==='iqr_or_mad'||oi.method==='iqr_and_mad')
+      ? `IQR ${oi.k}× / MAD ${oi.k_mad||3.0}×`
+      : `${oi.k}×`;
+    let breakdown = '';
+    if(oi.n_iqr_only!=null && oi.n_mad_only!=null && oi.n_both!=null && (oi.method==='iqr_or_mad'||oi.method==='iqr_and_mad')){
+      breakdown = ` <span style="color:var(--text3);font-size:.66rem">(IQR만 ${oi.n_iqr_only} · MAD만 ${oi.n_mad_only} · 둘 다 ${oi.n_both})</span>`;
+    }
+    meta+=`<br>이상치 제거 <b>${mk} ${kInfo}</b> 적용 — 제외 <b>${olNames.length}종목</b>${olNames.length?` (${olNames.join(', ')})`:''}${breakdown}`;
   } else if(oi.method&&oi.method!=='none'&&oi.reason){
     meta+=`<br><span style="color:var(--text3)">이상치 필터 미적용: ${oi.reason}</span>`;
   }

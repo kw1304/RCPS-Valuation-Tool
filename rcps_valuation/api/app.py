@@ -1672,9 +1672,13 @@ def volatility_eval():
     log = data.get("log", True)
     outlier_method = (data.get("outlier_method") or "none").lower()
     outlier_k = data.get("outlier_k")
+    outlier_k_mad = data.get("outlier_k_mad")
     if outlier_k is not None:
         try: outlier_k = float(outlier_k)
         except Exception: outlier_k = None
+    if outlier_k_mad is not None:
+        try: outlier_k_mad = float(outlier_k_mad)
+        except Exception: outlier_k_mad = None
 
     try:
         import FinanceDataReader as fdr
@@ -1707,7 +1711,8 @@ def volatility_eval():
     try:
         result = basket_volatility(series, trading_days=trading_days,
                                    log=bool(log), method=method,
-                                   outlier_method=outlier_method, outlier_k=outlier_k)
+                                   outlier_method=outlier_method, outlier_k=outlier_k,
+                                   outlier_k_mad=outlier_k_mad)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)[:200]}), 200
 

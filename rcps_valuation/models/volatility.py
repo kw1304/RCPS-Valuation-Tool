@@ -124,13 +124,20 @@ def _td_from_dates(dates):
     return round(len(dates) * 365.25 / cal_days, 1)
 
 
-def _detect_outliers(per_ticker, method, k, min_n=5):
-    """유사기업 바스켓 σ에 이상치 플래그 부여(per_ticker 항목 in-place 수정).
+def _detect_outliers(per_ticker, method, k, min_n=5, k_mad=None):
+    """유사기업 바스켓 σ에 이상치 플래그 부여 (per_ticker in-place 수정).
 
-    method: 'iqr'(Tukey k×IQR 펜스) | 'mad'(|σ−중앙값|>k·MAD) | 그 외 → 미적용.
-    표본(유효종목 수)이 min_n 미만이면 자동 미적용(통계적으로 무의미).
+    method:
+      'iqr'         — Tukey k×IQR 펜스 (분포 형상 기반)
+      'mad'         — |σ−중앙값| > k·MAD (중앙값 거리 기반)
+      'iqr_or_mad'  — 합집합 (둘 중 하나라도 outlier면 제외) — 보수적 제거
+      'iqr_and_mad' — 교집합 (둘 다 outlier여야 제외)        — 보수적 유지
+      그 외 → 미적용
+    k     — IQR 임계 (기본 1.5)
+    k_mad — MAD 임계 (None이면 k와 동일, 통상 3.0)
+    표본 < min_n: 자동 미적용 (통계적으로 무의미).
     """
-    if method not in ("iqr", "mad"):
+    if method not in ("iqr", "mad", "iqr_or_mad", "iqr_and_mad"):
         return {"applied": False, "method": "none"}
     valid = [p for p in per_ticker if p.get("sigma") is not None]
     if len(valid) < min_n:
@@ -138,28 +145,63 @@ def _detect_outliers(per_ticker, method, k, min_n=5):
                 "reason": f"표본 {len(valid)}<{min_n}: 필터 미적용"}
     sigs = np.array([p["sigma"] for p in valid], dtype=float)
     info = {"applied": True, "method": method, "k": k, "n_input": len(valid)}
-    if method == "iqr":
+
+    # IQR 산출
+    iqr_out = set()
+    iqr_info = None
+    if method in ("iqr", "iqr_or_mad", "iqr_and_mad"):
         q1, q3 = np.percentile(sigs, [25, 75])
         iqr = float(q3 - q1)
         lo, hi = float(q1 - k * iqr), float(q3 + k * iqr)
-        info.update({"q1": float(q1), "q3": float(q3), "iqr": iqr, "lo": lo, "hi": hi})
-        for p in valid:
+        iqr_info = {"q1": float(q1), "q3": float(q3), "iqr": iqr, "lo": lo, "hi": hi}
+        for i, p in enumerate(valid):
             if p["sigma"] < lo or p["sigma"] > hi:
-                p["outlier"] = True
-                p["outlier_reason"] = f"IQR {k:g}× 밖 (허용 {lo*100:.2f}%~{hi*100:.2f}%)"
-    else:  # mad
+                iqr_out.add(i)
+
+    # MAD 산출
+    mad_out = set()
+    mad_info = None
+    k_m = float(k_mad) if k_mad is not None else float(k)
+    if method in ("mad", "iqr_or_mad", "iqr_and_mad"):
         med = float(np.median(sigs))
         mad = float(np.median(np.abs(sigs - med)))
-        info.update({"median": med, "mad": mad})
-        if mad <= 0:
-            info["applied"] = False
-            info["reason"] = "MAD=0(전 종목 σ 동일): 필터 미적용"
-            return info
-        for p in valid:
-            if abs(p["sigma"] - med) > k * mad:
-                p["outlier"] = True
-                p["outlier_reason"] = f"MAD {k:g}× 밖 (|σ−중앙값|>{k*mad*100:.2f}%)"
-    info["n_excluded"] = sum(1 for p in valid if p.get("outlier"))
+        mad_info = {"median": med, "mad": mad, "k_mad": k_m}
+        if mad > 0:
+            for i, p in enumerate(valid):
+                if abs(p["sigma"] - med) > k_m * mad:
+                    mad_out.add(i)
+        else:
+            mad_info["note"] = "MAD=0(전 종목 σ 동일): MAD 검출 미적용"
+
+    # 합집합/교집합 결정
+    if method == "iqr":
+        out_idx = iqr_out
+    elif method == "mad":
+        out_idx = mad_out
+    elif method == "iqr_or_mad":
+        out_idx = iqr_out | mad_out
+    else:  # iqr_and_mad
+        out_idx = iqr_out & mad_out
+
+    # outlier 플래그 + 이유 (어느 방법에 잡혔는지)
+    for i, p in enumerate(valid):
+        if i in out_idx:
+            p["outlier"] = True
+            reasons = []
+            if i in iqr_out and iqr_info:
+                reasons.append(f"IQR {k:g}× 밖 (허용 {iqr_info['lo']*100:.2f}%~{iqr_info['hi']*100:.2f}%)")
+            if i in mad_out and mad_info and mad_info.get("mad", 0) > 0:
+                reasons.append(f"MAD {k_m:g}× 밖 (|σ−중앙값|>{k_m*mad_info['mad']*100:.2f}%)")
+            p["outlier_reason"] = " · ".join(reasons) if reasons else "outlier"
+
+    if iqr_info:
+        info.update(iqr_info)
+    if mad_info:
+        info.update(mad_info)
+    info["n_iqr_only"] = len(iqr_out - mad_out)
+    info["n_mad_only"] = len(mad_out - iqr_out)
+    info["n_both"] = len(iqr_out & mad_out)
+    info["n_excluded"] = len(out_idx)
     return info
 
 
@@ -218,7 +260,7 @@ def multiple_trailings(closes, dates, trailing_years=(1, 2, 3, 5),
 
 
 def basket_volatility(series, trading_days=252, log=True, method="median",
-                      outlier_method="none", outlier_k=None):
+                      outlier_method="none", outlier_k=None, outlier_k_mad=None):
     """유사기업 바스켓 σ 산출 (편의 래퍼).
 
     series: {ticker: {"name", "dates", "closes", "volumes"(opt), "cap"(opt)}}
@@ -263,10 +305,13 @@ def basket_volatility(series, trading_days=252, log=True, method="median",
             caps.append(None)
             failed.append({"ticker": tk, "error": str(e)})
 
-    # 이상치 필터: 유사기업 σ 바스켓에 적용 (IQR/MAD, 평가자 조정가능 임계)
+    # 이상치 필터: IQR/MAD/합집합/교집합 모드 지원
     if outlier_k is None:
-        outlier_k = 1.5 if outlier_method == "iqr" else 3.0
-    outlier_info = _detect_outliers(per, outlier_method, float(outlier_k))
+        outlier_k = 1.5 if outlier_method in ("iqr", "iqr_or_mad", "iqr_and_mad") else 3.0
+    if outlier_k_mad is None:
+        outlier_k_mad = 3.0 if outlier_method in ("mad", "iqr_or_mad", "iqr_and_mad") else None
+    outlier_info = _detect_outliers(per, outlier_method, float(outlier_k),
+                                    k_mad=outlier_k_mad)
 
     # 집계는 이상치 제외 후 수행. cap_weighted는 동일 인덱스 보존 필요
     active_idx = [i for i, p in enumerate(per) if p.get("sigma") is not None and not p.get("outlier")]
