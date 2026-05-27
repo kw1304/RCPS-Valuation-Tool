@@ -3305,13 +3305,11 @@ function waccRenderPeers(){
       metaParts.push(`<b style="color:var(--accent);font-family:var(--mono,monospace)">${p._code}</b>`);
     }
     if(p.betaStart && p.betaEnd){
-      // R² 색상: <0.10 적색(신뢰도 매우 낮음), 0.10~0.30 황색(보통), >0.30 녹색(합리적)
+      // R² 숫자만 표시 — 임의 임계값 라벨(낮음/보통/합리적) 제거.
+      // 학계·실무 명시 컷오프 부재 (Damodaran도 임계값 미제시). 판단은 평가자 몫.
       let r2Html = '';
       if(p.betaR2 != null){
-        const r2 = parseFloat(p.betaR2);
-        const color = r2 < 0.10 ? '#DC2626' : (r2 < 0.30 ? '#B45309' : '#059669');
-        const label = r2 < 0.10 ? ' (낮음)' : (r2 < 0.30 ? ' (보통)' : ' (합리적)');
-        r2Html = ` <span style="color:${color}" title="R²<0.10 신뢰도 낮음(시장으로 설명력 약함) / 0.10~0.30 보통 / >0.30 합리적. Damodaran 표준.">R²=${p.betaR2}${label}</span>`;
+        r2Html = ` <span style="color:var(--text2)" title="R²: 종목 수익률 분산 중 시장지수로 설명되는 비율 (0~1). 낮을수록 β 추정오차 큼. 명시 컷오프 없음 — 산점도로 시각 판단.">R²=${p.betaR2}</span>`;
       }
       const scatterBtn = p.betaScatter ? ` <a href="#" onclick="event.preventDefault();waccBetaScatter(${i})" style="color:#0EA5E9;text-decoration:underline;font-size:.62rem" title="회귀 산점도 보기">📊 산점도</a>` : '';
       metaParts.push(`β ${p.betaStart}~${p.betaEnd}${p.betaFreq==='weekly'?' (주별)':''}${r2Html}${scatterBtn}`);
