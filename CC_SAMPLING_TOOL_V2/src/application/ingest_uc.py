@@ -49,13 +49,13 @@ class IngestUC:
     ) -> IngestResult:
         project = self.proj.get(project_id)
 
-        # 1) 시트 자동감지
+        # 1) 시트 자동감지 — AR/AP 매칭되는 모든 시트 누적
         wb = openpyxl.load_workbook(ledger_path, read_only=True)
-        sheet_assignment: dict[str, str] = {}
+        sheet_assignments: dict[str, list[str]] = {"AR": [], "AP": []}
         for sn in wb.sheetnames:
             kind = detect_sheet_kind(sn)
             if kind in ("AR", "AP"):
-                sheet_assignment.setdefault(kind, sn)
+                sheet_assignments[kind].append(sn)
 
         # 2) RP/충당금 사전로드
         rp_names: set[str] = set()
@@ -82,45 +82,57 @@ class IngestUC:
         totals = {"AR": 0.0, "AP": 0.0}
         confidences = {"AR": 0.0, "AP": 0.0}
         for kind_str in ("AR", "AP"):
-            sn = sheet_assignment.get(kind_str)
-            if sn is None:
+            sns = sheet_assignments.get(kind_str, [])
+            if not sns:
                 continue
-            accs, meta = load_account_sheet(ledger_path, sn)
-            confidences[kind_str] = meta["confidence"]
 
-            enriched: list[Account] = []
-            for a in accs:
-                rate = a.fx_rate
-                if a.ccy.upper() != project.base_ccy.upper():
+            all_enriched: list[Account] = []
+            confidences_per_sheet: list[float] = []
+
+            for sn in sns:
+                accs, meta = load_account_sheet(ledger_path, sn)
+                confidences_per_sheet.append(meta["confidence"])
+
+                for a in accs:
+                    rate = a.fx_rate
+                    if a.ccy.upper() != project.base_ccy.upper():
+                        try:
+                            rate = self.fx.lookup(a.ccy, project.period_end)
+                        except Exception:
+                            rate = a.fx_rate
                     try:
-                        rate = self.fx.lookup(a.ccy, project.period_end)
-                    except Exception:
-                        rate = a.fx_rate
-                try:
-                    balance_krw = convert_to_base(
-                        a.balance_orig, a.ccy, project.base_ccy, rate
-                    )
-                except FxRateMissing:
-                    balance_krw = a.balance_orig
+                        balance_krw = convert_to_base(
+                            a.balance_orig, a.ccy, project.base_ccy, rate
+                        )
+                    except FxRateMissing:
+                        balance_krw = a.balance_orig
 
-                allow = allow_map.get(a.party_id, {})
-                enriched.append(Account(
-                    party_id=a.party_id, name=a.name,
-                    gl_account=a.gl_account,
-                    balance_orig=a.balance_orig,
-                    ccy=a.ccy.upper(), fx_rate=rate,
-                    balance_krw=balance_krw,
-                    is_related_party=(a.name in rp_names),
-                    is_bad_debt=bool(allow.get("is_bad_debt", False)),
-                    allowance_amt=float(allow.get("allowance_amt",
-                                                  a.allowance_amt)),
-                    aging_bucket=a.aging_bucket,
-                    src_sheet=a.src_sheet, src_row=a.src_row,
-                ))
+                    allow = allow_map.get(a.party_id, {})
+                    # fuzzy RP match: (주)·㈜·공백 차이 흡수
+                    from src.domain.party_normalize import match_party
+                    is_rp = match_party(a.name, list(rp_names)) is not None if rp_names else False
+                    all_enriched.append(Account(
+                        party_id=a.party_id, name=a.name,
+                        gl_account=a.gl_account,
+                        balance_orig=a.balance_orig,
+                        ccy=a.ccy.upper(), fx_rate=rate,
+                        balance_krw=balance_krw,
+                        is_related_party=is_rp,
+                        is_bad_debt=bool(allow.get("is_bad_debt", False)),
+                        allowance_amt=float(allow.get("allowance_amt",
+                                                      a.allowance_amt)),
+                        aging_bucket=a.aging_bucket,
+                        src_sheet=a.src_sheet, src_row=a.src_row,
+                    ))
 
-            self.acc.replace_all(project_id, Kind(kind_str), enriched)
-            counts[kind_str] = len(enriched)
-            totals[kind_str] = sum(abs(a.balance_krw) for a in enriched)
+            self.acc.replace_all(project_id, Kind(kind_str), all_enriched)
+            counts[kind_str] = len(all_enriched)
+            totals[kind_str] = sum(abs(a.balance_krw) for a in all_enriched)
+            # 평균 confidence (시트별)
+            confidences[kind_str] = (
+                sum(confidences_per_sheet) / len(confidences_per_sheet)
+                if confidences_per_sheet else 0.0
+            )
 
         needs_confirm = (
             (confidences["AR"] > 0 and confidences["AR"] < 0.95)
