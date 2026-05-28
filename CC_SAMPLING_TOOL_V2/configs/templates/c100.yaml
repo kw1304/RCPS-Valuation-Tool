@@ -1,0 +1,51 @@
+# 채권 통합조서 (C100) 양식 정의
+
+workpaper_code: "C100"
+title: "매출채권 조회 조서"
+kind: AR
+
+header:
+  - label: "회사명"
+    field: project.client
+  - label: "감사기준일"
+    field: project.period_end
+  - label: "기준통화"
+    field: project.base_ccy
+  - label: "materiality"
+    field: project.materiality
+    format: currency
+  - label: "tolerable misstatement"
+    field: project.tolerable
+    format: currency
+
+signature:
+  prepared_by: "작성자"
+  reviewed_by: "검토자"
+  date_field: "작성일"
+
+sheets:
+  - name: "C100_summary"
+    title: "표본설계 요약"
+    section: design_summary
+  - name: "C101_sendlist"
+    title: "발송명단"
+    section: sendlist
+  - name: "C102_matching"
+    title: "회신 매칭표"
+    section: matching
+  - name: "C103_alternative"
+    title: "대체적 절차"
+    section: alternative
+  - name: "C104_projection"
+    title: "Projection (ISA 530)"
+    section: projection
+
+tickmarks:
+  "✓": "표본 확정"
+  "★": "특관자 강제포함"
+  "K": "Key item 강제포함"
+  "B": "부실채권 제외"
+  "M": "회신 완전일치"
+  "R": "차이 reconciled (시점차이 등)"
+  "D": "Discrepancy (차이판정)"
+  "A": "대체적 절차 완료"

@@ -1,0 +1,48 @@
+workpaper_code: "AA100"
+title: "매입채무 조회 조서"
+kind: AP
+
+header:
+  - label: "회사명"
+    field: project.client
+  - label: "감사기준일"
+    field: project.period_end
+  - label: "기준통화"
+    field: project.base_ccy
+  - label: "materiality"
+    field: project.materiality
+    format: currency
+  - label: "tolerable misstatement"
+    field: project.tolerable
+    format: currency
+
+signature:
+  prepared_by: "작성자"
+  reviewed_by: "검토자"
+  date_field: "작성일"
+
+sheets:
+  - name: "AA100_summary"
+    title: "표본설계 요약"
+    section: design_summary
+  - name: "AA101_sendlist"
+    title: "발송명단"
+    section: sendlist
+  - name: "AA102_matching"
+    title: "회신 매칭표"
+    section: matching
+  - name: "AA103_alternative"
+    title: "대체적 절차"
+    section: alternative
+  - name: "AA104_projection"
+    title: "Projection (ISA 530)"
+    section: projection
+
+tickmarks:
+  "✓": "표본 확정"
+  "★": "특관자 강제포함"
+  "K": "Key item 강제포함"
+  "M": "회신 완전일치"
+  "R": "차이 reconciled"
+  "D": "Discrepancy"
+  "A": "대체적 절차 완료"
