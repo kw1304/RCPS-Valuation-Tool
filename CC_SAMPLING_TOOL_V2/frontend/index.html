@@ -72,6 +72,18 @@
 
     <section id="designPanel">
       <h2>② 표본설계</h2>
+      <div class="combined-design" style="margin-bottom:1rem;padding:.75rem;background:#fef9c3;border-radius:6px;">
+        <strong>통합 표본설계</strong> — 총 거래처 수만 입력 (AR/AP 자동 비례 분배):
+        <input type="number" id="combinedN" placeholder="예: 25" min="1" style="width:120px;padding:.3rem;margin-left:.5rem;">
+        <select id="combinedConf" style="margin-left:.5rem;">
+          <option value="0.95">신뢰수준 95%</option>
+          <option value="0.90">90%</option>
+          <option value="0.99">99%</option>
+        </select>
+        <input type="number" id="combinedKey" placeholder="Key threshold" value="0" style="width:140px;padding:.3rem;margin-left:.5rem;">
+        <button id="combinedDesignBtn" style="margin-left:.5rem;background:#d4a017;color:white;font-weight:600;">통합 설계 실행</button>
+        <div id="combinedResult" style="margin-top:.5rem;font-size:.85rem;"></div>
+      </div>
       <div class="twin">
         <div class="kind-col" data-kind="AR">
           <h3>채권 (AR)</h3>

@@ -444,6 +444,40 @@ async function deleteCurrentProject() {
   }
 }
 
+// ---- ② 통합 설계 ----
+async function runCombinedDesign() {
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  const nTotal = parseInt($("#combinedN").value, 10);
+  if (!nTotal || nTotal < 1) { alert("총 거래처 수 입력"); return; }
+  const body = {
+    n_total: nTotal,
+    confidence: parseFloat($("#combinedConf").value),
+    key_threshold: parseFloat($("#combinedKey").value || "0"),
+    n_strata: 4,
+    expected_ms_pct: 0,
+    seed: Math.floor(Math.random() * 1_000_000),
+  };
+  $("#combinedResult").textContent = "설계 중...";
+  try {
+    const r = await api("POST",
+      `/projects/${currentProjectId}/sampling/design_combined`, body);
+    const lines = [
+      `요청 ${r.n_total_requested}건 → 실제 ${r.n_total_actual}건 (AR ${r.allocation.AR}, AP ${r.allocation.AP} 분배)`,
+    ];
+    if (r.results.AR) {
+      lines.push(`AR: 총 ${r.results.AR.n_total}건 (강제 ${r.results.AR.n_forced} + 대표 ${r.results.AR.n_representative})`);
+    }
+    if (r.results.AP) {
+      lines.push(`AP: 총 ${r.results.AP.n_total}건 (강제 ${r.results.AP.n_forced} + 대표 ${r.results.AP.n_representative})`);
+    }
+    if (r.note) lines.push(`⚠ ${r.note}`);
+    $("#combinedResult").innerHTML = lines.map(l => `<div>${l}</div>`).join("");
+    await refreshState();
+  } catch (e) {
+    $("#combinedResult").textContent = "오류: " + e.message;
+  }
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
@@ -452,6 +486,7 @@ async function init() {
   $("#filterReason").addEventListener("change", renderMergedTable);
   $("#ingestBtn").addEventListener("click", runIngest);
   $$(".runDesign").forEach(btn => btn.addEventListener("click", runDesign));
+  $("#combinedDesignBtn").addEventListener("click", runCombinedDesign);
   $("#downloadSendlist").addEventListener("click", downloadSendlist);
   $("#uploadConfBtn").addEventListener("click", uploadConfirmations);
   $("#altRegisterBtn").addEventListener("click", registerAlternative);
