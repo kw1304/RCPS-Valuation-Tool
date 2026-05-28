@@ -151,12 +151,41 @@ async function runIngest() {
   }
 }
 
+async function runDesign(ev) {
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  const col = ev.target.closest(".kind-col");
+  const kind = col.dataset.kind;
+  const params = {
+    kind,
+    confidence: parseFloat(col.querySelector(".conf").value),
+    expected_ms_pct: parseFloat(col.querySelector(".ems").value),
+    key_threshold: parseFloat(col.querySelector(".keyth").value || "0"),
+    n_strata: parseInt(col.querySelector(".nstrata").value, 10),
+    seed: Math.floor(Math.random() * 1_000_000),
+  };
+  const resultDiv = col.querySelector(".designResult");
+  resultDiv.textContent = "설계 중...";
+  try {
+    const r = await api("POST", `/projects/${currentProjectId}/sampling/design`, params);
+    const lines = [
+      `표본 ${r.n_total}건 (강제 ${r.n_forced} · 대표 ${r.n_representative})`,
+      `제외 ${r.n_excluded} · BV ₩${fmt(r.population_bv)}`,
+      `seed ${r.used_seed}`,
+    ];
+    resultDiv.innerHTML = lines.map(l => `<div>${l}</div>`).join("");
+    await refreshState();
+  } catch (e) {
+    resultDiv.textContent = "오류: " + e.message;
+  }
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
   $("#filterKind").addEventListener("change", renderMergedTable);
   $("#filterReason").addEventListener("change", renderMergedTable);
   $("#ingestBtn").addEventListener("click", runIngest);
+  $$(".runDesign").forEach(btn => btn.addEventListener("click", runDesign));
   await loadProjectList();
 }
 
