@@ -1,0 +1,51 @@
+# 통합 조서 (CC) — 채권·채무 한 시트에 합산
+
+workpaper_code: "CC"
+title: "채권채무 통합조서"
+kind: COMBINED
+
+header:
+  - label: "회사명"
+    field: project.client
+  - label: "감사기준일"
+    field: project.period_end
+  - label: "기준통화"
+    field: project.base_ccy
+  - label: "materiality"
+    field: project.materiality
+    format: currency
+  - label: "tolerable misstatement"
+    field: project.tolerable
+    format: currency
+
+signature:
+  prepared_by: "작성자"
+  reviewed_by: "검토자"
+  date_field: "작성일"
+
+sheets:
+  - name: "CC_summary"
+    title: "통합 표본설계 요약 (채권 + 채무)"
+    section: design_summary
+  - name: "CC_sendlist"
+    title: "통합 발송명단 (채권 + 채무)"
+    section: sendlist
+  - name: "CC_matching"
+    title: "통합 회신 매칭표 (채권 + 채무)"
+    section: matching
+  - name: "CC_alternative"
+    title: "통합 대체적 절차 (채권 + 채무)"
+    section: alternative
+  - name: "CC_projection"
+    title: "통합 Projection — ISA 530 (채권 + 채무 + 합산)"
+    section: projection
+
+tickmarks:
+  "✓": "표본 확정"
+  "★": "특관자 강제포함"
+  "K": "Key item 강제포함"
+  "B": "부실채권 제외 (AR 한정)"
+  "M": "회신 완전일치"
+  "R": "차이 reconciled"
+  "D": "Discrepancy"
+  "A": "대체적 절차 완료"

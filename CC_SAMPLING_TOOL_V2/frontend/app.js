@@ -454,6 +454,7 @@ async function init() {
   $("#uploadConfBtn").addEventListener("click", uploadConfirmations);
   $("#altRegisterBtn").addEventListener("click", registerAlternative);
   $$(".runProjection").forEach(b => b.addEventListener("click", runProjection));
+  $("#dlCombinedBtn").addEventListener("click", () => downloadWorkpaper("cc_combined"));
   $("#dlC100Btn").addEventListener("click", () => downloadWorkpaper("c100"));
   $("#dlAA100Btn").addEventListener("click", () => downloadWorkpaper("aa100"));
   $("#dlSendlistBtn").addEventListener("click", downloadSendlistFromSide);

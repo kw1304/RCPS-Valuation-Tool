@@ -7,7 +7,7 @@ from src.application.export_workpaper_uc import ExportWorkpaperUC
 
 bp = Blueprint("workpaper", __name__, url_prefix="/api/projects")
 
-_ALLOWED_TEMPLATES = {"c100", "aa100"}
+_ALLOWED_TEMPLATES = {"c100", "aa100", "cc_combined"}
 
 
 @bp.get("/<int:pid>/workpaper/<template>")

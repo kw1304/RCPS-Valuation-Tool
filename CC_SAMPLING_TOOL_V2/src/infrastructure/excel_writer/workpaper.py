@@ -89,16 +89,28 @@ def build_workpaper(template_name: str, state: dict) -> bytes:
         row += 2
 
         section = sheet_spec["section"]
-        if section == "design_summary":
-            row = _write_design_summary(ws, state, kind, row)
-        elif section == "sendlist":
-            row = _write_sendlist(ws, state, kind, row)
-        elif section == "matching":
-            row = _write_matching(ws, state, kind, row)
-        elif section == "alternative":
-            row = _write_alternative(ws, state, kind, row)
-        elif section == "projection":
-            row = _write_projection(ws, state, kind, row)
+        if kind == "COMBINED":
+            if section == "design_summary":
+                row = _write_design_summary_combined(ws, state, row)
+            elif section == "sendlist":
+                row = _write_sendlist_combined(ws, state, row)
+            elif section == "matching":
+                row = _write_matching_combined(ws, state, row)
+            elif section == "alternative":
+                row = _write_alternative_combined(ws, state, row)
+            elif section == "projection":
+                row = _write_projection_combined(ws, state, row)
+        else:
+            if section == "design_summary":
+                row = _write_design_summary(ws, state, kind, row)
+            elif section == "sendlist":
+                row = _write_sendlist(ws, state, kind, row)
+            elif section == "matching":
+                row = _write_matching(ws, state, kind, row)
+            elif section == "alternative":
+                row = _write_alternative(ws, state, kind, row)
+            elif section == "projection":
+                row = _write_projection(ws, state, kind, row)
 
         row += 2
         row = _write_signature(ws, tpl, row)
@@ -240,4 +252,239 @@ def _write_projection(ws, state, kind, row):
         elif label == "신뢰수준":
             c.number_format = "0.0%"
         row += 1
+    return row
+
+
+def _write_design_summary_combined(ws, state, row):
+    """채권·채무 모집단·표본 요약 — 종류 컬럼 + 합계 행."""
+    headers = ["종류", "모집단 건수", "모집단 잔액(KRW)", "표본 건수",
+               "표본 잔액(KRW)", "커버리지"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    totals = {"pop_count": 0, "pop_total": 0.0,
+              "samp_count": 0, "samp_total": 0.0}
+    for kind_code, label in (("AR", "채권"), ("AP", "채무")):
+        pop = state.get("populations", {}).get(kind_code, {})
+        samp = state.get("samples", {}).get(kind_code, {})
+        pop_c = pop.get("count", 0)
+        pop_t = pop.get("total_krw", 0)
+        samp_c = samp.get("count", 0)
+        samp_t = samp.get("total_krw", 0)
+        cov = samp_t / pop_t if pop_t else 0
+
+        cells = [label, pop_c, pop_t, samp_c, samp_t, cov]
+        for c_idx, v in enumerate(cells, start=1):
+            c = ws.cell(row=row, column=c_idx, value=v)
+            c.font = BODY_FONT
+            c.border = CELL_BORDER
+            if c_idx in (2, 4):
+                c.alignment = NUM_ALIGN
+                c.number_format = "#,##0"
+            elif c_idx in (3, 5):
+                c.alignment = NUM_ALIGN
+                c.number_format = "#,##0"
+            elif c_idx == 6:
+                c.alignment = NUM_ALIGN
+                c.number_format = "0.0%"
+            else:
+                c.alignment = TEXT_ALIGN
+        totals["pop_count"] += pop_c
+        totals["pop_total"] += pop_t
+        totals["samp_count"] += samp_c
+        totals["samp_total"] += samp_t
+        row += 1
+
+    # 합계
+    cov_total = (totals["samp_total"] / totals["pop_total"]
+                 if totals["pop_total"] else 0)
+    cells = ["합계", totals["pop_count"], totals["pop_total"],
+             totals["samp_count"], totals["samp_total"], cov_total]
+    for c_idx, v in enumerate(cells, start=1):
+        c = ws.cell(row=row, column=c_idx, value=v)
+        c.font = SUBTITLE_FONT
+        c.border = CELL_BORDER
+        if c_idx in (2, 4):
+            c.alignment = NUM_ALIGN
+            c.number_format = "#,##0"
+        elif c_idx in (3, 5):
+            c.alignment = NUM_ALIGN
+            c.number_format = "#,##0"
+        elif c_idx == 6:
+            c.alignment = NUM_ALIGN
+            c.number_format = "0.0%"
+        else:
+            c.alignment = TEXT_ALIGN
+    row += 1
+    return row
+
+
+def _write_sendlist_combined(ws, state, row):
+    headers = ["종류", "거래처코드", "거래처명", "계정과목",
+               "잔액(KRW)", "통화", "선정사유"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    for kind_code, label in (("AR", "채권"), ("AP", "채무")):
+        for it in state.get("samples", {}).get(kind_code, {}).get("items", []):
+            cells = [label, it["party_id"], it["name"], it["gl_account"],
+                     it["balance_krw"], it["ccy"], it["selection_reason"]]
+            for c_idx, v in enumerate(cells, start=1):
+                c = ws.cell(row=row, column=c_idx, value=v)
+                c.font = BODY_FONT
+                c.border = CELL_BORDER
+                if c_idx == 5:
+                    c.alignment = NUM_ALIGN
+                    c.number_format = "#,##0"
+                else:
+                    c.alignment = TEXT_ALIGN
+            row += 1
+    return row
+
+
+def _write_matching_combined(ws, state, row):
+    headers = ["종류", "거래처", "장부잔액", "회신금액", "차이",
+               "차이사유", "판정", "PDF경로"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    for kind_code, label in (("AR", "채권"), ("AP", "채무")):
+        for cf in state.get("confirmations", {}).get(kind_code, []):
+            cells = [
+                label,
+                f"{cf['name']} ({cf['party_id']})",
+                cf["expected"], cf["confirmed"], cf["diff"],
+                cf.get("diff_reason"), cf.get("verdict"), cf.get("pdf_path"),
+            ]
+            for c_idx, v in enumerate(cells, start=1):
+                c = ws.cell(row=row, column=c_idx, value=v)
+                c.font = BODY_FONT
+                c.border = CELL_BORDER
+                if c_idx in (3, 4, 5):
+                    c.alignment = NUM_ALIGN
+                    c.number_format = "#,##0"
+                else:
+                    c.alignment = TEXT_ALIGN
+            row += 1
+    return row
+
+
+def _write_alternative_combined(ws, state, row):
+    headers = ["종류", "거래처", "절차유형", "증빙금액(KRW)", "비고"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    for kind_code, label in (("AR", "채권"), ("AP", "채무")):
+        for ap_item in state.get("alternatives", {}).get(kind_code, []):
+            cells = [
+                label,
+                f"{ap_item.get('name', '')} ({ap_item['party_id']})",
+                ap_item["procedure_type"], ap_item["evidence_sum"],
+                ap_item.get("note", ""),
+            ]
+            for c_idx, v in enumerate(cells, start=1):
+                c = ws.cell(row=row, column=c_idx, value=v)
+                c.font = BODY_FONT
+                c.border = CELL_BORDER
+                if c_idx == 4:
+                    c.alignment = NUM_ALIGN
+                    c.number_format = "#,##0"
+                else:
+                    c.alignment = TEXT_ALIGN
+            row += 1
+    return row
+
+
+def _write_projection_combined(ws, state, row):
+    """채권·채무 별로 projection 표시 + 마지막에 합산 verdict."""
+    # 컬럼: 항목 | 채권 | 채무 | 합산
+    headers = ["항목", "채권", "채무", "합산"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    ar = state.get("projection", {}).get("AR") or {}
+    ap = state.get("projection", {}).get("AP") or {}
+
+    def _val(d, key, default=0):
+        return d.get(key, default) if d else default
+
+    rows_data = [
+        ("신뢰수준", _val(ar, "confidence"), _val(ap, "confidence"), None),
+        ("Sampling interval", _val(ar, "sampling_interval"),
+         _val(ap, "sampling_interval"), None),
+        ("Projected misstatement",
+         _val(ar, "projected_misstatement"),
+         _val(ap, "projected_misstatement"),
+         _val(ar, "projected_misstatement") + _val(ap, "projected_misstatement")),
+        ("Basic precision",
+         _val(ar, "basic_precision"), _val(ap, "basic_precision"),
+         _val(ar, "basic_precision") + _val(ap, "basic_precision")),
+        ("Incremental allowance",
+         _val(ar, "incremental_allowance"), _val(ap, "incremental_allowance"),
+         _val(ar, "incremental_allowance") + _val(ap, "incremental_allowance")),
+        ("Upper limit",
+         _val(ar, "upper_limit"), _val(ap, "upper_limit"),
+         _val(ar, "upper_limit") + _val(ap, "upper_limit")),
+        ("Tolerable",
+         _val(ar, "tolerable"), _val(ap, "tolerable"),
+         _val(ar, "tolerable") + _val(ap, "tolerable")),
+    ]
+
+    for label, ar_v, ap_v, sum_v in rows_data:
+        cells = [label, ar_v, ap_v, sum_v if sum_v is not None else ""]
+        for c_idx, v in enumerate(cells, start=1):
+            c = ws.cell(row=row, column=c_idx, value=v)
+            c.font = BODY_FONT
+            c.border = CELL_BORDER
+            if c_idx == 1:
+                c.alignment = TEXT_ALIGN
+            elif label == "신뢰수준":
+                c.alignment = NUM_ALIGN
+                if isinstance(v, (int, float)):
+                    c.number_format = "0.0%"
+            else:
+                c.alignment = NUM_ALIGN
+                if isinstance(v, (int, float)):
+                    c.number_format = "#,##0"
+        row += 1
+
+    # 판정 행
+    ar_verdict = ar.get("verdict") if ar else "—"
+    ap_verdict = ap.get("verdict") if ap else "—"
+    sum_upper = _val(ar, "upper_limit") + _val(ap, "upper_limit")
+    sum_tol = _val(ar, "tolerable") + _val(ap, "tolerable")
+    sum_verdict = "WITHIN_TOLERABLE" if sum_upper <= sum_tol else "EXCEED"
+
+    cells = ["판정", ar_verdict, ap_verdict, sum_verdict]
+    for c_idx, v in enumerate(cells, start=1):
+        c = ws.cell(row=row, column=c_idx, value=v)
+        c.font = SUBTITLE_FONT
+        c.border = CELL_BORDER
+        c.alignment = TEXT_ALIGN
+    row += 1
     return row
