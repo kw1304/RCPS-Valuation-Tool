@@ -36,9 +36,35 @@ function renderNav(){
 
 function render(){
   renderNav();
+  renderHeaderDownload();
   const panel = $("#panel"); panel.innerHTML = "";
   const step = STEPS.find(s => s.id === state.current);
   step.render(panel);
+}
+
+function renderHeaderDownload(){
+  const right = document.querySelector('.hd-right');
+  if(!right) return;
+  right.innerHTML = "";
+  if(!state.projectId) return;
+  const btn = el("button", { className:"btn", style:"padding:0.5rem 1rem;font-size:0.85rem" }, "📥 현재 조서 다운로드");
+  btn.title = "현재까지 처리된 상태의 4150 조서를 다운로드합니다 (어느 단계에서도 가능)";
+  btn.onclick = async () => {
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = "생성 중…";
+    try {
+      const r = await fetch(`${API}/projects/${state.projectId}/workpaper/export`, { method:"POST" });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const ts = new Date().toISOString().slice(0,19).replace(/[T:]/g,"-");
+      const a = el("a", { href:url, download:`4150_AC_금융기관조회_${ts}.xlsx` });
+      document.body.append(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      btn.textContent = "✓ 다운로드 완료"; setTimeout(()=>{btn.textContent = orig; btn.disabled = false;}, 1500);
+    } catch(err){ btn.textContent = "실패: " + err.message; setTimeout(()=>{btn.textContent = orig; btn.disabled = false;}, 2500); }
+  };
+  right.append(btn);
 }
 
 async function post(path, body, isForm=false){
