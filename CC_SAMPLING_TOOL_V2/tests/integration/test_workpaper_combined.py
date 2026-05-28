@@ -50,76 +50,67 @@ def _full_state():
                     "evidence_sum": 8_000_000, "note": "회수증빙"}],
             "AP": [],
         },
-        "projection": {
-            "AR": {"confidence": 0.95, "sampling_interval": 50_000_000,
-                   "tolerable": 250_000_000,
-                   "projected_misstatement": 0,
-                   "basic_precision": 150_000_000,
-                   "incremental_allowance": 0,
-                   "upper_limit": 150_000_000,
-                   "verdict": "WITHIN_TOLERABLE",
-                   "strata_snapshot": []},
-            "AP": {"confidence": 0.95, "sampling_interval": 40_000_000,
-                   "tolerable": 50_000_000,
-                   "projected_misstatement": 0,
-                   "basic_precision": 120_000_000,
-                   "incremental_allowance": 0,
-                   "upper_limit": 120_000_000,
-                   "verdict": "EXCEED",
-                   "strata_snapshot": []},
-        },
+        "projection": {"AR": None, "AP": None},
     }
 
 
-def test_combined_template_loads():
+def test_combined_6_sheets():
     blob = build_workpaper("cc_combined", _full_state())
     wb = openpyxl.load_workbook(io.BytesIO(blob))
-    # 통합 sheet 5종
-    assert "CC_summary" in wb.sheetnames
-    assert "CC_sendlist" in wb.sheetnames
-    assert "CC_matching" in wb.sheetnames
-    assert "CC_alternative" in wb.sheetnames
-    assert "CC_projection" in wb.sheetnames
+    assert "샘플링 요약" in wb.sheetnames
+    assert "C100 조회서 control sheet" in wb.sheetnames
+    assert "C100-1 표본규모 결정" in wb.sheetnames
+    assert "C100-2 Key item 추출" in wb.sheetnames
+    assert "C100-3 표본 추출 MUS" in wb.sheetnames
+    assert "대체적 절차" in wb.sheetnames
 
 
-def test_combined_sendlist_contains_both_kinds():
-    """발송명단 시트에 AR + AP 모두 표시."""
+def test_summary_contains_both_kinds():
     blob = build_workpaper("cc_combined", _full_state())
     wb = openpyxl.load_workbook(io.BytesIO(blob))
-    ws = wb["CC_sendlist"]
-    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
-    assert "AR000" in flat
-    assert "AR050" in flat
-    assert "AP000" in flat
-    # 종류 컬럼 헤더 포함
-    assert "종류" in flat or "kind" in flat
-
-
-def test_combined_matching_contains_both():
-    blob = build_workpaper("cc_combined", _full_state())
-    wb = openpyxl.load_workbook(io.BytesIO(blob))
-    ws = wb["CC_matching"]
-    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
-    assert "MATCH" in flat
-    assert "DISCREPANCY" in flat
-
-
-def test_combined_projection_both_ar_ap():
-    blob = build_workpaper("cc_combined", _full_state())
-    wb = openpyxl.load_workbook(io.BytesIO(blob))
-    ws = wb["CC_projection"]
-    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
-    # 채권·채무 라벨 모두
-    assert any("채권" in v for v in flat)
-    assert any("채무" in v for v in flat)
-    assert "WITHIN_TOLERABLE" in flat
-    assert "EXCEED" in flat
-
-
-def test_combined_summary_both_populations():
-    blob = build_workpaper("cc_combined", _full_state())
-    wb = openpyxl.load_workbook(io.BytesIO(blob))
-    ws = wb["CC_summary"]
+    ws = wb["샘플링 요약"]
     flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
     assert any("채권" in v for v in flat)
     assert any("채무" in v for v in flat)
+    assert any("합계" in v for v in flat)
+
+
+def test_control_sheet_has_parties():
+    blob = build_workpaper("cc_combined", _full_state())
+    wb = openpyxl.load_workbook(io.BytesIO(blob))
+    ws = wb["C100 조회서 control sheet"]
+    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
+    assert any("AR000" in v for v in flat)
+    assert any("AP000" in v for v in flat)
+
+
+def test_key_item_lists_forced():
+    blob = build_workpaper("cc_combined", _full_state())
+    wb = openpyxl.load_workbook(io.BytesIO(blob))
+    ws = wb["C100-2 Key item 추출"]
+    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
+    # FORCED_RP, FORCED_KEY는 있어야
+    assert any("FORCED_RP" in v for v in flat)
+    assert any("FORCED_KEY" in v for v in flat)
+    # REP는 KEY 시트에 없어야 (REP는 C100-3)
+    assert not any(v == "REP" for v in flat)
+
+
+def test_mus_sample_lists_rep_only():
+    blob = build_workpaper("cc_combined", _full_state())
+    wb = openpyxl.load_workbook(io.BytesIO(blob))
+    ws = wb["C100-3 표본 추출 MUS"]
+    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
+    # REP 거래처 (AR050) 있어야
+    assert any("AR050" in v for v in flat)
+    # FORCED 거래처는 KEY 시트에 있고 여기엔 없어야
+    assert not any("AR000" in v for v in flat)
+
+
+def test_alternative_kind_column():
+    blob = build_workpaper("cc_combined", _full_state())
+    wb = openpyxl.load_workbook(io.BytesIO(blob))
+    ws = wb["대체적 절차"]
+    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
+    # 후속회수 (state alternatives.AR에 있음)
+    assert any("후속회수" in v for v in flat)

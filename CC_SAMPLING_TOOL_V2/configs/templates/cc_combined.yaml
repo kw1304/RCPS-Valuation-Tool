@@ -1,7 +1,7 @@
-# 통합 조서 (CC) — 채권·채무 한 시트에 합산
+# 통합 조서 (CC) — 7620 C-series 양식. 채권·채무 합본.
 
 workpaper_code: "CC"
-title: "채권채무 통합조서"
+title: "채권채무 조회 조서"
 kind: COMBINED
 
 header:
@@ -11,10 +11,10 @@ header:
     field: project.period_end
   - label: "기준통화"
     field: project.base_ccy
-  - label: "materiality"
+  - label: "수행중요성 (materiality)"
     field: project.materiality
     format: currency
-  - label: "tolerable misstatement"
+  - label: "허용왜곡표시 (tolerable)"
     field: project.tolerable
     format: currency
 
@@ -24,28 +24,31 @@ signature:
   date_field: "작성일"
 
 sheets:
-  - name: "CC_summary"
-    title: "통합 표본설계 요약 (채권 + 채무)"
+  - name: "샘플링 요약"
+    title: "샘플링 요약"
     section: design_summary
-  - name: "CC_sendlist"
-    title: "통합 발송명단 (채권 + 채무)"
-    section: sendlist
-  - name: "CC_matching"
-    title: "통합 회신 매칭표 (채권 + 채무)"
-    section: matching
-  - name: "CC_alternative"
-    title: "통합 대체적 절차 (채권 + 채무)"
+  - name: "C100 조회서 control sheet"
+    title: "C100 조회서 control sheet — 거래처별 계정과목 요약"
+    section: control_sheet
+  - name: "C100-1 표본규모 결정"
+    title: "C100-1 표본규모 결정 (MUS)"
+    section: size_determination
+  - name: "C100-2 Key item 추출"
+    title: "C100-2 Key item 추출 (강제포함 거래처)"
+    section: key_item
+  - name: "C100-3 표본 추출 MUS"
+    title: "C100-3 Representative sample 추출 (MUS 방법)"
+    section: mus_sample
+  - name: "대체적 절차"
+    title: "대체적 절차 — 미회신·차이 거래처 검증"
     section: alternative
-  - name: "CC_projection"
-    title: "통합 Projection — ISA 530 (채권 + 채무 + 합산)"
-    section: projection
 
 tickmarks:
   "✓": "표본 확정"
-  "★": "특관자 강제포함"
+  "★": "특관자 강제포함 (RP)"
   "K": "Key item 강제포함"
   "B": "부실채권 제외 (AR 한정)"
   "M": "회신 완전일치"
-  "R": "차이 reconciled"
-  "D": "Discrepancy"
+  "R": "차이 reconciled (시점차이 등)"
+  "D": "Discrepancy (차이판정)"
   "A": "대체적 절차 완료"

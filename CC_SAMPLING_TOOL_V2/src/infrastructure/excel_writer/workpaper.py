@@ -91,15 +91,17 @@ def build_workpaper(template_name: str, state: dict) -> bytes:
         section = sheet_spec["section"]
         if kind == "COMBINED":
             if section == "design_summary":
-                row = _write_design_summary_combined(ws, state, row)
-            elif section == "sendlist":
-                row = _write_sendlist_combined(ws, state, row)
-            elif section == "matching":
-                row = _write_matching_combined(ws, state, row)
+                row = _write_summary_7620(ws, state, row)
+            elif section == "control_sheet":
+                row = _write_c100_control(ws, state, row)
+            elif section == "size_determination":
+                row = _write_c100_1_size(ws, state, row)
+            elif section == "key_item":
+                row = _write_c100_2_keyitem(ws, state, row)
+            elif section == "mus_sample":
+                row = _write_c100_3_mus(ws, state, row)
             elif section == "alternative":
                 row = _write_alternative_combined(ws, state, row)
-            elif section == "projection":
-                row = _write_projection_combined(ws, state, row)
         else:
             if section == "design_summary":
                 row = _write_design_summary(ws, state, kind, row)
@@ -487,4 +489,287 @@ def _write_projection_combined(ws, state, row):
         c.border = CELL_BORDER
         c.alignment = TEXT_ALIGN
     row += 1
+    return row
+
+
+def _write_summary_7620(ws, state, row):
+    """샘플링 요약 — overview 행 + 강제포함/제외 내역."""
+    headers = ["종류", "모집단 건수", "모집단 잔액(KRW)", "표본 건수",
+               "강제포함(RP)", "강제포함(KEY)", "대표(REP)",
+               "표본 잔액(KRW)", "커버리지"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    totals = [0] * 6  # pop_c, pop_t, samp_c, samp_t, rp, key, rep
+    for kind_code, label in (("AR", "채권"), ("AP", "채무")):
+        pop = state.get("populations", {}).get(kind_code, {})
+        samp = state.get("samples", {}).get(kind_code, {})
+        items = samp.get("items", [])
+        n_rp = sum(1 for it in items if it.get("selection_reason") == "FORCED_RP")
+        n_key = sum(1 for it in items if it.get("selection_reason") == "FORCED_KEY")
+        n_rep = sum(1 for it in items if it.get("selection_reason") == "REP")
+        pop_c = pop.get("count", 0)
+        pop_t = pop.get("total_krw", 0)
+        samp_c = samp.get("count", 0)
+        samp_t = samp.get("total_krw", 0)
+        cov = samp_t / pop_t if pop_t else 0
+        cells = [label, pop_c, pop_t, samp_c, n_rp, n_key, n_rep, samp_t, cov]
+        for c_idx, v in enumerate(cells, start=1):
+            c = ws.cell(row=row, column=c_idx, value=v)
+            c.font = BODY_FONT
+            c.border = CELL_BORDER
+            if c_idx == 1:
+                c.alignment = TEXT_ALIGN
+            elif c_idx == 9:
+                c.alignment = NUM_ALIGN
+                c.number_format = "0.0%"
+            else:
+                c.alignment = NUM_ALIGN
+                c.number_format = "#,##0"
+        totals[0] += pop_c
+        totals[1] += pop_t
+        totals[2] += samp_c
+        totals[3] += samp_t
+        totals[4] += n_rp
+        totals[5] += n_key
+        row += 1
+
+    # 합계
+    cov_total = totals[3] / totals[1] if totals[1] else 0
+    cells = ["합계", totals[0], totals[1], totals[2],
+             totals[4], totals[5], totals[2] - totals[4] - totals[5],
+             totals[3], cov_total]
+    for c_idx, v in enumerate(cells, start=1):
+        c = ws.cell(row=row, column=c_idx, value=v)
+        c.font = SUBTITLE_FONT
+        c.border = CELL_BORDER
+        if c_idx == 1:
+            c.alignment = TEXT_ALIGN
+        elif c_idx == 9:
+            c.alignment = NUM_ALIGN
+            c.number_format = "0.0%"
+        else:
+            c.alignment = NUM_ALIGN
+            c.number_format = "#,##0"
+    row += 1
+    return row
+
+
+def _write_c100_control(ws, state, row):
+    """C100 조회서 control sheet — 거래처별 행, 계정과목별 컬럼.
+
+    src_sheet에 적힌 계정과목명을 컬럼화. 같은 거래처 여러 계정에 잔액 있으면 분산.
+    """
+    # 모든 표본에서 src_sheet 추출하여 동적 계정 컬럼 결정
+    ar_items = state.get("samples", {}).get("AR", {}).get("items", [])
+    ap_items = state.get("samples", {}).get("AP", {}).get("items", [])
+
+    # ingest_uc 집계로 src_sheet에 "외상매출금+미수금" 형태 가능
+    # 각 거래처의 src_sheet 분리해서 계정명 추출
+    ar_accounts: set[str] = set()
+    ap_accounts: set[str] = set()
+    for it in ar_items:
+        srcs = (it.get("gl_account") or "").split("+")
+        # src_sheet이 더 정확하지만 state엔 없음 → gl_account 사용
+        # 사실 v2 state는 gl_account만 노출 — 계정과목명 분리는 한계
+        # 임시: 단일 컬럼 "채권 잔액"으로 통합 표기
+    # 단순화: AR 컬럼 1개 + AP 컬럼 1개로 표기 (계정과목별 분리는 ingest 시 src_sheet 보존이 필요한데 state가 노출 안 함)
+
+    headers = ["No", "거래처코드", "거래처명",
+               "채권 잔액(KRW)", "채무 잔액(KRW)", "합계(KRW)", "선정사유"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    # 거래처별 합산 (같은 party_id 또는 name AR+AP)
+    by_party: dict[str, dict] = {}
+    for it in ar_items:
+        key = it.get("party_id") or it.get("name")
+        ent = by_party.setdefault(key, {
+            "party_id": it.get("party_id"), "name": it.get("name"),
+            "ar": 0, "ap": 0,
+            "reasons": set(),
+        })
+        ent["ar"] += abs(it.get("balance_krw", 0))
+        ent["reasons"].add(it.get("selection_reason", ""))
+    for it in ap_items:
+        # AR과 다른 party_id일 수 있음
+        key = it.get("party_id") or it.get("name")
+        # AR과 같은 키여도 별개 처리 (party_id 일치 시 합쳐짐)
+        ent = by_party.setdefault(key, {
+            "party_id": it.get("party_id"), "name": it.get("name"),
+            "ar": 0, "ap": 0,
+            "reasons": set(),
+        })
+        ent["ap"] += abs(it.get("balance_krw", 0))
+        ent["reasons"].add(it.get("selection_reason", ""))
+
+    # 총합 큰 순 정렬
+    rows_sorted = sorted(by_party.values(), key=lambda e: -(e["ar"] + e["ap"]))
+    for i, ent in enumerate(rows_sorted, start=1):
+        total = ent["ar"] + ent["ap"]
+        reason = ",".join(sorted(ent["reasons"]))
+        cells = [i, ent["party_id"], ent["name"],
+                 ent["ar"] or "", ent["ap"] or "", total, reason]
+        for c_idx, v in enumerate(cells, start=1):
+            c = ws.cell(row=row, column=c_idx, value=v)
+            c.font = BODY_FONT
+            c.border = CELL_BORDER
+            if c_idx in (1, 4, 5, 6):
+                c.alignment = NUM_ALIGN
+                if isinstance(v, (int, float)) and v:
+                    c.number_format = "#,##0"
+            else:
+                c.alignment = TEXT_ALIGN
+        row += 1
+    return row
+
+
+def _write_c100_1_size(ws, state, row):
+    """C100-1 표본규모 결정 — key-value 표."""
+    proj = state.get("project", {})
+    materiality = proj.get("materiality", 0)
+    tolerable = proj.get("tolerable", 0)
+
+    items = [
+        ("감사목적", "보고기간말 현재 채권채무의 실재성·완전성 검토를 위한 표본 규모 결정"),
+        ("", ""),
+        ("[모집단 정보]", ""),
+    ]
+    for kind_code, label in (("AR", "채권 (AR) 모집단"), ("AP", "채무 (AP) 모집단")):
+        pop = state.get("populations", {}).get(kind_code, {})
+        items.append((f"  {label} 건수", pop.get("count", 0)))
+        items.append((f"  {label} 잔액(KRW)", pop.get("total_krw", 0)))
+
+    items.extend([
+        ("", ""),
+        ("[표본규모 결정요소]", ""),
+        ("수행중요성 (materiality)", materiality),
+        ("허용왜곡표시 (tolerable)", tolerable),
+        ("Key item 기준금액", tolerable * 0.5),
+        ("신뢰수준", "95% (RF 3.0)"),
+        ("", ""),
+        ("[샘플링 결과]", ""),
+    ])
+
+    for kind_code, label in (("AR", "AR 표본"), ("AP", "AP 표본")):
+        samp = state.get("samples", {}).get(kind_code, {})
+        s_items = samp.get("items", [])
+        n_rp = sum(1 for it in s_items if it.get("selection_reason") == "FORCED_RP")
+        n_key = sum(1 for it in s_items if it.get("selection_reason") == "FORCED_KEY")
+        n_rep = sum(1 for it in s_items if it.get("selection_reason") == "REP")
+        items.append((f"  {label} 총 건수", samp.get("count", 0)))
+        items.append((f"  {label} 특관자(RP)", n_rp))
+        items.append((f"  {label} Key item", n_key))
+        items.append((f"  {label} Representative", n_rep))
+
+    for label, val in items:
+        c1 = ws.cell(row=row, column=1, value=label)
+        c1.font = SUBTITLE_FONT if label.startswith("[") else BODY_FONT
+        c1.alignment = TEXT_ALIGN
+        if val != "":
+            c2 = ws.cell(row=row, column=2, value=val)
+            c2.font = BODY_FONT
+            if isinstance(val, (int, float)):
+                c2.alignment = NUM_ALIGN
+                c2.number_format = "#,##0"
+            else:
+                c2.alignment = TEXT_ALIGN
+        row += 1
+    return row
+
+
+def _write_c100_2_keyitem(ws, state, row):
+    """C100-2 Key item 추출 — 강제포함 거래처 list (RP + KEY)."""
+    headers = ["No", "종류", "거래처코드", "거래처명",
+               "잔액(KRW)", "선정사유", "사유 상세"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    forced_items = []
+    for kind_code, label in (("AR", "채권"), ("AP", "채무")):
+        for it in state.get("samples", {}).get(kind_code, {}).get("items", []):
+            reason = it.get("selection_reason", "")
+            if reason in ("FORCED_RP", "FORCED_KEY"):
+                forced_items.append({**it, "kind_label": label, "kind": kind_code})
+
+    forced_items.sort(key=lambda x: -abs(x.get("balance_krw", 0)))
+
+    reason_desc = {
+        "FORCED_RP": "특수관계자 (ISA 550 강제포함)",
+        "FORCED_KEY": "Key item — 잔액 ≥ 기준금액 (ISA 530)",
+    }
+
+    for i, it in enumerate(forced_items, start=1):
+        cells = [i, it["kind_label"], it.get("party_id"), it.get("name"),
+                 abs(it.get("balance_krw", 0)),
+                 it.get("selection_reason"),
+                 reason_desc.get(it.get("selection_reason"), "")]
+        for c_idx, v in enumerate(cells, start=1):
+            c = ws.cell(row=row, column=c_idx, value=v)
+            c.font = BODY_FONT
+            c.border = CELL_BORDER
+            if c_idx in (1, 5):
+                c.alignment = NUM_ALIGN
+                if c_idx == 5:
+                    c.number_format = "#,##0"
+            else:
+                c.alignment = TEXT_ALIGN
+        row += 1
+    return row
+
+
+def _write_c100_3_mus(ws, state, row):
+    """C100-3 Representative MUS 표본 — 누적합산 + 선정 표시."""
+    ws.cell(row=row, column=1, value="Representative sample (MUS 방법)").font = SUBTITLE_FONT
+    row += 1
+    ws.cell(row=row, column=1, value="모집단 중 강제포함 외 REP로 선정된 거래처 목록").font = META_FONT
+    row += 2
+
+    headers = ["No", "종류", "거래처코드", "거래처명",
+               "잔액(KRW)", "선정사유"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    rep_items = []
+    for kind_code, label in (("AR", "채권"), ("AP", "채무")):
+        for it in state.get("samples", {}).get(kind_code, {}).get("items", []):
+            if it.get("selection_reason") == "REP":
+                rep_items.append({**it, "kind_label": label, "kind": kind_code})
+
+    rep_items.sort(key=lambda x: -abs(x.get("balance_krw", 0)))
+
+    for i, it in enumerate(rep_items, start=1):
+        cells = [i, it["kind_label"], it.get("party_id"), it.get("name"),
+                 abs(it.get("balance_krw", 0)), "REP (PPS 추출)"]
+        for c_idx, v in enumerate(cells, start=1):
+            c = ws.cell(row=row, column=c_idx, value=v)
+            c.font = BODY_FONT
+            c.border = CELL_BORDER
+            if c_idx in (1, 5):
+                c.alignment = NUM_ALIGN
+                if c_idx == 5:
+                    c.number_format = "#,##0"
+            else:
+                c.alignment = TEXT_ALIGN
+        row += 1
     return row
