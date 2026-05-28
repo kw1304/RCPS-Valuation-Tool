@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 
 class Kind(str, Enum):
@@ -118,4 +118,4 @@ class ProjectionResult:
     incremental_allowance: float
     upper_limit: float
     tolerable: float
-    verdict: str  # "WITHIN_TOLERABLE" or "EXCEED"
+    verdict: Literal["WITHIN_TOLERABLE", "EXCEED"]
