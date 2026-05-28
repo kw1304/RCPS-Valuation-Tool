@@ -67,6 +67,7 @@ async function refreshState() {
   currentState = await api("GET", `/projects/${currentProjectId}/state`);
   renderSidePanel();
   renderMergedTable();
+  renderConfirmationsTable();
 }
 
 function renderSidePanel() {
@@ -87,8 +88,10 @@ function renderSidePanel() {
   setStep("ingest", s.populations.AR.count + s.populations.AP.count > 0 ? "done" : null);
   setStep("design-ar", s.samples.AR.count > 0 ? "done" : null);
   setStep("design-ap", s.samples.AP.count > 0 ? "done" : null);
-  setStep("send", "disabled");
-  setStep("receive", "disabled");
+  const arRecv = (s.confirmations?.AR || []).filter(c => c.verdict).length;
+  const apRecv = (s.confirmations?.AP || []).filter(c => c.verdict).length;
+  setStep("send", s.samples.AR.count + s.samples.AP.count > 0 ? "done" : null);
+  setStep("receive", (arRecv + apRecv) > 0 ? "done" : null);
   setStep("projection", "disabled");
 }
 
@@ -188,6 +191,65 @@ async function runDesign(ev) {
   }
 }
 
+// ---- ④ Confirmations ----
+function downloadSendlist(ev) {
+  ev.preventDefault();
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  window.location.href = `${API}/projects/${currentProjectId}/sendlist`;
+}
+
+async function uploadConfirmations() {
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  const files = $("#file-confirmation").files;
+  if (!files.length) { alert("PDF 1개 이상 선택"); return; }
+  const kind = $("#uploadKind").value;
+  const results = [];
+  $("#confResult").textContent = "업로드 중...";
+  for (const f of files) {
+    const fd = new FormData();
+    fd.append("pdf", f);
+    fd.append("kind", kind);
+    try {
+      const r = await api("POST",
+        `/projects/${currentProjectId}/confirmations/upload`, fd, true);
+      results.push(`${f.name} → ${r.matched_party || "매칭실패"} (${r.verdict})`);
+    } catch (e) {
+      results.push(`${f.name} → 오류 ${e.message}`);
+    }
+  }
+  $("#confResult").innerHTML = results.map(l => `<div>${l}</div>`).join("");
+  await refreshState();
+}
+
+function renderConfirmationsTable() {
+  const tbody = $("#confirmationsTable tbody");
+  tbody.innerHTML = "";
+  const rows = [];
+  for (const k of ["AR", "AP"]) {
+    for (const c of (currentState.confirmations || {})[k] || []) {
+      rows.push({ ...c, kind: k });
+    }
+  }
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--color-muted);padding:2rem;">회신 없음 — PDF 업로드 필요</td></tr>`;
+    return;
+  }
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    const diffStr = r.diff == null ? "—" : fmt(r.diff);
+    tr.innerHTML = `
+      <td><span class="kind-tag ${r.kind}">${r.kind}</span></td>
+      <td>${r.name} (${r.party_id})</td>
+      <td class="num">${fmt(r.expected)}</td>
+      <td class="num">${fmt(r.confirmed)}</td>
+      <td class="num">${diffStr}</td>
+      <td><span class="verdict-tag ${r.verdict || "NO_RESPONSE"}">${r.verdict || "—"}</span></td>
+      <td>${r.status}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
@@ -195,6 +257,8 @@ async function init() {
   $("#filterReason").addEventListener("change", renderMergedTable);
   $("#ingestBtn").addEventListener("click", runIngest);
   $$(".runDesign").forEach(btn => btn.addEventListener("click", runDesign));
+  $("#downloadSendlist").addEventListener("click", downloadSendlist);
+  $("#uploadConfBtn").addEventListener("click", uploadConfirmations);
   await loadProjectList();
 }
 

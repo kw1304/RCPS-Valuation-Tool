@@ -108,6 +108,30 @@
       </table>
     </section>
 
+    <!-- ④ 발송·회신 트래커 -->
+    <section id="confirmationsPanel">
+      <h2>④ 발송·회신 트래커</h2>
+      <div class="actions">
+        <a id="downloadSendlist" class="btn-link" href="#">발송명단 다운로드</a>
+        <label class="upload-label">
+          PDF 회신 업로드
+          <input type="file" id="file-confirmation" accept=".pdf" multiple>
+        </label>
+        <select id="uploadKind"><option value="AR">AR</option><option value="AP">AP</option></select>
+        <button id="uploadConfBtn">업로드·자동매칭</button>
+      </div>
+      <div id="confResult"></div>
+      <table id="confirmationsTable">
+        <thead>
+          <tr>
+            <th>종류</th><th>거래처</th><th>장부잔액</th><th>회신금액</th>
+            <th>차이</th><th>판정</th><th>상태</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
   </main>
 
 </div>

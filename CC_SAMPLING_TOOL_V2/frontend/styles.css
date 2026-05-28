@@ -134,3 +134,26 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .badge.rp { background: #d1fae5; color: var(--color-rp); }
 .badge.bad { background: #fee2e2; color: var(--color-bad); }
+
+.verdict-tag {
+  display: inline-block; padding: 1px 6px; border-radius: 10px;
+  font-size: .7rem; font-weight: 600;
+}
+.verdict-tag.MATCH { background: #d1fae5; color: #047857; }
+.verdict-tag.RECONCILED { background: #fef3c7; color: #b45309; }
+.verdict-tag.DISCREPANCY { background: #fee2e2; color: #b91c1c; }
+.verdict-tag.NO_RESPONSE { background: #f3f4f6; color: var(--color-muted); }
+
+.btn-link {
+  display: inline-block; padding: .35rem .75rem;
+  background: var(--color-bg); color: var(--color-primary);
+  border-radius: var(--radius); text-decoration: none;
+  border: 1px solid var(--color-border);
+}
+.btn-link:hover { background: #eef2f7; }
+.upload-label { padding: .35rem .75rem; border: 1px dashed var(--color-border);
+                border-radius: var(--radius); font-size: .85rem;
+                display: inline-flex; gap: .25rem; align-items: center; }
+.upload-label input { font-size: .75rem; }
+.actions { display: flex; gap: .5rem; align-items: center;
+           margin-bottom: 1rem; flex-wrap: wrap; }
