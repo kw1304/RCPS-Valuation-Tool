@@ -37,4 +37,7 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
     from api.routes.project import bp as project_bp
     app.register_blueprint(project_bp)
 
+    from api.routes.ingest import bp as ingest_bp
+    app.register_blueprint(ingest_bp)
+
     return app
