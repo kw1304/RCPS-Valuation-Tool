@@ -68,6 +68,7 @@ async function refreshState() {
   renderSidePanel();
   renderMergedTable();
   renderConfirmationsTable();
+  renderAlternativesTable();
 }
 
 function renderSidePanel() {
@@ -250,6 +251,54 @@ function renderConfirmationsTable() {
   }
 }
 
+// ---- ⑤ Alternative ----
+async function registerAlternative() {
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  const partyId = $("#altPartyId").value.trim();
+  if (!partyId) { alert("거래처코드 필수"); return; }
+  const body = {
+    kind: $("#altKind").value,
+    party_id: partyId,
+    procedure_type: $("#altType").value,
+    evidence_sum: parseFloat($("#altEvidence").value || "0"),
+    note: $("#altNote").value || null,
+  };
+  $("#altResult").textContent = "등록 중...";
+  try {
+    const r = await api("POST", `/projects/${currentProjectId}/alternative`, body);
+    $("#altResult").innerHTML = `coverage ${pct(r.coverage_pct)} (${r.verdict}) · 누적증빙 ₩${fmt(r.covered_amt)}/${fmt(r.non_response_total)}`;
+    await refreshState();
+  } catch (e) {
+    $("#altResult").textContent = "오류: " + e.message;
+  }
+}
+
+function renderAlternativesTable() {
+  const tbody = $("#alternativesTable tbody");
+  tbody.innerHTML = "";
+  const rows = [];
+  for (const k of ["AR", "AP"]) {
+    for (const a of (currentState.alternatives || {})[k] || []) {
+      rows.push({ ...a, kind: k });
+    }
+  }
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--color-muted);padding:1.5rem;">대체적 절차 없음</td></tr>`;
+    return;
+  }
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="kind-tag ${r.kind}">${r.kind}</span></td>
+      <td>${r.name} (${r.party_id})</td>
+      <td>${r.procedure_type}</td>
+      <td class="num">${fmt(r.evidence_sum)}</td>
+      <td>${r.note || "—"}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
@@ -259,6 +308,7 @@ async function init() {
   $$(".runDesign").forEach(btn => btn.addEventListener("click", runDesign));
   $("#downloadSendlist").addEventListener("click", downloadSendlist);
   $("#uploadConfBtn").addEventListener("click", uploadConfirmations);
+  $("#altRegisterBtn").addEventListener("click", registerAlternative);
   await loadProjectList();
 }
 

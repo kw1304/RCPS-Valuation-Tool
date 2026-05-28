@@ -132,6 +132,31 @@
       </table>
     </section>
 
+    <!-- ⑤ 대체적 절차 -->
+    <section id="alternativePanel">
+      <h2>⑤ 대체적 절차</h2>
+      <div class="actions">
+        <input type="text" id="altPartyId" placeholder="거래처코드" style="width:120px;padding:.3rem;">
+        <select id="altKind"><option value="AR">AR</option><option value="AP">AP</option></select>
+        <select id="altType">
+          <option>후속회수</option><option>송장대조</option><option>지급내역대조</option><option>기타</option>
+        </select>
+        <input type="number" id="altEvidence" placeholder="증빙금액" style="width:140px;padding:.3rem;">
+        <input type="text" id="altNote" placeholder="비고" style="width:200px;padding:.3rem;">
+        <button id="altRegisterBtn">등록</button>
+      </div>
+      <div id="altResult"></div>
+      <table id="alternativesTable">
+        <thead>
+          <tr>
+            <th>종류</th><th>거래처</th><th>절차유형</th>
+            <th>증빙금액</th><th>비고</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
   </main>
 
 </div>
