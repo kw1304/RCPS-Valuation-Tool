@@ -32,10 +32,17 @@ def match_party(
     target = normalize_party_name(text_party)
     if not target:
         return None
+    # exact 매칭 우선
     for c in candidates:
         if normalize_party_name(c) == target:
             return c
-    for c in candidates:
+    # partial — 긴 candidate 우선 (짧은 prefix가 긴 이름 가로채기 방지)
+    # 예: "코스맥스" candidate가 "코스맥스펫(주)" filename에 매칭되어 잘못 잡히는 경우 방지
+    sorted_cands = sorted(
+        candidates,
+        key=lambda c: -len(normalize_party_name(c) or "")
+    )
+    for c in sorted_cands:
         norm_c = normalize_party_name(c)
         if norm_c and norm_c in target:
             return c
