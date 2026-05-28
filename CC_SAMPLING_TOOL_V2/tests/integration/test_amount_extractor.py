@@ -43,3 +43,11 @@ def test_extract_picks_largest_when_multiple():
     text = "고객사001 거래일 2025-12-31 잔액 3,500,000원 (참고 1,000)"
     r = extract_party_amount(text, candidate_parties=["고객사001"])
     assert r.amount == 3_500_000
+
+
+def test_extract_with_corp_prefix_in_pdf():
+    """회신서에 '(주)고객사001'로 적혀도 원장 '고객사001'과 매칭."""
+    text = "조회처: (주)고객사001\n잔액: 1,200,000원"
+    r = extract_party_amount(text, candidate_parties=["고객사001"])
+    assert r.matched_party == "고객사001"
+    assert r.amount == 1_200_000

@@ -28,9 +28,11 @@ def extract_party_amount(
     1. candidate_parties 중 텍스트에 등장한 첫 번째 거래처 선택
     2. 텍스트 내 가장 큰 |금액| 채택
     """
+    from src.domain.party_normalize import normalize_party_name
     matched = None
+    norm_text = normalize_party_name(text)
     for p in candidate_parties:
-        if p in text:
+        if normalize_party_name(p) in norm_text:
             matched = p
             break
 
