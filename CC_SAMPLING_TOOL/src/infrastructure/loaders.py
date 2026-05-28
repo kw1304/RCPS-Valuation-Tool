@@ -1,10 +1,11 @@
-"""Excel 로더 — 회사 제시 거래처별 원장, 재무제표, 특관자리스트, UploadGuide
+"""Excel 로더 — 회사 제시 거래처별 원장, 재무제표, 특관자리스트, UploadGuide, 대손충당금
 
 loaders.py 는 파일 I/O 담당. 컬럼 감지 로직은 schemas/ 패키지에 위임.
 기존 호출처(시트명 직접 지정)는 완전 호환 유지.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -395,3 +396,160 @@ def get_total_assets(fs_amounts: dict[str, float]) -> float:
     유동 = fs_amounts.get("유동자산", 0.0)
     비유동 = fs_amounts.get("비유동자산", 0.0)
     return 유동 + 비유동
+
+
+# ─────────────────────────────────────────────────────────────
+# 대손충당금 데이터 모델 + 로더
+# ─────────────────────────────────────────────────────────────
+
+# 거래처명 끝의 "[코드번호]" 패턴 — 예: "(주)미가람화장품[110]" → "(주)미가람화장품"
+_CODE_SUFFIX_RE = re.compile(r"\[\d+\]\s*$")
+
+
+def _strip_party_code(raw: str) -> str:
+    """거래처명에서 SAP 코드 접미사 "[숫자]" 를 제거하여 순수 거래처명 반환."""
+    return _CODE_SUFFIX_RE.sub("", raw).strip()
+
+
+@dataclass
+class AllowanceData:
+    """대손충당금 파일 파싱 결과.
+
+    bad_debt_parties: 부실채권으로 분류된 거래처명 집합 (코드 제거 후).
+                      채권 잔액이 있어도 회수 불가로 판정된 거래처 — 조회서 발송 불필요.
+    allowance_by_party: 거래처별 대손충당금 합산 금액 (월별 시트 합산, include_monthly=True 시).
+    """
+    bad_debt_parties: set[str] = field(default_factory=set)
+    allowance_by_party: dict[str, float] = field(default_factory=dict)
+
+    @property
+    def bad_debt_count(self) -> int:
+        return len(self.bad_debt_parties)
+
+    @property
+    def total_allowance(self) -> float:
+        return sum(self.allowance_by_party.values())
+
+
+def load_allowance_data(
+    path: str | Path,
+    include_monthly: bool = False,
+) -> AllowanceData:
+    """대손충당금 기대손실 모형 xlsx → AllowanceData.
+
+    파싱 전략:
+      1) "부실채권" 시트: 헤더(2행) 이후 데이터 행의 고객명 컬럼에서 거래처명 추출.
+         - 형식: "(주)미가람화장품[110]" → 코드 제거 후 "(주)미가람화장품" 수집.
+      2) 월별 시트(4자리 YYMM 이름, include_monthly=True 시만): "거래처" 컬럼에서
+         거래처명·잔액을 읽어 allowance_by_party 합산.
+         - 기본값 False: 월별 시트 60개+ 파싱은 성능 부담이 크므로 opt-in.
+    """
+    path = Path(path)
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    sheetnames = wb.sheetnames
+
+    bad_debt_parties: set[str] = set()
+    allowance_by_party: dict[str, float] = {}
+
+    # ── 1) 부실채권 시트 파싱 ─────────────────────────────────
+    bad_sheet = next(
+        (s for s in sheetnames if s.strip() == "부실채권"),
+        None,
+    )
+    if bad_sheet:
+        ws = wb[bad_sheet]
+        # 헤더는 Row 2; Row 1은 합계행 또는 빈행.
+        name_col = _detect_party_col_in_ws(ws, header_row=2)
+        for r in range(3, (ws.max_row or 0) + 1):
+            v = ws.cell(r, name_col).value
+            if v and isinstance(v, str) and v.strip():
+                stripped = _strip_party_code(v.strip())
+                if stripped:
+                    bad_debt_parties.add(stripped)
+
+    # ── 2) 월별 시트 allowance 합산 (opt-in) ─────────────────
+    if include_monthly:
+        monthly_sheets = [s for s in sheetnames if re.fullmatch(r"\d{4}", s.strip())]
+        for sname in monthly_sheets:
+            ws = wb[sname]
+            header_row = _find_header_row(ws, keyword="거래처", max_search=3)
+            if header_row is None:
+                continue
+            hdr = [ws.cell(header_row, c).value for c in range(1, (ws.max_column or 0) + 1)]
+            party_col = _find_col_by_keyword(hdr, ("거래처", "고객명"))
+            amount_col = _find_col_by_keyword(hdr, ("금액(현지 통화)", "금액", "현지"))
+            if party_col is None or amount_col is None:
+                continue
+            for r in range(header_row + 1, (ws.max_row or 0) + 1):
+                party_v = ws.cell(r, party_col).value
+                amt_v = ws.cell(r, amount_col).value
+                if not party_v or not isinstance(party_v, str):
+                    continue
+                party_name = party_v.strip()
+                if not party_name:
+                    continue
+                try:
+                    amt = float(amt_v) if amt_v is not None else 0.0
+                except (TypeError, ValueError):
+                    amt = 0.0
+                if amt > 0:
+                    allowance_by_party[party_name] = allowance_by_party.get(party_name, 0.0) + amt
+
+    wb.close()
+    return AllowanceData(
+        bad_debt_parties=bad_debt_parties,
+        allowance_by_party=allowance_by_party,
+    )
+
+
+def _detect_party_col_in_ws(ws, header_row: int) -> int:
+    """워크시트 헤더 행에서 거래처명 컬럼 번호(1-based) 감지.
+
+    우선순위 1: 헤더가 키워드와 정확히 일치 ("고객명", "거래처명", "거래처").
+    우선순위 2: 헤더에 키워드 포함, 단 " 번호"/" 코드" 등 식별자 접미어 제외.
+    감지 실패 시 7번(SAP 기본 G열) 반환.
+    """
+    exact_keywords = ("고객명", "거래처명", "거래처")
+    max_col = ws.max_column or 30
+
+    # 단계 1: 정확 매칭
+    for c in range(1, max_col + 1):
+        v = ws.cell(header_row, c).value
+        if v and isinstance(v, str) and v.strip() in exact_keywords:
+            return c
+
+    # 단계 2: 포함 매칭 (코드/번호 컬럼 제외)
+    _id_suffixes = (" 번호", " 코드", "번호", "코드", " id", " ID", " No", " NO")
+    for c in range(1, max_col + 1):
+        v = ws.cell(header_row, c).value
+        if not (v and isinstance(v, str)):
+            continue
+        h = v.strip()
+        if any(h.endswith(sfx) for sfx in _id_suffixes):
+            continue
+        for kw in exact_keywords:
+            if kw in h:
+                return c
+
+    return 7  # SAP 기본: G열 = 고객명
+
+
+def _find_header_row(ws, keyword: str, max_search: int = 3) -> int | None:
+    """최상위 max_search 행 중 keyword 를 포함한 헤더 행 번호 반환."""
+    max_col = min(ws.max_column or 10, 30)
+    for r in range(1, max_search + 1):
+        for c in range(1, max_col + 1):
+            v = ws.cell(r, c).value
+            if v and isinstance(v, str) and keyword in v:
+                return r
+    return None
+
+
+def _find_col_by_keyword(headers: list, keywords: tuple[str, ...]) -> int | None:
+    """헤더 리스트에서 keywords 중 하나를 포함하는 첫 번째 컬럼 번호(1-based) 반환."""
+    for i, h in enumerate(headers):
+        if h and isinstance(h, str):
+            for kw in keywords:
+                if kw in h:
+                    return i + 1
+    return None

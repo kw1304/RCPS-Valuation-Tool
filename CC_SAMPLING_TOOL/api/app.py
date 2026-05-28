@@ -30,7 +30,8 @@ from src.domain.sample_size import (
 )
 from src.infrastructure.loaders import (
     get_total_assets, load_fs_amounts, load_related_parties, load_upload_guide,
-    UploadGuideData, PartyContact,
+    load_allowance_data,
+    UploadGuideData, PartyContact, AllowanceData,
 )
 from src.infrastructure.report.generic_reporter import (
     PartyContactInfo, ExclusionRow, ConfirmationReplyInfo, AlternativeProcedureEntry,
@@ -106,6 +107,8 @@ STATE: dict = {
     "rp_path": None,
     "upload_guide_path": None,   # UploadGuide xlsx 경로
     "upload_guide_data": None,   # UploadGuideData 객체 캐시
+    "allowance_path": None,      # 대손충당금 xlsx 경로
+    "allowance_data": None,      # AllowanceData 객체 캐시
     "last_result": {},   # {"receivable": {"result": ..., "params": ...}, ...}
     "current_project_id": None,
     "workpaper_ids": {},  # {kind: workpaper_id}
@@ -362,6 +365,31 @@ def upload():
             log.warning(f"UploadGuide 파싱 실패 (비치명적): {e}")
             result["upload_guide_warning"] = f"UploadGuide 파싱 실패: {e!s}"
 
+    # 대손충당금 파일 업로드 (선택) — 부실채권 거래처 자동 발송제외용
+    al_file = request.files.get("allowance")
+    if al_file and al_file.filename:
+        if not _validate_file_ext(al_file.filename, _ALLOWED_EXCEL_EXTS):
+            ext = Path(al_file.filename).suffix.lower()
+            return jsonify({
+                "error": f"'allowance' 파일 형식 오류: {ext}. Excel 파일(.xlsx)을 업로드하세요."
+            }), 400
+        al_path = UPLOAD_DIR / "_allowance.xlsx"
+        al_file.save(al_path)
+        STATE["allowance_path"] = str(al_path)
+        STATE["allowance_data"] = None  # 캐시 초기화
+        try:
+            al_data = load_allowance_data(al_path)
+            STATE["allowance_data"] = al_data
+            result["allowance"] = al_file.filename
+            result["allowance_summary"] = {
+                "bad_debt_count": al_data.bad_debt_count,
+                "total_allowance": al_data.total_allowance,
+                "bad_debt_parties": sorted(al_data.bad_debt_parties),
+            }
+        except Exception as e:
+            log.warning(f"대손충당금 파싱 실패 (비치명적): {e}")
+            result["allowance_warning"] = f"대손충당금 파싱 실패: {e!s}"
+
     # project_id 없는 레거시 호출 — 임시 프로젝트 자동 생성
     if not project_id and (STATE.get("ledger_path") or STATE.get("fs_path")):
         log.warning("project_id 없는 /api/upload 호출 — 임시 프로젝트 생성 (deprecated)")
@@ -470,6 +498,14 @@ def _run_single_kind(data: dict, kind: str, sheet: str | None,
     if df.empty:
         return None, f"거래처원장이 비어 있습니다 ({kind})"
 
+    # 수동 발송제외와 대손충당금 부실채권 자동 병합 (union)
+    manual_excluded: dict[str, str] = dict(data.get("excluded_parties") or {})
+    al_data: AllowanceData | None = STATE.get("allowance_data")
+    if al_data:
+        for party in al_data.bad_debt_parties:
+            if party not in manual_excluded:
+                manual_excluded[party] = "부실채권 (대손충당금 100% 적용)"
+
     params = SamplingParams(
         company_name=data.get("company_name", ""),
         period_end=date.fromisoformat(data.get("period_end", "2025-12-31")),
@@ -481,7 +517,7 @@ def _run_single_kind(data: dict, kind: str, sheet: str | None,
         confidence_factor_override=_f(data.get("confidence_factor")),
         fs_amounts_by_group=data.get("fs_amounts_by_group") or {},
         completeness_notes=data.get("completeness_notes") or {},
-        excluded_parties=data.get("excluded_parties") or {},
+        excluded_parties=manual_excluded,
         related_parties=related_parties,
         force_include_related=bool(data.get("force_include_related", True)),
         random_seed=_i(data.get("seed", 42)),
