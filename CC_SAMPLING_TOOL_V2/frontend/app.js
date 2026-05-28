@@ -121,11 +121,42 @@ function renderMergedTable() {
   }
 }
 
+async function runIngest() {
+  if (!currentProjectId) { alert("프로젝트 먼저 선택"); return; }
+  const fd = new FormData();
+  const ledger = $("#file-ledger").files[0];
+  if (!ledger) { alert("거래처원장 필수"); return; }
+  fd.append("ledger", ledger);
+  for (const [name, id] of [["fs", "file-fs"], ["rp", "file-rp"], ["allowance", "file-allowance"]]) {
+    const f = $("#" + id).files[0];
+    if (f) fd.append(name, f);
+  }
+  $("#ingestResult").textContent = "업로드·자동감지 중...";
+  try {
+    const result = await api("POST", `/projects/${currentProjectId}/ingest`, fd, true);
+    const lines = [
+      `AR ${result.ar_count}건 · ₩${fmt(result.ar_total_krw)} (자동감지 ${pct(result.confidence_ar)})`,
+      `AP ${result.ap_count}건 · ₩${fmt(result.ap_total_krw)} (자동감지 ${pct(result.confidence_ap)})`,
+    ];
+    if (result.needs_mapping_confirmation) {
+      lines.push("⚠ 자동감지 신뢰도 < 95% — 매핑확인 필요 (Phase 2 향후 추가)");
+    }
+    if (result.fs_totals && Object.keys(result.fs_totals).length > 0) {
+      lines.push(`FS cross-check: AR=₩${fmt(result.fs_totals.AR)}, AP=₩${fmt(result.fs_totals.AP)}`);
+    }
+    $("#ingestResult").innerHTML = lines.map(l => `<div>${l}</div>`).join("");
+    await refreshState();
+  } catch (e) {
+    $("#ingestResult").textContent = "오류: " + e.message;
+  }
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
   $("#filterKind").addEventListener("change", renderMergedTable);
   $("#filterReason").addEventListener("change", renderMergedTable);
+  $("#ingestBtn").addEventListener("click", runIngest);
   await loadProjectList();
 }
 
