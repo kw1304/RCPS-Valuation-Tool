@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+data/*.db
+INPUT/
+OUTPUT/
+configs/companies/
+_*.xlsx
+_*.log
