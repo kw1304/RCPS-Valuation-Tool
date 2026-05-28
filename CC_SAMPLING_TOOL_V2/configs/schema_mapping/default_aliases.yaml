@@ -94,3 +94,16 @@ columns:
     - 대손충당금
     - allowance
     - allowance_amt
+  debit:
+    - 차변
+    - debit
+    - 당기증가
+    - 매출액
+    - 매입액
+    - 발생액
+  credit:
+    - 대변
+    - credit
+    - 당기감소
+    - 회수액
+    - 결제액

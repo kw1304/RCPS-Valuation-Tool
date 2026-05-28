@@ -16,7 +16,8 @@ def build_ledger():
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     ar = wb.create_sheet("매출채권")
-    ar.append(["거래처코드", "거래처명", "계정과목", "기말잔액", "통화", "환율"])
+    ar.append(["거래처코드", "거래처명", "계정과목", "기말잔액", "통화", "환율",
+               "차변", "대변"])
     rng = random.Random(7)
     # AR050-054는 충당금명세와 정합되도록 고정 잔액
     fixed_bal = {
@@ -36,17 +37,24 @@ def build_ledger():
             bal = bal_choice * bal_jitter
         ccy = "USD" if i < 5 else "KRW"
         fx = 1300.0 if ccy == "USD" else 1.0
+        debit = bal * rng.uniform(2.0, 6.0)
+        credit = bal * rng.uniform(1.5, 5.0)
         ar.append([pid, f"고객사{i:03d}", "11200",
-                   round(bal, 0), ccy, fx])
+                   round(bal, 0), ccy, fx,
+                   round(debit, 0), round(credit, 0)])
 
     ap = wb.create_sheet("매입채무")
-    ap.append(["거래처코드", "거래처명", "계정과목", "기말잔액", "통화", "환율"])
+    ap.append(["거래처코드", "거래처명", "계정과목", "기말잔액", "통화", "환율",
+               "차변", "대변"])
     for i in range(80):
         bal = rng.choice([5_000, 30_000, 200_000, 1_000_000]) * rng.uniform(0.5, 2.0)
         ccy = "USD" if i < 3 else "KRW"
         fx = 1300.0 if ccy == "USD" else 1.0
+        debit = bal * rng.uniform(1.5, 5.0)
+        credit = bal * rng.uniform(2.0, 6.0)
         ap.append([f"AP{i:03d}", f"공급사{i:03d}", "21100",
-                   round(bal, 0), ccy, fx])
+                   round(bal, 0), ccy, fx,
+                   round(debit, 0), round(credit, 0)])
 
     wb.save(OUT / "dummy_ledger.xlsx")
 

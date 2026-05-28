@@ -49,6 +49,8 @@ class AccountRow(Base):
     is_related_party = Column(Boolean, default=False, nullable=False)
     is_bad_debt = Column(Boolean, default=False, nullable=False)
     allowance_amt = Column(Float, default=0.0, nullable=False)
+    debit_amt = Column(Float, default=0.0, nullable=False)
+    credit_amt = Column(Float, default=0.0, nullable=False)
     aging_bucket = Column(String(50))
     src_sheet = Column(String(200))
     src_row = Column(Integer)

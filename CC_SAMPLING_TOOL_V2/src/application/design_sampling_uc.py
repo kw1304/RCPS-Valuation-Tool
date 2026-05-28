@@ -56,6 +56,10 @@ class DesignSamplingUC:
         project = self.proj.get(project_id)
         accounts = self.acc.list_by_project_kind(project_id, kind)
 
+        # AP는 당기증가(차변) 기반 PPS — ISA 505 완전성 검토
+        # (잔액 작아도 활동량 큰 거래처 누락 방지)
+        weight_attr = "debit_amt" if kind == Kind.AP else "balance_krw"
+
         if not accounts:
             return DesignResult(
                 kind=kind, n_total=0, n_forced=0, n_excluded=0,
@@ -63,11 +67,13 @@ class DesignSamplingUC:
                 strata=[], population_bv=0.0,
             )
 
+        # classification은 잔액(balance_krw) 기준 그대로
+        # (KEY = 잔액 큰 거래처, RP·bad debt 등 자산성 분류)
         forced, excluded, remaining = classify_population(
             accounts, key_threshold=params.key_threshold,
         )
 
-        population_bv = sum(abs(a.balance_krw) for a in accounts)
+        population_bv = sum(abs(getattr(a, weight_attr, 0.0)) for a in accounts)
         expected_ms = project.tolerable * params.expected_ms_pct
         if params.n_override is not None:
             # 사용자 수동 입력 — 강제포함 보장 + 그 만큼 채우기
@@ -82,14 +88,18 @@ class DesignSamplingUC:
 
         n_rep_target = max(0, n_total - len(forced))
 
-        if remaining and not should_use_single_stratum(remaining):
-            strata = suggest_strata(remaining, n_strata=params.n_strata)
+        if remaining and not should_use_single_stratum(remaining, weight_attr=weight_attr):
+            strata = suggest_strata(remaining, n_strata=params.n_strata,
+                                     weight_attr=weight_attr)
         else:
-            max_b = max((abs(a.balance_krw) for a in remaining), default=0.0)
+            max_b = max((abs(getattr(a, weight_attr, 0.0)) for a in remaining),
+                         default=0.0)
             strata = [Strata(low=0.0, high=max_b, n_required=0)]
-        strata = allocate_strata(strata, remaining, total_n=n_rep_target)
+        strata = allocate_strata(strata, remaining, total_n=n_rep_target,
+                                  weight_attr=weight_attr)
 
-        rep_sample = stratified_pps(remaining, strata, seed=params.seed)
+        rep_sample = stratified_pps(remaining, strata, seed=params.seed,
+                                      weight_attr=weight_attr)
         rep_with_reason: list[tuple[Account, SelectionReason]] = [
             (a, SelectionReason.REP) for a in rep_sample
         ]

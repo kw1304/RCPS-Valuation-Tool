@@ -62,6 +62,8 @@ class Account:
     aging_bucket: Optional[str] = None
     src_sheet: Optional[str] = None
     src_row: Optional[int] = None
+    debit_amt: float = 0.0   # 당기 증가 (AR=매출, AP=매입)
+    credit_amt: float = 0.0  # 당기 감소
 
     @property
     def allowance_ratio(self) -> float:

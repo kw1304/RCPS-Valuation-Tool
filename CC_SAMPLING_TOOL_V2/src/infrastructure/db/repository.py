@@ -87,6 +87,7 @@ class AccountRepo:
                 balance_krw=a.balance_krw,
                 is_related_party=a.is_related_party,
                 is_bad_debt=a.is_bad_debt, allowance_amt=a.allowance_amt,
+                debit_amt=a.debit_amt, credit_amt=a.credit_amt,
                 aging_bucket=a.aging_bucket,
                 src_sheet=a.src_sheet, src_row=a.src_row,
             )
@@ -119,6 +120,7 @@ class AccountRepo:
                 balance_krw=a.balance_krw,
                 is_related_party=a.is_related_party,
                 is_bad_debt=a.is_bad_debt, allowance_amt=a.allowance_amt,
+                debit_amt=a.debit_amt, credit_amt=a.credit_amt,
                 aging_bucket=a.aging_bucket,
                 src_sheet=a.src_sheet, src_row=a.src_row,
             )
@@ -135,6 +137,8 @@ class AccountRepo:
             balance_krw=r.balance_krw,
             is_related_party=r.is_related_party,
             is_bad_debt=r.is_bad_debt, allowance_amt=r.allowance_amt,
+            debit_amt=getattr(r, 'debit_amt', 0.0) or 0.0,
+            credit_amt=getattr(r, 'credit_amt', 0.0) or 0.0,
             aging_bucket=r.aging_bucket,
             src_sheet=r.src_sheet, src_row=r.src_row,
         )

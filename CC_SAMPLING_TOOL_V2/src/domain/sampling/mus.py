@@ -12,15 +12,18 @@ def pps_select(
     accounts: list[Account],
     n: int,
     seed: Optional[int] = None,
+    weight_attr: str = "balance_krw",
 ) -> list[Account]:
-    """누적잔액 기반 systematic PPS.
+    """누적가중치 기반 systematic PPS.
 
-    각 acc는 |balance_krw| 비례 확률로 선정. n >= population 이면 모두 반환.
+    각 acc는 |getattr(a, weight_attr)| 비례 확률로 선정. n >= population 이면 모두 반환.
 
     Args:
         accounts: 후보 모집단.
         n: 추출 개수.
         seed: 결정적 추출용. None이면 매 호출 다름 (운영용).
+        weight_attr: PPS 가중 기준 속성명. 기본 "balance_krw"(잔액),
+                     AP 활동량 기반 PPS는 "debit_amt".
 
     Returns:
         선정된 Account 리스트 (입력 순서 유지).
@@ -28,7 +31,7 @@ def pps_select(
     if n <= 0:
         return []
 
-    positives = [a for a in accounts if abs(a.balance_krw) > 1e-9]
+    positives = [a for a in accounts if abs(getattr(a, weight_attr, 0.0)) > 1e-9]
     if not positives:
         return []
     if n >= len(positives):
@@ -37,7 +40,7 @@ def pps_select(
     cumsum = []
     running = 0.0
     for a in positives:
-        running += abs(a.balance_krw)
+        running += abs(getattr(a, weight_attr, 0.0))
         cumsum.append(running)
     total = cumsum[-1]
     interval = total / n

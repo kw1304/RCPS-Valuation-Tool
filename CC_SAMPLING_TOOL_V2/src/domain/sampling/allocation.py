@@ -10,22 +10,23 @@ def allocate_strata(
     strata: list[Strata],
     accounts: list[Account],
     total_n: int,
+    weight_attr: str = "balance_krw",
 ) -> list[Strata]:
     """각 strata에 표본수 비례 할당.
 
     정책:
-    - 각 strata의 BV(잔액 합) 비례로 floor 분배
+    - 각 strata의 BV(가중치 합) 비례로 floor 분배
     - 잔여 표본은 BV 큰 strata부터 1개씩 추가
-    - 잔액 있는 strata는 최소 1개 보장 (단 total_n이 충분할 때)
-    - 잔액 0인 strata는 0
+    - 가중치 있는 strata는 최소 1개 보장 (단 total_n이 충분할 때)
+    - 가중치 0인 strata는 0
     """
     if total_n <= 0:
         return [Strata(s.low, s.high, n_required=0) for s in strata]
 
     bvs = []
     for s in strata:
-        bv = sum(abs(a.balance_krw) for a in accounts
-                 if s.contains(abs(a.balance_krw)))
+        bv = sum(abs(getattr(a, weight_attr, 0.0)) for a in accounts
+                 if s.contains(abs(getattr(a, weight_attr, 0.0))))
         bvs.append(bv)
 
     total_bv = sum(bvs)

@@ -118,6 +118,9 @@ def load_account_sheet(
         party_id = str(cell("party_id", "")).strip()
         if not party_id:
             continue
+        # skip summary/subtotal rows
+        if party_id in {"합계", "소계", "계", "Total", "total", "TOTAL", "Subtotal", "subtotal"}:
+            continue
 
         name = str(cell("name", "")).strip()
         gl_account = str(cell("gl_account", "")).strip()
@@ -125,6 +128,8 @@ def load_account_sheet(
         ccy = str(cell("ccy", "KRW")).strip() or "KRW"
         fx_rate = float(cell("fx_rate", 1.0) or 1.0)
         balance_krw = balance_orig * fx_rate
+        debit_amt = float(cell("debit", 0) or 0) * fx_rate
+        credit_amt = float(cell("credit", 0) or 0) * fx_rate
 
         accounts.append(Account(
             party_id=party_id, name=name, gl_account=gl_account,
@@ -133,6 +138,7 @@ def load_account_sheet(
             aging_bucket=str(cell("aging", "")).strip() or None,
             allowance_amt=float(cell("allowance", 0) or 0),
             src_sheet=sheet_name, src_row=r_idx,
+            debit_amt=debit_amt, credit_amt=credit_amt,
         ))
 
     return accounts, {

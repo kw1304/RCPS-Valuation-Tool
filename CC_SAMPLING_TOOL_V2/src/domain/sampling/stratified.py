@@ -14,14 +14,18 @@ MIN_POPULATION_FOR_STRATIFY = 50
 UNIFORM_CV_THRESHOLD = 0.3
 
 
-def should_use_single_stratum(accounts: list[Account]) -> bool:
+def should_use_single_stratum(
+    accounts: list[Account],
+    weight_attr: str = "balance_krw",
+) -> bool:
     """단일 strata로 강등할지 판단.
 
-    조건: 모집단 < 50 OR 잔액 변동계수(CV) < 0.3.
+    조건: 모집단 < 50 OR 가중치 변동계수(CV) < 0.3.
     """
     if len(accounts) < MIN_POPULATION_FOR_STRATIFY:
         return True
-    balances = [abs(a.balance_krw) for a in accounts if a.balance_krw != 0]
+    balances = [abs(getattr(a, weight_attr, 0.0)) for a in accounts
+                if getattr(a, weight_attr, 0.0) != 0]
     if not balances:
         return True
     mean = statistics.fmean(balances)
@@ -35,6 +39,7 @@ def should_use_single_stratum(accounts: list[Account]) -> bool:
 def suggest_strata(
     accounts: list[Account],
     n_strata: int = 4,
+    weight_attr: str = "balance_krw",
 ) -> list[Strata]:
     """log-binning으로 strata 경계 제안.
 
@@ -42,7 +47,8 @@ def suggest_strata(
     """
     if n_strata < 1:
         raise ValueError("n_strata must be >= 1")
-    balances = sorted(abs(a.balance_krw) for a in accounts if a.balance_krw != 0)
+    balances = sorted(abs(getattr(a, weight_attr, 0.0)) for a in accounts
+                      if getattr(a, weight_attr, 0.0) != 0)
     if not balances:
         return [Strata(low=0.0, high=0.0, n_required=0)]
 
@@ -66,6 +72,7 @@ def stratified_pps(
     accounts: list[Account],
     strata: list[Strata],
     seed: Optional[int] = None,
+    weight_attr: str = "balance_krw",
 ) -> list[Account]:
     """각 strata 내 MUS PPS 독립 수행 후 union.
 
@@ -78,9 +85,10 @@ def stratified_pps(
         for a in accounts:
             if id(a) in assigned:
                 continue
-            if st.contains(abs(a.balance_krw)):
+            if st.contains(abs(getattr(a, weight_attr, 0.0))):
                 bucket.append(a)
                 assigned.add(id(a))
         sub_seed = None if seed is None else seed + i
-        sample.extend(pps_select(bucket, st.n_required, seed=sub_seed))
+        sample.extend(pps_select(bucket, st.n_required, seed=sub_seed,
+                                  weight_attr=weight_attr))
     return sample

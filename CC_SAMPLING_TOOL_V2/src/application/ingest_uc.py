@@ -123,11 +123,15 @@ class IngestUC:
                                                       a.allowance_amt)),
                         aging_bucket=a.aging_bucket,
                         src_sheet=a.src_sheet, src_row=a.src_row,
+                        debit_amt=a.debit_amt, credit_amt=a.credit_amt,
                     ))
 
-            self.acc.replace_all(project_id, Kind(kind_str), all_enriched)
-            counts[kind_str] = len(all_enriched)
-            totals[kind_str] = sum(abs(a.balance_krw) for a in all_enriched)
+            # 같은 party_id 거래처 집계 (잔액·차변·대변 합산)
+            aggregated = _aggregate_by_party(all_enriched)
+
+            self.acc.replace_all(project_id, Kind(kind_str), aggregated)
+            counts[kind_str] = len(aggregated)
+            totals[kind_str] = sum(abs(a.balance_krw) for a in aggregated)
             # 평균 confidence (시트별)
             confidences[kind_str] = (
                 sum(confidences_per_sheet) / len(confidences_per_sheet)
@@ -156,3 +160,49 @@ class IngestUC:
             if detect_sheet_kind(sn) == target_kind:
                 return sn
         return wb.sheetnames[0] if wb.sheetnames else None
+
+
+def _aggregate_by_party(accounts: list[Account]) -> list[Account]:
+    """같은 party_id 거래처 잔액·차변·대변 합산.
+
+    party_id가 동일하면 1개 Account로 통합. RP/BAD/allowance는 OR로 합침.
+    name은 가장 긴 것 채택 (보통 시트별로 약간 다름).
+    src_sheet는 여러 시트 표시 ("외상매출금+미수금" 형태).
+    """
+    from collections import defaultdict
+    groups: dict[str, list[Account]] = defaultdict(list)
+    for a in accounts:
+        groups[a.party_id].append(a)
+
+    out: list[Account] = []
+    for pid, items in groups.items():
+        if len(items) == 1:
+            out.append(items[0])
+            continue
+        first = items[0]
+        balance_orig = sum(x.balance_orig for x in items)
+        balance_krw = sum(x.balance_krw for x in items)
+        debit_amt = sum(x.debit_amt for x in items)
+        credit_amt = sum(x.credit_amt for x in items)
+        allowance_amt = sum(x.allowance_amt for x in items)
+        is_rp = any(x.is_related_party for x in items)
+        is_bad = any(x.is_bad_debt for x in items)
+        # 가장 긴 name (정보 풍부)
+        name = max((x.name for x in items), key=len, default=first.name)
+        sheets = sorted({x.src_sheet for x in items if x.src_sheet})
+        src_sheet = "+".join(sheets) if sheets else first.src_sheet
+
+        out.append(Account(
+            party_id=pid, name=name,
+            gl_account=first.gl_account,
+            balance_orig=balance_orig,
+            ccy=first.ccy, fx_rate=first.fx_rate,
+            balance_krw=balance_krw,
+            is_related_party=is_rp,
+            is_bad_debt=is_bad,
+            allowance_amt=allowance_amt,
+            aging_bucket=first.aging_bucket,
+            src_sheet=src_sheet, src_row=first.src_row,
+            debit_amt=debit_amt, credit_amt=credit_amt,
+        ))
+    return out
