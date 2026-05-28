@@ -61,9 +61,10 @@ def test_sendlist_download(client_with_sample):
 def test_upload_confirmation_pdf(client_with_sample):
     c, pid = client_with_sample
     pdf_bytes = _make_pdf_bytes("조회처: 고객사001\n잔액: 1,500,000원")
+    # filename 기반 매칭 — 거래처명(고객사001) 포함 파일명 필수.
     r = c.post(f"/api/projects/{pid}/confirmations/upload",
                data={"kind": "AR",
-                     "pdf": (io.BytesIO(pdf_bytes), "conf.pdf")},
+                     "pdf": (io.BytesIO(pdf_bytes), "고객사001_conf.pdf")},
                content_type="multipart/form-data")
     assert r.status_code == 200
     body = r.get_json()

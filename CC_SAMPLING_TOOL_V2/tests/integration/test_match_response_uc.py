@@ -57,7 +57,8 @@ def project_with_sample(session):
 
 
 def test_match_response_persists_confirmation(session, project_with_sample, tmp_path):
-    pdf = tmp_path / "conf.pdf"
+    # filename 기반 매칭 — 거래처명(고객사001) 포함 파일명 필수.
+    pdf = tmp_path / "고객사001_conf.pdf"
     _make_pdf(pdf, "조회처: 고객사001\n잔액: 1,500,000원")
     uc = MatchResponseUC(session)
     result = uc.match_one(pid=project_with_sample, kind=Kind.AR, pdf_path=pdf)
@@ -73,7 +74,8 @@ def test_match_response_persists_confirmation(session, project_with_sample, tmp_
 
 
 def test_match_response_discrepancy(session, project_with_sample, tmp_path):
-    pdf = tmp_path / "conf.pdf"
+    # filename 기반 매칭 — 거래처명(고객사001) 포함 파일명 필수.
+    pdf = tmp_path / "고객사001_conf.pdf"
     _make_pdf(pdf, "조회처: 고객사001\n잔액: 1,100,000원")
     uc = MatchResponseUC(session)
     r = uc.match_one(project_with_sample, Kind.AR, pdf)

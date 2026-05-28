@@ -38,7 +38,13 @@ def upload_confirmation(pid: int):
     diff_reason = request.form.get("diff_reason") or None
 
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
-        pdf_path = Path(td) / "conf.pdf"
+        # 업로드된 원본 파일명 보존 — filename 기반 거래처 매칭에 필수.
+        orig_name = request.files["pdf"].filename or "conf.pdf"
+        # 경로 분리자 제거만 (한글 보존), 확장자 없으면 .pdf 부여
+        safe_name = orig_name.replace("/", "_").replace("\\", "_")
+        if not safe_name.lower().endswith(".pdf"):
+            safe_name += ".pdf"
+        pdf_path = Path(td) / safe_name
         request.files["pdf"].save(pdf_path)
         uc = MatchResponseUC(g.session)
         result = uc.match_one(pid, kind, pdf_path, diff_reason=diff_reason)

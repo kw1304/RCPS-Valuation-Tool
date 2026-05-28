@@ -563,11 +563,43 @@ def _write_summary_7620(ws, state, row):
 
 
 def _write_c100_control(ws, state, row):
-    """C100 조회서 control sheet — 7620 양식: 거래처별 계정과목별 컬럼."""
-    # AR 계정 (왼쪽), AP 계정 (오른쪽)
-    AR_ACCOUNTS = ["외상매출금", "받을어음", "미수금", "선급금",
-                    "임차보증금", "장기대여금"]
-    AP_ACCOUNTS = ["외상매입금", "미지급금", "지급어음", "임대보증금"]
+    """C100 — 거래처별 계정과목별 컬럼 (동적 — 시트명 자동 수집)."""
+    # default_aliases.yaml의 AR/AP sheet aliases 로드
+    aliases_path = Path(__file__).resolve().parent.parent.parent.parent / \
+        "configs" / "schema_mapping" / "default_aliases.yaml"
+    with open(aliases_path, encoding="utf-8") as f:
+        aliases = yaml.safe_load(f)
+    ar_alias = set(aliases["sheets"].get("AR", []))
+    ap_alias = set(aliases["sheets"].get("AP", []))
+
+    # state items에서 모든 account_breakdowns 키 수집
+    ar_items = state.get("samples", {}).get("AR", {}).get("items", [])
+    ap_items = state.get("samples", {}).get("AP", {}).get("items", [])
+
+    ar_sheets_used: set[str] = set()
+    ap_sheets_used: set[str] = set()
+    for it in ar_items + ap_items:
+        bd = it.get("account_breakdowns", {}) or {}
+        for sn in bd.keys():
+            if sn in ar_alias:
+                ar_sheets_used.add(sn)
+            elif sn in ap_alias:
+                ap_sheets_used.add(sn)
+            else:
+                # alias에 없는 시트 — kind 기준으로 분류
+                if it in ar_items:
+                    ar_sheets_used.add(sn)
+                else:
+                    ap_sheets_used.add(sn)
+
+    # 컬럼 순서: alias yaml의 순서 우선, 그 외는 알파벳 순
+    def _ordered(used, alias_list):
+        ordered_from_alias = [s for s in alias_list if s in used]
+        rest = sorted(used - set(ordered_from_alias))
+        return ordered_from_alias + rest
+
+    AR_ACCOUNTS = _ordered(ar_sheets_used, aliases["sheets"].get("AR", []))
+    AP_ACCOUNTS = _ordered(ap_sheets_used, aliases["sheets"].get("AP", []))
 
     headers = (["No", "거래처코드", "거래처명", "사업자번호"]
                + AR_ACCOUNTS + ["채권 계"]
@@ -581,34 +613,44 @@ def _write_c100_control(ws, state, row):
         cell.border = CELL_BORDER
     row += 1
 
-    # 거래처별 합산 (party_id 또는 name 기준)
-    ar_items = state.get("samples", {}).get("AR", {}).get("items", [])
-    ap_items = state.get("samples", {}).get("AP", {}).get("items", [])
-
+    # 거래처별 합산 — party_id가 있으면 그걸로, 없으면 정규화 name으로
+    from src.domain.party_normalize import normalize_party_name
     by_party: dict[str, dict] = {}
     for it in ar_items + ap_items:
-        key = it.get("party_id") or it.get("name")
+        pid = it.get("party_id") or ""
+        name = it.get("name") or ""
+        # canonical key: party_id 우선, 그 외 정규화 이름
+        key = pid if pid else normalize_party_name(name)
+        is_ar = it in ar_items
         ent = by_party.setdefault(key, {
-            "party_id": it.get("party_id"),
-            "name": it.get("name"),
+            "party_id": pid,
+            "name": name,
             "business_number": it.get("business_number"),
             "ar_acc": {a: 0 for a in AR_ACCOUNTS},
             "ap_acc": {a: 0 for a in AP_ACCOUNTS},
             "reasons": set(),
         })
+        # name 갱신 — 더 긴 한글 이름 선호
+        def _name_score(n):
+            has_kr = any('가' <= ch <= '힯' for ch in n)
+            return (1 if has_kr else 0, len(n))
+        if _name_score(name) > _name_score(ent["name"]):
+            ent["name"] = name
+        # business_number 보강
+        if not ent["business_number"] and it.get("business_number"):
+            ent["business_number"] = it.get("business_number")
+        # party_id 보강
+        if not ent["party_id"] and pid:
+            ent["party_id"] = pid
+
         bd = it.get("account_breakdowns", {}) or {}
-        for sheet_name, amt in bd.items():
-            if sheet_name in AR_ACCOUNTS:
-                ent["ar_acc"][sheet_name] += abs(amt)
-            elif sheet_name in AP_ACCOUNTS:
-                ent["ap_acc"][sheet_name] += abs(amt)
-            else:
-                # 매칭 안 되는 시트 — kind 기준으로 첫 컬럼에
-                # 일단 무시
-                pass
+        for sheet, amt in bd.items():
+            if sheet in AR_ACCOUNTS:
+                ent["ar_acc"][sheet] = ent["ar_acc"].get(sheet, 0) + abs(amt)
+            elif sheet in AP_ACCOUNTS:
+                ent["ap_acc"][sheet] = ent["ap_acc"].get(sheet, 0) + abs(amt)
         ent["reasons"].add(it.get("selection_reason", ""))
 
-    # 총합 큰 순 정렬
     def _total(e):
         return sum(e["ar_acc"].values()) + sum(e["ap_acc"].values())
     rows_sorted = sorted(by_party.values(), key=lambda e: -_total(e))
@@ -633,15 +675,12 @@ def _write_c100_control(ws, state, row):
             c = ws.cell(row=row, column=c_idx, value=v)
             c.font = BODY_FONT
             c.border = CELL_BORDER
-            # 숫자 컬럼: No(1), 사업자번호 제외 계정과목 + 합계
-            if c_idx == 1 or (c_idx >= 5 and c_idx < len(cells)):
-                if isinstance(v, (int, float)) and v:
-                    c.alignment = NUM_ALIGN
-                    c.number_format = "#,##0"
-                else:
-                    c.alignment = NUM_ALIGN
-            else:
+            if c_idx in (2, 3, 4) or c_idx == len(cells):
                 c.alignment = TEXT_ALIGN
+            else:
+                c.alignment = NUM_ALIGN
+                if isinstance(v, (int, float)) and v:
+                    c.number_format = "#,##0"
         row += 1
     return row
 
