@@ -8,14 +8,21 @@ from src.domain.entities import Kind, ProjectionResult
 from src.domain.sampling.sample_size import reliability_factor
 
 
-# Incremental allowance factor (RF increment between ranks for tainting < 1).
-# 단순화: 동일 RF 사용 (각 rank별 reliability_factor 차분 테이블은 별도 필요. 여기선 보수적 근사).
-_INCREMENTAL_FACTOR = {
-    0.99: 1.40,
-    0.95: 1.00,
-    0.90: 0.85,
-    0.80: 0.70,
+# AAG-SAM Table A-4: Incremental allowance factor by rank.
+_RANK_INCREMENTS_TABLE: dict[float, list[float]] = {
+    0.80: [0.66, 0.55, 0.46, 0.40, 0.35, 0.30],
+    0.90: [0.66, 0.55, 0.46, 0.40, 0.35, 0.30],
+    0.95: [0.75, 0.55, 0.46, 0.40, 0.35, 0.30],
+    0.99: [0.80, 0.60, 0.55, 0.40, 0.35, 0.30],
 }
+
+
+def _rank_increments(confidence: float) -> list[float]:
+    """Rank별 RF 증분 반환. 6위 이후는 마지막 값(0.30) 반복."""
+    if confidence not in _RANK_INCREMENTS_TABLE:
+        raise ValueError(f"unsupported confidence {confidence!r}")
+    base = _RANK_INCREMENTS_TABLE[confidence]
+    return base + [base[-1]] * 100
 
 
 def tainting(
@@ -70,10 +77,11 @@ def project_misstatement(
             if 0 < t < 1.0:
                 taintings_sub_one.append(t)
 
-    inc_factor = _INCREMENTAL_FACTOR.get(confidence, 1.0)
+    increments = _rank_increments(confidence)
     taintings_sub_one.sort(reverse=True)
     incremental = sum(
-        inc_factor * t * sampling_interval for t in taintings_sub_one
+        increments[i] * t * sampling_interval
+        for i, t in enumerate(taintings_sub_one)
     )
 
     upper = projected_ms + basic_precision + incremental
