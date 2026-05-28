@@ -59,6 +59,14 @@ class ProjectionUC:
             sampled_misstatements=ms_inputs,
         )
 
+        from src.infrastructure.db.repository import SampleDesignRepo
+        design = SampleDesignRepo(self.s).get_latest(project_id, kind)
+        snapshot = (design["strata_snapshot"] if design
+                    else [{"low": 0.0,
+                           "high": max((abs(a.balance_krw) for a in accounts),
+                                       default=0.0),
+                           "n_required": n}])
+
         ProjectionRepo(self.s).upsert(
             project_id, kind, confidence=confidence,
             sampling_interval=sampling_interval,
@@ -68,10 +76,7 @@ class ProjectionUC:
             incremental_allowance=result.incremental_allowance,
             upper_limit=result.upper_limit,
             verdict=result.verdict,
-            strata_snapshot=[{"low": 0.0,
-                              "high": max((abs(a.balance_krw) for a in accounts),
-                                          default=0.0),
-                              "n_required": n}],
+            strata_snapshot=snapshot,
         )
 
         return ProjectionView(

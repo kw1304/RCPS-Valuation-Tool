@@ -360,3 +360,57 @@ class ProjectionRepo:
             "computed_at": row.computed_at.isoformat()
                             if row.computed_at else None,
         }
+
+
+class SampleDesignRepo:
+    def __init__(self, session):
+        self.s = session
+
+    def upsert(self, project_id: int, kind: Kind, *, confidence: float,
+               key_threshold: float, expected_ms_pct: float,
+               n_strata: int, seed: Optional[int], population_bv: float,
+               n_total: int, strata_snapshot: list[dict]) -> None:
+        from src.infrastructure.db.models import SampleDesignRow
+        snap = json.dumps(strata_snapshot, ensure_ascii=False)
+        existing = (self.s.query(SampleDesignRow)
+                    .filter(SampleDesignRow.project_id == project_id,
+                            SampleDesignRow.kind == kind.value)
+                    .first())
+        if existing is None:
+            self.s.add(SampleDesignRow(
+                project_id=project_id, kind=kind.value,
+                confidence=confidence, key_threshold=key_threshold,
+                expected_ms_pct=expected_ms_pct, n_strata=n_strata,
+                seed=seed, population_bv=population_bv, n_total=n_total,
+                strata_snapshot=snap,
+            ))
+        else:
+            existing.confidence = confidence
+            existing.key_threshold = key_threshold
+            existing.expected_ms_pct = expected_ms_pct
+            existing.n_strata = n_strata
+            existing.seed = seed
+            existing.population_bv = population_bv
+            existing.n_total = n_total
+            existing.strata_snapshot = snap
+            existing.designed_at = datetime.utcnow()
+        self.s.commit()
+
+    def get_latest(self, project_id: int, kind: Kind) -> Optional[dict]:
+        from src.infrastructure.db.models import SampleDesignRow
+        row = (self.s.query(SampleDesignRow)
+               .filter(SampleDesignRow.project_id == project_id,
+                       SampleDesignRow.kind == kind.value)
+               .first())
+        if row is None:
+            return None
+        return {
+            "confidence": row.confidence,
+            "key_threshold": row.key_threshold,
+            "expected_ms_pct": row.expected_ms_pct,
+            "n_strata": row.n_strata,
+            "seed": row.seed,
+            "population_bv": row.population_bv,
+            "n_total": row.n_total,
+            "strata_snapshot": json.loads(row.strata_snapshot or "[]"),
+        }

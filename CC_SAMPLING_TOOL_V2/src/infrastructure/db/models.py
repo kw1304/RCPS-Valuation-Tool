@@ -126,3 +126,23 @@ class ProjectionRow(Base):
     verdict = Column(String(30), nullable=False)
     strata_snapshot = Column(Text)
     computed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class SampleDesignRow(Base):
+    __tablename__ = "sample_designs"
+    __table_args__ = (
+        CheckConstraint("kind IN ('AR','AP')", name="ck_design_kind"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    kind = Column(String(2), nullable=False)
+    confidence = Column(Float, nullable=False)
+    key_threshold = Column(Float, nullable=False)
+    expected_ms_pct = Column(Float, nullable=False)
+    n_strata = Column(Integer, nullable=False)
+    seed = Column(Integer)
+    population_bv = Column(Float, nullable=False)
+    n_total = Column(Integer, nullable=False)
+    strata_snapshot = Column(Text)
+    designed_at = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -92,6 +92,22 @@ class DesignSamplingUC:
         all_selections = list(forced) + rep_with_reason
         self.sample.persist(project_id, kind, all_selections)
 
+        from src.infrastructure.db.repository import SampleDesignRepo
+        SampleDesignRepo(self.s).upsert(
+            project_id, kind,
+            confidence=params.confidence,
+            key_threshold=params.key_threshold,
+            expected_ms_pct=params.expected_ms_pct,
+            n_strata=params.n_strata,
+            seed=params.seed,
+            population_bv=population_bv,
+            n_total=len(all_selections),
+            strata_snapshot=[
+                {"low": s.low, "high": s.high, "n_required": s.n_required}
+                for s in strata
+            ],
+        )
+
         return DesignResult(
             kind=kind,
             n_total=len(all_selections),
