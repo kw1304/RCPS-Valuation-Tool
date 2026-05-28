@@ -221,7 +221,7 @@ class Borrowing(BaseModel):          # AC2
 
 ### 5.6 잔액 diff 검증 (Phase 2, optional)
 - G/L 잔액 vs 회신 잔액 (BC × 섹션별)
-- 차이 > threshold (KRW 100,000 or 1%) → ⚠ flag
+- 차이 > threshold `max(KRW 100,000, 1% × 잔액)` → ⚠ flag (둘 중 큰 값)
 
 ### 5.7 Confidence
 - 각 필드에 `confidence: high|medium|low`
@@ -372,7 +372,7 @@ class ACFiller:
 - 잔액 diff 검증 (5.6)
 - 은행별 어댑터 추가
 - 인터넷 검색 fallback (4-5 stage 2)
-- AC9·AC10 자유 기재 UI
+- AC9·AC10 자유 기재 UI (Phase 1에서는 자동 채움만, 사용자 직접 편집은 Excel에서)
 
 ## 10. 테스트
 
