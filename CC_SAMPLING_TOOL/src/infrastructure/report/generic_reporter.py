@@ -89,8 +89,9 @@ FONT_RED       = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_RED)
 FONT_AMBER     = Font(name=FONT_NAME, size=10, bold=True, color=TOSS_AMBER)
 
 # ─── 채우기 ─────────────────────────────────────────────────
-FILL_WHITE   = PatternFill("solid", fgColor=TOSS_WHITE)
-FILL_BG_SUB  = PatternFill("solid", fgColor=TOSS_BG_SUB)   # 합계행·소제목
+FILL_WHITE    = PatternFill("solid", fgColor=TOSS_WHITE)
+FILL_BG_SUB   = PatternFill("solid", fgColor=TOSS_BG_SUB)   # 합계행·소제목
+FILL_SUSPECT  = PatternFill("solid", fgColor="FFF0E0")       # 채무 under-statement 의심 행
 
 # ─── 테두리 ─────────────────────────────────────────────────
 _THIN_SIDE       = Side(style="thin",   color=TOSS_BORDER)
@@ -1115,8 +1116,22 @@ def _build_sheet_sample_size(
         ki_amt = sum(d.balance for d in ki)
 
         # 채무: 모집단 = 당기 활동량 합계 (ISA 505 완전성 검토)
+        # 증가 컬럼이 있으면 그 값, 없으면 |기초|+|증감| 방식으로 산출
         pop_label = "모집단 금액 (당기 활동량)" if is_ap else "모집단 금액"
-        pop_note  = "|기초|+|증감| 합계 — ISA 505 under-statement risk" if is_ap else ""
+        pop_note  = "당기 증가액 합계 — ISA 505 완전성 (under-statement risk)" if is_ap else ""
+
+        # 채무 섹션 상단 — Sampling 기준 안내
+        if is_ap:
+            note_cell = ws.cell(
+                r, 1,
+                "Sampling 기준 = 당기 증가액 (ISA 505 완전성) "
+                "— 기말 잔액이 작아도 당기 매입활동이 큰 거래처를 포착",
+            )
+            _apply(note_cell, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("left", wrap=True))
+            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
+            _row_height(ws, r, 30)
+            r += 1
 
         params = [
             (pop_label,              kd.population_amount,    pop_note,                             False),
@@ -1327,7 +1342,11 @@ def _build_sheet_key_item_matrix(
         r += 1
     if ap_kd:
         kd = ap_kd
-        c = ws.cell(r, 1, f"채무 Key item 기준금액: {kd.size_result.key_item_threshold:,.0f} 원")
+        c = ws.cell(
+            r, 1,
+            f"채무 Key item 기준금액: {kd.size_result.key_item_threshold:,.0f} 원"
+            f"  (Sampling 기준 = 당기 증가액 / ISA 505 완전성 — 기말 잔액 소라도 포착)",
+        )
         _apply(c, font=FONT_ACCENT, fill=FILL_WHITE, border=BORDER_LIGHT,
                alignment=_al("left"))
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=last_col)
@@ -1382,11 +1401,13 @@ def _build_sheet_key_item_matrix(
     grand_total = 0.0
 
     for seq, (name, (ar_d, ap_d)) in enumerate(parties_sorted, 1):
-        is_ki  = bool((ar_d and ar_d.is_key_item) or (ap_d and ap_d.is_key_item))
-        is_rep = bool((ar_d and ar_d.is_representative) or (ap_d and ap_d.is_representative))
-        is_rp  = bool((ar_d and ar_d.is_related_party) or (ap_d and ap_d.is_related_party))
-        is_fin = bool((ar_d and ar_d.final_sampled) or (ap_d and ap_d.final_sampled))
-        is_excl = bool((ar_d and ar_d.is_excluded) and (ap_d is None or ap_d.is_excluded))
+        is_ki      = bool((ar_d and ar_d.is_key_item) or (ap_d and ap_d.is_key_item))
+        is_rep     = bool((ar_d and ar_d.is_representative) or (ap_d and ap_d.is_representative))
+        is_rp      = bool((ar_d and ar_d.is_related_party) or (ap_d and ap_d.is_related_party))
+        is_fin     = bool((ar_d and ar_d.final_sampled) or (ap_d and ap_d.final_sampled))
+        is_excl    = bool((ar_d and ar_d.is_excluded) and (ap_d is None or ap_d.is_excluded))
+        # suspect: 채무 under-statement 의심 거래처 — 행 전체 연한 주황색 배경
+        is_suspect = bool(ap_d and ap_d.suspect_flag)
 
         kind_str = (
             "채권+채무" if ar_d and ap_d else
@@ -1398,25 +1419,29 @@ def _build_sheet_key_item_matrix(
             (ap_d.balance if ap_d and not ap_d.is_excluded else 0)
         )
 
+        row_fill = FILL_SUSPECT if is_suspect else FILL_WHITE
+
         c = ws.cell(r, 1, seq)
         b = _left_ki_border() if is_ki else _left_rep_border() if is_rep else BORDER_LIGHT
         _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
-               fill=FILL_WHITE, border=b, alignment=_al("center"))
+               fill=row_fill, border=b, alignment=_al("center"))
         _row_height(ws, r, 22)
 
-        c = ws.cell(r, 2, name)
-        _apply(c, font=FONT_FADED_STRIKE if is_excl else (FONT_BOLD if is_ki else FONT_BODY),
-               fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("left"))
+        # suspect 거래처는 이름 뒤에 경고 표시
+        name_display = f"{name} ⚠" if is_suspect else name
+        c = ws.cell(r, 2, name_display)
+        name_font = FONT_FADED_STRIKE if is_excl else (FONT_BOLD if is_ki else FONT_BODY)
+        _apply(c, font=name_font, fill=row_fill, border=BORDER_LIGHT, alignment=_al("left"))
 
         c = ws.cell(r, 3, kind_str)
         _apply(c, font=FONT_ACCENT if kind_str == "채권+채무" else FONT_BODY,
-               fill=FILL_WHITE, border=BORDER_LIGHT, alignment=_al("center"))
+               fill=row_fill, border=BORDER_LIGHT, alignment=_al("center"))
 
         for acct, col in _AR_GROUP_COLS.items():
             amt = (ar_d.by_account.get(acct, 0.0) if ar_d else 0.0)
             c = ws.cell(r, col, amt if amt else None)
             _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
-                   fill=FILL_WHITE, border=BORDER_LIGHT,
+                   fill=row_fill, border=BORDER_LIGHT,
                    alignment=_al("right"), number_format=NUMFMT_INT)
             if not is_excl:
                 totals_ar_cols[acct] = totals_ar_cols.get(acct, 0.0) + amt
@@ -1425,26 +1450,26 @@ def _build_sheet_key_item_matrix(
             amt = (ap_d.by_account.get(acct, 0.0) if ap_d else 0.0)
             c = ws.cell(r, col, amt if amt else None)
             _apply(c, font=FONT_FADED if is_excl else FONT_BODY,
-                   fill=FILL_WHITE, border=BORDER_LIGHT,
+                   fill=row_fill, border=BORDER_LIGHT,
                    alignment=_al("right"), number_format=NUMFMT_INT)
             if not is_excl:
                 totals_ap_cols[acct] = totals_ap_cols.get(acct, 0.0) + amt
 
         c = ws.cell(r, sum_col, total if total else None)
         _apply(c, font=FONT_FADED if is_excl else (FONT_ACCENT if is_ki else FONT_BODY),
-               fill=FILL_WHITE, border=BORDER_LIGHT,
+               fill=row_fill, border=BORDER_LIGHT,
                alignment=_al("right"), number_format=NUMFMT_INT)
         grand_total += total
 
         for col_offset, flag, label_y, label_n in [
-            (1, is_ki,  "Y", "N"),
-            (2, is_rep, "Y", "N"),
-            (3, is_rp,  "Y", "N"),
-            (4, is_fin, "Y", "N"),
+            (1, is_ki,      "Y", "N"),
+            (2, is_rep,     "Y", "N"),
+            (3, is_rp,      "Y", "N"),
+            (4, is_fin,     "Y", "N"),
         ]:
             c = ws.cell(r, sum_col + col_offset, label_y if flag else label_n)
             f = FONT_ACCENT if flag else FONT_FADED
-            _apply(c, font=f, fill=FILL_WHITE, border=BORDER_LIGHT,
+            _apply(c, font=f, fill=row_fill, border=BORDER_LIGHT,
                    alignment=_al("center"))
         r += 1
 

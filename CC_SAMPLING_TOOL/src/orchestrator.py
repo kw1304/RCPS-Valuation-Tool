@@ -80,7 +80,24 @@ def run_sampling(df_ledger: pd.DataFrame, params: SamplingParams) -> SamplingOut
     # 컬럼 자동 감지 — 7620 이외 클라이언트 대응 (시트 헤더 키워드 기반)
     from src.infrastructure.schemas.ledger_schema import detect_ledger_columns
     col_map = detect_ledger_columns(df_ledger)
-    rows = load_ledger_rows(df_ledger, kind=params.kind, col_map=col_map)
+
+    # 다중 시트 통합 시 "_sheet_account_name" 컬럼이 존재하면 계정과목명 override 적용
+    account_override_col = "_sheet_account_name" if "_sheet_account_name" in df_ledger.columns else None
+
+    if account_override_col:
+        # 시트별 account_name 주입 방식: 그룹별로 load_ledger_rows 호출
+        rows = []
+        for acct_name, sub_df in df_ledger.groupby(account_override_col, sort=False):
+            rows.extend(
+                load_ledger_rows(
+                    sub_df.reset_index(drop=True),
+                    kind=params.kind,
+                    col_map=col_map,
+                    account_name_override=str(acct_name),
+                )
+            )
+    else:
+        rows = load_ledger_rows(df_ledger, kind=params.kind, col_map=col_map)
     parties_all = aggregate_by_party(rows, kind=params.kind, sign_normalize=True)
 
     # 발송제외 적용 후 모집단

@@ -101,6 +101,12 @@ class LedgerRow:
     beginning: float
     change: float
     ending: float
+    # ── 코스맥스네오 확장 필드 ─────────────────────────────────────────────
+    # 증가/감소 컬럼이 별도로 존재하는 양식(시트별 계정과목 분리)에서 사용.
+    # ISA 505 완전성 검토: 채무 under-statement risk는 당기 증가(매입활동)로 측정.
+    increase: float = 0.0   # 당기 증가 (차변누계 / 매입발생)
+    decrease: float = 0.0   # 당기 감소 (대변누계 / 결제)
+    business_no: str = ""   # 사업자번호 (회신서 연계용)
 
 
 @dataclass
@@ -131,12 +137,19 @@ def load_ledger_rows(
     df: pd.DataFrame,
     kind: str = "receivable",
     col_map: dict[str, int | None] | None = None,
+    account_name_override: str | None = None,
 ) -> list[LedgerRow]:
     """거래처별 원장 DataFrame → LedgerRow 리스트
 
     col_map: detect_ledger_columns() 결과 dict.
              None이면 7620 기본 컬럼 순서(0~7)를 사용 — 하위 호환.
-    예상 컬럼: 코드|명|계정과목|계정과목명|통화|기초|증감|기말
+    account_name_override: 다중 시트 방식에서 시트명 = 계정과목명으로 주입.
+                           None이면 col_map["account_name"] 에서 읽음.
+
+    7620 기본 컬럼 순서: 코드|명|계정과목|계정과목명|통화|기초|증감|기말
+    코스맥스네오 컬럼 순서: 코드|거래처명|사업자번호|전기(월)이월|증가|감소|잔액|...
+        → increase/decrease/business_no 컬럼을 col_map에서 읽어 LedgerRow에 주입.
+        → account_name_override 로 계정과목명(시트명) 주입.
     """
     # col_map 미제공 시 7620 기본 순서 사용 (하위 호환)
     _default: dict[str, int] = {
@@ -151,14 +164,37 @@ def load_ledger_rows(
     else:
         m = dict(_default)
 
+    # 신규 필드 인덱스 (없으면 None)
+    increase_idx: int | None = col_map.get("increase") if col_map else None
+    decrease_idx: int | None = col_map.get("decrease") if col_map else None
+    bizno_idx: int | None = col_map.get("business_no") if col_map else None
+
+    def _safe_float(series_row, idx: int | None) -> float:
+        if idx is None:
+            return 0.0
+        v = series_row.iloc[idx]
+        if pd.isna(v):
+            return 0.0
+        try:
+            return float(v)
+        except (ValueError, TypeError):
+            return 0.0
+
     rows: list[LedgerRow] = []
     for _, r in df.iterrows():
         name = str(r.iloc[m["name_col"]]) if pd.notna(r.iloc[m["name_col"]]) else ""
         if not name.strip():
             continue
+        # 집계 행("합계") 제외
+        if name.strip() in ("합계", "소계", "total", "subtotal"):
+            continue
         code = str(r.iloc[m["code_col"]]) if pd.notna(r.iloc[m["code_col"]]) else ""
         acct_code = str(r.iloc[m["account_code"]]) if pd.notna(r.iloc[m["account_code"]]) else ""
-        acct_name = str(r.iloc[m["account_name"]]) if pd.notna(r.iloc[m["account_name"]]) else ""
+        # 계정과목명: override(시트명 주입) 우선, 없으면 컬럼에서 읽기
+        if account_name_override is not None:
+            acct_name = account_name_override
+        else:
+            acct_name = str(r.iloc[m["account_name"]]) if pd.notna(r.iloc[m["account_name"]]) else ""
         ccy = str(r.iloc[m["currency"]]) if pd.notna(r.iloc[m["currency"]]) else "KRW"
         try:
             beg = float(r.iloc[m["beginning"]]) if pd.notna(r.iloc[m["beginning"]]) else 0.0
@@ -166,7 +202,19 @@ def load_ledger_rows(
             end = float(r.iloc[m["ending"]]) if pd.notna(r.iloc[m["ending"]]) else 0.0
         except (ValueError, TypeError):
             continue
-        rows.append(LedgerRow(code, name, acct_code, acct_name, ccy, beg, chg, end))
+
+        inc = _safe_float(r, increase_idx)
+        dec = _safe_float(r, decrease_idx)
+        bizno = ""
+        if bizno_idx is not None:
+            bv = r.iloc[bizno_idx]
+            bizno = str(bv).strip() if pd.notna(bv) and str(bv).strip() not in ("nan", "None", "") else ""
+
+        rows.append(LedgerRow(
+            code=code, name=name, account_code=acct_code, account_name=acct_name,
+            currency=ccy, beginning=beg, change=chg, ending=end,
+            increase=inc, decrease=dec, business_no=bizno,
+        ))
     return rows
 
 
@@ -180,10 +228,13 @@ def aggregate_by_party(
     채무는 원장에서 음수로 적재되므로 sign_normalize=True 시 절대값화.
 
     활동량 계산 (ISA 505 완전성 검토용):
-        activity = |기초| + |증감|
+        우선순위 1: LedgerRow.increase > 0 → 해당 값 사용
+                   (코스맥스네오 양식처럼 증가/감소 컬럼이 별도 존재할 때)
+        우선순위 2: |기초| + |change| (기존 7620 양식 — 순증감만 있을 때)
     당기 매입활동이 활발하지만 기말 잔액이 작은 거래처(지급 완료 등)는
     단순 기말 잔액 sampling에서 누락되어 채무 under-statement risk를 놓칠 수 있다.
     activity 기준을 채무 MUS에 사용하면 이 risk를 포착한다.
+    (ISA 330·530 / ISA 505 채무 완전성 원칙)
     """
     group_map = _load_account_group_map(kind)  # keys are normalized (lowercase)
     parties: dict[str, PartyBalance] = {}
@@ -191,11 +242,17 @@ def aggregate_by_party(
         norm_acct = _normalize_account_name(r.account_name)
         group = group_map.get(norm_acct, r.account_name)
 
-        # 기말 잔액 (채권: 기존 실재성 기준)
+        # 기말 잔액 (채권: 실재성 기준 / 채무: 재무제표 대사용 기말 잔액)
         amt_ending = abs(r.ending) if sign_normalize else r.ending
 
-        # 당기 활동량 = |기초| + |증감| (채무 완전성 기준, ISA 330·530)
-        amt_activity = abs(r.beginning) + abs(r.change)
+        # ── 당기 활동량 결정 ────────────────────────────────────────────────
+        # 증가 컬럼이 명시된 경우(코스맥스네오): 그 값을 그대로 사용.
+        # 없는 경우(7620 양식): |기초| + |change| 로 추정.
+        # 이 값이 채무 MUS의 sampling 기준이 됨. (ISA 505 완전성)
+        if r.increase > 0:
+            amt_activity = r.increase
+        else:
+            amt_activity = abs(r.beginning) + abs(r.change)
 
         if r.name not in parties:
             parties[r.name] = PartyBalance(name=r.name)

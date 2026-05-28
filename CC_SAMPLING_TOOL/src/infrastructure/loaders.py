@@ -11,7 +11,12 @@ from typing import Optional
 import pandas as pd
 import openpyxl
 
-from .schemas.ledger_schema import detect_ledger_sheets, detect_ledger_columns
+from .schemas.ledger_schema import (
+    detect_ledger_sheets,
+    detect_ledger_columns,
+    detect_multi_account_sheets,
+    is_multi_sheet_ledger,
+)
 from .schemas.fs_schema import detect_fs_sheet
 from .schemas.rp_schema import detect_rp_sheet
 
@@ -272,6 +277,47 @@ def load_ledger_sheet(
     df = pd.read_excel(path, sheet_name=sheet, header=0)
     col_map = detect_ledger_columns(df)
     return df, col_map
+
+
+def load_multi_sheet_ledger(
+    path: str | Path,
+    kind: str = "receivable",
+) -> tuple[pd.DataFrame, dict]:
+    """다중 계정과목 시트 방식의 원장을 통합 DataFrame으로 로드.
+
+    코스맥스네오 양식처럼 시트별로 계정과목이 분리된 경우 사용.
+    각 시트를 로드한 뒤 "account_name_injected" 컬럼에 시트명을 주입하여 통합.
+
+    Returns:
+        (merged_df, col_map)
+        col_map: 첫 번째 시트에서 감지한 컬럼 인덱스 — 모든 시트 동일 구조 가정.
+    """
+    path = Path(path)
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    sheetnames = wb.sheetnames
+    wb.close()
+
+    multi = detect_multi_account_sheets(sheetnames)
+    sheets = multi.get(kind, [])
+    if not sheets:
+        raise ValueError(
+            f"다중 시트 원장에서 kind='{kind}' 해당 시트를 찾을 수 없음. "
+            f"사용 가능한 시트: {sheetnames}"
+        )
+
+    col_map: dict = {}
+    parts: list[pd.DataFrame] = []
+    for sn in sheets:
+        df = pd.read_excel(path, sheet_name=sn, header=0)
+        if not col_map:
+            col_map = detect_ledger_columns(df)
+        # 시트명을 계정과목명 override 컬럼으로 주입
+        df = df.copy()
+        df["_sheet_account_name"] = sn
+        parts.append(df)
+
+    merged = pd.concat(parts, ignore_index=True)
+    return merged, col_map
 
 
 def load_related_parties(path: str | Path, sheet: str | None = None) -> set[str]:
