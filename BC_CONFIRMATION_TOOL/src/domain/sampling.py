@@ -34,19 +34,29 @@ class Sampler:
             memo = (row.get("적요") or "").strip()
             amount = self._to_float(row.get("금액"))
             bucket = self.classifier.classify(acc)
-            party_text = party_raw or memo
-            if not party_text:
-                continue
-            # Step A: 금융계정 row
+            # Step A: 금융계정 row — 거래처 우선, fallback to memo (단 매칭된 경우만)
             if bucket:
-                np = self.normalizer.normalize(party_text)
-                self._add(agg, np, bucket, acc, amount, conf=1.0)
+                # 거래처가 있으면 우선 시도
+                np_party = self.normalizer.normalize(party_raw) if party_raw else None
+                if np_party and np_party.matched:
+                    self._add(agg, np_party, bucket, acc, amount, conf=1.0)
+                    continue
+                # 거래처 매칭 실패 → memo 시도 (매칭된 경우만)
+                if memo:
+                    np_memo = self.normalizer.normalize(memo)
+                    if np_memo.matched:
+                        self._add(agg, np_memo, bucket, acc, amount, conf=0.8)
+                        continue
+                # 매칭 실패한 financial-account row → skip (가비지 방지)
                 continue
-            # Step B: 일반계정에서 alias 매칭
-            np = self.normalizer.normalize(party_text)
-            if np.canonical != party_text and np.canonical != "":
-                # canonical 매칭이 있으면 추가 (하지만 confidence 낮춤)
-                self._add(agg, np, "기타", acc, amount, conf=0.6)
+            # Step B: 일반계정에서 alias 매칭 (거래처·적요 둘 다 검사)
+            for src_text, conf in [(party_raw, 0.7), (memo, 0.6)]:
+                if not src_text:
+                    continue
+                np = self.normalizer.normalize(src_text)
+                if np.matched:
+                    self._add(agg, np, "기타", acc, amount, conf=conf)
+                    break
         return list(agg.values())
 
     def _add(self, agg, np: NormalizedParty, bucket: str, acc: str, amount: float, conf: float):

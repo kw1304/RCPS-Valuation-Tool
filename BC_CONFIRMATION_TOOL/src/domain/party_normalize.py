@@ -9,6 +9,7 @@ class NormalizedParty:
     branch: str | None      # None | "도쿄지점"
     is_foreign: bool
     raw: str
+    matched: bool = False   # True iff canonical came from bank_aliases lookup
 
     def entity_key(self) -> str:
         return f"{self.canonical}|{self.branch or ''}"
@@ -74,7 +75,9 @@ class PartyNormalizer:
 
     def normalize(self, raw: str) -> NormalizedParty:
         s = (raw or "").strip()
-        canon = self._match_canonical(s) or s
+        matched_canon = self._match_canonical(s)
+        canon = matched_canon or s
+        matched = matched_canon is not None
         # Priority 1: foreign?
         foreign_marker = self._detect_foreign(s)
         if foreign_marker:
@@ -82,13 +85,11 @@ class PartyNormalizer:
             # branch 표현 통일: "<city>지점"
             ko_form = foreign_marker
             if foreign_marker.upper() in {c.upper() for c in self._foreign_en}:
-                # English → 한글 변환 매핑 단순화 (City + 지점)
-                # 한글 대응 없을 시 원문 + 지점
                 ko_form = foreign_marker
             branch = f"{ko_form}지점" if not ko_form.endswith("지점") else ko_form
-            return NormalizedParty(canonical=canon, branch=branch, is_foreign=True, raw=raw)
+            return NormalizedParty(canonical=canon, branch=branch, is_foreign=True, raw=raw, matched=matched)
         # Priority 2: domestic branch → collapse
         if self._detect_domestic_branch(s):
-            return NormalizedParty(canonical=canon, branch=None, is_foreign=False, raw=raw)
+            return NormalizedParty(canonical=canon, branch=None, is_foreign=False, raw=raw, matched=matched)
         # Priority 3: bare canonical
-        return NormalizedParty(canonical=canon, branch=None, is_foreign=False, raw=raw)
+        return NormalizedParty(canonical=canon, branch=None, is_foreign=False, raw=raw, matched=matched)
