@@ -26,13 +26,20 @@ def test_end_to_end_with_real_inputs():
             with open(p, "rb") as f:
                 c.post(f"/api/projects/{pid}/upload/{kind}", files={"file":(p.name, f.read())})
 
-    # 4. sampling
+    # 4. sampling — G/L 거래처 컬럼에서 발견된 은행 (SAP 특성상 상대계정명 섞임, alias-matched만 추출)
     r = c.post(f"/api/projects/{pid}/sampling/run").json()
-    assert len(r["parties"]) >= 10  # 코스맥스비티아이는 최소 10+ 금융기관 거래
+    assert len(r["parties"]) >= 5  # 주요 거래은행 (국민·신한·우리·하나·기업 등)
 
-    # 5. crosscheck
+    # 5. crosscheck — CS auto-upsert로 나머지 증권사·보험사·해외지점 추가됨
     r = c.post(f"/api/projects/{pid}/crosscheck/run").json()
     assert "bidirectional" in r
+    # CS 전체 BC-N (30+) 모두 counterparty로 등록되어야 함
+    from sqlmodel import Session, select
+    from src.infrastructure.db.models import Counterparty
+    from src.infrastructure.db.repository import get_engine
+    with Session(get_engine()) as s:
+        cps = s.exec(select(Counterparty).where(Counterparty.project_id == pid)).all()
+        assert len(cps) >= 25  # CS 30개 + G/L 8개 (대부분 겹침) → 약 30+
 
     # 6. upload 회신본 (모두)
     for sub in ["온라인", "우편"]:
