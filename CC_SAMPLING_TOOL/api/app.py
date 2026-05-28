@@ -1384,6 +1384,20 @@ def step4_upload_replies(pid: str):
                 match_method = "failed"
                 match_result = None
 
+            # 4b) 매칭 실패 시 normalize 재시도 (match_party 임계값 미달 케이스 구제)
+            # match_party가 top3_candidates를 반환한 경우 가장 높은 후보의 normalize가
+            # raw_name normalize와 동일하면 매칭 성공으로 처리.
+            if matched_name is None and match_result and match_result.candidates:
+                from src.domain.matching import _normalize as _match_norm
+                raw_norm = _match_norm(raw_name)
+                for cand in match_result.candidates:
+                    cand_name = cand if isinstance(cand, str) else (cand.get("name") if isinstance(cand, dict) else str(cand))
+                    if _match_norm(cand_name) == raw_norm:
+                        matched_name = cand_name
+                        match_conf = 0.85
+                        match_method = "normalize_retry"
+                        break
+
             # 5) 차이 판정 v2
             ledger_bal = ledger_map.get(matched_name) if matched_name else None
 
@@ -1405,6 +1419,21 @@ def step4_upload_replies(pid: str):
             status = recon.status
             if matched_name is None:
                 status = "needs_review"
+
+            # 5b) declared=False 이지만 차이 5% 이내 → matched 자동 보정
+            # (PDF 자체 선언이 틀린 경우 — 감사 기준상 실질 잔액 일치가 우선)
+            if (
+                status == "mismatch"
+                and parsed.declared_match is False
+                and recon.difference_pct is not None
+                and recon.difference_pct <= 0.05
+            ):
+                status = "matched"
+                log.info(
+                    "declared=False 이지만 차이 %.1f%% ≤ 5%% → matched 자동 보정: %s",
+                    (recon.difference_pct or 0) * 100,
+                    raw_name,
+                )
 
             # top3 candidates (매칭 실패 시)
             top3_json = None
@@ -2335,13 +2364,20 @@ def step5_auto_identify_pending(pid: str):
             # needs_review 는 추출 실패 등이지 회신 자체가 없는 것이 아님 → placeholder 생성 skip
             replies = reply_repo.list_by_workpaper(chk_wp.id)
             from src.domain.matching import _normalize as _norm
-            # normalize 기반 replied_set: 원본 이름 + normalized 이름 둘 다 포함
+            # normalize 기반 replied_set:
+            #   - party_name_matched (매칭 성공 회신)
+            #   - party_name_raw (매칭 실패 회신 포함) — PDF는 실제로 존재하므로 placeholder 중복 방지
             replied_set: set[str] = set()
             replied_norms: set[str] = set()
             for r in replies:
+                # 매칭 성공한 회신: matched/mismatch/needs_review 모두 회신 있음
                 if r.party_name_matched and r.status in ("matched", "mismatch", "needs_review"):
                     replied_set.add(r.party_name_matched)
                     replied_norms.add(_norm(r.party_name_matched))
+                # 매칭 실패(party_name_matched=None)이더라도 PDF 자체가 존재하면
+                # party_name_raw normalize 가 sampled party normalize 와 일치하는지 확인
+                if r.party_name_raw:
+                    replied_norms.add(_norm(r.party_name_raw))
 
             # 이미 AlternativeProcedure 가 사용자 등록(evidence 있음)이면 skip
             existing_procs_with_evidence: set[str] = set()

@@ -742,19 +742,45 @@ def _merge_decisions(
     contacts: list[PartyContactInfo],
     replies: list[ConfirmationReplyInfo],
 ) -> list[_UnifiedPartyRow]:
-    """채권/채무 decisions 를 거래처명 기준으로 통합 → _UnifiedPartyRow 리스트."""
+    """채권/채무 decisions 를 거래처명 기준으로 통합 → _UnifiedPartyRow 리스트.
+
+    동일 거래처가 채권·채무 양쪽에 다른 표기로 존재할 때
+    (예: "COSMAX INC" vs "COSMAX. INC") normalize 기반으로 한 행에 통합한다.
+    canonical(대표 이름)은 먼저 등장한 이름 사용.
+    """
     contact_map = {c.name: c for c in contacts}
+    # normalize 기반 contact 역방향 (표기 차이 흡수)
+    contact_norm_map = {_normalize_for_match(c.name): c for c in contacts}
     reply_map   = {rep.party_name: rep.status for rep in replies}
+    # normalize 기반 reply 역방향
+    reply_norm_map: dict[str, str] = {}
+    for rep in replies:
+        pnorm = _normalize_for_match(rep.party_name)
+        # 우선순위: matched > mismatch > needs_review > 미회신
+        status_priority = {"matched": 4, "mismatch": 3, "needs_review": 2, "미회신": 1}
+        existing = reply_norm_map.get(pnorm)
+        if existing is None or status_priority.get(rep.status, 0) > status_priority.get(existing, 0):
+            reply_norm_map[pnorm] = rep.status
 
     rows: dict[str, _UnifiedPartyRow] = {}
+    # normalized_name → canonical_name (이미 rows에 등록된 이름)
+    norm_to_canonical: dict[str, str] = {}
 
     def _get_or_create(name: str) -> _UnifiedPartyRow:
-        if name not in rows:
-            rows[name] = _UnifiedPartyRow(
-                name=name,
-                contact=contact_map.get(name),
-                reply_status=reply_map.get(name, "미회신"),
-            )
+        norm = _normalize_for_match(name)
+        # 이미 같은 normalize 이름으로 등록된 canonical이 있으면 그쪽으로 통합
+        if norm in norm_to_canonical:
+            canonical = norm_to_canonical[norm]
+            return rows[canonical]
+        # 새 행 생성
+        contact = contact_map.get(name) or contact_norm_map.get(norm)
+        reply_status = reply_map.get(name) or reply_norm_map.get(norm, "미회신")
+        rows[name] = _UnifiedPartyRow(
+            name=name,
+            contact=contact,
+            reply_status=reply_status,
+        )
+        norm_to_canonical[norm] = name
         return rows[name]
 
     if ar_kd:
