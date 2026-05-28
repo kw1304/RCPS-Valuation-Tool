@@ -106,12 +106,25 @@ class LedgerRow:
 @dataclass
 class PartyBalance:
     name: str
-    by_account: dict[str, float] = field(default_factory=dict)   # 그룹별 잔액
-    total: float = 0.0
+    by_account: dict[str, float] = field(default_factory=dict)          # 그룹별 기말 잔액
+    total: float = 0.0                                                   # 기말 잔액 합계
+    activity: float = 0.0                                                # 당기 활동량 (ISA 505 완전성)
+    by_account_activity: dict[str, float] = field(default_factory=dict) # 그룹별 당기 활동량
 
     def add(self, group: str, amount: float) -> None:
+        """기말 잔액 누적."""
         self.by_account[group] = self.by_account.get(group, 0.0) + amount
         self.total += amount
+
+    def add_activity(self, group: str, amount: float) -> None:
+        """당기 활동량 누적 — |기초| + |증감|.
+
+        채무 완전성 검토의 핵심 지표: 기말 잔액이 작더라도
+        당기 매입활동(activity)이 크면 under-statement risk 존재.
+        (ISA 505 / ISA 330·530 완전성 지향 sampling 근거)
+        """
+        self.by_account_activity[group] = self.by_account_activity.get(group, 0.0) + amount
+        self.activity += amount
 
 
 def load_ledger_rows(
@@ -162,16 +175,32 @@ def aggregate_by_party(
     kind: str = "receivable",
     sign_normalize: bool = True,
 ) -> dict[str, PartyBalance]:
-    """거래처별 그룹화. 채무는 음수로 적재되므로 sign_normalize=True 시 절대값화."""
+    """거래처별 그룹화.
+
+    채무는 원장에서 음수로 적재되므로 sign_normalize=True 시 절대값화.
+
+    활동량 계산 (ISA 505 완전성 검토용):
+        activity = |기초| + |증감|
+    당기 매입활동이 활발하지만 기말 잔액이 작은 거래처(지급 완료 등)는
+    단순 기말 잔액 sampling에서 누락되어 채무 under-statement risk를 놓칠 수 있다.
+    activity 기준을 채무 MUS에 사용하면 이 risk를 포착한다.
+    """
     group_map = _load_account_group_map(kind)  # keys are normalized (lowercase)
     parties: dict[str, PartyBalance] = {}
     for r in rows:
         norm_acct = _normalize_account_name(r.account_name)
         group = group_map.get(norm_acct, r.account_name)
-        amt = abs(r.ending) if sign_normalize else r.ending
+
+        # 기말 잔액 (채권: 기존 실재성 기준)
+        amt_ending = abs(r.ending) if sign_normalize else r.ending
+
+        # 당기 활동량 = |기초| + |증감| (채무 완전성 기준, ISA 330·530)
+        amt_activity = abs(r.beginning) + abs(r.change)
+
         if r.name not in parties:
             parties[r.name] = PartyBalance(name=r.name)
-        parties[r.name].add(group, amt)
+        parties[r.name].add(group, amt_ending)
+        parties[r.name].add_activity(group, amt_activity)
     return parties
 
 
@@ -213,14 +242,17 @@ def check_completeness(
 @dataclass
 class PartyDecision:
     name: str
-    balance: float
-    is_excluded: bool          # 발송제외
-    is_related_party: bool     # 특관자
-    is_key_item: bool          # Key item (잔액 ≥ 기준금액)
-    is_representative: bool    # MUS 추출 표본
-    final_sampled: bool        # 최종 샘플링 대상
+    balance: float               # sampling 기준값 (채권: 기말 잔액 / 채무: 당기 활동량)
+    is_excluded: bool            # 발송제외
+    is_related_party: bool       # 특관자
+    is_key_item: bool            # Key item (balance ≥ 기준금액)
+    is_representative: bool      # MUS 추출 표본
+    final_sampled: bool          # 최종 샘플링 대상
     exclusion_reason: str = ""
-    by_account: dict[str, float] = field(default_factory=dict)   # 계정그룹별 잔액
+    by_account: dict[str, float] = field(default_factory=dict)   # 계정그룹별 기말 잔액
+    ending_balance: float = 0.0  # 기말 잔액 원본 (채무 조서 표기용)
+    activity: float = 0.0        # 당기 활동량 (채무 완전성 검토, ISA 505)
+    suspect_flag: bool = False   # 활동 크고 기말 소 — under-statement 의심 거래처
 
 
 def classify_parties(
@@ -228,16 +260,43 @@ def classify_parties(
     key_item_threshold: float,
     related_party_names: set[str],
     excluded_parties: dict[str, str] | None = None,   # {name: reason}
+    kind: str = "receivable",
+    suspect_activity_ratio: float = 1.5,
+    suspect_ending_ratio: float = 0.1,
+    performance_materiality: float = 0.0,
 ) -> list[PartyDecision]:
+    """거래처 분류.
+
+    채권(receivable): balance = 기말 잔액 — 실재성(over-statement risk) 검토.
+    채무(payable):    balance = 당기 활동량(|기초|+|증감|) — 완전성(under-statement risk) 검토.
+        ISA 505: 채무 조회는 기말 잔액 작아도 거래량 큰 거래처 포함.
+        ISA 330/530: 매입 활동 클수록 누락 가능성 ↑ → activity 기반 MUS.
+
+    suspect_flag: activity > PM × suspect_activity_ratio AND ending < PM × suspect_ending_ratio
+        → 활동량 크지만 기말 잔액 소 — under-statement 의심 거래처 별도 표시.
+    """
     excluded_parties = excluded_parties or {}
+    is_payable = (kind == "payable")
     decisions: list[PartyDecision] = []
     for pb in parties.values():
         excl = pb.name in excluded_parties
         rp = _is_related_party(pb.name, related_party_names)
-        ki = (pb.total >= key_item_threshold) and not excl
+
+        # 채무: activity 기준 / 채권: 기말 잔액 기준
+        sample_basis = pb.activity if is_payable else pb.total
+        ki = (sample_basis >= key_item_threshold) and not excl
+
+        # under-statement 의심 거래처 — 채무 전용
+        suspect = False
+        if is_payable and performance_materiality > 0:
+            suspect = (
+                pb.activity > performance_materiality * suspect_activity_ratio
+                and pb.total < performance_materiality * suspect_ending_ratio
+            )
+
         decisions.append(PartyDecision(
             name=pb.name,
-            balance=pb.total,
+            balance=sample_basis,        # MUS 기준값
             is_excluded=excl,
             is_related_party=rp,
             is_key_item=ki,
@@ -245,18 +304,43 @@ def classify_parties(
             final_sampled=False,
             exclusion_reason=excluded_parties.get(pb.name, ""),
             by_account=dict(pb.by_account),
+            ending_balance=pb.total,     # 기말 잔액 원본 보존
+            activity=pb.activity,
+            suspect_flag=suspect,
         ))
     decisions.sort(key=lambda d: d.name)
     return decisions
 
 
 def _is_related_party(name: str, rp_set: set[str]) -> bool:
-    """이름 유사 매칭 (특관자리스트가 표기 변형 많음)"""
+    """특관자 매칭 — exact normalize 또는 길이비 0.7 이상 substring 일치만.
+
+    "코스맥스" 같은 prefix만 가지고 SK(주)·삼성웰스토리 등이 잘못 매칭되는 false positive 차단.
+    """
     norm = _normalize(name)
-    return any(_normalize(rp) == norm or _normalize(rp) in norm or norm in _normalize(rp) for rp in rp_set)
+    if not norm:
+        return False
+    for rp in rp_set:
+        rp_norm = _normalize(rp)
+        if not rp_norm:
+            continue
+        if rp_norm == norm:
+            return True
+        # substring 매칭은 길이비 0.7 이상 + 짧은 쪽이 5자 이상일 때만
+        short, long = (rp_norm, norm) if len(rp_norm) < len(norm) else (norm, rp_norm)
+        if len(short) >= 5 and len(short) / len(long) >= 0.7 and short in long:
+            return True
+    return False
 
 
 def _normalize(s: str) -> str:
+    """거래처명 정규화 — 괄호 별명·법인 접미사·구두점·공백 제거."""
+    import re as _re
+    # 1) 괄호 내 내용 통째로 제거 ("씨엠테크 주식회사 (CMTech Co.,Ltd)" → "씨엠테크 주식회사")
+    s = _re.sub(r"\s*[\(（][^)）]*[\)）]\s*", "", s)
+    # 2) 영문 법인 접미사 (대소문자 무관)
+    s = _re.sub(r"\bCo\.?,?\s*Ltd\.?|\bInc\.?|\bCorp\.?|\bLLC\.?|\bLLP\.?|\bCorporation|\bCompany|\bLimited|\bSdn\.?\s*Bhd\.?|\bPty\.?\s*Ltd\.?", "", s, flags=_re.IGNORECASE)
+    # 3) 공백·구두점·한국 법인 접미사 제거
     return (
         s.replace(" ", "")
         .replace(",", "")
@@ -264,5 +348,6 @@ def _normalize(s: str) -> str:
         .replace("㈜", "")
         .replace("(주)", "")
         .replace("주식회사", "")
+        .replace("유한회사", "")
         .upper()
     )

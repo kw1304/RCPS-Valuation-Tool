@@ -84,19 +84,33 @@ def run_sampling(df_ledger: pd.DataFrame, params: SamplingParams) -> SamplingOut
     parties_all = aggregate_by_party(rows, kind=params.kind, sign_normalize=True)
 
     # 발송제외 적용 후 모집단
-    parties_active = {
-        n: pb for n, pb in parties_all.items()
-        if n not in params.excluded_parties and pb.total > 0
-    }
+    # 채무: activity(당기 활동량) > 0 거래처 포함 (기말 0도 활동 있으면 완전성 검토 대상)
+    is_payable = (params.kind == "payable")
+    if is_payable:
+        parties_active = {
+            n: pb for n, pb in parties_all.items()
+            if n not in params.excluded_parties and pb.activity > 0
+        }
+    else:
+        parties_active = {
+            n: pb for n, pb in parties_all.items()
+            if n not in params.excluded_parties and pb.total > 0
+        }
 
-    # 2. 완전성 검토
+    # 2. 완전성 검토 (기말 잔액 기준 — 재무제표 대사는 기말 잔액으로 수행)
     completeness = check_completeness(
         parties=parties_all,
         fs_amounts=params.fs_amounts_by_group,
         notes=params.completeness_notes,
     )
 
-    population_amount = sum(pb.total for pb in parties_active.values())
+    # 모집단 금액:
+    #   채권 — 기말 잔액 합계 (실재성, over-statement risk)
+    #   채무 — 당기 활동량 합계 (완전성, under-statement risk, ISA 505)
+    if is_payable:
+        population_amount = sum(pb.activity for pb in parties_active.values())
+    else:
+        population_amount = sum(pb.total for pb in parties_active.values())
 
     # 3. 초기 분류 (key_item_threshold 미정 상태) → 임시 threshold = PM × ratio
     from src.domain.sample_size import resolve_key_item_ratio
@@ -110,16 +124,22 @@ def run_sampling(df_ledger: pd.DataFrame, params: SamplingParams) -> SamplingOut
         key_item_threshold=threshold,
         related_party_names=params.related_parties,
         excluded_parties=params.excluded_parties,
+        kind=params.kind,
+        performance_materiality=params.performance_materiality,
     )
     # 발송제외도 decision에 포함 (조서용)
     for name, reason in params.excluded_parties.items():
         if name in parties_all and name not in {d.name for d in decisions}:
             from src.domain.population import PartyDecision
+            pb_excl = parties_all[name]
             decisions.append(PartyDecision(
-                name=name, balance=parties_all[name].total,
+                name=name,
+                balance=pb_excl.activity if is_payable else pb_excl.total,
                 is_excluded=True, is_related_party=False,
                 is_key_item=False, is_representative=False, final_sampled=False,
                 exclusion_reason=reason,
+                ending_balance=pb_excl.total,
+                activity=pb_excl.activity,
             ))
 
     key_item_amount = sum(d.balance for d in decisions if d.is_key_item)

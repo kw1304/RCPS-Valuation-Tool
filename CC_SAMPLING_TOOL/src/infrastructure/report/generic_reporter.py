@@ -1101,6 +1101,7 @@ def _build_sheet_sample_size(
         if kd is None:
             continue
 
+        is_ap = kd.ctx.kind == "payable"
         _subheader_row(ws, r, kind_label, col_end=5)
         r += 1
 
@@ -1113,8 +1114,12 @@ def _build_sheet_sample_size(
         ki = [d for d in decisions if d.is_key_item and not d.is_excluded]
         ki_amt = sum(d.balance for d in ki)
 
+        # 채무: 모집단 = 당기 활동량 합계 (ISA 505 완전성 검토)
+        pop_label = "모집단 금액 (당기 활동량)" if is_ap else "모집단 금액"
+        pop_note  = "|기초|+|증감| 합계 — ISA 505 under-statement risk" if is_ap else ""
+
         params = [
-            ("모집단 금액",          kd.population_amount,    "",                                   False),
+            (pop_label,              kd.population_amount,    pop_note,                             False),
             ("수행중요성 (PM)",       kd.performance_materiality, "",                               True),
             ("Key item 비율",        size.key_item_ratio,     "위험×통제 매트릭스",                 False, "0%"),
             ("Key item 기준금액",    size.key_item_threshold, f"PM × {size.key_item_ratio*100:.0f}%", True),
@@ -1498,15 +1503,30 @@ def _build_sheet_mus_detail(
         if kd is None:
             continue
 
+        is_ap = kd.ctx.kind == "payable"
         _subheader_row(ws, r, kind_label, col_end=8)
         r += 1
+
+        # 채무: 당기 활동량 기준 sampling 명시 (ISA 505 완전성 검토)
+        if is_ap:
+            note_text = (
+                "채무 sampling 기준 = 당기 활동량 (|기초| + |증감|)  "
+                "— ISA 505 under-statement risk: 기말 잔액 작아도 매입활동 크면 포함"
+            )
+            c_note = ws.cell(r, 1, note_text)
+            _apply(c_note, font=FONT_FADED, fill=FILL_WHITE, border=BORDER_LIGHT,
+                   alignment=_al("left", wrap=True))
+            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
+            _row_height(ws, r, 28)
+            r += 1
 
         size = kd.size_result
         mus  = kd.mus_result
 
         # 파라미터 요약
+        pop_label = "모집단 (당기 활동량)" if is_ap else "잔여 모집단"
         for label, val, fmt in [
-            ("잔여 모집단", size.remaining_population, NUMFMT_INT),
+            (pop_label, size.remaining_population, NUMFMT_INT),
             ("표본규모 (N)", size.final_sample_size,  NUMFMT_INT),
             ("표본간격 (J)", size.sample_interval,    NUMFMT_INT),
             ("임의출발점 (r₀)", mus.random_start,     NUMFMT_INT),
@@ -1518,8 +1538,11 @@ def _build_sheet_mus_detail(
 
         r += 1
 
-        # 추출 내역 표
-        for col_idx, h in enumerate(["No", "거래처명", "잔액", "누적금액", "선택횟수", "표본간격", "잔여", "hit"], 1):
+        # 추출 내역 표 — 채무 측 컬럼은 "활동량" 표기
+        balance_col_label = "활동량" if is_ap else "잔액"
+        for col_idx, h in enumerate(
+            ["No", "거래처명", balance_col_label, "누적금액", "선택횟수", "표본간격", "잔여", "hit"], 1
+        ):
             _header_cell(ws, r, col_idx, h)
         r += 1
 
