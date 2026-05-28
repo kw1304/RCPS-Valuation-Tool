@@ -69,6 +69,7 @@ async function refreshState() {
   renderMergedTable();
   renderConfirmationsTable();
   renderAlternativesTable();
+  renderProjection();
 }
 
 function renderSidePanel() {
@@ -93,7 +94,7 @@ function renderSidePanel() {
   const apRecv = (s.confirmations?.AP || []).filter(c => c.verdict).length;
   setStep("send", s.samples.AR.count + s.samples.AP.count > 0 ? "done" : null);
   setStep("receive", (arRecv + apRecv) > 0 ? "done" : null);
-  setStep("projection", "disabled");
+  setStep("projection", (s.projection?.AR || s.projection?.AP) ? "done" : null);
 }
 
 function renderMergedTable() {
@@ -299,6 +300,61 @@ function renderAlternativesTable() {
   }
 }
 
+// ---- ⑥ Projection ----
+async function runProjection(ev) {
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  const kind = ev.target.dataset.kind;
+  const confidence = parseFloat($("#projConfidence").value);
+  try {
+    await api("POST", `/projects/${currentProjectId}/projection`,
+              { kind, confidence });
+    await refreshState();
+  } catch (e) {
+    alert("오류: " + e.message);
+  }
+}
+
+function renderProjection() {
+  const st = currentState;
+  if (!st) return;
+  const drawCard = (kind) => {
+    const p = (st.projection || {})[kind];
+    const card = document.querySelector(`.proj-card[data-kind="${kind}"] .proj-content`);
+    if (!p) { card.textContent = "— (계산 전)"; return; }
+    card.innerHTML = `
+      <div class="row"><span class="label">신뢰수준</span><span class="value">${(p.confidence*100).toFixed(0)}%</span></div>
+      <div class="row"><span class="label">표본간격</span><span class="value">₩${fmt(p.sampling_interval)}</span></div>
+      <div class="row"><span class="label">추정 misstatement</span><span class="value">₩${fmt(p.projected_misstatement)}</span></div>
+      <div class="row"><span class="label">basic precision</span><span class="value">₩${fmt(p.basic_precision)}</span></div>
+      <div class="row"><span class="label">incremental</span><span class="value">₩${fmt(p.incremental_allowance)}</span></div>
+      <div class="row"><span class="label">upper limit</span><span class="value">₩${fmt(p.upper_limit)}</span></div>
+      <div class="row"><span class="label">tolerable</span><span class="value">₩${fmt(p.tolerable)}</span></div>
+      <div class="row"><span class="label">판정</span><span class="value proj-verdict ${p.verdict}">${p.verdict}</span></div>
+    `;
+  };
+  drawCard("AR");
+  drawCard("AP");
+
+  const ar = (st.projection || {}).AR;
+  const ap = (st.projection || {}).AP;
+  const combined = $("#projectionCombined");
+  if (!ar && !ap) {
+    combined.textContent = "— (각 계산 후 합산 표시)";
+    return;
+  }
+  const sumProj = (ar?.projected_misstatement || 0) + (ap?.projected_misstatement || 0);
+  const sumUpper = (ar?.upper_limit || 0) + (ap?.upper_limit || 0);
+  const sumTol = (ar?.tolerable || 0) + (ap?.tolerable || 0);
+  const verdict = sumUpper <= sumTol ? "WITHIN_TOLERABLE" : "EXCEED";
+  combined.innerHTML = `
+    <div class="row"><span class="label">AR+AP projected</span><span class="value">₩${fmt(sumProj)}</span></div>
+    <div class="row"><span class="label">AR+AP upper limit</span><span class="value">₩${fmt(sumUpper)}</span></div>
+    <div class="row"><span class="label">AR+AP tolerable</span><span class="value">₩${fmt(sumTol)}</span></div>
+    <div class="row"><span class="label">합산 판정</span><span class="value proj-verdict ${verdict}">${verdict}</span></div>
+    ${verdict === "EXCEED" ? '<div style="color:var(--color-bad);font-size:.8rem;margin-top:.5rem;">⚠ tolerable 초과 — 추가절차 필요</div>' : ""}
+  `;
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
@@ -309,6 +365,7 @@ async function init() {
   $("#downloadSendlist").addEventListener("click", downloadSendlist);
   $("#uploadConfBtn").addEventListener("click", uploadConfirmations);
   $("#altRegisterBtn").addEventListener("click", registerAlternative);
+  $$(".runProjection").forEach(b => b.addEventListener("click", runProjection));
   await loadProjectList();
 }
 
