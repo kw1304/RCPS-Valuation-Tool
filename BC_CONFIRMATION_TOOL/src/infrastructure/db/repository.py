@@ -1,0 +1,52 @@
+from pathlib import Path
+from sqlmodel import Session, SQLModel, create_engine, select
+from .models import Project, Counterparty, FileAsset, ExtractedRecord
+
+DB_PATH = Path(__file__).resolve().parents[3] / "data" / "projects.db"
+
+
+def get_engine(db_path: Path | None = None):
+    p = db_path or DB_PATH
+    p.parent.mkdir(parents=True, exist_ok=True)
+    eng = create_engine(f"sqlite:///{p}")
+    SQLModel.metadata.create_all(eng)
+    return eng
+
+
+def create_project(session: Session, name: str, fiscal_date: str) -> Project:
+    p = Project(name=name, fiscal_date=fiscal_date)
+    session.add(p)
+    session.commit()
+    session.refresh(p)
+    return p
+
+
+def list_counterparties(session: Session, project_id: int) -> list[Counterparty]:
+    return session.exec(
+        select(Counterparty).where(Counterparty.project_id == project_id).order_by(Counterparty.bc_no)
+    ).all()
+
+
+def upsert_counterparty(session: Session, project_id: int, canonical_name: str,
+                        branch: str | None = None, is_foreign: bool = False) -> Counterparty:
+    stmt = select(Counterparty).where(
+        Counterparty.project_id == project_id,
+        Counterparty.canonical_name == canonical_name,
+        Counterparty.branch == branch,
+    )
+    existing = session.exec(stmt).first()
+    if existing:
+        return existing
+    # auto BC-N
+    n = len(list_counterparties(session, project_id)) + 1
+    c = Counterparty(
+        project_id=project_id,
+        bc_no=f"BC-{n}",
+        canonical_name=canonical_name,
+        branch=branch,
+        is_foreign=is_foreign,
+    )
+    session.add(c)
+    session.commit()
+    session.refresh(c)
+    return c
