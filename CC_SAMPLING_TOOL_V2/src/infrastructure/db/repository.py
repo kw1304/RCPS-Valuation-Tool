@@ -246,6 +246,38 @@ class ConfirmationRepo:
             ))
         return out
 
+    def mark_sent_at(self, project_id: int, kind: Kind) -> int:
+        """표본 전체에 대해 ConfirmationRow 생성(없으면) + sent_at = now.
+
+        반환: 영향받은 행 수.
+        """
+        samples = (self.s.query(SampleRow, AccountRow)
+                   .join(AccountRow, SampleRow.account_id == AccountRow.id)
+                   .filter(SampleRow.project_id == project_id,
+                           SampleRow.kind == kind.value)
+                   .all())
+        now = datetime.utcnow()
+        count = 0
+        for s_row, a_row in samples:
+            existing = (self.s.query(ConfirmationRow)
+                        .filter(ConfirmationRow.project_id == project_id,
+                                ConfirmationRow.sample_id == s_row.id)
+                        .first())
+            if existing is None:
+                self.s.add(ConfirmationRow(
+                    project_id=project_id, sample_id=s_row.id,
+                    kind=kind.value, expected=a_row.balance_krw,
+                    status=ResponseStatus.PENDING.value,
+                    confirmed=None, diff=None, diff_reason=None,
+                    pdf_path=None, verdict=None,
+                    sent_at=now, extracted_at=None,
+                ))
+            else:
+                existing.sent_at = now
+            count += 1
+        self.s.commit()
+        return count
+
 
 class AltProcRepo:
     def __init__(self, session):

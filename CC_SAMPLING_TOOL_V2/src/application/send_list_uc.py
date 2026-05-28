@@ -16,6 +16,9 @@ class SendListUC:
             Kind.AR: sample_repo.list_by_project_kind(project_id, Kind.AR),
             Kind.AP: sample_repo.list_by_project_kind(project_id, Kind.AP),
         }
+        from src.infrastructure.db.repository import ConfirmationRepo
+        ConfirmationRepo(self.s).mark_sent_at(project_id, Kind.AR)
+        ConfirmationRepo(self.s).mark_sent_at(project_id, Kind.AP)
         return build_sendlist(
             client_name=proj.client,
             period_end=proj.period_end.isoformat(),
