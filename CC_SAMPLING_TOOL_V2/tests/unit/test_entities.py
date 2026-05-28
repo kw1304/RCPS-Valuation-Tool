@@ -72,3 +72,19 @@ def test_project_optional_defaults():
                 base_ccy="KRW", materiality=1, tolerable=1)
     assert p.id is None
     assert isinstance(p.created_at, datetime)
+
+
+def test_account_allowance_ratio_uses_krw():
+    # USD 100, rate 1300, KRW 130_000; allowance 65_000 KRW = 50% of KRW value
+    a = Account(party_id="p", name="p", gl_account="x",
+                balance_orig=100, ccy="USD", fx_rate=1300,
+                balance_krw=130_000, allowance_amt=65_000)
+    assert a.allowance_ratio == pytest.approx(0.5, abs=1e-9)
+
+
+def test_account_allowance_ratio_zero_krw():
+    a = Account(party_id="p", name="p", gl_account="x",
+                balance_orig=100, ccy="USD", fx_rate=0,
+                balance_krw=0, allowance_amt=10)
+    # 0 잔액(KRW) → ratio 0
+    assert a.allowance_ratio == 0.0

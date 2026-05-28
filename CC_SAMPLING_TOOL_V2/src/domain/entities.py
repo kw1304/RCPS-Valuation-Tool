@@ -65,9 +65,9 @@ class Account:
 
     @property
     def allowance_ratio(self) -> float:
-        if abs(self.balance_orig) < 1e-9:
+        if abs(self.balance_krw) < 1e-9:
             return 0.0
-        return self.allowance_amt / abs(self.balance_orig)
+        return self.allowance_amt / abs(self.balance_krw)
 
 
 @dataclass
