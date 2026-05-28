@@ -40,4 +40,10 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
     from api.routes.ingest import bp as ingest_bp
     app.register_blueprint(ingest_bp)
 
+    from api.routes.sampling import bp as sampling_bp
+    app.register_blueprint(sampling_bp)
+
+    from api.routes.state import bp as state_bp
+    app.register_blueprint(state_bp)
+
     return app
