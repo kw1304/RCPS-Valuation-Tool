@@ -51,3 +51,26 @@ def test_pps_negative_balance_uses_abs():
     accs = [_acc("refund", -5000), _acc("normal", 1)]
     s = pps_select(accs, n=1, seed=0)
     assert s[0].party_id == "refund"
+
+
+def test_pps_large_item_not_duplicated():
+    """Item with balance > interval should appear once (dedupe guard)."""
+    # monster's balance hugely dominates. Multiple targets may land in its bucket.
+    accs = [
+        _acc("monster", 1_000_000),
+        _acc("small1", 100),
+        _acc("small2", 200),
+    ]
+    s = pps_select(accs, n=5, seed=42)
+    ids = [a.party_id for a in s]
+    # monster appears at most once
+    assert ids.count("monster") <= 1
+
+
+def test_pps_preserves_input_order():
+    """Returned sample follows input order (cumsum position)."""
+    accs = [_acc(f"P{i:02d}", 100 * (i + 1)) for i in range(10)]
+    s = pps_select(accs, n=4, seed=42)
+    selected_ids = [a.party_id for a in s]
+    sorted_ids = sorted(selected_ids)  # 입력 순서가 P00, P01, ...이므로 단순 정렬과 같음
+    assert selected_ids == sorted_ids
