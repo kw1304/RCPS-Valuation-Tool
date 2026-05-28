@@ -18,12 +18,25 @@ def build_ledger():
     ar = wb.create_sheet("매출채권")
     ar.append(["거래처코드", "거래처명", "계정과목", "기말잔액", "통화", "환율"])
     rng = random.Random(7)
+    # AR050-054는 충당금명세와 정합되도록 고정 잔액
+    fixed_bal = {
+        "AR050": 500_000,
+        "AR051": 800_000,
+        "AR052": 200_000,
+        "AR053": 600_000,
+        "AR054": 400_000,
+    }
     for i in range(120):
-        bal = rng.choice([10_000, 50_000, 100_000, 500_000, 2_000_000, 10_000_000])
-        bal *= rng.uniform(0.5, 2.0)
+        pid = f"AR{i:03d}"
+        bal_choice = rng.choice([10_000, 50_000, 100_000, 500_000, 2_000_000, 10_000_000])
+        bal_jitter = rng.uniform(0.5, 2.0)
+        if pid in fixed_bal:
+            bal = float(fixed_bal[pid])
+        else:
+            bal = bal_choice * bal_jitter
         ccy = "USD" if i < 5 else "KRW"
         fx = 1300.0 if ccy == "USD" else 1.0
-        ar.append([f"AR{i:03d}", f"고객사{i:03d}", "11200",
+        ar.append([pid, f"고객사{i:03d}", "11200",
                    round(bal, 0), ccy, fx])
 
     ap = wb.create_sheet("매입채무")
