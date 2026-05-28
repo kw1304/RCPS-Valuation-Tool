@@ -1,0 +1,66 @@
+foreign_cities:
+  ko:
+    - 도쿄
+    - 동경
+    - 홍콩
+    - 뉴욕
+    - 런던
+    - 상하이
+    - 상해
+    - 싱가포르
+    - 싱가폴
+    - 베이징
+    - 북경
+    - 로스앤젤레스
+    - 파리
+    - 프랑크푸르트
+    - 시드니
+    - 두바이
+    - 자카르타
+    - 하노이
+    - 호치민
+    - 방콕
+    - 쿠알라룸푸르
+    - 마닐라
+    - 취리히
+    - 뭄바이
+    - 이스탄불
+    - 모스크바
+    - 토론토
+    - 밴쿠버
+  en:
+    - Tokyo
+    - HongKong
+    - "Hong Kong"
+    - HK
+    - "New York"
+    - NewYork
+    - NY
+    - London
+    - Shanghai
+    - SH
+    - Singapore
+    - SG
+    - Beijing
+    - BJ
+    - LA
+    - Paris
+    - Frankfurt
+    - Sydney
+    - Dubai
+    - Jakarta
+    - Hanoi
+    - "Ho Chi Minh"
+    - Bangkok
+    - KL
+    - Manila
+    - Zurich
+    - Mumbai
+    - Istanbul
+    - Moscow
+    - "Sao Paulo"
+    - Toronto
+    - Vancouver
+  generic:
+    - Branch
+    - Overseas

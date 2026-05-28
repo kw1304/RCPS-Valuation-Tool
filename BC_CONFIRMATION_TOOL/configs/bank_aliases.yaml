@@ -1,0 +1,27 @@
+financial_institutions:
+  - {canonical: 국민은행,    aliases: [KB국민은행, KB국민, KB, 국민銀]}
+  - {canonical: 신한은행,    aliases: [신한, 신한銀, SHINHAN]}
+  - {canonical: 우리은행,    aliases: [우리, WOORI]}
+  - {canonical: KEB하나은행, aliases: [하나은행, 하나, KEB, KEB하나]}
+  - {canonical: 농협은행,    aliases: [농협, NH, NH농협]}
+  - {canonical: 기업은행,    aliases: [IBK, IBK기업은행, 중소기업은행]}
+  - {canonical: 산업은행,    aliases: [KDB, KDB산업은행]}
+  - {canonical: 한국수출입은행, aliases: [수출입은행, KEXIM]}
+  - {canonical: 한국증권금융, aliases: [증권금융]}
+  - {canonical: 아이엠뱅크,  aliases: [iM뱅크, IM뱅크, 대구은행]}
+  - {canonical: 대신증권,    aliases: [대신]}
+  - {canonical: 메리츠증권,  aliases: [메리츠증권(주)]}
+  - {canonical: 신한투자증권, aliases: [신한금융투자, 신한투자]}
+  - {canonical: KB증권,     aliases: [KB증권(주)]}
+  - {canonical: NH투자증권, aliases: [NH투자, NH증권]}
+  - {canonical: 삼성증권,    aliases: [삼성증]}
+  - {canonical: 미래에셋증권, aliases: [미래에셋대우, 미래에셋]}
+  - {canonical: 키움증권,    aliases: [키움]}
+  - {canonical: 한화투자증권, aliases: [한화증권]}
+  - {canonical: KB손해보험,  aliases: [KB손보]}
+  - {canonical: 한화손해보험, aliases: [한화손보]}
+  - {canonical: 메리츠화재해상보험, aliases: [메리츠화재]}
+  - {canonical: 서울보증보험, aliases: [SGI서울보증, 서울보증]}
+  - {canonical: 현대해상화재보험, aliases: [현대해상, 현대화재]}
+  - {canonical: 흥국화재,    aliases: [흥국화재해상]}
+  - {canonical: 예별손해보험, aliases: [예별손보]}
