@@ -3,6 +3,7 @@ from copy import copy
 from pathlib import Path
 from decimal import Decimal
 from datetime import date
+from openpyxl.cell.cell import MergedCell
 from src.domain.ac_models import (
     FinancialAsset, Borrowing, Derivative, Guarantee,
     Collateral, BillCheck, Insurance, GeneralDeal,
@@ -62,7 +63,9 @@ class ACFiller:
             for col, attr in cfg["cols"].items():
                 val = self._extract(rec, attr)
                 if val is not None:
-                    ws[f"{col}{row}"] = val
+                    cell = ws[f"{col}{row}"]
+                    if not isinstance(cell, MergedCell):
+                        cell.value = val
 
     def _extract(self, rec, attr: str):
         if hasattr(rec, attr):
@@ -80,6 +83,8 @@ class ACFiller:
         for col_idx in range(1, ws.max_column + 1):
             src = ws.cell(row=source_row, column=col_idx)
             tgt = ws.cell(row=target_row, column=col_idx)
+            if isinstance(src, MergedCell) or isinstance(tgt, MergedCell):
+                continue
             if src.has_style:
                 tgt.font          = copy(src.font)
                 tgt.fill          = copy(src.fill)

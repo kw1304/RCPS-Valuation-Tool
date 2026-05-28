@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from sqlmodel import Session, select
 import openpyxl
+from openpyxl.cell.cell import MergedCell
 from src.infrastructure.db.models import Project, Counterparty, ExtractedRecord
 from src.infrastructure.excel_writer.ac_filler import ACFiller, SHEET_CONFIG
 from src.infrastructure.excel_writer.color_swap import apply_toss_palette, mark_low_confidence
@@ -76,6 +77,14 @@ def export_4150(session: Session, project_id: int) -> Path:
     return out_path
 
 
+def _safe_write(sheet, cell_ref: str, value) -> None:
+    """Merged cell 에 쓰기 시도 시 조용히 skip."""
+    cell = sheet[cell_ref]
+    if isinstance(cell, MergedCell):
+        return
+    cell.value = value
+
+
 def _fill_control_sheet(wb, cps: list[Counterparty]):
     """Fill AC control sheet with counterparty summary."""
     sheet = next((wb[s] for s in wb.sheetnames if "control sheet" in s.lower()), None)
@@ -84,13 +93,13 @@ def _fill_control_sheet(wb, cps: list[Counterparty]):
 
     for i, cp in enumerate(cps):
         r = 6 + i
-        sheet[f"B{r}"] = cp.bc_no
-        sheet[f"C{r}"] = cp.canonical_name
+        _safe_write(sheet, f"B{r}", cp.bc_no)
+        _safe_write(sheet, f"C{r}", cp.canonical_name)
         if cp.branch:
-            sheet[f"D{r}"] = cp.branch
-        sheet[f"E{r}"] = cp.channel or ""
-        sheet[f"F{r}"] = cp.address or ""
-        sheet[f"J{r}"] = "회신" if cp.response_arrived else "미회신"
+            _safe_write(sheet, f"D{r}", cp.branch)
+        _safe_write(sheet, f"E{r}", cp.channel or "")
+        _safe_write(sheet, f"F{r}", cp.address or "")
+        _safe_write(sheet, f"J{r}", "회신" if cp.response_arrived else "미회신")
 
 
 def _fill_ac0(wb, cps: list[Counterparty]):
@@ -101,10 +110,10 @@ def _fill_ac0(wb, cps: list[Counterparty]):
 
     for i, cp in enumerate(cps):
         r = 12 + i
-        sheet[f"C{r}"] = cp.bc_no
-        sheet[f"D{r}"] = cp.canonical_name + (f" {cp.branch}" if cp.branch else "")
-        sheet[f"E{r}"] = "Y" if cp.cs_present else "N"
-        sheet[f"F{r}"] = "Y" if cp.prior_present else "N"
-        sheet[f"G{r}"] = "Y" if cp.union_listed else "N"
-        sheet[f"H{r}"] = ("담보 Y/" if cp.collateral_listed else "담보 N/") + ("보증 Y" if cp.guarantee_listed else "보증 N")
-        sheet[f"I{r}"] = "✓" if cp.response_arrived else ""
+        _safe_write(sheet, f"C{r}", cp.bc_no)
+        _safe_write(sheet, f"D{r}", cp.canonical_name + (f" {cp.branch}" if cp.branch else ""))
+        _safe_write(sheet, f"E{r}", "Y" if cp.cs_present else "N")
+        _safe_write(sheet, f"F{r}", "Y" if cp.prior_present else "N")
+        _safe_write(sheet, f"G{r}", "Y" if cp.union_listed else "N")
+        _safe_write(sheet, f"H{r}", ("담보 Y/" if cp.collateral_listed else "담보 N/") + ("보증 Y" if cp.guarantee_listed else "보증 N"))
+        _safe_write(sheet, f"I{r}", "✓" if cp.response_arrived else "")
