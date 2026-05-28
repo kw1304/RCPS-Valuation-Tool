@@ -52,4 +52,7 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
     from api.routes.alternative import bp as alternative_bp
     app.register_blueprint(alternative_bp)
 
+    from api.routes.projection import bp as projection_bp
+    app.register_blueprint(projection_bp)
+
     return app
