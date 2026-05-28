@@ -2,17 +2,21 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>채권채무조회서 샘플링·회수 툴 V2</title>
+<title>CC Sampling Tool · 채권채무조회서 표본설계</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<header class="wat-header">
-  <h1>채권채무조회서 샘플링·회수 툴 V2</h1>
-  <div class="header-meta">
+<header>
+  <div class="hd-title">
+    <h1><span class="ac">CC</span> Sampling Tool</h1>
+    <p>채권채무조회서 표본설계 · MUS PPS · ISA 530/505</p>
+  </div>
+  <div class="hd-right">
     <select id="projectSelect"></select>
     <button id="newProjectBtn">+ 새 프로젝트</button>
-    <button id="deleteProjectBtn" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;">삭제</button>
+    <button id="deleteProjectBtn" class="danger">삭제</button>
   </div>
 </header>
 
@@ -49,7 +53,7 @@
 
     <section class="downloads">
       <h3>다운로드</h3>
-      <button id="dlCombinedBtn" style="background:#d4a017;color:white;font-weight:600;">통합조서 (채권+채무)</button>
+      <button id="dlCombinedBtn">통합조서 (채권+채무)</button>
       <button id="dlC100Btn">C100 채권 (단독)</button>
       <button id="dlAA100Btn">AA100 채무 (단독)</button>
       <a id="dlSendlistBtn" href="#" class="btn-link">발송명단</a>
@@ -72,17 +76,17 @@
 
     <section id="designPanel">
       <h2>② 표본설계</h2>
-      <div class="combined-design" style="margin-bottom:1rem;padding:.75rem;background:#fef9c3;border-radius:6px;">
+      <div class="combined-design">
         <strong>통합 표본설계</strong> — 총 거래처 수만 입력 (AR/AP 자동 비례 분배):
-        <input type="number" id="combinedN" placeholder="예: 25" min="1" style="width:120px;padding:.3rem;margin-left:.5rem;">
-        <select id="combinedConf" style="margin-left:.5rem;">
+        <input type="number" id="combinedN" placeholder="예: 25" min="1" style="width:120px;">
+        <select id="combinedConf">
           <option value="0.95">신뢰수준 95%</option>
           <option value="0.90">90%</option>
           <option value="0.99">99%</option>
         </select>
-        <input type="number" id="combinedKey" placeholder="Key threshold" value="0" style="width:140px;padding:.3rem;margin-left:.5rem;">
-        <button id="combinedDesignBtn" style="margin-left:.5rem;background:#d4a017;color:white;font-weight:600;">통합 설계 실행</button>
-        <div id="combinedResult" style="margin-top:.5rem;font-size:.85rem;"></div>
+        <input type="number" id="combinedKey" placeholder="Key threshold" value="0" style="width:140px;">
+        <button id="combinedDesignBtn">통합 설계 실행</button>
+        <div id="combinedResult"></div>
       </div>
       <div class="twin">
         <div class="kind-col" data-kind="AR">
@@ -204,7 +208,10 @@
 
 </div>
 
-<footer class="wat-footer">© CC_SAMPLING_TOOL V2 · K-IFRS 1109 · ISA 530/505 · WAT Standard</footer>
+<footer class="legal">
+  <span><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</span>
+  <span class="right">© 2026 Woongcpa</span>
+</footer>
 
 <div id="mappingModal" class="modal" hidden>
   <div class="modal-content">
