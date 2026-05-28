@@ -358,6 +358,7 @@ const URL_RCPS = IS_LOCAL ? 'http://127.0.0.1:5000/' : `https://${TS_HOST}:8443/
 const URL_JET  = IS_LOCAL ? 'http://127.0.0.1:5050/' : `https://${TS_HOST}:10000/`;
 const URL_IRS  = '/irs/';
 const URL_CC   = IS_LOCAL ? 'http://127.0.0.1:8521/index.html' : `https://${TS_HOST}:8521/`;
+const URL_BC   = IS_LOCAL ? 'http://127.0.0.1:8765/' : `https://${TS_HOST}:8765/`;
 const TOOLS = {
   'rcps-dcf': {
     name: 'RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델',
@@ -378,6 +379,11 @@ const TOOLS = {
     name: 'CC Sampling Tool · 채권채무조회서 표본설계',
     category: 'Audit Support',
     url: URL_CC,
+  },
+  'bc-confirmation': {
+    name: 'BC Tool · 은행조회서·금융기관 조회 자동화 (4150 조서)',
+    category: 'Audit Support',
+    url: URL_BC,
   },
 };
 
