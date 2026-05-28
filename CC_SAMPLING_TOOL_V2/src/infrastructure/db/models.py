@@ -88,3 +88,41 @@ class ConfirmationRow(Base):
     verdict = Column(String(20))
     sent_at = Column(DateTime)
     extracted_at = Column(DateTime)
+
+
+class AlternativeProcedureRow(Base):
+    __tablename__ = "alternative_procedures"
+    __table_args__ = (
+        CheckConstraint("kind IN ('AR','AP')", name="ck_altproc_kind"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    sample_id = Column(Integer, ForeignKey("samples.id"), nullable=False)
+    kind = Column(String(2), nullable=False)
+    procedure_type = Column(String(50), nullable=False)
+    evidence_sum = Column(Float, nullable=False, default=0.0)
+    coverage_pct = Column(Float, nullable=False, default=0.0)
+    note = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ProjectionRow(Base):
+    __tablename__ = "projections"
+    __table_args__ = (
+        CheckConstraint("kind IN ('AR','AP')", name="ck_projection_kind"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    kind = Column(String(2), nullable=False)
+    confidence = Column(Float, nullable=False)
+    sampling_interval = Column(Float, nullable=False)
+    tolerable = Column(Float, nullable=False)
+    projected_misstatement = Column(Float, nullable=False)
+    basic_precision = Column(Float, nullable=False)
+    incremental_allowance = Column(Float, nullable=False)
+    upper_limit = Column(Float, nullable=False)
+    verdict = Column(String(30), nullable=False)
+    strata_snapshot = Column(Text)
+    computed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
