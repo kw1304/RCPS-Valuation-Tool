@@ -127,3 +127,10 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .reason-tag.FORCED_RP { background: #d1fae5; color: var(--color-rp); }
 .reason-tag.FORCED_KEY { background: #ede9fe; color: var(--color-key); }
 .reason-tag.REP { background: #f3f4f6; color: var(--color-muted); }
+
+.badge {
+  display: inline-block; padding: 0px 4px; border-radius: 8px;
+  font-size: .6rem; font-weight: 600; margin-left: 3px;
+}
+.badge.rp { background: #d1fae5; color: var(--color-rp); }
+.badge.bad { background: #fee2e2; color: var(--color-bad); }

@@ -103,20 +103,29 @@ function renderMergedTable() {
       rows.push({ ...it, kind: k });
     }
   }
+  rows.sort((a, b) => Math.abs(b.balance_krw) - Math.abs(a.balance_krw));
   const filtered = rows.filter(r =>
     (!filterKind || r.kind === filterKind)
     && (!filterReason || r.selection_reason === filterReason)
   );
   for (const r of filtered) {
     const tr = document.createElement("tr");
+    const badges = [];
+    if (r.is_related_party) badges.push(`<span class="badge rp">RP</span>`);
+    if (r.is_bad_debt) badges.push(`<span class="badge bad">BAD</span>`);
     tr.innerHTML = `
       <td><span class="kind-tag ${r.kind}">${r.kind}</span></td>
       <td>${r.party_id}</td>
-      <td>${r.name}</td>
+      <td>${r.name} ${badges.join(" ")}</td>
       <td class="num">${fmt(r.balance_krw)}</td>
       <td>${r.ccy}</td>
       <td><span class="reason-tag ${r.selection_reason}">${r.selection_reason}</span></td>
     `;
+    tbody.appendChild(tr);
+  }
+  if (!filtered.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="6" style="text-align:center;color:var(--color-muted);padding:2rem;">표본 없음 — ② 패널에서 설계 실행</td>`;
     tbody.appendChild(tr);
   }
 }
