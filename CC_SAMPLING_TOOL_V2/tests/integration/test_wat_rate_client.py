@@ -51,3 +51,20 @@ def test_lookup_caches_per_date():
         c.lookup("USD", date(2025, 12, 31))
         c.lookup("USD", date(2025, 12, 31))  # 캐시 적중
         assert mock_get.call_count == 1
+
+
+def test_lookup_ttl_expires():
+    """TTL 짧게 설정하면 캐시 만료 후 재호출."""
+    import time
+    from unittest.mock import patch, MagicMock
+    body = {"date": "2025-12-31", "rates": {"USD": 1300}}
+    mock_get = MagicMock()
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = body
+    with patch("src.infrastructure.fx.wat_rate_client.requests.get",
+               mock_get):
+        c = WatRateClient(base_url="http://localhost:9090", cache_ttl=0.1)
+        c.lookup("USD", date(2025, 12, 31))
+        time.sleep(0.2)
+        c.lookup("USD", date(2025, 12, 31))
+        assert mock_get.call_count == 2

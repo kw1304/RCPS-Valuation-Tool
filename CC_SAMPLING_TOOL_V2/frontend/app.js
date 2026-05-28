@@ -429,9 +429,23 @@ function downloadSendlistFromSide(ev) {
   window.location.href = `${API}/projects/${currentProjectId}/sendlist`;
 }
 
+async function deleteCurrentProject() {
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  if (!confirm("프로젝트 + 모든 데이터를 삭제합니다. 진행?")) return;
+  try {
+    await api("DELETE", `/projects/${currentProjectId}`);
+    currentProjectId = null;
+    currentState = null;
+    await loadProjectList();
+  } catch (e) {
+    alert("삭제 실패: " + e.message);
+  }
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
+  $("#deleteProjectBtn").addEventListener("click", deleteCurrentProject);
   $("#filterKind").addEventListener("change", renderMergedTable);
   $("#filterReason").addEventListener("change", renderMergedTable);
   $("#ingestBtn").addEventListener("click", runIngest);

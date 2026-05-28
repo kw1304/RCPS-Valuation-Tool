@@ -47,3 +47,13 @@ def get_project(pid: int):
         return jsonify(_proj_to_json(repo.get(pid)))
     except KeyError:
         return jsonify({"error": f"project {pid} not found"}), 404
+
+
+@bp.delete("/<int:pid>")
+def delete_project(pid: int):
+    repo = ProjectRepo(g.session)
+    try:
+        repo.delete(pid)
+    except KeyError:
+        return jsonify({"error": f"project {pid} not found"}), 404
+    return jsonify({"status": "deleted", "id": pid})

@@ -14,19 +14,24 @@ class RateLookupError(Exception):
 
 class WatRateClient:
     def __init__(self, base_url: str = "http://localhost:9090",
-                 timeout: float = 5.0):
+                 timeout: float = 5.0, cache_ttl: float = 3600.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._cache: dict[str, dict[str, float]] = {}
+        self.cache_ttl = cache_ttl
+        self._cache: dict[str, tuple[float, dict[str, float]]] = {}
 
     def lookup(self, ccy: str, period_end: date) -> float:
         if ccy.upper() == "KRW":
             return 1.0
         key = period_end.isoformat()
-        rates = self._cache.get(key)
-        if rates is None:
+        import time
+        entry = self._cache.get(key)
+        now = time.time()
+        if entry is None or (now - entry[0]) > self.cache_ttl:
             rates = self._fetch(period_end)
-            self._cache[key] = rates
+            self._cache[key] = (now, rates)
+        else:
+            rates = entry[1]
         if ccy.upper() not in rates:
             raise RateLookupError(
                 f"ccy {ccy} not available at {key}; available: {sorted(rates)}"

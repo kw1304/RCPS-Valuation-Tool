@@ -48,6 +48,30 @@ class ProjectRepo:
             for r in rows
         ]
 
+    def delete(self, project_id: int) -> None:
+        """프로젝트 + 관련 모든 row 삭제. 존재하지 않으면 KeyError."""
+        from src.infrastructure.db.models import (
+            ProjectRow, AccountRow, SampleRow,
+            ConfirmationRow, AlternativeProcedureRow, ProjectionRow,
+        )
+        row = self.s.get(ProjectRow, project_id)
+        if row is None:
+            raise KeyError(f"project {project_id} not found")
+        for M in (ProjectionRow, AlternativeProcedureRow, ConfirmationRow,
+                  SampleRow, AccountRow):
+            (self.s.query(M)
+             .filter(M.project_id == project_id)
+             .delete(synchronize_session=False))
+        try:
+            from src.infrastructure.db.models import SampleDesignRow
+            (self.s.query(SampleDesignRow)
+             .filter(SampleDesignRow.project_id == project_id)
+             .delete(synchronize_session=False))
+        except ImportError:
+            pass
+        self.s.delete(row)
+        self.s.commit()
+
 
 class AccountRepo:
     def __init__(self, session):
