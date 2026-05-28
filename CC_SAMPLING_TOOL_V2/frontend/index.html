@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>채권채무조회서 샘플링·회수 툴 V2</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="wat-header">
+  <h1>채권채무조회서 샘플링·회수 툴 V2</h1>
+  <div class="header-meta">
+    <select id="projectSelect"></select>
+    <button id="newProjectBtn">+ 새 프로젝트</button>
+  </div>
+</header>
+
+<div class="dashboard">
+
+  <aside class="side-panel">
+    <section class="progress">
+      <h3>진행도</h3>
+      <ul id="progressList">
+        <li data-step="ingest">자료 수집</li>
+        <li data-step="design-ar">AR 표본</li>
+        <li data-step="design-ap">AP 표본</li>
+        <li data-step="send">발송 (Phase 3)</li>
+        <li data-step="receive">회신 (Phase 3)</li>
+        <li data-step="projection">Projection (Phase 3)</li>
+      </ul>
+    </section>
+
+    <section class="metrics">
+      <h3>핵심지표</h3>
+      <div class="metric">
+        <span class="label">모집단</span>
+        <span class="value" id="populationTotal">—</span>
+      </div>
+      <div class="metric">
+        <span class="label">표본</span>
+        <span class="value" id="sampleTotal">—</span>
+      </div>
+      <div class="metric">
+        <span class="label">커버리지</span>
+        <span class="value" id="coveragePct">—</span>
+      </div>
+    </section>
+
+    <section class="downloads">
+      <h3>다운로드</h3>
+      <button disabled>C100 (Phase 4)</button>
+      <button disabled>AA100 (Phase 4)</button>
+    </section>
+  </aside>
+
+  <main class="main-area">
+
+    <section id="dropzone">
+      <h2>① 자료 업로드</h2>
+      <div class="drops">
+        <label>거래처원장<input type="file" id="file-ledger" accept=".xlsx"></label>
+        <label>재무제표<input type="file" id="file-fs" accept=".xlsx"></label>
+        <label>특관자<input type="file" id="file-rp" accept=".xlsx"></label>
+        <label>충당금명세<input type="file" id="file-allowance" accept=".xlsx"></label>
+      </div>
+      <button id="ingestBtn">업로드·자동감지 실행</button>
+      <div id="ingestResult"></div>
+    </section>
+
+    <section id="designPanel">
+      <h2>② 표본설계</h2>
+      <div class="twin">
+        <div class="kind-col" data-kind="AR">
+          <h3>채권 (AR)</h3>
+          <label>신뢰수준 <select class="conf"><option value="0.95">95%</option><option value="0.90">90%</option><option value="0.99">99%</option></select></label>
+          <label>Expected MS% <input type="number" class="ems" step="0.05" value="0" min="0" max="0.5"></label>
+          <label>Key threshold <input type="number" class="keyth" value="0" min="0"></label>
+          <label>n_strata <input type="number" class="nstrata" value="4" min="1" max="10"></label>
+          <button class="runDesign">설계 실행</button>
+          <div class="designResult"></div>
+        </div>
+        <div class="kind-col" data-kind="AP">
+          <h3>채무 (AP)</h3>
+          <label>신뢰수준 <select class="conf"><option value="0.95">95%</option><option value="0.90">90%</option><option value="0.99">99%</option></select></label>
+          <label>Expected MS% <input type="number" class="ems" step="0.05" value="0" min="0" max="0.5"></label>
+          <label>Key threshold <input type="number" class="keyth" value="0" min="0"></label>
+          <label>n_strata <input type="number" class="nstrata" value="4" min="1" max="10"></label>
+          <button class="runDesign">설계 실행</button>
+          <div class="designResult"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sampleTable">
+      <h2>③ 표본 합산 (AR + AP)</h2>
+      <div class="filters">
+        <label>종류 <select id="filterKind"><option value="">전체</option><option value="AR">AR</option><option value="AP">AP</option></select></label>
+        <label>선정사유 <select id="filterReason"><option value="">전체</option><option value="FORCED_RP">RP</option><option value="FORCED_KEY">KEY</option><option value="REP">REP</option></select></label>
+      </div>
+      <table id="mergedTable">
+        <thead>
+          <tr>
+            <th>종류</th><th>거래처코드</th><th>거래처명</th>
+            <th>잔액(KRW)</th><th>통화</th><th>선정사유</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+  </main>
+
+</div>
+
+<footer class="wat-footer">© CC_SAMPLING_TOOL V2 · K-IFRS 1109 · ISA 530/505</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
