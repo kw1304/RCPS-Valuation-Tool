@@ -1,0 +1,81 @@
+# CC_SAMPLING_TOOL_V2 시트·컬럼 alias 기본값
+# 사용자가 configs/schema_mapping/<project>.yaml로 override 가능
+
+sheets:
+  AR:
+    - 채권원장
+    - 매출처원장
+    - 매출원장
+    - AR
+    - 매출채권
+    - 외상매출금
+    - Trade Receivables
+  AP:
+    - 채무원장
+    - 매입처원장
+    - 매입원장
+    - AP
+    - 매입채무
+    - 외상매입금
+    - Trade Payables
+  FS:
+    - 재무제표
+    - 재무상태표
+    - BS
+    - Balance Sheet
+    - FS_M
+  RP:
+    - 특관자
+    - 특수관계자
+    - 특관자리스트
+    - 관계회사
+    - Related Parties
+  ALLOWANCE:
+    - 대손충당금
+    - 충당금명세
+    - 대손충당금명세서
+    - Allowance
+
+columns:
+  party_id:
+    - 거래처코드
+    - 거래처번호
+    - 거래처ID
+    - party_id
+    - code
+  name:
+    - 거래처명
+    - 거래처
+    - 상호
+    - name
+    - 회사명
+  gl_account:
+    - 계정과목
+    - 계정코드
+    - 계정
+    - account
+    - GL
+  balance:
+    - 기말잔액
+    - 잔액
+    - balance
+    - 당기말잔액
+    - 기말금액
+  ccy:
+    - 통화
+    - 통화코드
+    - ccy
+    - currency
+  fx_rate:
+    - 환율
+    - rate
+    - exchange_rate
+  aging:
+    - 연령
+    - aging
+    - 연령구분
+  allowance:
+    - 충당금
+    - 대손충당금
+    - allowance
+    - allowance_amt
