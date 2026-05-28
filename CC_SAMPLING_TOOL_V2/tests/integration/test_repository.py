@@ -98,3 +98,38 @@ def test_sample_replace_on_redesign(session):
     rows = sample_repo.list_by_project_kind(pid, Kind.AR)
     assert len(rows) == 1
     assert rows[0][1] == SelectionReason.FORCED_KEY
+
+
+def test_project_get_missing_raises(session):
+    repo = ProjectRepo(session)
+    with pytest.raises(KeyError):
+        repo.get(99999)
+
+
+def test_sample_persist_unknown_party_raises(session):
+    proj_repo = ProjectRepo(session)
+    pid = proj_repo.create(client="X", period_end=date(2025, 12, 31),
+                           base_ccy="KRW", materiality=1, tolerable=1)
+    # acc은 DB에 없음
+    ghost = Account(party_id="GHOST", name="g", gl_account="x",
+                    balance_orig=100, ccy="KRW", fx_rate=1.0, balance_krw=100)
+    sample_repo = SampleRepo(session)
+    with pytest.raises(ValueError):
+        sample_repo.persist(pid, Kind.AR, [(ghost, SelectionReason.FORCED_RP)])
+
+
+def test_account_replace_all(session):
+    proj_repo = ProjectRepo(session)
+    pid = proj_repo.create(client="X", period_end=date(2025, 12, 31),
+                           base_ccy="KRW", materiality=1, tolerable=1)
+    acc_repo = AccountRepo(session)
+    accs1 = [Account(party_id=f"P{i}", name=f"갑{i}", gl_account="x",
+                     balance_orig=100, ccy="KRW", fx_rate=1.0, balance_krw=100)
+             for i in range(3)]
+    acc_repo.bulk_insert(pid, Kind.AR, accs1)
+    accs2 = [Account(party_id="Q1", name="을", gl_account="x",
+                     balance_orig=200, ccy="KRW", fx_rate=1.0, balance_krw=200)]
+    acc_repo.replace_all(pid, Kind.AR, accs2)
+    fetched = acc_repo.list_by_project_kind(pid, Kind.AR)
+    assert len(fetched) == 1
+    assert fetched[0].party_id == "Q1"

@@ -78,13 +78,26 @@ class AccountRepo:
 
     def replace_all(self, project_id: int, kind: Kind,
                     accounts: list[Account]) -> None:
-        """재ingest 시: 기존 동일 (project, kind) 모두 삭제 후 insert."""
+        """재ingest 시: 기존 동일 (project, kind) 모두 삭제 후 insert (atomic)."""
         (self.s.query(AccountRow)
          .filter(AccountRow.project_id == project_id,
                  AccountRow.kind == kind.value)
          .delete(synchronize_session=False))
+        rows = [
+            AccountRow(
+                project_id=project_id, kind=kind.value,
+                party_id=a.party_id, name=a.name, gl_account=a.gl_account,
+                balance_orig=a.balance_orig, ccy=a.ccy, fx_rate=a.fx_rate,
+                balance_krw=a.balance_krw,
+                is_related_party=a.is_related_party,
+                is_bad_debt=a.is_bad_debt, allowance_amt=a.allowance_amt,
+                aging_bucket=a.aging_bucket,
+                src_sheet=a.src_sheet, src_row=a.src_row,
+            )
+            for a in accounts
+        ]
+        self.s.add_all(rows)
         self.s.commit()
-        self.bulk_insert(project_id, kind, accounts)
 
     @staticmethod
     def _to_domain(r: AccountRow) -> Account:
@@ -105,13 +118,7 @@ class SampleRepo:
 
     def persist(self, project_id: int, kind: Kind,
                 selections: list[tuple[Account, SelectionReason]]) -> None:
-        """기존 (project, kind) sample 삭제 후 신규 insert."""
-        (self.s.query(SampleRow)
-         .filter(SampleRow.project_id == project_id,
-                 SampleRow.kind == kind.value)
-         .delete(synchronize_session=False))
-        self.s.commit()
-
+        """기존 (project, kind) sample 삭제 후 신규 insert (atomic)."""
         account_rows = (self.s.query(AccountRow)
                         .filter(AccountRow.project_id == project_id,
                                 AccountRow.kind == kind.value)
@@ -129,6 +136,11 @@ class SampleRepo:
                 project_id=project_id, account_id=aid,
                 kind=kind.value, selection_reason=reason.value,
             ))
+        # delete-then-insert in single transaction
+        (self.s.query(SampleRow)
+         .filter(SampleRow.project_id == project_id,
+                 SampleRow.kind == kind.value)
+         .delete(synchronize_session=False))
         self.s.add_all(rows)
         self.s.commit()
 
