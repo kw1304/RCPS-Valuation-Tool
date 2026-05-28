@@ -46,4 +46,7 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
     from api.routes.state import bp as state_bp
     app.register_blueprint(state_bp)
 
+    from api.routes.confirmations import bp as confirmations_bp
+    app.register_blueprint(confirmations_bp)
+
     return app
