@@ -355,6 +355,18 @@ function renderProjection() {
   `;
 }
 
+// ---- ⑦ Downloads ----
+function downloadWorkpaper(template) {
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  window.location.href = `${API}/projects/${currentProjectId}/workpaper/${template}`;
+}
+
+function downloadSendlistFromSide(ev) {
+  ev.preventDefault();
+  if (!currentProjectId) { alert("프로젝트 선택"); return; }
+  window.location.href = `${API}/projects/${currentProjectId}/sendlist`;
+}
+
 async function init() {
   $("#projectSelect").addEventListener("change", e => selectProject(e.target.value));
   $("#newProjectBtn").addEventListener("click", newProject);
@@ -366,6 +378,9 @@ async function init() {
   $("#uploadConfBtn").addEventListener("click", uploadConfirmations);
   $("#altRegisterBtn").addEventListener("click", registerAlternative);
   $$(".runProjection").forEach(b => b.addEventListener("click", runProjection));
+  $("#dlC100Btn").addEventListener("click", () => downloadWorkpaper("c100"));
+  $("#dlAA100Btn").addEventListener("click", () => downloadWorkpaper("aa100"));
+  $("#dlSendlistBtn").addEventListener("click", downloadSendlistFromSide);
   await loadProjectList();
 }
 
