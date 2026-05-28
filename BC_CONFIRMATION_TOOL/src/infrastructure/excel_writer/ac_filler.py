@@ -23,12 +23,12 @@ SHEET_CONFIG = {
         "C": "bc_no", "D": "instrument", "E": "contract_date",
         "F": "buy_ccy", "G": "buy_amt", "H": "sell_ccy", "I": "sell_amt",
     }},
-    "AC4": {"sheet_name": "AC4. 보증약정", "start_row": 13, "cols": {
+    "AC4": {"sheet_name": "AC4. 지급보증", "start_row": 13, "cols": {
         "C": "bc_no", "D": "bank", "E": "guarantee_type",
         "F": "limit_ccy", "G": "limit_amt", "H": "balance_ccy", "I": "balance",
         "J": "maturity",
     }},
-    "AC5": {"sheet_name": "AC5. 담보금융자산", "start_row": 12, "cols": {
+    "AC5": {"sheet_name": "AC5. 담보제공자산", "start_row": 12, "cols": {
         "C": "bc_no", "D": "bank", "E": "collateral_type",
         "F": "creditor", "G": "issuer", "H": "book_amount", "I": "appraised_amount",
         "J": "priority",
@@ -36,11 +36,11 @@ SHEET_CONFIG = {
     "AC6": {"sheet_name": "AC6. 어음.수표", "start_row": 13, "cols": {
         "C": "bc_no", "D": "bank", "E": "kind", "G": "count",
     }},
-    "AC7": {"sheet_name": "AC7. 보험상품", "start_row": 12, "cols": {
+    "AC7": {"sheet_name": "AC7. 보험가입내역", "start_row": 12, "cols": {
         "C": "bc_no", "D": "bank", "E": "product", "F": "policy_no",
         "G": "coverage_amount", "H": "premium", "I": "start_date", "J": "end_date",
     }},
-    "AC8": {"sheet_name": "AC8. 기타거래", "start_row": 12, "cols": {
+    "AC8": {"sheet_name": "AC8. 리스거래", "start_row": 12, "cols": {
         "C": "bc_no", "D": "bank", "E": "asset_type", "F": "account_no",
         "G": "deal_date", "H": "deal_type", "I": "outstanding", "J": "period",
     }},
@@ -53,9 +53,17 @@ class ACFiller:
 
     def fill_section(self, ac: str, records: list):
         cfg = SHEET_CONFIG[ac]
-        if cfg["sheet_name"] not in self.wb.sheetnames:
+        # exact match first, prefix fallback (sheet 이름이 미세하게 다를 수 있음)
+        ws = None
+        if cfg["sheet_name"] in self.wb.sheetnames:
+            ws = self.wb[cfg["sheet_name"]]
+        else:
+            prefix = cfg["sheet_name"].split(".")[0] + "."
+            for name in self.wb.sheetnames:
+                if name.startswith(prefix):
+                    ws = self.wb[name]; break
+        if ws is None:
             return
-        ws = self.wb[cfg["sheet_name"]]
         start = cfg["start_row"]
         for idx, rec in enumerate(records):
             row = start + idx

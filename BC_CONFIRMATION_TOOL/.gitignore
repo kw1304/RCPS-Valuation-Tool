@@ -7,3 +7,4 @@ OUTPUT/
 configs/companies/
 _*.xlsx
 _*.log
+*.egg-info/

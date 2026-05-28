@@ -39,6 +39,12 @@ def export_4150(session: Session, project_id: int) -> Path:
     shutil.copy(TEMPLATE, out_path)
     filler = ACFiller(out_path)
 
+    # Stamp project info (회사명·기준일) — propagates via formulas to AC1~AC10
+    _stamp_project_info(filler.wb, project.name, project.fiscal_date)
+
+    # Clear V1 example data rows (예: V1엔 코스맥스비티아이 전기 데이터가 채워져 있음)
+    _clear_data_rows(filler.wb)
+
     # Get counterparties
     cps = list(session.exec(
         select(Counterparty).where(Counterparty.project_id == project_id)
@@ -117,3 +123,60 @@ def _fill_ac0(wb, cps: list[Counterparty]):
         _safe_write(sheet, f"G{r}", "Y" if cp.union_listed else "N")
         _safe_write(sheet, f"H{r}", ("담보 Y/" if cp.collateral_listed else "담보 N/") + ("보증 Y" if cp.guarantee_listed else "보증 N"))
         _safe_write(sheet, f"I{r}", "✓" if cp.response_arrived else "")
+
+
+def _stamp_project_info(wb, company_name: str, fiscal_date: str):
+    """Stamp 회사명·기준일 onto each AC sheet.
+    AC control sheet의 A1·A3에 박으면 AC1~AC10은 formula로 자동 참조."""
+    # 회사명: 보통 'A1' 위치. AC1~AC10은 formula로 control sheet를 참조함.
+    for sheet_name in wb.sheetnames:
+        if sheet_name.startswith("AC1~AC8"):
+            continue  # divider sheet
+        ws = wb[sheet_name]
+        # A1: 회사명 (control sheet에서만 직접 stamp; 나머지는 formula 유지)
+        if "control sheet" in sheet_name.lower() or sheet_name.startswith("AC0."):
+            _safe_write(ws, "A1", f"{company_name} 주식회사")
+        # A3: 기준일
+        _safe_write(ws, "A3", fiscal_date)
+
+
+# AC1~AC8 data row 영역 (start_row, footer 직전 행) — V1 예시 데이터 clear용
+_DATA_REGION = {
+    "AC0.": (12, 110),   # 전기 list + 검토 row
+    "AC1.": (11, 128),   # 금융자산 list
+    "AC2.": (12, 45),    # 차입금 list
+    "AC3.": (12, 14),    # 파생상품 list (적게)
+    "AC4.": (13, 65),    # 지급보증
+    "AC5.": (12, 60),    # 담보제공자산
+    "AC6.": (13, 43),    # 어음·수표
+    "AC7.": (12, 45),    # 보험
+    "AC8.": (12, 21),    # 리스
+}
+
+# 각 시트별 clear 대상 column 범위 (헤더 column 보존)
+_DATA_COLS = "CDEFGHIJKLMNOPQ"  # AC sheet들 데이터 column 일반
+
+
+def _clear_data_rows(wb):
+    """V1 template에 들어있는 전년도 예시 데이터를 비움.
+    헤더·서식·병합·footer는 보존."""
+    for prefix, (start, end) in _DATA_REGION.items():
+        sheet_name = next((s for s in wb.sheetnames if s.startswith(prefix)), None)
+        if sheet_name is None:
+            continue
+        ws = wb[sheet_name]
+        for r in range(start, min(end, ws.max_row) + 1):
+            for col_letter in _DATA_COLS:
+                try:
+                    cell = ws[f"{col_letter}{r}"]
+                    if isinstance(cell, MergedCell):
+                        continue
+                    # 셀에 값 있으면만 clear (footer 영역 보호용 휴리스틱: 굵은 글씨·합계 텍스트는 건너뜀)
+                    val = cell.value
+                    if val is None:
+                        continue
+                    if isinstance(val, str) and any(k in val for k in ("합계","계","소계","footer","Total","total")):
+                        continue
+                    cell.value = None
+                except Exception:
+                    continue
