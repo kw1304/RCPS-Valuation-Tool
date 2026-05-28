@@ -55,4 +55,7 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
     from api.routes.projection import bp as projection_bp
     app.register_blueprint(projection_bp)
 
+    from api.routes.workpaper import bp as workpaper_bp
+    app.register_blueprint(workpaper_bp)
+
     return app
