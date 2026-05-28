@@ -172,6 +172,7 @@ async function runDesign(ev) {
   if (!currentProjectId) { alert("프로젝트 선택"); return; }
   const col = ev.target.closest(".kind-col");
   const kind = col.dataset.kind;
+  const noverVal = col.querySelector(".nover").value;
   const params = {
     kind,
     confidence: parseFloat(col.querySelector(".conf").value),
@@ -179,6 +180,7 @@ async function runDesign(ev) {
     key_threshold: parseFloat(col.querySelector(".keyth").value || "0"),
     n_strata: parseInt(col.querySelector(".nstrata").value, 10),
     seed: Math.floor(Math.random() * 1_000_000),
+    n_override: noverVal ? parseInt(noverVal, 10) : null,
   };
   const resultDiv = col.querySelector(".designResult");
   resultDiv.textContent = "설계 중...";

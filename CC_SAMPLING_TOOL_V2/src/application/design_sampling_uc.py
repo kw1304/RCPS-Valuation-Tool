@@ -25,6 +25,7 @@ class DesignParams:
     key_threshold: float
     n_strata: int = 4
     seed: Optional[int] = None
+    n_override: Optional[int] = None  # 수동 표본수. None이면 자동산정
 
 
 @dataclass
@@ -68,12 +69,16 @@ class DesignSamplingUC:
 
         population_bv = sum(abs(a.balance_krw) for a in accounts)
         expected_ms = project.tolerable * params.expected_ms_pct
-        n_total = sample_size_mus(
-            book_value=population_bv,
-            confidence=params.confidence,
-            tolerable=project.tolerable,
-            expected_ms=expected_ms,
-        )
+        if params.n_override is not None:
+            # 사용자 수동 입력 — 강제포함 보장 + 그 만큼 채우기
+            n_total = max(len(forced), params.n_override)
+        else:
+            n_total = sample_size_mus(
+                book_value=population_bv,
+                confidence=params.confidence,
+                tolerable=project.tolerable,
+                expected_ms=expected_ms,
+            )
 
         n_rep_target = max(0, n_total - len(forced))
 

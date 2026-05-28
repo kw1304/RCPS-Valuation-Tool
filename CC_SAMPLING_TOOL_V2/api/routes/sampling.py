@@ -17,12 +17,18 @@ def design_sampling(pid: int):
         kind = Kind(data["kind"])
     except (KeyError, ValueError):
         return jsonify({"error": "kind must be 'AR' or 'AP'"}), 400
+    n_override_raw = data.get("n_override")
+    n_override = (
+        int(n_override_raw)
+        if n_override_raw not in (None, "", 0) else None
+    )
     params = DesignParams(
         confidence=float(data.get("confidence", 0.95)),
         expected_ms_pct=float(data.get("expected_ms_pct", 0.0)),
         key_threshold=float(data.get("key_threshold", 0)),
         n_strata=int(data.get("n_strata", 4)),
         seed=data.get("seed"),
+        n_override=n_override,
     )
     uc = DesignSamplingUC(g.session)
     try:
