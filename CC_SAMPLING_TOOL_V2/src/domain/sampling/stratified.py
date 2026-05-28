@@ -67,10 +67,20 @@ def stratified_pps(
     strata: list[Strata],
     seed: Optional[int] = None,
 ) -> list[Account]:
-    """각 strata 내 MUS PPS 독립 수행 후 union."""
+    """각 strata 내 MUS PPS 독립 수행 후 union.
+
+    각 account는 최초 매칭되는 strata 1곳에만 할당 (경계 중복 방지).
+    """
+    assigned: set[int] = set()
     sample: list[Account] = []
     for i, st in enumerate(strata):
-        bucket = [a for a in accounts if st.contains(abs(a.balance_krw))]
+        bucket: list[Account] = []
+        for a in accounts:
+            if id(a) in assigned:
+                continue
+            if st.contains(abs(a.balance_krw)):
+                bucket.append(a)
+                assigned.add(id(a))
         sub_seed = None if seed is None else seed + i
         sample.extend(pps_select(bucket, st.n_required, seed=sub_seed))
     return sample
