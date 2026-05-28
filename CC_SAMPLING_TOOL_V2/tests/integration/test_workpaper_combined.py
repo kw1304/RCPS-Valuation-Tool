@@ -54,7 +54,7 @@ def _full_state():
     }
 
 
-def test_combined_6_sheets():
+def test_combined_7_sheets():
     blob = build_workpaper("cc_combined", _full_state())
     wb = openpyxl.load_workbook(io.BytesIO(blob))
     assert "샘플링 요약" in wb.sheetnames
@@ -62,7 +62,26 @@ def test_combined_6_sheets():
     assert "C100-1 표본규모 결정" in wb.sheetnames
     assert "C100-2 Key item 추출" in wb.sheetnames
     assert "C100-3 표본 추출 MUS" in wb.sheetnames
+    assert "C100-4 조회서 회수 관리" in wb.sheetnames
     assert "대체적 절차" in wb.sheetnames
+
+
+def test_recovery_management_shows_status():
+    """회수 관리 시트가 회신·미회신 모두 표시."""
+    blob = build_workpaper("cc_combined", _full_state())
+    wb = openpyxl.load_workbook(io.BytesIO(blob))
+    ws = wb["C100-4 조회서 회수 관리"]
+    flat = [str(c.value) for row in ws.iter_rows() for c in row if c.value is not None]
+    # 요약 라인
+    assert any("회수 현황 요약" in v for v in flat)
+    assert any("회신율" in v for v in flat)
+    # MATCH 회신 (state에 AR000 MATCH)
+    assert any("MATCH" in v for v in flat)
+    # DISCREPANCY (state에 AP000 DISCREPANCY)
+    assert any("DISCREPANCY" in v for v in flat)
+    # 미회신 (state samples에 있지만 confirmations에 없는 거래처: AR050)
+    assert any("AR050" in v for v in flat)
+    assert any("미회신" in v for v in flat) or any("발송됨" in v for v in flat)
 
 
 def test_summary_contains_both_kinds():

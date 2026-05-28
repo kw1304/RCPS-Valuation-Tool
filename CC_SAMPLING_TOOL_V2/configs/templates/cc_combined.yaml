@@ -39,6 +39,9 @@ sheets:
   - name: "C100-3 표본 추출 MUS"
     title: "C100-3 Representative sample 추출 (MUS 방법)"
     section: mus_sample
+  - name: "C100-4 조회서 회수 관리"
+    title: "C100-4 조회서 회수 관리 — 발송·회신·차이 판정"
+    section: recovery_management
   - name: "대체적 절차"
     title: "대체적 절차 — 미회신·차이 거래처 검증"
     section: alternative

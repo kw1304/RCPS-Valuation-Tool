@@ -100,6 +100,8 @@ def build_workpaper(template_name: str, state: dict) -> bytes:
                 row = _write_c100_2_keyitem(ws, state, row)
             elif section == "mus_sample":
                 row = _write_c100_3_mus(ws, state, row)
+            elif section == "recovery_management":
+                row = _write_recovery_management(ws, state, row)
             elif section == "alternative":
                 row = _write_alternative_combined(ws, state, row)
         else:
@@ -768,6 +770,109 @@ def _write_c100_3_mus(ws, state, row):
             if c_idx in (1, 5):
                 c.alignment = NUM_ALIGN
                 if c_idx == 5:
+                    c.number_format = "#,##0"
+            else:
+                c.alignment = TEXT_ALIGN
+        row += 1
+    return row
+
+
+def _write_recovery_management(ws, state, row):
+    """C100-4 조회서 회수 관리 — 표본 전체 회신 추적."""
+    # 요약 줄
+    ar_items = state.get("samples", {}).get("AR", {}).get("items", [])
+    ap_items = state.get("samples", {}).get("AP", {}).get("items", [])
+    ar_confs = state.get("confirmations", {}).get("AR", [])
+    ap_confs = state.get("confirmations", {}).get("AP", [])
+
+    # party_id → confirmation 매핑
+    conf_map_ar = {c.get("party_id"): c for c in ar_confs}
+    conf_map_ap = {c.get("party_id"): c for c in ap_confs}
+
+    # 요약
+    n_sent = len(ar_items) + len(ap_items)
+    n_recv_ar = sum(1 for c in ar_confs if c.get("verdict") is not None)
+    n_recv_ap = sum(1 for c in ap_confs if c.get("verdict") is not None)
+    n_recv = n_recv_ar + n_recv_ap
+    n_match = sum(1 for c in ar_confs + ap_confs if c.get("verdict") == "MATCH")
+    n_disc = sum(1 for c in ar_confs + ap_confs if c.get("verdict") == "DISCREPANCY")
+    n_recon = sum(1 for c in ar_confs + ap_confs if c.get("verdict") == "RECONCILED")
+    recv_rate = n_recv / n_sent if n_sent else 0
+
+    ws.cell(row=row, column=1, value="회수 현황 요약").font = SUBTITLE_FONT
+    row += 1
+    summary = [
+        ("발송 표본 수", n_sent),
+        ("회신 수", n_recv),
+        ("회신율", f"{recv_rate*100:.1f}%"),
+        ("MATCH (일치)", n_match),
+        ("DISCREPANCY (차이)", n_disc),
+        ("RECONCILED (시점차이 등)", n_recon),
+        ("미회신", n_sent - n_recv),
+    ]
+    for label, val in summary:
+        c1 = ws.cell(row=row, column=1, value=label)
+        c1.font = BODY_FONT
+        c1.border = CELL_BORDER
+        c2 = ws.cell(row=row, column=2, value=val)
+        c2.font = BODY_FONT
+        c2.alignment = NUM_ALIGN if isinstance(val, (int, float)) else TEXT_ALIGN
+        if isinstance(val, (int, float)):
+            c2.number_format = "#,##0"
+        c2.border = CELL_BORDER
+        row += 1
+    row += 2
+
+    # 본 표
+    headers = ["No", "종류", "거래처코드", "거래처명",
+               "장부잔액(KRW)", "발송일", "상태", "회신금액",
+               "차이", "차이사유", "판정", "PDF경로"]
+    for c_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=c_idx, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = CELL_BORDER
+    row += 1
+
+    # 모든 표본 거래처 (회신 여부 무관)
+    all_samples = []
+    for it in ar_items:
+        conf = conf_map_ar.get(it.get("party_id"), {})
+        all_samples.append({**it, "kind_label": "채권", "kind": "AR", "conf": conf})
+    for it in ap_items:
+        conf = conf_map_ap.get(it.get("party_id"), {})
+        all_samples.append({**it, "kind_label": "채무", "kind": "AP", "conf": conf})
+
+    # 잔액 큰 순
+    all_samples.sort(key=lambda x: -abs(x.get("balance_krw", 0)))
+
+    for i, it in enumerate(all_samples, start=1):
+        conf = it.get("conf") or {}
+        status = conf.get("status") or "PENDING"
+        verdict = conf.get("verdict") or "—"
+        if not conf:
+            status = "발송됨"
+            verdict = "미회신"
+        cells = [
+            i, it["kind_label"],
+            it.get("party_id"), it.get("name"),
+            it.get("balance_krw", 0),
+            "",  # 발송일 (sent_at은 state.confirmations 별도 미노출 — 추후 보강)
+            status,
+            conf.get("confirmed"),
+            conf.get("diff"),
+            conf.get("diff_reason"),
+            verdict,
+            conf.get("pdf_path"),
+        ]
+        for c_idx, v in enumerate(cells, start=1):
+            c = ws.cell(row=row, column=c_idx, value=v)
+            c.font = BODY_FONT
+            c.border = CELL_BORDER
+            if c_idx in (1, 5, 8, 9):
+                c.alignment = NUM_ALIGN
+                if isinstance(v, (int, float)) and v is not None:
                     c.number_format = "#,##0"
             else:
                 c.alignment = TEXT_ALIGN
