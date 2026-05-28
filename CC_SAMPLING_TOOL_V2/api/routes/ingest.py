@@ -55,3 +55,9 @@ def ingest_files(pid: int):
         "fs_totals": result.fs_totals,
         "needs_mapping_confirmation": result.needs_mapping_confirmation,
     })
+
+
+@bp.post("/<int:pid>/ingest/confirm-mapping")
+def confirm_mapping(pid: int):
+    """사용자가 자동매핑 검토 후 명시적 confirm. 현재는 단순 ack."""
+    return jsonify({"status": "confirmed", "project_id": pid})

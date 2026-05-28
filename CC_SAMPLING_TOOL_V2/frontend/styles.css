@@ -173,3 +173,19 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .proj-card .value { font-weight: 600; font-variant-numeric: tabular-nums; }
 .proj-verdict.WITHIN_TOLERABLE { color: var(--color-rp); }
 .proj-verdict.EXCEED { color: var(--color-bad); font-weight: 700; }
+
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal[hidden] { display: none; }
+.modal-content {
+  background: white; padding: 1.5rem; border-radius: var(--radius);
+  max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.modal-content h3 { margin: 0 0 .75rem; color: var(--color-primary); }
+.modal-actions {
+  display: flex; gap: .5rem; justify-content: flex-end;
+  margin-top: 1rem;
+}

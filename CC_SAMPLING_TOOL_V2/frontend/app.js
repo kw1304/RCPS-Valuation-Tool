@@ -159,6 +159,9 @@ async function runIngest() {
       lines.push(`FS cross-check: AR=₩${fmt(result.fs_totals.AR)}, AP=₩${fmt(result.fs_totals.AP)}`);
     }
     $("#ingestResult").innerHTML = lines.map(l => `<div>${l}</div>`).join("");
+    if (result.needs_mapping_confirmation) {
+      await showMappingModal(result);
+    }
     await refreshState();
   } catch (e) {
     $("#ingestResult").textContent = "오류: " + e.message;
@@ -353,6 +356,30 @@ function renderProjection() {
     <div class="row"><span class="label">합산 판정</span><span class="value proj-verdict ${verdict}">${verdict}</span></div>
     ${verdict === "EXCEED" ? '<div style="color:var(--color-bad);font-size:.8rem;margin-top:.5rem;">⚠ tolerable 초과 — 추가절차 필요</div>' : ""}
   `;
+}
+
+function showMappingModal(result) {
+  return new Promise((resolve) => {
+    $("#mappingMessage").textContent =
+      "자동감지 신뢰도가 95% 미만입니다. 매핑 결과를 확인해주세요.";
+    $("#mappingDetails").innerHTML = `
+      <div>AR 자동감지: ${pct(result.confidence_ar)}</div>
+      <div>AP 자동감지: ${pct(result.confidence_ap)}</div>
+    `;
+    $("#mappingModal").hidden = false;
+    const close = (confirm) => {
+      $("#mappingModal").hidden = true;
+      if (confirm) {
+        api("POST",
+          `/projects/${currentProjectId}/ingest/confirm-mapping`, {})
+          .finally(() => resolve());
+      } else {
+        resolve();
+      }
+    };
+    $("#mappingConfirmBtn").onclick = () => close(true);
+    $("#mappingCancelBtn").onclick = () => close(false);
+  });
 }
 
 // ---- ⑦ Downloads ----
