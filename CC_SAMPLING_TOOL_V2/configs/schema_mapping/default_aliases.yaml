@@ -97,6 +97,7 @@ columns:
   debit:
     - 차변
     - debit
+    - 증가
     - 당기증가
     - 매출액
     - 매입액
@@ -104,6 +105,7 @@ columns:
   credit:
     - 대변
     - credit
+    - 감소
     - 당기감소
     - 회수액
     - 결제액
