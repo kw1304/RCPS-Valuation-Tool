@@ -1,5 +1,5 @@
 # _restart_server.ps1
-$port = 8765
+$port = 8766
 $proc = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($proc) {
     Stop-Process -Id $proc.OwningProcess -Force -ErrorAction SilentlyContinue

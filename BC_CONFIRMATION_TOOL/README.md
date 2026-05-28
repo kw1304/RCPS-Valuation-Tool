@@ -11,4 +11,4 @@
 uv sync
 python run_server.py
 ```
-포트 8765, http://127.0.0.1:8765
+포트 8766, http://127.0.0.1:8766
