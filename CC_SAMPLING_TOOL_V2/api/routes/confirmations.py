@@ -48,3 +48,50 @@ def upload_confirmation(pid: int):
         "verdict": result.verdict.value if result.verdict else None,
         "extraction_confidence": result.extraction_confidence,
     })
+
+
+@bp.post("/<int:pid>/confirmations/correct")
+def correct_confirmation(pid: int):
+    """수기 보정: party_id + confirmed_amt (+ diff_reason)."""
+    from src.domain.entities import Kind, Verdict, ResponseStatus
+    from src.domain.matching import judge_response
+    from src.infrastructure.db.repository import (
+        SampleRepo, ConfirmationRepo,
+    )
+    data = request.get_json(force=True)
+    try:
+        kind = Kind(data["kind"])
+    except (KeyError, ValueError):
+        return jsonify({"error": "kind must be AR or AP"}), 400
+
+    party_id = data.get("party_id")
+    confirmed = data.get("confirmed")
+    diff_reason = data.get("diff_reason") or None
+
+    sample = SampleRepo(g.session).list_by_project_kind(pid, kind)
+    target = next((a for a, _ in sample if a.party_id == party_id), None)
+    if target is None:
+        return jsonify({"error": f"party {party_id} not in sample"}), 404
+
+    if confirmed is None:
+        verdict = Verdict.NO_RESPONSE
+        status = ResponseStatus.NO_RESPONSE
+    else:
+        confirmed = float(confirmed)
+        verdict = judge_response(
+            expected=target.balance_krw, confirmed=confirmed,
+            diff_reason=diff_reason,
+        )
+        status = ResponseStatus.RECEIVED
+
+    ConfirmationRepo(g.session).upsert(
+        pid, kind, party_id=party_id,
+        expected=target.balance_krw, confirmed=confirmed,
+        verdict=verdict, diff_reason=diff_reason,
+        pdf_path=None, status=status,
+    )
+    return jsonify({
+        "verdict": verdict.value,
+        "confirmed": confirmed,
+        "status": status.value,
+    })

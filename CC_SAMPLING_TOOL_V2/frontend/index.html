@@ -202,6 +202,24 @@
   </div>
 </div>
 
+<div id="correctionModal" class="modal" hidden>
+  <div class="modal-content">
+    <h3>회신 수기 보정</h3>
+    <div id="correctionTarget"></div>
+    <label>회신 잔액 (비워두면 미회신)<input type="number" id="correctionAmt" style="width:200px;padding:.3rem;"></label>
+    <label>차이사유<select id="correctionReason">
+      <option value="">(없음 → DISCREPANCY/MATCH 자동판정)</option>
+      <option value="시점차이">시점차이</option>
+      <option value="미수령">미수령</option>
+      <option value="미발송">미발송</option>
+    </select></label>
+    <div class="modal-actions">
+      <button id="correctionCancelBtn">취소</button>
+      <button id="correctionSaveBtn">저장</button>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

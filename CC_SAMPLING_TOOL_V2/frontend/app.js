@@ -251,6 +251,9 @@ function renderConfirmationsTable() {
       <td><span class="verdict-tag ${r.verdict || "NO_RESPONSE"}">${r.verdict || "—"}</span></td>
       <td>${r.status}</td>
     `;
+    tr.style.cursor = "pointer";
+    tr.title = "클릭하여 수기 보정";
+    tr.onclick = () => openCorrectionModal(r);
     tbody.appendChild(tr);
   }
 }
@@ -358,6 +361,38 @@ function renderProjection() {
   `;
 }
 
+let _correctionContext = null;
+
+function openCorrectionModal(row) {
+  _correctionContext = { kind: row.kind, party_id: row.party_id,
+                          name: row.name };
+  $("#correctionTarget").textContent =
+    `${row.kind} · ${row.name} (${row.party_id}) · 장부잔액 ₩${fmt(row.expected)}`;
+  $("#correctionAmt").value = row.confirmed != null ? row.confirmed : "";
+  $("#correctionReason").value = row.diff_reason || "";
+  $("#correctionModal").hidden = false;
+}
+
+async function saveCorrection() {
+  if (!_correctionContext) return;
+  const amt = $("#correctionAmt").value;
+  const body = {
+    kind: _correctionContext.kind,
+    party_id: _correctionContext.party_id,
+    confirmed: amt === "" ? null : parseFloat(amt),
+    diff_reason: $("#correctionReason").value || null,
+  };
+  try {
+    await api("POST",
+      `/projects/${currentProjectId}/confirmations/correct`, body);
+    $("#correctionModal").hidden = true;
+    _correctionContext = null;
+    await refreshState();
+  } catch (e) {
+    alert("저장 실패: " + e.message);
+  }
+}
+
 function showMappingModal(result) {
   return new Promise((resolve) => {
     $("#mappingMessage").textContent =
@@ -408,6 +443,11 @@ async function init() {
   $("#dlC100Btn").addEventListener("click", () => downloadWorkpaper("c100"));
   $("#dlAA100Btn").addEventListener("click", () => downloadWorkpaper("aa100"));
   $("#dlSendlistBtn").addEventListener("click", downloadSendlistFromSide);
+  $("#correctionSaveBtn").addEventListener("click", saveCorrection);
+  $("#correctionCancelBtn").addEventListener("click", () => {
+    $("#correctionModal").hidden = true;
+    _correctionContext = null;
+  });
   await loadProjectList();
 }
 
