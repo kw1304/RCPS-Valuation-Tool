@@ -105,7 +105,10 @@ def load_account_sheet(
     for r_idx, row in enumerate(rows[1:], start=2):
         if all(v is None or (isinstance(v, str) and not v.strip()) for v in row):
             continue
-        if "party_id" not in mapping or "balance" not in mapping:
+        if "balance" not in mapping:
+            break
+        # name 또는 party_id 둘 중 하나는 있어야 매칭 가능
+        if "party_id" not in mapping and "name" not in mapping:
             break
 
         def cell(field, default=None):
@@ -116,15 +119,18 @@ def load_account_sheet(
             return default if v is None else v
 
         party_id = str(cell("party_id", "")).strip()
-        if not party_id:
+        name = str(cell("name", "")).strip()
+        # party_id 없으면 name으로 식별 (fuzzy 집계 단계에서 통합 매칭됨)
+        if not party_id and not name:
             continue
         # skip summary/subtotal rows
         if party_id in {"합계", "소계", "계", "Total", "total", "TOTAL", "Subtotal", "subtotal"}:
             continue
-
-        name = str(cell("name", "")).strip()
+        if name in {"합계", "소계", "계", "Total", "total", "TOTAL", "Subtotal", "subtotal"}:
+            continue
         gl_account = str(cell("gl_account", "")).strip()
         balance_orig = float(cell("balance", 0) or 0)
+        business_number = str(cell("business_number", "") or "").strip() or None
         ccy = str(cell("ccy", "KRW")).strip() or "KRW"
         fx_rate = float(cell("fx_rate", 1.0) or 1.0)
         balance_krw = balance_orig * fx_rate
@@ -139,6 +145,8 @@ def load_account_sheet(
             allowance_amt=float(cell("allowance", 0) or 0),
             src_sheet=sheet_name, src_row=r_idx,
             debit_amt=debit_amt, credit_amt=credit_amt,
+            business_number=business_number,
+            account_breakdowns={sheet_name: balance_krw},
         ))
 
     return accounts, {

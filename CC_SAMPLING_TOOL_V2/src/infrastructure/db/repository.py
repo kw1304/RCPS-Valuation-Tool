@@ -88,6 +88,9 @@ class AccountRepo:
                 is_related_party=a.is_related_party,
                 is_bad_debt=a.is_bad_debt, allowance_amt=a.allowance_amt,
                 debit_amt=a.debit_amt, credit_amt=a.credit_amt,
+                business_number=a.business_number,
+                account_breakdowns=json.dumps(a.account_breakdowns or {},
+                                              ensure_ascii=False),
                 aging_bucket=a.aging_bucket,
                 src_sheet=a.src_sheet, src_row=a.src_row,
             )
@@ -121,6 +124,9 @@ class AccountRepo:
                 is_related_party=a.is_related_party,
                 is_bad_debt=a.is_bad_debt, allowance_amt=a.allowance_amt,
                 debit_amt=a.debit_amt, credit_amt=a.credit_amt,
+                business_number=a.business_number,
+                account_breakdowns=json.dumps(a.account_breakdowns or {},
+                                              ensure_ascii=False),
                 aging_bucket=a.aging_bucket,
                 src_sheet=a.src_sheet, src_row=a.src_row,
             )
@@ -131,6 +137,12 @@ class AccountRepo:
 
     @staticmethod
     def _to_domain(r: AccountRow) -> Account:
+        breakdowns = {}
+        if getattr(r, 'account_breakdowns', None):
+            try:
+                breakdowns = json.loads(r.account_breakdowns)
+            except (ValueError, TypeError):
+                breakdowns = {}
         return Account(
             party_id=r.party_id, name=r.name, gl_account=r.gl_account,
             balance_orig=r.balance_orig, ccy=r.ccy, fx_rate=r.fx_rate,
@@ -139,6 +151,8 @@ class AccountRepo:
             is_bad_debt=r.is_bad_debt, allowance_amt=r.allowance_amt,
             debit_amt=getattr(r, 'debit_amt', 0.0) or 0.0,
             credit_amt=getattr(r, 'credit_amt', 0.0) or 0.0,
+            business_number=getattr(r, 'business_number', None),
+            account_breakdowns=breakdowns,
             aging_bucket=r.aging_bucket,
             src_sheet=r.src_sheet, src_row=r.src_row,
         )

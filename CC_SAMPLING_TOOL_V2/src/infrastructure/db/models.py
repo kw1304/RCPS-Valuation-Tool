@@ -51,6 +51,8 @@ class AccountRow(Base):
     allowance_amt = Column(Float, default=0.0, nullable=False)
     debit_amt = Column(Float, default=0.0, nullable=False)
     credit_amt = Column(Float, default=0.0, nullable=False)
+    business_number = Column(String(50))
+    account_breakdowns = Column(Text)  # JSON
     aging_bucket = Column(String(50))
     src_sheet = Column(String(200))
     src_row = Column(Integer)

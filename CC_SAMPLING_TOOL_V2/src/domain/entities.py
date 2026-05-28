@@ -64,6 +64,12 @@ class Account:
     src_row: Optional[int] = None
     debit_amt: float = 0.0   # 당기 증가 (AR=매출, AP=매입)
     credit_amt: float = 0.0  # 당기 감소
+    business_number: Optional[str] = None
+    account_breakdowns: dict = None  # {sheet_name: balance_krw}
+
+    def __post_init__(self):
+        if self.account_breakdowns is None:
+            self.account_breakdowns = {}
 
     @property
     def allowance_ratio(self) -> float:

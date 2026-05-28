@@ -52,6 +52,8 @@ def project_state(pid: int):
                     "selection_reason": r.value,
                     "is_related_party": a.is_related_party,
                     "is_bad_debt": a.is_bad_debt,
+                    "business_number": a.business_number,
+                    "account_breakdowns": a.account_breakdowns,
                 }
                 for a, r in sample
             ],

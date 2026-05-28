@@ -563,27 +563,16 @@ def _write_summary_7620(ws, state, row):
 
 
 def _write_c100_control(ws, state, row):
-    """C100 조회서 control sheet — 거래처별 행, 계정과목별 컬럼.
+    """C100 조회서 control sheet — 7620 양식: 거래처별 계정과목별 컬럼."""
+    # AR 계정 (왼쪽), AP 계정 (오른쪽)
+    AR_ACCOUNTS = ["외상매출금", "받을어음", "미수금", "선급금",
+                    "임차보증금", "장기대여금"]
+    AP_ACCOUNTS = ["외상매입금", "미지급금", "지급어음", "임대보증금"]
 
-    src_sheet에 적힌 계정과목명을 컬럼화. 같은 거래처 여러 계정에 잔액 있으면 분산.
-    """
-    # 모든 표본에서 src_sheet 추출하여 동적 계정 컬럼 결정
-    ar_items = state.get("samples", {}).get("AR", {}).get("items", [])
-    ap_items = state.get("samples", {}).get("AP", {}).get("items", [])
-
-    # ingest_uc 집계로 src_sheet에 "외상매출금+미수금" 형태 가능
-    # 각 거래처의 src_sheet 분리해서 계정명 추출
-    ar_accounts: set[str] = set()
-    ap_accounts: set[str] = set()
-    for it in ar_items:
-        srcs = (it.get("gl_account") or "").split("+")
-        # src_sheet이 더 정확하지만 state엔 없음 → gl_account 사용
-        # 사실 v2 state는 gl_account만 노출 — 계정과목명 분리는 한계
-        # 임시: 단일 컬럼 "채권 잔액"으로 통합 표기
-    # 단순화: AR 컬럼 1개 + AP 컬럼 1개로 표기 (계정과목별 분리는 ingest 시 src_sheet 보존이 필요한데 state가 노출 안 함)
-
-    headers = ["No", "거래처코드", "거래처명",
-               "채권 잔액(KRW)", "채무 잔액(KRW)", "합계(KRW)", "선정사유"]
+    headers = (["No", "거래처코드", "거래처명", "사업자번호"]
+               + AR_ACCOUNTS + ["채권 계"]
+               + AP_ACCOUNTS + ["채무 계"]
+               + ["채권+채무 합계", "선정사유"])
     for c_idx, h in enumerate(headers, start=1):
         cell = ws.cell(row=row, column=c_idx, value=h)
         cell.fill = HEADER_FILL
@@ -592,44 +581,65 @@ def _write_c100_control(ws, state, row):
         cell.border = CELL_BORDER
     row += 1
 
-    # 거래처별 합산 (같은 party_id 또는 name AR+AP)
+    # 거래처별 합산 (party_id 또는 name 기준)
+    ar_items = state.get("samples", {}).get("AR", {}).get("items", [])
+    ap_items = state.get("samples", {}).get("AP", {}).get("items", [])
+
     by_party: dict[str, dict] = {}
-    for it in ar_items:
+    for it in ar_items + ap_items:
         key = it.get("party_id") or it.get("name")
         ent = by_party.setdefault(key, {
-            "party_id": it.get("party_id"), "name": it.get("name"),
-            "ar": 0, "ap": 0,
+            "party_id": it.get("party_id"),
+            "name": it.get("name"),
+            "business_number": it.get("business_number"),
+            "ar_acc": {a: 0 for a in AR_ACCOUNTS},
+            "ap_acc": {a: 0 for a in AP_ACCOUNTS},
             "reasons": set(),
         })
-        ent["ar"] += abs(it.get("balance_krw", 0))
-        ent["reasons"].add(it.get("selection_reason", ""))
-    for it in ap_items:
-        # AR과 다른 party_id일 수 있음
-        key = it.get("party_id") or it.get("name")
-        # AR과 같은 키여도 별개 처리 (party_id 일치 시 합쳐짐)
-        ent = by_party.setdefault(key, {
-            "party_id": it.get("party_id"), "name": it.get("name"),
-            "ar": 0, "ap": 0,
-            "reasons": set(),
-        })
-        ent["ap"] += abs(it.get("balance_krw", 0))
+        bd = it.get("account_breakdowns", {}) or {}
+        for sheet_name, amt in bd.items():
+            if sheet_name in AR_ACCOUNTS:
+                ent["ar_acc"][sheet_name] += abs(amt)
+            elif sheet_name in AP_ACCOUNTS:
+                ent["ap_acc"][sheet_name] += abs(amt)
+            else:
+                # 매칭 안 되는 시트 — kind 기준으로 첫 컬럼에
+                # 일단 무시
+                pass
         ent["reasons"].add(it.get("selection_reason", ""))
 
     # 총합 큰 순 정렬
-    rows_sorted = sorted(by_party.values(), key=lambda e: -(e["ar"] + e["ap"]))
+    def _total(e):
+        return sum(e["ar_acc"].values()) + sum(e["ap_acc"].values())
+    rows_sorted = sorted(by_party.values(), key=lambda e: -_total(e))
+
     for i, ent in enumerate(rows_sorted, start=1):
-        total = ent["ar"] + ent["ap"]
-        reason = ",".join(sorted(ent["reasons"]))
-        cells = [i, ent["party_id"], ent["name"],
-                 ent["ar"] or "", ent["ap"] or "", total, reason]
+        ar_sum = sum(ent["ar_acc"].values())
+        ap_sum = sum(ent["ap_acc"].values())
+        total = ar_sum + ap_sum
+        cells = [i, ent.get("party_id"), ent.get("name"), ent.get("business_number")]
+        for acc in AR_ACCOUNTS:
+            v = ent["ar_acc"].get(acc, 0)
+            cells.append(v if v else "")
+        cells.append(ar_sum if ar_sum else "")
+        for acc in AP_ACCOUNTS:
+            v = ent["ap_acc"].get(acc, 0)
+            cells.append(v if v else "")
+        cells.append(ap_sum if ap_sum else "")
+        cells.append(total)
+        cells.append(",".join(sorted(ent["reasons"])))
+
         for c_idx, v in enumerate(cells, start=1):
             c = ws.cell(row=row, column=c_idx, value=v)
             c.font = BODY_FONT
             c.border = CELL_BORDER
-            if c_idx in (1, 4, 5, 6):
-                c.alignment = NUM_ALIGN
+            # 숫자 컬럼: No(1), 사업자번호 제외 계정과목 + 합계
+            if c_idx == 1 or (c_idx >= 5 and c_idx < len(cells)):
                 if isinstance(v, (int, float)) and v:
+                    c.alignment = NUM_ALIGN
                     c.number_format = "#,##0"
+                else:
+                    c.alignment = NUM_ALIGN
             else:
                 c.alignment = TEXT_ALIGN
         row += 1
