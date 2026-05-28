@@ -36,7 +36,11 @@ def reliability_factor(confidence: float) -> float:
 
 
 def expansion_factor(confidence: float, em_ratio: float) -> float:
-    """예상오차 비율 (EM/TM)에 따른 Expansion Factor (선형보간)."""
+    """예상오차 비율 (EM/TM)에 따른 Expansion Factor (선형보간).
+
+    em_ratio가 표 최대값(0.5)을 초과하면 마지막 점의 값으로 clamp 처리.
+    실무상 EM/TM > 0.5 면 표본설계 자체가 부적절하므로 호출 전 검증 권장.
+    """
     if confidence not in _EXPANSION_TABLE:
         raise ValueError(f"unsupported confidence {confidence!r}")
     if em_ratio < 0:
@@ -78,6 +82,12 @@ def sample_size_mus(
     Raises:
         ValueError: EM × ExpansionFactor ≥ TM 인 경우 (표본 불가능).
     """
+    if tolerable <= 0:
+        raise ValueError(f"tolerable must be > 0, got {tolerable}")
+    if book_value <= 0:
+        raise ValueError(f"book_value must be > 0, got {book_value}")
+    if expected_ms < 0:
+        raise ValueError(f"expected_ms must be >= 0, got {expected_ms}")
     rf = reliability_factor(confidence)
     em_ratio = expected_ms / tolerable if tolerable > 0 else 0
     ef = expansion_factor(confidence, em_ratio)
