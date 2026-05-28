@@ -35,11 +35,7 @@ def allocate_strata(
     raw = [bv / total_bv * total_n for bv in bvs]
     n_allocs = [int(r) for r in raw]
 
-    needs_min = [i for i, bv in enumerate(bvs) if bv > 0 and n_allocs[i] == 0]
-    while needs_min and sum(n_allocs) < total_n:
-        idx = needs_min.pop(0)
-        n_allocs[idx] = 1
-
+    # 잔여 budget을 BV 비례 (소수부) 큰 순으로 분배
     remainders = sorted(
         [(raw[i] - n_allocs[i], i) for i in range(len(strata))],
         reverse=True,
@@ -51,6 +47,25 @@ def allocate_strata(
         if bvs[i] > 0:
             n_allocs[i] += 1
             leftover -= 1
+
+    # 최소 1개 보장 — BV 큰 strata 우선
+    # budget 부족하면 n>1인 strata 중 BV 작은 쪽에서 1개 빼서 이전
+    needs_min = sorted(
+        [i for i, bv in enumerate(bvs) if bv > 0 and n_allocs[i] == 0],
+        key=lambda i: -bvs[i],
+    )
+    for idx in needs_min:
+        if sum(n_allocs) < total_n:
+            n_allocs[idx] = 1
+        else:
+            donors = sorted(
+                [j for j in range(len(strata))
+                 if j != idx and n_allocs[j] > 1 and bvs[j] > 0],
+                key=lambda j: bvs[j],
+            )
+            if donors:
+                n_allocs[donors[0]] -= 1
+                n_allocs[idx] = 1
 
     return [
         Strata(strata[i].low, strata[i].high, n_required=n_allocs[i])

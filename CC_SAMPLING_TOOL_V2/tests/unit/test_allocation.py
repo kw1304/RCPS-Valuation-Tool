@@ -49,3 +49,32 @@ def test_allocate_preserves_strata_bounds():
     strata = [Strata(0, 500, n_required=0)]
     result = allocate_strata(strata, accounts=accs, total_n=3)
     assert result[0].low == 0 and result[0].high == 500
+
+
+def test_allocate_min_one_prioritizes_high_bv():
+    # 3 strata BV [10, 100, 5000], total_n=3 (한정 budget)
+    # 우선순위: BV 큰 순으로 min-1 보장
+    accs = [_acc("s", 10), _acc("m", 100), _acc("l", 5000)]
+    strata = [
+        Strata(0, 50, n_required=0),
+        Strata(50, 500, n_required=0),
+        Strata(500, 10000, n_required=0),
+    ]
+    result = allocate_strata(strata, accounts=accs, total_n=3)
+    # 모든 strata에 BV 있고 total_n=3 → 모두 1+ 받아야
+    for s in result:
+        assert s.n_required >= 1
+    assert sum(s.n_required for s in result) == 3
+
+
+def test_allocate_sum_invariant():
+    # 다양한 시나리오에서 sum == total_n (BV > 0인 경우)
+    accs = [_acc(f"s{i}", 100 * (i + 1)) for i in range(20)]
+    strata = [
+        Strata(0, 500, n_required=0),
+        Strata(500, 1500, n_required=0),
+        Strata(1500, 5000, n_required=0),
+    ]
+    for n in [1, 5, 10, 25, 100]:
+        result = allocate_strata(strata, accounts=accs, total_n=n)
+        assert sum(s.n_required for s in result) == n
