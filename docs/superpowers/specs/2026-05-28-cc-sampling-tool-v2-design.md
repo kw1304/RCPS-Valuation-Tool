@@ -270,8 +270,13 @@ balance_krw = balance_orig × fx_rate(ccy, period_end)
 
 ```
 diff = confirmed_amt − expected_amt
-threshold = max(1000, abs(expected_amt) × 0.001)            # 음수잔액 (선수금·환불 등) 안전
-if |diff| ≤ threshold:
+if abs(expected_amt) < floor:
+    threshold = floor                                       # 소액잔액 noise 흡수
+else:
+    threshold = abs(expected_amt) × ratio_threshold         # 정상잔액 비율 임계
+if confirmed_amt is None:
+    verdict = "NO_RESPONSE"                                 # PDF 추출 실패·미회신
+elif |diff| ≤ threshold:
     verdict = "MATCH"
 elif diff_reason in ("시점차이","미수령","미발송"):
     verdict = "RECONCILED"  # 사용자 입력 필요
@@ -279,9 +284,11 @@ else:
     verdict = "DISCREPANCY"  # projection 입력
 ```
 
-- 임계값 ₩1,000 또는 |expected| × 0.1% — 사용자 변경 가능
+- 기본: floor = ₩1,000, ratio_threshold = 0.1% — 사용자 변경 가능
+- **소액(|expected| < ₩1,000)**: floor가 threshold → 반올림 노이즈 흡수
+- **일반(|expected| ≥ ₩1,000)**: ratio × |expected| → 잔액 비례 허용오차
 - 시점차이 = 결산기준일 후 회수·결제로 reconcile
-- `confirmed_amt is None` (PDF 추출 실패·미회신) → `verdict = "NO_RESPONSE"` (대체적 절차 후보)
+- floor 경계에서 threshold 불연속 (소액→일반 전환 시점) — 의도된 거동. 실무상 ₩1,000 부근 잔액은 드물어 영향 미미. Phase 2에서 UX 결정 시 재검토 가능
 
 ### 5.7 대체적 절차 coverage
 
