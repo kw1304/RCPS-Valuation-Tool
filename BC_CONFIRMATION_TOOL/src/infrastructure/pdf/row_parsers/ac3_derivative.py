@@ -17,20 +17,27 @@
 날짜는 정렬하지 않고 문서 순서대로 부여한다(BUG B: 최초=거래일, 다음=만기).
 금액은 절댓값 1000 미만(rate·소수 등)을 notional 사이징 전에 버린다(BUG C).
 
-=== buy/sell 매핑 가정 (중요) ===
-wrap 된 텍스트에서 매입/매도 통화·금액 컬럼을 신뢰성 있게 분리할 수 없다(컬럼 헤더가
-매입통화·매도통화·매입금액·매도금액을 명시하지만 데이터 줄에서 어느 금액이 어느 컬럼인지
-물리적 위치만으로는 모호). AUDIT 도구이므로 잘못된 매입/매도 분할을 지어내지 않는다.
-인코딩한 가정:
-  - buy_ccy = "KRW" (default), buy_amt = KRW측 큰 notional (예: 13,416,000,000)
-  - sell_ccy = 검출된 외화(예: USD), sell_amt = 작은 외화 notional (예: 10,000,000)
-이 가정으로 confident 매핑이 안 되면(금액 1개뿐 등) 가장 큰 금액을 buy_amt 에 넣고
-sell_amt=0 으로 둔다(잘못 분할하느니 미할당). contract_date=최초 날짜, maturity=다른 날짜.
+=== buy/sell 매핑 (통화 leg 기반) ===
+wrap 된 텍스트에서 컬럼 위치만으로는 매입/매도·평가금액을 구분할 수 없다. 그러나
+통화스왑·선물환의 두 notional 은 서로 다른 통화의 leg 이며, 그 금액 비율이 합리적
+FX 환율 band 안에 든다는 강건한 신호가 있다(예: KRW 13,890,000,000 / USD 10,000,000
+= 1389 ≈ KRW/USD 시세). 이를 이용해:
+  - 외화(USD 등) 금액과 KRW 금액 중, 비율이 합리적 FX band(_FX_LO~_FX_HI) 안에 드는
+    (KRW_leg, 외화_leg) 쌍을 — 가장 큰 외화 금액 우선으로 — 선택한다.
+  - buy = KRW leg(buy_ccy=KRW), sell = 외화 leg(sell_ccy=USD 등). 외화 통화를 보존한다.
+  - 평가금액·한도액 등 leg 에 속하지 않는 금액은 buy/sell 에서 제외한다(특히 평가금액을
+    notional 로 오인하지 않는다 — AUDIT).
+FX-consistent 쌍을 못 찾으면(외화 leg 부재 등) 통화 태깅된 금액 → 없으면 가장 큰 금액을
+fallback 으로 buy 에 넣고 sell=0 으로 둔다(잘못 분할하느니 미할당). contract_date=최초
+날짜, maturity=다른 날짜.
 """
 import re
 from decimal import Decimal
 from src.domain.ac_models import Derivative
-from src.infrastructure.pdf.row_parsers.base import tokenize_row, is_noise
+from src.infrastructure.pdf.row_parsers.base import (
+    tokenize_row, is_noise, _CCY_SET, _CCY_NORMALIZE, _NUM, _RATE, _PAREN, _DATE_8,
+    _dec,
+)
 
 # 파생상품 종류 키워드
 _INSTR_KW = ("선물환", "선물", "스왑", "옵션", "FX", "forward", "swap", "option", "Forward", "Swap", "Option")
@@ -45,6 +52,36 @@ def _is_header(s: str) -> bool:
     return any(k in s for k in _HEADER_KW)
 
 
+def _fx_tagged_amounts(row: str) -> list[tuple[str, Decimal]]:
+    """줄을 문서 순서대로 스캔하여 '외화(비-KRW) 통화 태그 직후의 금액'을 수집한다.
+
+    예: 'USD 1,300,000 KRW USD 10,000,000' → [('USD', 1300000), ('USD', 10000000)].
+    KRW 직후 금액이나 통화 태그 없는 bare 금액(평가금액 wrap line 등)은 포함하지 않는다.
+    tokenize_row 와 동일한 토큰 분류 규칙을 쓰되 (통화→금액) 인접만 기록한다.
+    """
+    out: list[tuple[str, Decimal]] = []
+    pending_ccy: str | None = None
+    for tok in row.split():
+        if tok in _CCY_SET:
+            pending_ccy = _CCY_NORMALIZE.get(tok, tok)
+        elif _DATE_8.match(tok):
+            pending_ccy = None
+        elif _RATE.match(tok):
+            pending_ccy = None
+        elif _PAREN.match(tok):
+            continue
+        elif _NUM.match(tok):
+            v = _dec(tok)
+            if v is not None and pending_ccy is not None and pending_ccy != "KRW":
+                out.append((pending_ccy, v))
+            # 통화 태그는 한 금액에만 적용(다음 금액은 새 태그가 필요)
+            pending_ccy = None
+        else:
+            # 텍스트 토큰(RECEIVE 등)은 직전 통화 태그를 소비하지 않고 통과
+            continue
+    return out
+
+
 def _has_instrument(toks: list[str]) -> str | None:
     for tok in toks:
         for kw in _INSTR_KW:
@@ -56,21 +93,58 @@ def _has_instrument(toks: list[str]) -> str | None:
 # notional 최소 단위: 절댓값 1000 미만 금액은 deal notional 이 아니다(rate·소수 leak).
 _MIN_NOTIONAL = Decimal("1000")
 
+# 합리적 KRW/외화 FX 환율 band. KRW/USD≈1300, KRW/EUR≈1500, KRW/JPY≈9, KRW/CNY≈190 …
+# 통화스왑·선물환의 두 leg(KRW vs 외화) 금액 비율이 이 band 안에 들면 notional 쌍으로 본다.
+# 평가금액/한도액은 이 비율을 만족하지 않으므로 자연히 배제된다.
+_FX_LO = Decimal("5")        # JPY 등 저단가 통화 하한
+_FX_HI = Decimal("3000")     # 고단가 통화 상한 (여유 폭)
+
 
 class _PendingDeriv:
     """문서 순서대로 누적되는 하나의 파생상품 후보."""
-    __slots__ = ("instr_parts", "instr_kw", "currency", "amounts", "dates")
+    __slots__ = ("instr_parts", "instr_kw", "currency", "amounts", "dates",
+                 "fx_amounts")
 
     def __init__(self) -> None:
         self.instr_parts: list[str] = []
         self.instr_kw: str | None = None
         self.currency: str | None = None
         self.amounts: list[Decimal] = []
+        # 외화(비-KRW) 통화 태그 직후에 등장한 금액들: [(ccy, amount), ...]
+        self.fx_amounts: list[tuple[str, Decimal]] = []
         self.dates: list = []
 
     def is_complete(self) -> bool:
         """새 파생상품을 시작해도 될 만큼 완성형인가(instrument + 거래일)."""
         return self.instr_kw is not None and bool(self.dates)
+
+
+def _pick_fx_consistent_legs(
+    notionals: list[Decimal],
+    fx_legs: list[tuple[str, Decimal]],
+) -> tuple[Decimal, str, Decimal] | None:
+    """(KRW_leg, 외화_ccy, 외화_leg) 을 반환. FX-consistent 쌍이 없으면 None.
+
+    외화 leg 후보(통화 태깅된 금액)와 KRW leg 후보(전체 notional) 중, 금액 비율이
+    합리적 FX band 안에 드는 쌍을 찾는다. 평가금액·한도액은 이 비율을 만족하지 않아
+    자연히 배제된다. 여러 쌍이 가능하면 외화 금액이 가장 큰(=실제 거래 notional 일
+    가능성이 높은) 쌍을 우선한다.
+    """
+    best: tuple[Decimal, str, Decimal] | None = None
+    best_fx = Decimal("-1")
+    # 외화 금액 큰 순서로 검토 → 가장 큰 외화 notional 우선
+    for fx_ccy, fx_amt in sorted(fx_legs, key=lambda x: x[1], reverse=True):
+        if fx_amt <= 0:
+            continue
+        for krw_amt in notionals:
+            if krw_amt <= 0 or krw_amt == fx_amt:
+                continue
+            ratio = krw_amt / fx_amt
+            if _FX_LO <= ratio <= _FX_HI and fx_amt > best_fx:
+                best = (krw_amt, fx_ccy, fx_amt)
+                best_fx = fx_amt
+                break  # 이 외화 leg 에 대한 최적 KRW leg 확정
+    return best
 
 
 def _build(p: "_PendingDeriv", bc_no: str, bank: str) -> Derivative | None:
@@ -87,18 +161,29 @@ def _build(p: "_PendingDeriv", bc_no: str, bank: str) -> Derivative | None:
 
     # rate·소수 leak 제거: notional 사이징 전에 1000 미만 금액 버림 (BUG C)
     notionals = [a for a in p.amounts if abs(a) >= _MIN_NOTIONAL]
+    fx_legs = [(c, a) for (c, a) in p.fx_amounts if abs(a) >= _MIN_NOTIONAL]
 
-    # 금액 매핑 (위 가정 참조): 큰 금액 = KRW측 buy, 작은 외화 = sell
-    amts_sorted = sorted(notionals, reverse=True)
-    buy_amt = amts_sorted[0] if amts_sorted else Decimal("0")
-    if len(amts_sorted) >= 2:
-        sell_amt = amts_sorted[1]
-        sell_ccy = p.currency or "USD"  # 검출된 외화
+    leg = _pick_fx_consistent_legs(notionals, fx_legs)
+    if leg is not None:
+        # FX-consistent 쌍: KRW leg = buy, 외화 leg = sell (외화 통화 보존)
+        krw_amt, fx_ccy, fx_amt = leg
+        buy_ccy, buy_amt = "KRW", krw_amt
+        sell_ccy, sell_amt = fx_ccy, fx_amt
     else:
-        # 금액 1개(또는 0) → 분할하지 않음 (잘못 분할하느니 미할당)
-        sell_amt = Decimal("0")
-        sell_ccy = p.currency or "KRW"
-    buy_ccy = "KRW"
+        # fallback: FX-consistent 쌍을 못 찾음 → 기존 가정 유지(통화 leg 보존을 위해
+        # 통화 태깅이 명확하지 않은 wrap 레이아웃). 큰 금액=KRW측 buy, 작은 금액=외화 sell.
+        # (평가금액 컬럼이 없는 단순 선물환/스왑 회신서. 통화 태깅된 외화 금액 정보가
+        # 없으므로 잘못 분할하느니 기존 규칙을 따른다.)
+        amts_sorted = sorted(notionals, reverse=True)
+        buy_ccy = "KRW"
+        buy_amt = amts_sorted[0] if amts_sorted else Decimal("0")
+        if len(amts_sorted) >= 2:
+            sell_amt = amts_sorted[1]
+            sell_ccy = p.currency or "USD"  # 검출된 외화
+        else:
+            # 금액 1개(또는 0) → 분할하지 않음 (잘못 분할하느니 미할당)
+            sell_amt = Decimal("0")
+            sell_ccy = p.currency or "KRW"
 
     return Derivative(
         bc_no=bc_no, bank=bank, instrument=instrument,
@@ -130,6 +215,7 @@ def parse_ac3(block: str, bc_no: str, bank: str) -> list[Derivative]:
         if t.currency and cur.currency is None:
             cur.currency = t.currency
         cur.amounts.extend(t.amounts)
+        cur.fx_amounts.extend(_fx_tagged_amounts(s))
         cur.dates.extend(t.dates)
         cur.instr_parts.extend(
             w for w in t.text_tokens if any(kw in w for kw in _INSTR_KW)
