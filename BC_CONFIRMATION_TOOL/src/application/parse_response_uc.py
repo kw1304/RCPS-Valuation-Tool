@@ -13,13 +13,16 @@ from src.infrastructure.pdf.row_parsers.ac2_borrowing import parse_ac2
 from src.infrastructure.pdf.row_parsers.ac4_guarantee import parse_ac4
 from src.infrastructure.pdf.row_parsers.ac5_collateral import parse_ac5
 from src.infrastructure.pdf.row_parsers.ac6_bills import parse_ac6
+from src.infrastructure.pdf.row_parsers.ac3_derivative import parse_ac3
+from src.infrastructure.pdf.row_parsers.ac7_insurance import parse_ac7
 from src.infrastructure.pdf.row_parsers.fallback import fallback_parse
 from src.domain.party_normalize import PartyNormalizer
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _dispatch(ac: str, block: str, bc_no: str, bank: str, route: dict):
+def _dispatch(ac: str, block: str, bc_no: str, bank: str, route: dict | None = None):
+    route = route or {}
     direction = route.get("direction", "received")
     if ac == "AC1":
         return parse_ac1_deposit(block, bc_no=bc_no, bank=bank)
@@ -27,17 +30,21 @@ def _dispatch(ac: str, block: str, bc_no: str, bank: str, route: dict):
         return parse_ac1_security_details(block, bc_no=bc_no, bank=bank)
     if ac == "AC2":
         return parse_ac2(block, bc_no=bc_no, bank=bank)
+    if ac == "AC3":
+        return parse_ac3(block, bc_no=bc_no, bank=bank)
     if ac == "AC4":
         return parse_ac4(block, bc_no=bc_no, bank=bank, direction=direction)
     if ac == "AC5":
         return parse_ac5(block, bc_no=bc_no, bank=bank, direction=direction)
     if ac == "AC6":
         return parse_ac6(block, bc_no=bc_no, bank=bank, direction=direction, sub=route.get("sub"))
-    return []  # AC3·AC7·AC8 후순위 (파서 미구현)
+    if ac == "AC7":
+        return parse_ac7(block, bc_no=bc_no, bank=bank)
+    return []  # AC8 후순위 (라우팅 섹션 없음, 파서 미구현)
 
 
 # 구현된 파서가 있는 AC. 그 외로 라우팅되면 수동검토 스텁을 emit 한다.
-IMPLEMENTED_ACS = {"AC1", "AC1_DETAIL", "AC2", "AC4", "AC5", "AC6"}
+IMPLEMENTED_ACS = {"AC1", "AC1_DETAIL", "AC2", "AC3", "AC4", "AC5", "AC6", "AC7"}
 
 
 import re
