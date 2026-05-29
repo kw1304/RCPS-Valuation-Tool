@@ -98,6 +98,22 @@ _AC1_KEYWORDS = [
 ]
 _CCY_SET = {"KRW","USD","EUR","JPY","CNY","HKD","GBP","AUD","SGD","CNH"}
 _DATE_8 = re.compile(r"^\d{8}$")
+_YYYYMMDD = re.compile(r"^(19|20)\d{6}$")
+
+
+def _maturity_from_token(t: str) -> date | None:
+    """YYYYMMDD 8자리 토큰을 유효한 date 로 파싱(아니면 None).
+
+    채권 상세행 끝의 만기일(예 '20300531')을 평가액으로 오인하지 않도록,
+    valuation/amount 후보에서 제외하고 maturity 로 분리하기 위한 판정.
+    19/20 세기 + 월(01~12) + 일(01~31) 이 모두 유효해야 날짜로 인정한다.
+    """
+    if not _YYYYMMDD.match(t):
+        return None
+    try:
+        return date(int(t[:4]), int(t[4:6]), int(t[6:8]))
+    except ValueError:
+        return None
 _RATE_PATTERN = re.compile(r"^\d+\.\d{2,5}$")
 _NUM_TOKEN = re.compile(r"^[\d,]+(?:\.\d+)?$")
 _ACCT_TOKEN = re.compile(r"^[0-9\-]{8,22}$")
@@ -255,16 +271,40 @@ def parse_ac1_security_details(text: str, bc_no: str, bank: str) -> list[Securit
         for p in parts:
             all_tokens.extend(p.split())
 
-        # 숫자 토큰 수집 (계좌번호 토큰은 제외)
-        nums: list[Decimal] = []
+        # 숫자 토큰 수집 (계좌번호 토큰은 제외).
+        # 채권 상세행 끝의 만기일(YYYYMMDD, 예 '20300531')은 정수 원화로 보면
+        # 진짜 평가액(예 5,245,805)보다 커서 max() 가 날짜를 평가액으로 오인한다.
+        # → 유효 YYYYMMDD 토큰은 maturity 로 분리하고 금액 후보에서 제외한다.
+        # 채권 표 컬럼순: '… 기준가 평가액 만기일' 이라 평가액은 만기일 토큰
+        # '바로 앞'의 정수 원화이다(액면·수량은 평가액보다 클 수 있어 max() 부적합).
+        nums: list[Decimal] = []                       # 금액 후보 (날짜 제외)
+        maturity: date | None = None
+        val_before_date: Decimal | None = None         # 만기일 직전 정수 원화
+        prev_amt: Decimal | None = None                # 직전 금액 토큰 값
         for t in all_tokens[1:]:        # skip 계좌번호
+            mat = _maturity_from_token(t)
+            if mat is not None:         # 만기일 — 금액 후보에서 제외
+                maturity = mat
+                # 만기일 바로 앞의 금액(정수 원화)을 평가액 후보로 기억
+                if val_before_date is None and prev_amt is not None:
+                    val_before_date = prev_amt
+                prev_amt = None
+                continue
             if "," in t or _NUM_TOKEN.match(t):
                 d = _to_dec(t)
                 if d is not None:
                     nums.append(d)
-        # 평가액 = 1,000,000 이상 원화 금액 중 최댓값
+                    prev_amt = d
+                    continue
+            prev_amt = None
+        # 평가액:
+        #  - 만기일 직전 정수 원화가 있으면(채권) 그것을 우선.
+        #  - 없으면(주식 등) 1,000,000 이상 원화 금액 중 최댓값(기존 동작·KB 회귀 방지).
         big = [n for n in nums if n >= _VALUATION_MIN]
-        val = max(big) if big else (max([n for n in nums if n > 0], default=None))
+        if val_before_date is not None and val_before_date >= _VALUATION_MIN:
+            val = val_before_date
+        else:
+            val = max(big) if big else (max([n for n in nums if n > 0], default=None))
         # 수량 = 평가액·기준가가 아닌 첫 큰 정수 후보 (참고용)
         qty = nums[0] if nums else None
         # 기준가(단가): 100 ~ 10,000,000, 평가액 아님
@@ -283,7 +323,7 @@ def parse_ac1_security_details(text: str, bc_no: str, bank: str) -> list[Securit
             bc_no=bc_no, bank=bank,
             account_no=acct, ticker_name=ticker,
             quantity=qty, face_value=None,
-            base_price=base, valuation=val,
+            base_price=base, valuation=val, maturity=maturity,
             collateral_qty=coll_qty, collateral_type=coll_type,
         ))
     return out
