@@ -27,13 +27,20 @@ from src.infrastructure.pdf.row_parsers.base import is_noise
 # 금액 임계: 이보다 작으면 번지(622)·순위(3)·면적(386.15)로 보고 금액 취급 안 함.
 _MIN_AMOUNT = Decimal("1000000")
 
-# 통화 prefix: (KRW) / (USD) … 또는 선행 KRW. 금액 토큰에 붙어 옴.
-_CCY_PREFIX = re.compile(r"^\((KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH)\)")
-_LEAD_CCY = re.compile(r"^(KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH)(?=\d)")
+# 통화 코드 집합.
+_CCY_CODES = "KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH"
+
+# 통화 prefix: (KRW) / (USD) … 또는 선행 KRW. 금액 토큰 앞에 붙어 옴.
+_CCY_PREFIX = re.compile(rf"^\(({_CCY_CODES})\)")
+_LEAD_CCY = re.compile(rf"^({_CCY_CODES})(?=\d)")
+# 통화 suffix: 144000000KRW / 2,400,000,000(USD) … 금액 토큰 뒤에 붙어 옴.
+_TRAIL_CCY = re.compile(rf"(?<=\d)(\(({_CCY_CODES})\)|({_CCY_CODES}))$")
 
 # 천단위 콤마로 그룹된 원화 금액. '2,634,000,000' 또는 '20,171,880,000.00'.
-# 반드시 콤마 그룹이 있어야 함(번지 622·순위 3·면적 386.15 는 콤마 無 → 불일치).
 _GROUPED_AMOUNT = re.compile(r"^\d{1,3}(?:,\d{3})+(?:\.\d+)?$")
+# 콤마 없는 평문 정수 금액. '1800000000' / '36607800000.00'.
+# 100만 임계(_MIN_AMOUNT)와 결합해 번지(622)·순위(3)·면적(386.15)·연도 등 단편 배제.
+_PLAIN_AMOUNT = re.compile(r"^\d+(?:\.\d+)?$")
 
 # 담보 종류로 쓰면 안 되는 주소(소재지) 시작어. 이런 토큰으로 시작하는 줄은 소재지 조각.
 _ADDR_PREFIX = (
@@ -50,14 +57,27 @@ _HEADER_TOKENS = {
 
 
 def _strip_ccy(tok: str) -> str:
-    """토큰 앞의 통화 prefix((KRW)/(USD)/선행 KRW…) 제거."""
+    """토큰의 통화 prefix/suffix 제거.
+
+    prefix: '(KRW)2,634,000,000' / 'KRW36607800000'
+    suffix: '144000000KRW' / '2,400,000,000(USD)'
+    """
     m = _CCY_PREFIX.match(tok)
     if m:
-        return tok[m.end():]
-    m = _LEAD_CCY.match(tok)
+        tok = tok[m.end():]
+    else:
+        m = _LEAD_CCY.match(tok)
+        if m:
+            tok = tok[m.end():]
+    m = _TRAIL_CCY.search(tok)
     if m:
-        return tok[m.end():]
+        tok = tok[:m.start()]
     return tok
+
+
+def _is_amount(bare: str) -> bool:
+    """콤마 그룹(a) 또는 콤마 없는 평문 정수(b) → 금액 후보 형식."""
+    return bool(_GROUPED_AMOUNT.match(bare) or _PLAIN_AMOUNT.match(bare))
 
 
 def _to_dec(s: str):
@@ -68,14 +88,16 @@ def _to_dec(s: str):
 
 
 def _won_amounts(line: str) -> list[Decimal]:
-    """줄에서 천단위 콤마로 그룹된 원화 금액(>= 100만)만 순서대로 추출.
+    """줄에서 원화 금액(>= 100만)만 순서대로 추출.
 
-    번지(622)·설정순위(3/6)·면적(386.15)은 콤마 그룹이 아니거나 100만 미만 → 제외.
+    인식 형식: (a) 천단위 콤마 그룹 '2,634,000,000', (b) 콤마 없는 평문 정수
+    '1800000000', (c) 통화 접두/접미가 붙은 '(KRW)…'/'KRW…'/'…KRW'.
+    번지(622)·설정순위(3/6)·면적(386.15)은 100만 임계 미만 → 제외(단편 garbage 방지).
     """
     out: list[Decimal] = []
     for tok in line.split():
         bare = _strip_ccy(tok)
-        if not _GROUPED_AMOUNT.match(bare):
+        if not _is_amount(bare):
             continue
         v = _to_dec(bare)
         if v is not None and v >= _MIN_AMOUNT:
@@ -84,7 +106,16 @@ def _won_amounts(line: str) -> list[Decimal]:
 
 
 def _is_amount_token(tok: str) -> bool:
-    return bool(_GROUPED_AMOUNT.match(_strip_ccy(tok)))
+    """금액 컬럼 토큰 = 금액 형식이면서 100만 임계 이상.
+
+    평문 정수까지 허용하므로, 종류 탐색이 면적(386.15)·순위(3) 같은 소액 숫자에서
+    멈추지 않도록 임계를 함께 본다.
+    """
+    bare = _strip_ccy(tok)
+    if not _is_amount(bare):
+        return False
+    v = _to_dec(bare)
+    return v is not None and v >= _MIN_AMOUNT
 
 
 def _looks_numeric(tok: str) -> bool:
