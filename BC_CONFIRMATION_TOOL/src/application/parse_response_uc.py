@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from sqlmodel import Session, select
 from src.infrastructure.db.models import FileAsset, Counterparty, ExtractedRecord
-from src.infrastructure.pdf.extractor import extract_text_and_tables
+from src.infrastructure.pdf.extractor import extract_text_and_tables, extract_rows
 from src.infrastructure.pdf.ocr import ocr_pdf
 from src.infrastructure.pdf.filename_parser import parse_filename
 from src.infrastructure.pdf.form_fingerprint import identify_form
@@ -83,8 +83,8 @@ def parse_responses(session: Session, project_id: int) -> dict:
         bank_raw = meta.get("bank_raw") or ""
         np = norm.normalize(bank_raw) if bank_raw else None
         bank = np.canonical if np else bank_raw
-        ext = extract_text_and_tables(Path(f.stored_path))
-        text = ext["text"]
+        # 좌표 기반 행 재구성: 무테 표의 줄바꿈 금액을 라벨 행과 재결합한다.
+        text = extract_rows(Path(f.stored_path))
         # 스캔 PDF (텍스트 거의 없음) → OCR, 신뢰도 하향
         ocr_used = len(text.strip()) < 80
         if ocr_used:

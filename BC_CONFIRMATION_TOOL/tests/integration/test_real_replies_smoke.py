@@ -1,7 +1,7 @@
 import glob
 from pathlib import Path
 import pytest
-from src.infrastructure.pdf.extractor import extract_text_and_tables
+from src.infrastructure.pdf.extractor import extract_rows
 from src.infrastructure.pdf.ocr import ocr_pdf
 from src.infrastructure.pdf.form_fingerprint import identify_form
 from src.infrastructure.pdf.form_profile import FormProfile
@@ -15,7 +15,7 @@ PDFS = sorted(glob.glob(str(ROOT / "INPUT" / "온라인" / "*.pdf")))
 def test_every_electronic_pdf_identified_and_split():
     profile = FormProfile.load()
     for p in PDFS:
-        t = extract_text_and_tables(Path(p))["text"]
+        t = extract_rows(Path(p))
         if len(t.strip()) < 80:
             t = ocr_pdf(Path(p))["text"]
         fam = identify_form(t)

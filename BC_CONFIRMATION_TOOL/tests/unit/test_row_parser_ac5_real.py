@@ -2,7 +2,7 @@ import glob
 from decimal import Decimal
 from pathlib import Path
 import pytest
-from src.infrastructure.pdf.extractor import extract_text_and_tables
+from src.infrastructure.pdf.extractor import extract_rows
 from src.infrastructure.pdf.section_splitter import split_sections
 from src.infrastructure.pdf.row_parsers.ac5_collateral import parse_ac5
 
@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def _sec9(substr):
     p=[x for x in glob.glob(str(ROOT/'INPUT'/'온라인'/'*.pdf')) if substr in x]
     if not p: pytest.skip(f'{substr} 없음')
-    t=extract_text_and_tables(Path(p[0]))['text']
+    t=extract_rows(Path(p[0]))
     return split_sections(t).get(9,'')
 
 def test_keb_hana_no_fragment_garbage():

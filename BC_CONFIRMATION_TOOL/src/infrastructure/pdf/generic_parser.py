@@ -198,12 +198,25 @@ def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
         s = line.strip()
         if _is_noise(s):
             continue
-        if not any(kw in s for kw in _AC1_KEYWORDS):
+        # 예금 행 판정: 상품명 키워드가 매칭되거나(빠른 경로), 키워드가
+        # 줄바꿈으로 쪼개져(ONE KB ...-보통 / 예금) 못 잡힌 경우에도
+        # '계좌번호 토큰(10~18자리 무콤마)'이 있으면 진짜 데이터 행으로 본다.
+        # 헤더("금융상품의 종류 ...")·footer·괄호 누적이자 줄은 계좌번호가
+        # 없어 자연히 제외된다(당좌개설보증금·ONE KB 행 복구).
+        if not (any(kw in s for kw in _AC1_KEYWORDS) or _has_acct_token(s)):
             continue
         rec = _parse_line(s, bc_no, bank)
         if rec:
             out.append(rec)
     return out
+
+
+def _has_acct_token(s: str) -> bool:
+    """줄에 계좌번호 형태(콤마 없는 10~18자리 숫자) 토큰이 있는지."""
+    for t in s.split():
+        if "," not in t and re.fullmatch(r"\d{10,18}", t):
+            return True
+    return False
 
 
 def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:

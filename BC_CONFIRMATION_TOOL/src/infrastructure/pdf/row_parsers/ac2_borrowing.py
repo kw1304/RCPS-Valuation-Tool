@@ -163,6 +163,9 @@ def parse_ac2(block: str, bc_no: str, bank: str) -> list[Borrowing]:
         currency = f.currency
         dates, rate = [], None
         inline_nums: list[Decimal] = []   # 첫 날짜 이전의 금액 후보(0 포함, 순서 유지)
+        # inline_nums 와 1:1 정렬된 '원시' 금액 토큰(불완성 wrap 판정용).
+        # 명시적 0(rate 0.00 등)에는 raw 토큰이 없어 "0" 을 채워 정렬 유지.
+        inline_amt_frags: list[str] = []
         detail_text: list[str] = []       # 첫 날짜 이전의 텍스트 = 대출종류 후보
         post_text: list[str] = []         # 첫 날짜 이후의 텍스트 = 상환방법/담보·보증
         seen_date = False
@@ -183,6 +186,7 @@ def parse_ac2(block: str, bc_no: str, bank: str) -> list[Borrowing]:
                     # 날짜 이전의 소수: 0.00 은 대출금액 0, 그 외 rate-shaped 소수는 버림.
                     if v == 0:
                         inline_nums.append(Decimal("0"))
+                        inline_amt_frags.append("0")
                 continue
             if t in _CCY_SET:
                 if currency is None:
@@ -197,14 +201,38 @@ def parse_ac2(block: str, bc_no: str, bank: str) -> list[Borrowing]:
                 if _is_rate_shaped(v):
                     if v == 0:
                         inline_nums.append(Decimal("0"))
+                        inline_amt_frags.append("0")
                     continue
                 inline_nums.append(v)
+                inline_amt_frags.append(t)
             else:
                 # 첫 날짜 이전 텍스트 = 종류, 이후 텍스트 = 상환방법/담보.
                 if seen_date:
                     post_text.append(t)
                 else:
                     detail_text.append(t)
+
+        # ---- 1b. detail 줄 inline 금액이 줄바꿈으로 잘린 wrap 조각인지 ----
+        # 좌표 재구성 후 하나/산업식 레이아웃은 금액 prefix 가 detail 줄에 inline
+        # 으로 들어오되 마지막 자리 그룹이 다음 줄로 잘린다
+        # (예 detail '(KRW)7,000,000,' + 아래 '000' = 7,000,000,000).
+        # inline 금액 조각이 '완성되지 않은'(끝 콤마 또는 끝 그룹 != 3자리) 형태이고,
+        # 아래 줄에 선행 숫자 조각이 있으면 위치별로 결합해 완성한다.
+        if inline_amt_frags and any(not _is_wellformed_amount(t) for t in inline_amt_frags):
+            below = _num_frag_tokens(nxt) if (nxt is not None and not _has_dates(nxt)) else []
+            if below:
+                completed: list[Decimal] = []
+                m = min(len(inline_amt_frags), len(below))
+                for k in range(len(inline_amt_frags)):
+                    pre = inline_amt_frags[k]
+                    if not _is_wellformed_amount(pre) and k < m:
+                        cand = pre + below[k]
+                        cv = _to_dec(cand)
+                        if _is_wellformed_amount(cand) and cv is not None:
+                            completed.append(cv)
+                            continue
+                    completed.append(inline_nums[k])
+                inline_nums = completed
 
         # ---- 2. 금액 컬럼 복구: detail 줄 우선, 부족하면 위/아래 줄에서 ----
         # detail 줄에 실금액(>=1000)이 충분하면 그대로 사용.

@@ -13,7 +13,7 @@ from decimal import Decimal
 from datetime import date
 from pathlib import Path
 import pytest
-from src.infrastructure.pdf.extractor import extract_text_and_tables
+from src.infrastructure.pdf.extractor import extract_rows
 from src.infrastructure.pdf.section_splitter import split_sections
 from src.infrastructure.pdf.row_parsers.ac2_borrowing import parse_ac2
 
@@ -31,7 +31,7 @@ def _sec2(substr: str) -> str:
     p = [x for x in glob.glob(str(ROOT / "INPUT" / "온라인" / "*.pdf")) if substr in x]
     if not p:
         pytest.skip(f"{substr} PDF 없음")
-    t = extract_text_and_tables(Path(p[0]))["text"]
+    t = extract_rows(Path(p[0]))
     return split_sections(t)[2]
 
 
@@ -53,14 +53,18 @@ def _assert_type_clean(recs):
 
 
 def test_kookmin_still_correct():
-    """국민은행 회귀: 한도 14.5bn / 외상매출 한도 1bn·잔액 18,720,900 유지."""
+    """국민은행 회귀: 좌표 재구성으로 회신서 컬럼(약정한도액 대출금액)을 정확히 읽는다.
+    첫 대출 '기업일반운전자금대출' 행은 약정한도액 0.00 / 대출금액(잔액) 14,500,000,000
+    (구 평면텍스트 경로는 컬럼 연관이 깨져 한도·잔액이 뒤바뀌어 있었음).
+    외상매출채권전자대출은 한도 1bn·잔액 18,720,900."""
     recs = parse_ac2(_sec2("국민은행"), bc_no="BC-1", bank="국민은행")
     assert len(recs) == 4, [r.contract_type for r in recs]
     _assert_no_rate_as_amount(recs)
     _assert_type_clean(recs)
-    w = next((r for r in recs if r.limit_amt == Decimal("14500000000.0")), None)
-    assert w is not None, [str(r.limit_amt) for r in recs]
-    assert w.balance == Decimal("0.00")
+    # 대출금액(잔액) 컬럼에 14.5bn — 좌표 재구성 후 회신서 컬럼 순서대로 정확히 귀속.
+    w = next((r for r in recs if r.balance == Decimal("14500000000.00")), None)
+    assert w is not None, [(str(r.limit_amt), str(r.balance)) for r in recs]
+    assert w.limit_amt == Decimal("0.00")
     assert w.rate == Decimal("4.5000")
     assert w.maturity == date(2026, 6, 10)
     two = next((r for r in recs if r.balance == Decimal("18720900.00")), None)

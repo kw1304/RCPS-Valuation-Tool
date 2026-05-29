@@ -1,7 +1,7 @@
 import glob
 from pathlib import Path
 import pytest
-from src.infrastructure.pdf.extractor import extract_text_and_tables
+from src.infrastructure.pdf.extractor import extract_rows
 from src.infrastructure.pdf.section_splitter import split_sections
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def _txt(substr):
     p=[x for x in glob.glob(str(ROOT/'INPUT'/'온라인'/'*.pdf')) if substr in x]
     if not p: pytest.skip(f'{substr} 없음')
-    return extract_text_and_tables(Path(p[0]))['text']
+    return extract_rows(Path(p[0]))
 
 def test_section9_detected_kookmin():
     blocks = split_sections(_txt('국민은행'))
