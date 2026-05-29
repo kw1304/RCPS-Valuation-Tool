@@ -26,6 +26,24 @@ class Sampler:
         self.classifier = classifier
         self.normalizer = normalizer
 
+    # 무시할 컬럼 (alias scan 대상 외)
+    _NON_TEXT_COLS = {"금액","Ld","CoCd","회계","입력일","일자","계정","문서 번호","전표 번호","전표 종류"}
+
+    def _scan_all_texts(self, row: dict, exclude: set[str] = None) -> list[tuple[str, str]]:
+        """row의 모든 문자열 컬럼을 sweep. exclude 컬럼은 제외.
+        Returns list of (column_name, text) for scanning."""
+        out = []
+        skip = self._NON_TEXT_COLS | (exclude or set())
+        for col, val in row.items():
+            if col in skip:
+                continue
+            if not isinstance(val, str):
+                continue
+            s = val.strip()
+            if s:
+                out.append((col, s))
+        return out
+
     def sample(self, rows: list[dict]) -> list[SampledParty]:
         agg: dict[str, SampledParty] = {}
         for row in rows:
@@ -34,26 +52,35 @@ class Sampler:
             memo = (row.get("적요") or "").strip()
             amount = self._to_float(row.get("금액"))
             bucket = self.classifier.classify(acc)
-            # Step A: 금융계정 row — 거래처 우선, fallback to memo (단 매칭된 경우만)
+            # Step A: 금융계정 row — 거래처 우선, 그 다음 적요, 그 다음 모든 텍스트 sweep (단 매칭된 경우만)
             if bucket:
-                # 거래처가 있으면 우선 시도
+                # 1. 거래처
                 np_party = self.normalizer.normalize(party_raw) if party_raw else None
                 if np_party and np_party.matched:
                     self._add(agg, np_party, bucket, acc, amount, conf=1.0)
                     continue
-                # 거래처 매칭 실패 → memo 시도 (매칭된 경우만)
+                # 2. 적요
                 if memo:
                     np_memo = self.normalizer.normalize(memo)
                     if np_memo.matched:
-                        self._add(agg, np_memo, bucket, acc, amount, conf=0.8)
+                        self._add(agg, np_memo, bucket, acc, amount, conf=0.85)
                         continue
-                # 매칭 실패한 financial-account row → skip (가비지 방지)
-                continue
-            # Step B: 일반계정에서 alias 매칭 (거래처·적요 둘 다 검사)
-            for src_text, conf in [(party_raw, 0.7), (memo, 0.6)]:
-                if not src_text:
+                # 3. 모든 다른 텍스트 컬럼 sweep (계정명, 문서메모 등)
+                added = False
+                for col, text in self._scan_all_texts(row, exclude={"거래처","적요"}):
+                    np = self.normalizer.normalize(text)
+                    if np.matched:
+                        self._add(agg, np, bucket, acc, amount, conf=0.7)
+                        added = True
+                        break
+                if added:
                     continue
-                np = self.normalizer.normalize(src_text)
+                # 매칭 실패한 financial-account row → skip
+                continue
+            # Step B: 일반계정 — 모든 텍스트 컬럼 sweep
+            for col, text in self._scan_all_texts(row):
+                conf = 0.7 if col == "거래처" else 0.6 if col == "적요" else 0.5
+                np = self.normalizer.normalize(text)
                 if np.matched:
                     self._add(agg, np, "기타", acc, amount, conf=conf)
                     break
