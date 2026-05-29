@@ -86,7 +86,10 @@ def _to_int_amount(v) -> int | None:
 _REF_SHEETS = {
     "AC1": ("금융자산", ["금액"]),
     "AC2": ("차입금", ["한도금액", "대출금액"]),
-    "AC4": ("지급보증", ["한도금액", "실행금액", "지급보증금액"]),
+    # ① 회사가 제공받은(한도액/실행금액) + ② 회사가 타인에게 제공한 연대보증.
+    # 이 시트는 통화/금액 2단 stacked 구조라 단일 헤더행 모델로 금액컬럼을 못 잡는다.
+    # → AC4 는 헤더 무관하게 모든 데이터 셀에서 100만↑ 원화 금액을 수집한다(아래 특례).
+    "AC4": ("지급보증", []),
     "AC5": ("담보제공자산", ["장부가", "장부금액", "감정금액", "설정금액", "담보금액"]),
     "AC7": ("보험가입내역", ["부보금액"]),
 }
@@ -121,6 +124,22 @@ def _header_amount_cols(ws, header_names: list[str]) -> tuple[int, list[int]]:
     return best_row, best_cols
 
 
+# AC4 등 stacked 시트는 헤더 매핑 대신 전체 금액 스캔. 100만 미만(증권번호 index·
+# 순위 등)은 잡지 않는다.
+_MIN_REF_AMOUNT = 1_000_000
+
+
+def _scan_amounts_min(ws, minv: int) -> Counter:
+    """시트 전체 데이터 셀에서 minv 이상 원화 금액을 멀티셋으로 수집."""
+    amounts: Counter = Counter()
+    for row in ws.iter_rows(values_only=True):
+        for cell in row:
+            iv = _to_int_amount(cell)
+            if iv is not None and iv >= minv:
+                amounts[iv] += 1
+    return amounts
+
+
 def read_reference_amounts(xlsx: Path) -> dict[str, Counter]:
     """참고조서 → {AC: Counter(정수금액)}. 0/비금액 제외."""
     wb = openpyxl.load_workbook(xlsx, data_only=True)
@@ -129,6 +148,11 @@ def read_reference_amounts(xlsx: Path) -> dict[str, Counter]:
         ws = _find_sheet(wb, ac)
         if ws is None:
             out[ac] = Counter()
+            continue
+        # AC4 특례: 통화/금액 2단 stacked + ①② 2개 표 → 헤더 컬럼 매핑이 불안정.
+        # 시트 전체 데이터 셀에서 100만↑ 원화 금액을 수집(지급보증 시트는 금액 전용).
+        if ac == "AC4":
+            out[ac] = _scan_amounts_min(ws, _MIN_REF_AMOUNT)
             continue
         hdr_row, cols = _header_amount_cols(ws, headers)
         amounts: Counter = Counter()

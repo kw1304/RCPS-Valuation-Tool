@@ -4,11 +4,11 @@ bank:
   2: {ac: AC2}
   3: {ac: AC4, direction: received}
   4: {ac: AC3}
-  5: {ac: AC5, direction: provided}
+  5: {ac: AC4, direction: provided}   # 회사가 타 법인(개인) 위해 제공한 담보·연대보증 → AC4②
   6: {ac: AC6, direction: provided}
   7: {ac: AC6, direction: provided}
   8: {ac: AC6, direction: received}
-  9: {ac: AC5, direction: provided}
+  9: {ac: AC5, direction: provided}    # 회사 담보 현황(신용공여 관련 회사 자산 담보) → AC5
   10: {ac: AC6, sub: 당좌}
 securities:
   1: {ac: AC1}
@@ -16,14 +16,14 @@ securities:
   3: {ac: AC2}
   4: {ac: AC4, direction: received}
   5: {ac: AC3}
-  6: {ac: AC5, direction: provided}
+  6: {ac: AC4, direction: provided}   # 타 법인(개인) 위해 제공한 담보·연대보증 → AC4②
   7: {ac: AC6, direction: received}
 insurance:
   1: {ac: AC7}
   2: {ac: AC2}
   3: {ac: AC4, direction: received}
   4: {ac: AC6, direction: received}
-  5: {ac: AC5, direction: provided}
+  5: {ac: AC4, direction: provided}   # 타 법인(개인) 위해 제공한 담보·연대보증 → AC4②
 surety:
   1: {ac: AC4, direction: received}
   2: {ac: AC7}
@@ -32,4 +32,5 @@ surety:
   5: {ac: AC1}
   6: {ac: AC4, direction: received}
   7: {ac: AC6, direction: received}
-  8: {ac: AC5, direction: provided}
+  8: {ac: AC4, direction: provided}   # 타 법인(개인) 위해 제공한 담보·연대보증 → AC4②
+  9: {ac: AC5, direction: provided}    # 당사가 회사에 제공한 보증 관련 회사 자산 담보 → AC5
