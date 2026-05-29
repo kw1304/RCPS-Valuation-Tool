@@ -17,6 +17,7 @@ from src.infrastructure.pdf.row_parsers.ac3_derivative import parse_ac3
 from src.infrastructure.pdf.row_parsers.ac7_insurance import parse_ac7
 from src.infrastructure.pdf.row_parsers.fallback import fallback_parse
 from src.domain.party_normalize import PartyNormalizer
+from src.domain.record_dedup import dedup_key
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -190,6 +191,9 @@ def parse_responses(session: Session, project_id: int) -> dict:
         select(Counterparty).where(Counterparty.project_id == project_id)
     ).all()}
     records_summary = []
+    # 이중계상 방지: 개별 회신본 + 합본 스캔(파일명 메타 없음)이 함께 들어오면 같은
+    # holding 이 두 번 persist 된다. dedup_key 동일 레코드는 한 번만 저장한다.
+    seen_keys: set = set()
 
     for f in files:
         meta = parse_filename(f.original_name)
@@ -211,6 +215,15 @@ def parse_responses(session: Session, project_id: int) -> dict:
         family = identify_form(text)
 
         def _persist(ac, payload_obj, manual, confidence):
+            # dedup: 같은 holding 이 개별 회신본+합본 스캔에서 두 번 오면 한 번만 저장.
+            # (수동검토 스텁은 payload 가 raw/note 뿐이라 balance 가 없어 키가 None → 보존.)
+            payload_dict = payload_obj if isinstance(payload_obj, dict) \
+                else payload_obj.model_dump()
+            k = dedup_key(ac, payload_dict)
+            if k is not None:
+                if k in seen_keys:
+                    return
+                seen_keys.add(k)
             payload = json.dumps(payload_obj, default=str, ensure_ascii=False) \
                 if isinstance(payload_obj, dict) else payload_obj.model_dump_json()
             er = ExtractedRecord(
