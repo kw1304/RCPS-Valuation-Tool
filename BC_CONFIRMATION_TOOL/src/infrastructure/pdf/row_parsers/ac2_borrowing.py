@@ -34,7 +34,8 @@ from src.infrastructure.pdf.row_parsers.base import (
 _BANK_NAMES = {"우리", "국민", "신한", "산업", "하나", "KEB하나", "기업", "농협",
                "수출입", "한국수출입", "아이엠뱅크", "한국증권금융", "수협", "씨티", "SC제일"}
 _HEADER_TOKENS = {
-    "금액", "이자", "대출", "종류", "약정한도액", "대출금액", "연이율",
+    "금액", "이자", "대출", "종류", "약정한도액", "대출금액", "연이율", "연이자율",
+    "최종이자", "지급일", "대출일", "대출일자", "대출종류", "대출잔액",
     "최종이자지급일", "최종만기일", "상환방법", "담보", "보증", "및", "관련약정",
     "총", "한도액", "합계", "소계", "총계", "은행",
 }
@@ -52,6 +53,23 @@ _NUM_FRAG = re.compile(r"^\d[\d,]*(?:\.\d+)?$")
 _AC2_RATE = re.compile(r"^\d{1,3}\.\d{1,5}$")
 # 8자리 날짜 형태이지만 콤마 없는 큰 무콤마 정수(산업 20000000000)는 금액일 수 있어
 # 별도로 다룬다.
+# 이자율 토큰에 '변동'/'고정'(변동금리/고정금리) 접두가 글자째 붙는 은행이 있다
+# (한국수출입 '변동4.310', '고정4.310'). 접두를 떼고 rate 를 인식한다.
+_RATE_PREFIX = re.compile(r"^(?:변동|고정)")
+
+
+def _rate_value(tok: str) -> "Decimal | None":
+    """토큰이 (접두 변동/고정 포함) 이자율이면 Decimal 반환, 아니면 None.
+    콤마가 있으면 금액이므로 rate 아님. rate<100 가드 유지(4.310 OK, 20000000000 거부)."""
+    if "," in tok:
+        return None
+    s = _RATE_PREFIX.sub("", tok)
+    if not _AC2_RATE.match(s):
+        return None
+    v = _to_dec(s)
+    if v is None or v >= 100:
+        return None
+    return v
 
 
 def _strip_ccy(tok: str):
@@ -84,7 +102,7 @@ def _detail_idx(toks: list[str]) -> bool:
     base._RATE(소수 3~5자리)는 신한 '4.51'·하나 '4.8' 를 놓치므로 _AC2_RATE 로 판정.
     8자리 날짜(20250627)는 _AC2_RATE 에 안 걸린다(소수점 없음)."""
     has_date = any(_DATE_8.match(t) for t in toks)
-    has_rate = any(_AC2_RATE.match(t) and "," not in t for t in toks)
+    has_rate = any(_rate_value(t) is not None for t in toks)
     return has_date and has_rate
 
 
@@ -184,15 +202,15 @@ def parse_ac2(block: str, bc_no: str, bank: str) -> list[Borrowing]:
                     dates.append(d)
                 seen_date = True
                 continue
-            # 콤마 없는 소수 = 이자율 후보. 첫 날짜 이후의 비-0 값을 rate 로 채택.
-            if _AC2_RATE.match(t) and "," not in t:
-                v = _to_dec(t)
+            # 콤마 없는 소수 = 이자율 후보(변동/고정 접두 포함). 첫 날짜 이후의 비-0 값을 rate 로.
+            rv = _rate_value(t)
+            if rv is not None:
                 if seen_date:
                     if rate is None:
-                        rate = v
+                        rate = rv
                 else:
                     # 날짜 이전의 소수: 0.00 은 대출금액 0, 그 외 rate-shaped 소수는 버림.
-                    if v == 0:
+                    if rv == 0:
                         inline_nums.append(Decimal("0"))
                         inline_amt_frags.append("0")
                 continue
