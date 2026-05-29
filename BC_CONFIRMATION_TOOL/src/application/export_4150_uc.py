@@ -164,6 +164,7 @@ def export_4150(session: Session, project_id: int) -> Path:
         cps=cps,
         ac0_sections=ac0_sections,
         ac1_recs=_load_recs("AC1"),
+        ac1_detail_recs=_load_recs("AC1_DETAIL"),
         ac2_recs=_load_recs("AC2"),
         ac3_recs=_load_recs("AC3"),
         ac4_recs=_load_recs("AC4"),

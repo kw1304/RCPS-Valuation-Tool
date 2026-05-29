@@ -34,6 +34,18 @@ class FinancialAsset(_Base):              # AC1
     open_date: date | None = None             # (legacy)
 
 
+class SecurityDetail(_Base):              # AC1 ③ 유가증권 종목별 상세
+    account_no: str
+    ticker_name: str                      # 종목명 (예: 코스맥스, 코스맥스엔비티)
+    quantity: Decimal | None = None       # 수량
+    face_value: Decimal | None = None     # 액면금액
+    base_price: Decimal | None = None     # 기준가
+    valuation: Decimal | None = None      # 평가액
+    maturity: date | None = None
+    collateral_qty: Decimal | None = None # 담보·질권 설정 수량
+    collateral_type: str | None = None    # 질권설정·담보제공 등
+
+
 class Borrowing(_Base):                   # AC2
     contract_type: str
     limit_amt: Decimal

@@ -287,8 +287,9 @@ def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
     return ws
 
 
-def build_ac1_assets(wb, company, fiscal_date, records):
-    """AC1 금융자산 — V1 구조: ① 은행 예금 + ② 증권사 자산 2개 sub-table."""
+def build_ac1_assets(wb, company, fiscal_date, records, detail_records=None):
+    """AC1 금융자산 — V1 구조: ① 은행 예금 + ② 증권사 자산 + ③ 유가증권 상세명세."""
+    detail_records = detail_records or []
     ws = wb.create_sheet("AC1. 금융자산")
     _write_title_block(ws, company, "AC1. 금융조회서 요약 — 금융자산", fiscal_date, "AC1")
     r = _write_procedure_block(ws, 5, "1. 감사목적", ["회사의 금융자산 실재성 검토"])
@@ -339,6 +340,29 @@ def build_ac1_assets(wb, company, fiscal_date, records):
         ]
         _write_data_row(ws, r, values, alt=(i % 2 == 1))
         r += 1
+
+    # === ③ 유가증권 상세명세 (종목별) ===
+    if detail_records:
+        r += 1
+        r = _write_section_title(ws, r, "③ 유가증권 상세명세 (종목별)")
+        det_headers = ["조서번호", "금융기관명", "계좌번호", "종목명", "수량",
+                       "기준가", "평가액", "담보수량", "비고(질권·담보)"]
+        _write_table_header(ws, r, det_headers,
+                            col_widths=[10, 14, 20, 20, 14, 14, 18, 14, 20])
+        r += 1
+        for i, rec in enumerate(detail_records):
+            values = [
+                rec.get("bc_no",""), rec.get("bank",""),
+                rec.get("account_no","") or "",
+                rec.get("ticker_name","") or "",
+                float(rec.get("quantity") or 0) if rec.get("quantity") else "",
+                float(rec.get("base_price") or 0) if rec.get("base_price") else "",
+                float(rec.get("valuation") or 0) if rec.get("valuation") else "",
+                float(rec.get("collateral_qty") or 0) if rec.get("collateral_qty") else "",
+                rec.get("collateral_type","") or "",
+            ]
+            _write_data_row(ws, r, values, alt=(i % 2 == 1))
+            r += 1
 
     # === 결론 ===
     _write_conclusion(ws, r, "회사 장부상 금융자산을 금융조회서상 금액과 대사한 바, 적정함.")
@@ -472,15 +496,15 @@ def build_ac8_lease(wb, company, fiscal_date, records):
 def build_workbook(company: str, fiscal_date: str,
                    cps: list, ac0_sections: dict,
                    ac1_recs: list, ac2_recs: list, ac3_recs: list, ac4_recs: list,
-                   ac5_recs: list, ac6_recs: list, ac7_recs: list, ac8_recs: list) -> Workbook:
+                   ac5_recs: list, ac6_recs: list, ac7_recs: list, ac8_recs: list,
+                   ac1_detail_recs: list | None = None) -> Workbook:
     """Build complete Toss-style 4150 workbook."""
     wb = Workbook()
-    # remove default sheet
     if "Sheet" in wb.sheetnames:
         wb.remove(wb["Sheet"])
     build_control_sheet(wb, company, fiscal_date, cps)
     build_ac0(wb, company, fiscal_date, ac0_sections)
-    build_ac1_assets(wb, company, fiscal_date, ac1_recs)
+    build_ac1_assets(wb, company, fiscal_date, ac1_recs, detail_records=ac1_detail_recs or [])
     build_ac2_borrowings(wb, company, fiscal_date, ac2_recs)
     build_ac3_derivatives(wb, company, fiscal_date, ac3_recs)
     build_ac4_guarantees(wb, company, fiscal_date, ac4_recs)

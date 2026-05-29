@@ -7,7 +7,7 @@ from src.infrastructure.pdf.ocr import ocr_pdf
 from src.infrastructure.pdf.filename_parser import parse_filename
 from src.infrastructure.pdf.section_classifier import classify_sections
 from src.infrastructure.pdf.generic_parser import (
-    parse_ac1_deposit, parse_ac2_borrowing, parse_ac3_derivative,
+    parse_ac1_deposit, parse_ac1_security_details, parse_ac2_borrowing, parse_ac3_derivative,
     parse_ac4_guarantee, parse_ac5_collateral, parse_ac6_bills,
     parse_ac7_insurance, parse_ac8_general,
 )
@@ -51,6 +51,27 @@ def parse_responses(session: Session, project_id: int) -> dict:
         if cp:
             cp.response_arrived = True
             session.add(cp)
+        # AC1_DETAIL — 유가증권 종목별 상세명세 (전체 text에서 추출)
+        try:
+            detail_recs = parse_ac1_security_details(text, bc_no=bc_no or "", bank=bank or "")
+        except Exception:
+            detail_recs = []
+        for rec in detail_recs:
+            payload = rec.model_dump_json()
+            er = ExtractedRecord(
+                project_id=project_id,
+                counterparty_id=cp.id if cp else 0,
+                ac_section="AC1_DETAIL",
+                payload_json=payload,
+                confidence=confidence,
+                source_file=f.original_name,
+            )
+            session.add(er)
+            session.flush()
+            records_summary.append({
+                "section": "AC1_DETAIL", "bc_no": bc_no, "bank": bank,
+                "confidence": confidence, "payload": json.loads(payload),
+            })
         for ac, section_text in sections.items():
             parser = PARSERS[ac]
             try:

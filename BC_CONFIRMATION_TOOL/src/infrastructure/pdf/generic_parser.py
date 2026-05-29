@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 from src.domain.ac_models import (
     FinancialAsset,
+    SecurityDetail,
     Borrowing,
     Derivative,
     Guarantee,
@@ -116,6 +117,81 @@ def _to_dec(v: str | None) -> Decimal | None:
         return Decimal(v.replace(",", ""))
     except Exception:
         return None
+
+
+def parse_ac1_security_details(text: str, bc_no: str, bank: str) -> list[SecurityDetail]:
+    """유가증권 상세명세 추출. PDF의 '상세명세' 헤더 다음 lines 파싱.
+
+    표준 패턴: '계좌(11~16) 종목명(한글) 수량 액면 [기준가] 평가액 [만기] [담보수량 담보종류]'
+    예: '25628241101 코스맥스 190,000 163,000.00 30,970,000,000 0'
+        '25628241101 코스맥스엔비티 2,500,000 3,500.00 8,750,000,000 0 2,500,000 질권설정'
+    """
+    out: list[SecurityDetail] = []
+    in_detail = False
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if "상세명세" in s and "다음" in s:
+            in_detail = True
+            continue
+        if in_detail and any(k in s for k in ["다음과 같습니다", "조회기준일 현재", "구분 번호 금액"]) and "상세명세" not in s:
+            # 다른 section 진입 → 종료
+            in_detail = False
+            continue
+        if not in_detail:
+            continue
+        # 헤더 line (계좌번호 종목명 수량 ...) skip
+        if "종목명" in s or "수량" in s and "액면" in s:
+            continue
+        tokens = s.split()
+        if len(tokens) < 4:
+            continue
+        # 첫 token이 계좌(긴 숫자)인지
+        acct = tokens[0]
+        if not re.match(r"^[0-9\-]{8,18}$", acct):
+            continue
+        # 종목명: 한글 (2~3 token일 수 있음 — 끝 까지 숫자 아닌 부분 흡수)
+        # 끝쪽 숫자/금액 tokens 추출
+        i = 1
+        ticker_parts = []
+        while i < len(tokens) and not _NUM_TOKEN.match(tokens[i]):
+            ticker_parts.append(tokens[i])
+            i += 1
+        ticker = " ".join(ticker_parts) or "?"
+        nums = []
+        last_text = []
+        for t in tokens[i:]:
+            if _NUM_TOKEN.match(t) or t in {"0","-"}:
+                nums.append(_to_dec(t))
+            else:
+                last_text.append(t)
+        # heuristic: 평가액 = 가장 큰 숫자, 수량 = 가장 첫 숫자, 액면·기준가 = 단가 (천~십만)
+        qty = nums[0] if nums else None
+        # largest 추정 평가액
+        non_null = [n for n in nums if n and n > 0]
+        val = max(non_null) if non_null else None
+        # 단가 후보 (1,000 ~ 10,000,000) — 기준가/액면
+        unit_prices = [n for n in nums[1:] if n and 100 <= n <= 10_000_000]
+        base = unit_prices[0] if unit_prices else None
+        face = None  # 회신서 보통 액면금액 빠짐
+        # collateral: 마지막 숫자 (담보수량) + 텍스트
+        coll_qty = None
+        coll_type = None
+        if last_text:
+            coll_type = " ".join(last_text)[:30]
+            # text 앞에 숫자 있으면 담보수량
+            for n in reversed(nums):
+                if n and n != val and n != qty and n != base:
+                    coll_qty = n; break
+        out.append(SecurityDetail(
+            bc_no=bc_no, bank=bank,
+            account_no=acct, ticker_name=ticker,
+            quantity=qty, face_value=face,
+            base_price=base, valuation=val,
+            collateral_qty=coll_qty, collateral_type=coll_type,
+        ))
+    return out
 
 
 def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
