@@ -56,10 +56,29 @@ _HEADER_FRAGMENTS = {"이외", "시작", "종료", "및", "사업비", "누적",
 _POLICY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-]{6,18}$")
 _HAS_DIGIT = re.compile(r"\d")
 _DATE8_RE = re.compile(r"^\d{8}$")
+# 전화번호(02-6929-2791, 02-758-7597 등)는 증권번호가 아니다 — 삼성화재 §1 행 끝에 붙는다.
+_PHONE_RE = re.compile(r"^0\d{1,2}-\d{3,4}-\d{4}$")
 # 콤마 유무 무관 금액 토큰 (소수 허용).
 _AMT_RE = re.compile(r"^\d[\d,]*(?:\.\d+)?$")
 # 부보금액(coverage) 임계치: 이 값 이상이어야 부보금액 후보로 본다.
 _COVERAGE_MIN = Decimal("1000000")  # 100만원
+
+
+def _amt_dec(tok: str) -> Decimal | None:
+    """금액 토큰 → Decimal. `,00` 트레일링 아티팩트 정규화.
+
+    pdfminer 가 일부 회신서(삼성화재·DB손보·KB손보)에서 소수점을 콤마로 렌더해
+    `41,500,000,00`(=41,500,000.00) · `15,000,000,00` · `147,831,814,0` 처럼
+    뒤에 1~2자리 콤마-그룹을 붙인다. 정상 천단위 그룹은 항상 3자리이므로,
+    마지막 콤마-그룹이 1~2자리면 소수(센트) 아티팩트로 보고 버린다.
+    """
+    parts = tok.split(",")
+    if len(parts) >= 2 and 1 <= len(parts[-1]) <= 2:
+        tok = "".join(parts[:-1])
+    try:
+        return Decimal(tok.replace(",", ""))
+    except Exception:
+        return None
 
 
 def _is_header(s: str) -> bool:
@@ -88,6 +107,8 @@ def _find_policy_token(s: str) -> str | None:
     for tok in toks:
         if _DATE8_RE.match(tok):
             continue  # 8자리 순수 숫자는 날짜
+        if _PHONE_RE.match(tok):
+            continue  # 전화번호는 증권번호가 아니다
         if _POLICY_RE.match(tok) and _HAS_DIGIT.search(tok):
             if _PURE_NUM_RE.match(tok):
                 # 순수 숫자 증권번호: 데이터 행(날짜/통화 동반)일 때만 채택.
@@ -105,8 +126,10 @@ def _won_amounts(s: str) -> list[Decimal]:
     for tok in s.split():
         if _DATE8_RE.match(tok):
             continue  # 8자리 순수 숫자는 보험시작/종료일 → 금액 아님
+        if _PHONE_RE.match(tok):
+            continue  # 전화번호는 금액 아님
         if _AMT_RE.match(tok):
-            v = _dec(tok)
+            v = _amt_dec(tok)
             if v is not None and v >= 0:
                 out.append(v)
     return out
@@ -121,18 +144,41 @@ def _is_numeric_continuation(s: str) -> bool:
     return all(_AMT_RE.match(tok) for tok in toks)
 
 
+def _positional(amts: list[Decimal]):
+    """컬럼 순서(부보금액 → 보장성보험료)대로 정책행 첫째=부보, 둘째=보험료.
+    KB 300,000,000/2,034,000 · KB업무용 0/1,265,530 처럼 부보 0 도 보존."""
+    coverage = amts[0] if len(amts) >= 1 else Decimal("0")
+    premium = amts[1] if len(amts) >= 2 else Decimal("0")
+    return coverage, premium
+
+
+def _positional_threshold(amts: list[Decimal]):
+    """삼성화재 데이터-연속줄용: 증권번호 suffix(0893·9000·2504 등 임계치 미만 정수)와
+    KRW 0 placeholder 를 건너뛰고, 컬럼 순서상 첫 임계치 이상 금액=부보금액,
+    바로 다음 금액=보험료.
+
+    예) '험(Ⅱ) 0893 41,500,000,00 167,470,070 KRW 0 ...' → [893,41500000,167470070,0,...]
+        → 부보=41,500,000, 보험료=167,470,070
+        'Liability Policy 9000 500,000,000 83,212,000' → [9000,500000000,83212000]
+        → 부보=500,000,000, 보험료=83,212,000
+    """
+    for i, a in enumerate(amts):
+        if a >= _COVERAGE_MIN:
+            premium = amts[i + 1] if i + 1 < len(amts) else Decimal("0")
+            return a, premium
+    return Decimal("0"), Decimal("0")
+
+
 def _extract_amounts(policy_line_amts: list[Decimal], wrap_amts: list[Decimal]):
-    """부보금액(coverage)·보험료(premium) 추출 (범용).
+    """부보금액(coverage)·보험료(premium) 추출 — 한화/현대 wrap-override 레이아웃.
 
     헤더 컬럼 순서: 부보금액(coverage) → 보장성보험료(premium).
     - 기본(positional): coverage = 정책행 첫 금액, premium = 정책행 둘째 금액.
-      (KB 300,000,000/2,034,000 · KB업무용 0/1,265,530 처럼 부보금액 0 도 그대로 보존.)
-    - wrap override: 부보금액이 정책행에 없고 다음 줄(숫자 wrap)로 떨어진 보험사(한화)는
+    - wrap override: 부보금액이 정책행에 없고 다음 줄(숫자 wrap)로 떨어진 보험사(한화·현대)는
       wrap 줄의 임계치 이상 대형 금액이 부보금액이다. wrap 의 최대 금액이 임계치 이상이고
       현재 positional coverage 보다 크면 그것을 부보금액으로 채택한다.
     """
-    coverage = policy_line_amts[0] if len(policy_line_amts) >= 1 else Decimal("0")
-    premium = policy_line_amts[1] if len(policy_line_amts) >= 2 else Decimal("0")
+    coverage, premium = _positional(policy_line_amts)
 
     if wrap_amts:
         wrap_big = max((a for a in wrap_amts if a >= _COVERAGE_MIN), default=Decimal("0"))
@@ -147,18 +193,27 @@ def _extract_amounts(policy_line_amts: list[Decimal], wrap_amts: list[Decimal]):
 def parse_ac7(block: str, bc_no: str, bank: str) -> list[Insurance]:
     out: list[Insurance] = []
     pending: list[str] = []     # 정책행 직전 상품명 wrap 조각 버퍼
+    pending_amts: list[Decimal] = []  # 정책행 직전 줄에 wrap 된 금액(부보금액)
     last: Insurance | None = None  # 직전 정책 (후행 wrap append 용)
     last_policy_amts: list[Decimal] = []  # 직전 정책행의 금액(wrap 부보금액 합산용)
+    prev_content_li = -1        # 직전 비공백 content 줄 index
+    last_policy_li = -2         # 직전 정책행 줄 index
 
-    for raw in block.splitlines():
+    lines = block.splitlines()
+    for li, raw in enumerate(lines):
         s = raw.strip()
         if not s:
             continue
         if is_noise(s) or _is_header(s):
             pending = []
+            pending_amts = []
             last = None
             last_policy_amts = []
+            prev_content_li = li
             continue
+
+        prev = prev_content_li   # 이 줄 처리 전 직전 content 줄 index
+        prev_content_li = li
 
         policy_tok = _find_policy_token(s)
 
@@ -173,6 +228,15 @@ def parse_ac7(block: str, bc_no: str, bank: str) -> list[Insurance]:
                 product = "(미상)"
             policy_amts = _won_amounts(rest)
             coverage, premium = _extract_amounts(policy_amts, [])
+            # 부보금액이 정책행 직전 줄로 wrap 된 경우(KB바이오 재산종합보험: '재산종합보험 147,831,814,0'
+            # 이 정책번호 줄 위에 위치): 정책행 부보금액이 임계치 미만이면 pending 의 대형 금액을 채택.
+            if coverage < _COVERAGE_MIN and pending_amts:
+                pend_big = max((a for a in pending_amts if a >= _COVERAGE_MIN), default=Decimal("0"))
+                if pend_big > coverage:
+                    if premium == Decimal("0") and coverage > Decimal("0"):
+                        premium = coverage
+                    coverage = pend_big
+            pending_amts = []
             rec = Insurance(
                 bc_no=bc_no, bank=bank, product=product[:80],
                 policy_no=policy_tok,
@@ -184,6 +248,7 @@ def parse_ac7(block: str, bc_no: str, bank: str) -> list[Insurance]:
             out.append(rec)
             last = rec
             last_policy_amts = policy_amts
+            last_policy_li = li
         else:
             # 정책행이 아닌 줄.
             if last is not None and _is_numeric_continuation(s):
@@ -194,19 +259,60 @@ def parse_ac7(block: str, bc_no: str, bank: str) -> list[Insurance]:
                 last.coverage_amount = coverage
                 last.premium = premium
                 continue
+            # 삼성화재형 데이터-연속줄: 증권번호 줄(L5)에 날짜·실금액이 없고, 다음 줄(L6)에
+            # 날짜+부보금액+보험료가 모두 실린다. 직전 정책에 날짜가 아직 없고 이 줄에 날짜가
+            # 있으면 데이터-연속줄로 보고 컬럼 순서대로(임계치 기준) 부보/보험료·날짜를 채운다.
+            if (
+                last is not None
+                and last.end_date is None
+                and not last_policy_amts
+            ):
+                ct = tokenize_row(s)
+                if ct.dates:
+                    cont_amts = _won_amounts(s)
+                    coverage, premium = _positional_threshold(cont_amts)
+                    last.coverage_amount = coverage
+                    last.premium = premium
+                    last.start_date = ct.dates[0] if len(ct.dates) >= 1 else None
+                    last.end_date = ct.dates[1] if len(ct.dates) >= 2 else None
+                    txt = " ".join(ct.text_tokens).strip()
+                    if txt:
+                        last.product = (last.product + " " + txt).strip()[:80]
+                    continue
             txt = " ".join(tokenize_row(s).text_tokens).strip()
-            if not txt:
+            wrap_amts = _won_amounts(s)
+            # 다음(비어있지 않은) 줄에 새 증권번호가 있는지 확인.
+            next_is_policy = False
+            for nxt in lines[li + 1:]:
+                ns = nxt.strip()
+                if not ns:
+                    continue
+                next_is_policy = _find_policy_token(ns) is not None
+                break
+
+            # 이 amounts-줄을 어느 정책에 귀속시키나?
+            #  - 직전 정책행 바로 다음 줄이면(현대 'leted Operat 1412800000', 한화 '보험 ... 525,410,000')
+            #    → 직전 정책의 부보금액 wrap (post-wrap). 다음 줄이 새 정책이어도 마찬가지.
+            #  - 직전 정책행과 떨어져 있고(중간에 텍스트 wrap) 다음 줄이 새 정책이면
+            #    (KB바이오 '재산종합보험 147,831,814,0' → 다음 줄 20250496393)
+            #    → 다음 정책의 선행 wrap (pre-wrap) → pending 버퍼링.
+            is_post_wrap = (last is not None) and (prev == last_policy_li)
+            route_to_next = next_is_policy and not is_post_wrap
+
+            if not txt and not wrap_amts:
                 continue
-            if last is not None:
-                # 직전 정책 직후 텍스트 줄 = 영문 상품명 후행 wrap → append.
-                # 단, 'leted Operat 1412800000' 처럼 숫자가 섞인 wrap 은 부보금액도 합산.
-                wrap_amts = _won_amounts(s)
+            if last is not None and not route_to_next:
+                # 직전 정책 후행 wrap → 상품명/부보금액 append.
                 if wrap_amts:
                     coverage, premium = _extract_amounts(last_policy_amts, wrap_amts)
                     last.coverage_amount = coverage
                     last.premium = premium
-                merged = (last.product + " " + txt).strip()
-                last.product = merged[:80]
+                if txt:
+                    merged = (last.product + " " + txt).strip()
+                    last.product = merged[:80]
             else:
-                pending.append(txt)
+                if txt:
+                    pending.append(txt)
+                if wrap_amts:
+                    pending_amts.extend(wrap_amts)
     return out
