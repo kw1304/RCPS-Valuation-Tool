@@ -1,9 +1,10 @@
-"""AC2 회계 항등(invariant) 테스트: 약정한도액(limit) >= 대출금액(balance) ALWAYS.
+"""AC2 POSITIONAL 컬럼 귀속 테스트 (국민은행 실측).
 
-대출잔액이 약정한도액을 초과할 수 없다는 회계 불변을 고정한다.
-좌표 재구성 후 wrap 으로 한도/잔액 컬럼 순서가 뒤바뀔 수 있으므로(국민 첫 대출:
-'운영일반운전자금대출 0.00 14,500,000,000.0' → 0 이 먼저, 14.5bn 이 뒤),
-금액 2개 중 큰 값=한도, 작은 값=잔액으로 귀속해야 회계적으로 옳다.
+이전 '약정한도액(limit) >= 대출금액(balance) ALWAYS' 불변은 **틀렸다**.
+참고조서(정답)가 증명: 미인출 한도(한도0/대출X)가 실재하므로 잔액이 한도를
+초과하는 행이 정상 존재한다(국민 운영자금: 한도 0 / 대출 14.5bn).
+따라서 max/min 스왑을 적용하지 않고, 인쇄된 컬럼 순서대로 귀속한다.
+  약정한도액 = 첫 금액 컬럼, 대출금액 = 둘째 금액 컬럼.
 """
 import glob
 from decimal import Decimal
@@ -23,17 +24,15 @@ def _kookmin_sec2():
     return split_sections(extract_rows(Path(p[0])))[2]
 
 
-def test_kookmin_limit_ge_balance_invariant():
+def test_kookmin_positional_columns():
     recs = parse_ac2(_kookmin_sec2(), bc_no='BC-1', bank='국민은행')
     assert recs
-    for r in recs:
-        assert r.limit_amt >= r.balance, \
-            f'한도<잔액 위반: {r.contract_type} lim={r.limit_amt} bal={r.balance}'
-    # 운영자금대출 한도 14.5bn, 잔액 0
-    big = [r for r in recs if r.limit_amt == Decimal('14500000000')]
-    assert big and big[0].balance == 0, \
+    # 운영자금대출: 약정한도액 0 / 대출금액 14.5bn (미인출 한도가 아닌 인출 우선,
+    # POSITIONAL — 첫 컬럼 0 이 한도, 둘째 컬럼 14.5bn 이 대출).
+    op = [r for r in recs if r.balance == Decimal('14500000000')]
+    assert op and op[0].limit_amt == 0, \
         [(str(r.limit_amt), str(r.balance)) for r in recs]
-    # 단기수출 한도 1bn 잔액 18,720,900
+    # 외상매출채권전자대출: 약정한도액 1bn / 대출금액 18,720,900
     sx = [r for r in recs if r.limit_amt == Decimal('1000000000')]
     assert sx and sx[0].balance == Decimal('18720900'), \
         [(str(r.limit_amt), str(r.balance)) for r in recs]

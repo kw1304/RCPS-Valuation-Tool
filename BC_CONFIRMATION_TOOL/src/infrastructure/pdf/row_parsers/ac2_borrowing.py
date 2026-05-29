@@ -181,21 +181,23 @@ def _num_frag_tokens(frag: "_Frag") -> list[str]:
 
 
 def _classify_amounts(values: list[Decimal]) -> tuple[Decimal, Decimal]:
-    """복구된 금액 후보 → (약정한도액, 대출금액).
+    """복구된 금액 후보 → (약정한도액, 대출금액). **POSITIONAL** 귀속.
 
-    회계 항등(invariant): 약정한도액 >= 대출금액 ALWAYS (잔액이 한도를 초과 불가).
-    따라서 금액이 2개면 **큰 값=한도, 작은 값=대출금액** 으로 귀속한다 — 좌표 재구성
-    wrap 으로 컬럼 순서가 뒤바뀌어도(국민 '0.00 14,500,000,000' 처럼 0 이 먼저
-    와도) 회계적으로 옳고 견고하다. 동액이면(완전인출 term loan: 하나·신한)
-    한도==잔액 으로 둘 다 같은 값.
+    참고조서(정답)가 증명: AC2 금액 컬럼은 인쇄 순서 그대로다.
+      약정한도액 = 첫 번째 금액 컬럼(values[0]),
+      대출금액   = 두 번째 금액 컬럼(values[1]).
+    좌표 재구성된 행은 이미 컬럼 순서대로 금액을 담고 있다
+    (국민 운영자금: [0(한도), 14.5bn(대출)] / 산업: [0(한도), 20bn(대출)]).
+    '한도>=잔액' 같은 max/min 스왑·불변은 틀렸다 — 미인출 한도(한도0/대출X)가
+    실재하므로 절대 적용하지 않는다.
 
-    1개면 그 값이 약정한도액(한도 컬럼 우선), 대출금액=0 (미인출 한도).
+    금액이 2개면 (values[0], values[1]) 그대로.
+    1개면 그 값이 약정한도액, 대출금액=0 (미인출 한도; 단일 금액은 관례상 한도 컬럼).
     rate-shaped 는 이미 제외돼 들어온다. 0개면 (0,0)."""
     if not values:
         return Decimal("0"), Decimal("0")
     if len(values) >= 2:
-        a, b = values[0], values[1]
-        return (a, b) if a >= b else (b, a)
+        return values[0], values[1]
     return values[0], Decimal("0")
 
 
@@ -304,12 +306,19 @@ def parse_ac2(block: str, bc_no: str, bank: str) -> list[Borrowing]:
         amounts: list[Decimal] = []
         if len(big_inline) >= 1:
             # 국민: 한도+대출금액 둘 다 inline 이거나, 한도만 위 줄 wrap.
-            amounts = inline_nums[:]  # 0 포함 순서 유지
+            amounts = inline_nums[:]  # 0 포함 순서 유지(POSITIONAL: [한도, 대출])
         else:
-            # 금액이 detail 줄에 없음(하나/신한/산업) → 위/아래 줄에서 복구.
+            # 금액이 detail 줄에 실금액으로는 없음(하나/신한/산업) → 위/아래 줄에서 복구.
+            # 단, detail 줄에 명시적 0(한도=0 또는 대출=0)이 inline 으로 있으면 그 0 의
+            # 컬럼 위치를 보존해야 POSITIONAL 귀속이 옳다. 산업: detail 'KRW 0 KRW'(한도=0)
+            # + 아래 '20000000000'(대출) → [0, 20bn]. 0 을 버리면 [20bn] → (20bn,0) 오귀속.
             recovered = _recover_wrapped_amounts(prev, nxt)
             if recovered:
-                amounts = recovered
+                if zero_inline and len(recovered) == 1:
+                    # 한도 0(inline) + 대출 1건(아래 wrap) → [한도0, 대출] POSITIONAL.
+                    amounts = [Decimal("0")] + recovered
+                else:
+                    amounts = recovered
             else:
                 amounts = inline_nums[:]
 

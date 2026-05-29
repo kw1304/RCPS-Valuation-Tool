@@ -1,8 +1,9 @@
 """AC2 value-level golden test: 좌표 재구성 bank.txt fixture(국민은행) 기반.
-회계 항등(약정한도액 >= 대출금액)에 따라 wrap 된 금액이 올바른 컬럼에
-귀속되는지 고정한다. 국민 첫 대출 행은 '0.00 14,500,000,000.0' 로 0 이 먼저
-오는 wrap 순서지만, 잔액이 한도를 초과할 수 없으므로 한도=14.5bn / 잔액=0
-(미인출 한도) 가 회계적으로 옳다."""
+
+AC2 컬럼은 POSITIONAL (참고조서 정답 기준): 약정한도액 = 첫 금액 컬럼,
+대출금액 = 둘째 금액 컬럼, 인쇄된 그대로 전사한다. 국민 첫 대출 행은
+'0.00 14,500,000,000.0' 이므로 약정한도액 0 / 대출금액 14.5bn 이 정답이다.
+(14.5bn 은 줄바꿈으로 끝자리('0')가 다음 줄로 잘렸다가 복구된다.)"""
 from decimal import Decimal
 from datetime import date
 from pathlib import Path
@@ -18,25 +19,22 @@ def test_ac2_bank_wrapped_limit_balance():
 
     assert len(recs) == 4, f"국민은행 sec2 대출 4건, got {len(recs)}"
 
-    # 회계 항등: 약정한도액 >= 대출금액. 모든 행에서 성립해야 한다.
-    for r in recs:
-        assert r.limit_amt >= r.balance, \
-            f"한도<잔액 위반: {r.contract_type} lim={r.limit_amt} bal={r.balance}"
-
-    # 첫 대출: 원본 줄은 '0.00 14,500,000,000.0' (wrap 으로 0 이 먼저)지만,
-    # 잔액이 한도를 초과 불가하므로 한도=14.5bn / 대출금액(잔액)=0 (미인출 한도).
-    # 14.5bn 은 줄바꿈으로 끝자리('0')가 다음 줄로 잘렸다가 복구된다.
-    wrapped = next((r for r in recs if r.limit_amt == Decimal("14500000000.00")), None)
-    assert wrapped is not None, "약정한도액 14,500,000,000 이 복구되지 않음"
-    assert wrapped.balance == Decimal("0")
+    # 첫 대출: '0.00 14,500,000,000.0' → 약정한도액 0 / 대출금액 14.5bn (POSITIONAL).
+    wrapped = next((r for r in recs if r.balance == Decimal("14500000000.00")), None)
+    assert wrapped is not None, "대출금액 14,500,000,000 이 복구되지 않음"
+    assert wrapped.limit_amt == Decimal("0")
     assert wrapped.limit_amt != wrapped.balance
     assert wrapped.rate == Decimal("4.5000")
     assert wrapped.maturity == date(2026, 6, 10)
 
-    # 한도+잔액 둘 다 가진 행: 한도 1bn / 잔액 18,720,900 둘 다 복구
+    # 한도+잔액 둘 다 가진 행: 약정한도액 1bn / 대출금액 18,720,900
     twoamt = next((r for r in recs if r.balance == Decimal("18720900.00")), None)
     assert twoamt is not None, "한도+잔액 둘 다 가진 행이 복구되지 않음"
     assert twoamt.limit_amt == Decimal("1000000000.00")
+
+    # 기업일반운전자금대출 5bn/0, 3bn/0 (POSITIONAL: 한도 컬럼만, 대출 0)
+    assert any(r.limit_amt == Decimal("5000000000.00") and r.balance == 0 for r in recs)
+    assert any(r.limit_amt == Decimal("3000000000.00") and r.balance == 0 for r in recs)
 
     # contract_type 에 상환/담보 키워드가 들어가면 안 됨
     for r in recs:

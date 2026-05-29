@@ -53,23 +53,18 @@ def _assert_type_clean(recs):
 
 
 def test_kookmin_still_correct():
-    """국민은행 회귀: 회계 항등(약정한도액 >= 대출금액)에 따라 컬럼을 귀속한다.
-    첫 대출 '운영일반운전자금대출' 행은 원본 줄이 '0.00 14,500,000,000.0' (wrap 으로
-    0 이 먼저)지만, 잔액이 한도를 초과할 수 없으므로 약정한도액 14.5bn / 대출금액 0
-    (미인출 한도) 가 회계적으로 옳다.
-    외상매출채권전자대출은 한도 1bn·잔액 18,720,900."""
+    """국민은행 회귀: POSITIONAL 컬럼 귀속(참고조서 정답).
+    첫 대출 '운영일반운전자금대출' 행은 '0.00 14,500,000,000.0' 이므로
+    약정한도액 0 / 대출금액 14.5bn 이 인쇄 순서대로 옳다(미인출 한도 아님).
+    외상매출채권전자대출은 한도 1bn·대출 18,720,900."""
     recs = parse_ac2(_sec2("국민은행"), bc_no="BC-1", bank="국민은행")
     assert len(recs) == 4, [r.contract_type for r in recs]
     _assert_no_rate_as_amount(recs)
     _assert_type_clean(recs)
-    # 회계 항등: 모든 행에서 한도 >= 잔액.
-    for r in recs:
-        assert r.limit_amt >= r.balance, \
-            f"한도<잔액 위반: {r.contract_type} lim={r.limit_amt} bal={r.balance}"
-    # 약정한도액 14.5bn / 대출금액(잔액) 0 — 큰 값=한도, 작은 값=잔액.
-    w = next((r for r in recs if r.limit_amt == Decimal("14500000000.00")), None)
+    # 약정한도액 0 / 대출금액 14.5bn — POSITIONAL, max/min 스왑 없음.
+    w = next((r for r in recs if r.balance == Decimal("14500000000.00")), None)
     assert w is not None, [(str(r.limit_amt), str(r.balance)) for r in recs]
-    assert w.balance == Decimal("0")
+    assert w.limit_amt == Decimal("0")
     assert w.rate == Decimal("4.5000")
     assert w.maturity == date(2026, 6, 10)
     two = next((r for r in recs if r.balance == Decimal("18720900.00")), None)
@@ -129,17 +124,19 @@ def test_shinhan_amount():
 
 
 def test_sanup_limit_wrapped():
+    """산업: detail 'KRW 0 KRW'(약정한도액 0) + 아래 줄 대출금액(20bn/10bn).
+    POSITIONAL — 약정한도액 0 / 대출금액 20bn(및 10bn). 참고조서 정답."""
     recs = parse_ac2(_sec2("산업은행"), bc_no="BC-6", bank="산업은행")
     assert recs, "산업 차입금 0건"
     _assert_no_rate_as_amount(recs)
     _assert_type_clean(recs)
     assert len(recs) == 2, [r.contract_type for r in recs]
-    limits = sorted(str(r.limit_amt) for r in recs)
-    r20 = next((r for r in recs if r.limit_amt == Decimal("20000000000")), None)
-    r10 = next((r for r in recs if r.limit_amt == Decimal("10000000000")), None)
-    assert r20 is not None and r10 is not None, [str(r.limit_amt) for r in recs]
+    r20 = next((r for r in recs if r.balance == Decimal("20000000000")), None)
+    r10 = next((r for r in recs if r.balance == Decimal("10000000000")), None)
+    assert r20 is not None and r10 is not None, \
+        [(str(r.limit_amt), str(r.balance)) for r in recs]
     for r in recs:
-        assert r.balance == 0, f"산업 대출금액 0 기대, got {r.balance}"
+        assert r.limit_amt == 0, f"산업 약정한도액 0 기대, got {r.limit_amt}"
         assert r.rate == Decimal("4.17000")
         assert "산업운영자금대출" in r.contract_type
         assert r.contract_date == date(2025, 6, 26)

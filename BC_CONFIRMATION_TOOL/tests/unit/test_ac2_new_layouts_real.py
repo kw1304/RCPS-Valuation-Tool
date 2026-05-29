@@ -36,8 +36,10 @@ def test_gwangju_credit_card_limit():
         [(r.contract_type, str(r.limit_amt), str(r.balance)) for r in recs]
     assert any('신용카드' in r.contract_type for r in recs), \
         [r.contract_type for r in recs]
-    for r in recs:
-        assert r.limit_amt >= r.balance
+    # 신용카드 한도행: 약정한도액 5m / 대출금액 0 (POSITIONAL 단일 한도 컬럼).
+    cc = next((r for r in recs if r.limit_amt == Decimal('5000000')), None)
+    assert cc is not None and cc.balance == 0, \
+        [(str(r.limit_amt), str(r.balance)) for r in recs]
 
 
 def test_nh_invest_collateral_loan():
@@ -50,5 +52,7 @@ def test_nh_invest_collateral_loan():
         [(r.contract_type, str(r.limit_amt)) for r in recs]
     assert any('담보대출' in r.contract_type for r in recs), \
         [r.contract_type for r in recs]
-    for r in recs:
-        assert r.limit_amt >= r.balance
+    # 보통담보대출 한도행: 약정한도액 500m / 대출금액 0 (POSITIONAL 단일 한도 컬럼).
+    dl = next((r for r in recs if r.limit_amt == Decimal('500000000')), None)
+    assert dl is not None and dl.balance == 0, \
+        [(str(r.limit_amt), str(r.balance)) for r in recs]
