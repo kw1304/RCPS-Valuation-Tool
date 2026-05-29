@@ -8,6 +8,7 @@ bank:
   6: {ac: AC6, direction: provided}
   7: {ac: AC6, direction: provided}
   8: {ac: AC6, direction: received}
+  9: {ac: AC5, direction: provided}
   10: {ac: AC6, sub: 당좌}
 securities:
   1: {ac: AC1}
