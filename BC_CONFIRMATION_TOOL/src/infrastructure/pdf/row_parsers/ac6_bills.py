@@ -22,6 +22,10 @@ def parse_ac6(block: str, bc_no: str, bank: str,
             count = int(ints[0]) if ints else 0
             big = [a for a in t.amounts if a >= 1000]
             balance = big[0] if big else (t.amounts[-1] if t.amounts else Decimal("0"))
+        # sentinel/placeholder 행 제외: 실제 양수 잔액도 양수 건수도 없으면 skip
+        # (예: "대표이사명 99991231 000000000 00000000" → count 0, balance 0)
+        if count <= 0 and balance <= 0:
+            continue
         out.append(BillCheck(
             bc_no=bc_no, bank=bank, kind=kind,
             count=count, balance=balance, direction=direction, sub=sub,
