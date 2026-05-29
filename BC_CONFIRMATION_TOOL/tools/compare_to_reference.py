@@ -46,11 +46,13 @@ sys.path.insert(0, str(ROOT))
 import openpyxl  # noqa: E402
 
 from src.infrastructure.pdf.extractor import extract_rows  # noqa: E402
+from src.infrastructure.pdf.ocr import ocr_pdf  # noqa: E402
 from src.infrastructure.pdf.form_fingerprint import identify_form  # noqa: E402
 from src.infrastructure.pdf.section_splitter import split_sections  # noqa: E402
 from src.infrastructure.pdf.filename_parser import parse_filename  # noqa: E402
 from src.application.parse_response_uc import route_or_classify, _dispatch  # noqa: E402
 from src.infrastructure.pdf.row_parsers.fallback import fallback_parse  # noqa: E402
+from src.domain.record_dedup import dedup_key  # noqa: E402
 
 
 # ── 금액 정규화 ────────────────────────────────────────────────────────────
@@ -201,8 +203,15 @@ def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Count
 
     fallback_only=True 면 정형 파서를 쓰지 않고 fallback_parse 만 적용한다
     (우편/OCR 디렉터리용). False 면 정형 family 는 섹션 파서로, unknown 은
-    fallback 으로 파싱한다(온라인 디렉터리에 섞인 비정형 회신 포함)."""
+    fallback 으로 파싱한다(온라인 디렉터리에 섞인 비정형 회신 포함).
+
+    이중계상 방지: 한 디렉터리에 개별 회신본 + 합본 스캔이 함께 있으면 같은
+    holding 이 두 번 파싱된다. 정형 레코드는 dedup_key 로 디렉터리 전체에서
+    한 번만 집계한다(합본 스캔은 bc_no·bank 가 비어 키에서 제외됨).
+    또한 AC1_DETAIL(유가증권 종목 상세명세)은 참고조서 AC1(요약)과 다른 영역이므로
+    AC1 비교 버킷에 섞지 않는다(별도/제외)."""
     out: dict[str, Counter] = {ac: Counter() for ac in _COMPARE_ACS}
+    seen: set = set()  # dedup: 디렉터리 전체 정형 레코드 식별자
     pdfs = sorted(glob.glob(str(pdf_dir / "*.pdf")))
     for p in pdfs:
         path = Path(p)
@@ -214,6 +223,14 @@ def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Count
         except Exception as e:
             print(f"  [WARN] extract 실패 {path.name}: {e}", file=sys.stderr)
             continue
+        # 스캔 PDF(디지털 텍스트 거의 없음) → OCR (production parse_response_uc 와 동일 기준).
+        # 우편 보험사 회신서(흥국화재·예별/MG손해보험)는 이미지 스캔이라 OCR 없이는
+        # 부보금액을 전혀 못 잡는다.
+        if len(text.strip()) < 80:
+            try:
+                text = ocr_pdf(path).get("text", "") or text
+            except Exception as e:
+                print(f"  [WARN] OCR 실패 {path.name}: {e}", file=sys.stderr)
         family = identify_form(text)
         if fallback_only or family == "unknown":
             _add_fallback_amounts(out, text, bc_no, bank)
@@ -224,7 +241,10 @@ def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Count
             if not route:
                 continue
             ac = route["ac"]
-            store_ac = "AC1" if ac == "AC1_DETAIL" else ac
+            # AC1_DETAIL(종목 상세명세)은 AC1(요약) 비교 대상이 아니다 — 제외.
+            if ac == "AC1_DETAIL":
+                continue
+            store_ac = ac
             if store_ac not in _TOOL_FIELDS:
                 continue
             parse_block = route.get("block", block)
@@ -234,6 +254,11 @@ def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Count
                 continue
             for rec in recs:
                 d = rec.model_dump() if hasattr(rec, "model_dump") else dict(rec)
+                k = dedup_key(store_ac, d)
+                if k is not None:
+                    if k in seen:
+                        continue  # 합본 스캔 등 중복 holding → 한 번만 집계
+                    seen.add(k)
                 for fld in _TOOL_FIELDS[store_ac]:
                     iv = _to_int_amount(d.get(fld))
                     if iv is not None:
