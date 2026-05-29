@@ -20,7 +20,7 @@ _NOISE = [
 
 # 합계/소계/총계 등 합산행 마커. substring 매칭하면 종합계약보증(="합계" 포함) 같은
 # 실제 상품명을 오탐하므로, 줄의 FIRST 토큰이 정확히 이 집합에 속할 때만 noise 로 본다.
-_TOTAL_TOKENS = {"합계", "소계", "총계", "합", "계"}
+_TOTAL_TOKENS = {"합계", "소계", "총계", "합", "계", "총"}
 
 
 def is_noise(line: str) -> bool:
