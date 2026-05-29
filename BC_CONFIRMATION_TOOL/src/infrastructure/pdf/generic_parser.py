@@ -25,14 +25,21 @@ _NOISE_PATTERNS = [
     "조회대상회사",
     "당 금융회사",
     "당 은행",
-    "해당 거래 없음",
-    "해당사항 없음",
     "(주)",                # 보통 헤더 텍스트 "코스맥스비티아이(주)" 등
     "유의사항",
     "면책",
-    "비고",
     "기재 사항",
     "기재사항",
+]
+# "해당사항 없음"·"비고" 등은 데이터 행의 제한사항/비고 칸에도 적힌다.
+# (예: 대신증권 '101-187649-10 위탁자상품 KRW 0 ... 해당사항 없음')
+# 이런 문구는 진짜 데이터(계좌번호/통화+금액)가 없을 때만 noise 로 본다.
+# 그렇지 않으면 전액 0 증권계좌가 통째로 누락되어 완전성이 깨진다.
+_SOFT_NOISE_PATTERNS = [
+    "해당 거래 없음",
+    "해당사항 없음",
+    "해당사항없음",
+    "비고",
 ]
 
 
@@ -47,9 +54,15 @@ def _is_noise(line: str) -> bool:
     if re.match(r"^\s*[\d①②③④⑤⑥⑦⑧⑨⑩가-힣]\s*[.)]\s", s):
         # 단 숫자 다음 금융상품 키워드는 record (e.g. "1. 보통예금")
         pass
-    # 보일러플레이트 키워드 포함
+    # 보일러플레이트 키워드 포함 → 무조건 noise
     for p in _NOISE_PATTERNS:
         if p in s:
+            return True
+    # soft noise: 데이터(계좌번호 or 통화+금액)가 없을 때만 noise
+    for p in _SOFT_NOISE_PATTERNS:
+        if p in s:
+            if _has_acct_token(s) or _has_ccy_amount_token(s):
+                return False  # 데이터 행 — 살린다
             return True
     return False
 
@@ -89,6 +102,23 @@ _RATE_PATTERN = re.compile(r"^\d+\.\d{2,5}$")
 _NUM_TOKEN = re.compile(r"^[\d,]+(?:\.\d+)?$")
 _ACCT_TOKEN = re.compile(r"^[0-9\-]{8,22}$")
 _PAREN = re.compile(r"^\([\d,.\-]+\)$")
+# (KRW)32,023,447,835 / (USD)1,138,268.99 처럼 통화가 괄호로 금액 앞에 붙은 토큰.
+# KEB하나 등 회신서가 통화 접두를 금액에 글루(glue)하면 기존 숫자 정규식이
+# 못 잡아 balance 0 으로 떨어진다. 통화를 분리·기록하고 잔여를 숫자로 재해석.
+_CCY_PREFIX = re.compile(
+    r"^\((KRW|USD|EUR|JPY|CNY|CNH|HKD|GBP|AUD|SGD)\)(.*)$"
+)
+
+
+def _strip_ccy_prefix(tok: str) -> tuple[str | None, str]:
+    """토큰 앞 (KRW)/(USD)/… 접두를 떼고 (통화, 잔여토큰) 반환.
+
+    접두가 없으면 (None, tok). 잔여가 비면(통화만 단독 괄호) ('CCY', '').
+    """
+    m = _CCY_PREFIX.match(tok)
+    if not m:
+        return None, tok
+    return m.group(1), m.group(2)
 
 
 def _classify(s: str) -> tuple[str, str]:
@@ -224,10 +254,21 @@ def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
 
 
 def _has_acct_token(s: str) -> bool:
-    """줄에 계좌번호 형태(콤마 없는 10~18자리 숫자) 토큰이 있는지."""
+    """줄에 계좌번호 형태 토큰이 있는지.
+
+    콤마 없는 10~18자리 숫자, 또는 대시 포함 증권 계좌번호
+    (예: '101-187649-10', '423-104775-AA', '150-225094385').
+    """
     for t in s.split():
-        if "," not in t and re.fullmatch(r"\d{10,18}", t):
+        if "," in t:
+            continue
+        if re.fullmatch(r"\d{10,18}", t):
             return True
+        # 대시 포함 계좌(증권사): 숫자 그룹이 대시로 연결, 숫자만 8자리+
+        if "-" in t and re.fullmatch(r"[0-9A-Z\-]{8,22}", t):
+            digits = re.sub(r"[^0-9]", "", t)
+            if len(digits) >= 8:
+                return True
     return False
 
 
@@ -235,22 +276,47 @@ def _has_ccy_amount_token(s: str) -> bool:
     """줄에 통화 토큰(KRW/USD/…)과 금액 토큰(>0 가능한 숫자)이 함께 있는지.
 
     계좌번호도 키워드도 없는 데이터 행(예: '당좌개설보증금 KRW 3000000.00')을
-    살리기 위한 판정. 헤더·footer는 통화+금액 조합이 없어 자연히 제외된다.
+    살리기 위한 판정. 통화는 단독 토큰(KRW) 또는 금액에 글루된 접두
+    ((KRW)32,023,447,835) 모두 인정. 헤더·footer는 통화+금액 조합이 없다.
     """
     tokens = s.split()
-    has_ccy = any(t in _CCY_SET for t in tokens)
-    if not has_ccy:
-        return False
+    has_ccy = False
+    has_amt = False
     for t in tokens:
-        if t in _CCY_SET or _DATE_8.match(t):
+        ccy, rest = _strip_ccy_prefix(t)
+        if ccy:                       # (KRW)123 형태
+            has_ccy = True
+            if rest and (_NUM_TOKEN.match(rest) or _PAREN.match(rest)):
+                has_amt = True
+            continue
+        if t in _CCY_SET:
+            has_ccy = True
+            continue
+        if _DATE_8.match(t):
             continue
         if _NUM_TOKEN.match(t) or _PAREN.match(t):
-            return True
-    return False
+            has_amt = True
+    return has_ccy and has_amt
 
 
 def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:
-    tokens = s.split()
+    raw_tokens = s.split()
+    if len(raw_tokens) < 2:
+        return None
+    # (KRW)금액 / (USD)금액 글루 접두 분리: 통화는 별도 토큰으로, 잔여는 숫자로.
+    # 통화가 줄 전체에서 처음 등장하면 기록(prefix_ccy)해 ccy fallback 보강.
+    prefix_ccy = None
+    tokens: list[str] = []
+    for t in raw_tokens:
+        ccy, rest = _strip_ccy_prefix(t)
+        if ccy:
+            if prefix_ccy is None:
+                prefix_ccy = ccy
+            tokens.append(ccy)        # 통화 토큰으로 환원
+            if rest:                  # 금액 잔여 (e.g. '32,023,447,835')
+                tokens.append(rest)
+        else:
+            tokens.append(t)
     if len(tokens) < 2:
         return None
     atype, cat = _classify(s)
@@ -296,7 +362,7 @@ def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:
             other_tokens.append(t)
 
     if not ccy:
-        ccy = "USD" if "외화" in s else "KRW"
+        ccy = prefix_ccy or ("USD" if "외화" in s else "KRW")
 
     # balance: largest numeric (assume the first non-zero, or just first)
     balance = Decimal("0")
