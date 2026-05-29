@@ -1,15 +1,12 @@
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 from sqlmodel import Session, select
-import openpyxl
-from openpyxl.cell.cell import MergedCell
 from src.infrastructure.db.models import Project, Counterparty, ExtractedRecord, FileAsset
-from src.infrastructure.excel_writer.ac_filler import ACFiller, SHEET_CONFIG
-from src.infrastructure.excel_writer.color_swap import apply_toss_palette, mark_low_confidence
+from src.infrastructure.excel_writer import toss_workbook
 from src.infrastructure.cs_loader import ControlSheetLoader
 from src.infrastructure.union_monthly import parse_collateral_or_guarantee, parse_union_monthly
+from src.infrastructure.address_validator import AddressValidator
 from src.domain.ac_models import (
     FinancialAsset, Borrowing, Derivative, Guarantee,
     Collateral, BillCheck, Insurance, GeneralDeal,
@@ -17,7 +14,6 @@ from src.domain.ac_models import (
 from src.domain.party_normalize import PartyNormalizer
 
 ROOT = Path(__file__).resolve().parents[2]
-TEMPLATE = ROOT / "templates" / "4150_AC_template.xlsx"
 OUTPUT_DIR = ROOT / "OUTPUT"
 
 MODEL_BY_SECTION = {
@@ -28,7 +24,7 @@ MODEL_BY_SECTION = {
 
 
 def export_4150(session: Session, project_id: int) -> Path:
-    """Export 4150 AC workpaper from extracted records and counterparty data."""
+    """Build fresh Toss-style 4150 AC workbook from DB + uploaded files."""
     project = session.get(Project, project_id)
     if project is None:
         raise ValueError("project not found")
@@ -38,17 +34,7 @@ def export_4150(session: Session, project_id: int) -> Path:
     fy = project.fiscal_date[:4]
     out_path = OUTPUT_DIR / f"4150_AC_금융기관조회_{project.name}_FY{fy}_{ts}.xlsx"
 
-    # Copy template
-    shutil.copy(TEMPLATE, out_path)
-    filler = ACFiller(out_path)
-
-    # Stamp project info (회사명·기준일) — propagates via formulas to AC1~AC10
-    _stamp_project_info(filler.wb, project.name, project.fiscal_date)
-
-    # Clear V1 example data rows (예: V1엔 코스맥스비티아이 전기 데이터가 채워져 있음)
-    _clear_data_rows(filler.wb)
-
-    # Get counterparties + file assets
+    # Load counterparties + files
     cps = list(session.exec(
         select(Counterparty).where(Counterparty.project_id == project_id)
     ).all())
@@ -57,36 +43,136 @@ def export_4150(session: Session, project_id: int) -> Path:
     ).all()}
     norm = PartyNormalizer.load(ROOT / "configs")
 
-    # Fill AC control sheet + AC0
-    _fill_control_sheet(filler.wb, cps)
-    _fill_ac0(filler.wb, cps, files, norm)
+    # === AC0 5 sections ===
+    cs_keys: set[tuple[str, str | None]] = set()
+    cs_rows = []
+    if "cs" in files:
+        cs_rows = ControlSheetLoader(Path(files["cs"].stored_path)).load_bc_rows()
+        for r in cs_rows:
+            text = " ".join(filter(None, [r.get("name"), r.get("branch")]))
+            np = norm.normalize(text or "")
+            cs_keys.add((np.canonical, np.branch))
 
-    # Fill AC1~AC8: ExtractedRecord
-    for ac in MODEL_BY_SECTION:
-        records_raw = session.exec(
+    def _in_cs_status(canon, branch):
+        return "Y" if (canon, branch) in cs_keys else "N"
+
+    # Section 1: 전기 CS
+    prior_items = []
+    if "prior_cs" in files:
+        seen = set()
+        for pr in ControlSheetLoader(Path(files["prior_cs"].stored_path)).load_bc_rows():
+            text = " ".join(filter(None, [pr.get("name"), pr.get("branch")]))
+            np = norm.normalize(text or "")
+            key = (np.canonical, np.branch)
+            if key in seen: continue
+            seen.add(key)
+            name = np.canonical + (f" {np.branch}" if np.branch else "")
+            prior_items.append({"name": name, "status": _in_cs_status(*key), "reason": ""})
+
+    # Section 2: 월보
+    union_items = []
+    if "union" in files:
+        seen = set()
+        for n in parse_union_monthly(Path(files["union"].stored_path)):
+            np = norm.normalize(n)
+            if not np.matched: continue
+            key = (np.canonical, np.branch)
+            if key in seen: continue
+            seen.add(key)
+            name = np.canonical + (f" {np.branch}" if np.branch else "")
+            union_items.append({"name": name, "status": _in_cs_status(*key), "reason": ""})
+
+    # Section 3: G/L sampling
+    gl_items = []
+    gl_cps = [c for c in cps if getattr(c, "gl_sampled", False) or c.bs_balance != 0 or c.pl_volume != 0]
+    gl_cps.sort(key=lambda c: -(abs(c.bs_balance) + abs(c.pl_volume)))
+    seen = set()
+    for cp in gl_cps:
+        key = (cp.canonical_name, cp.branch)
+        if key in seen: continue
+        seen.add(key)
+        if cp.bs_balance != 0:
+            label = "B/S 잔액"
+        elif cp.pl_volume != 0:
+            label = "P/L 거래"
+        else:
+            label = "거래 발생"
+        name = cp.canonical_name + (f" {cp.branch}" if cp.branch else "")
+        gl_items.append({"label": label, "name": name, "status": _in_cs_status(*key), "reason": ""})
+
+    # Section 4: 담보·보증
+    coll_seen = set()
+    coll_items = []
+    for kind in ("collateral", "guarantee"):
+        if kind not in files: continue
+        for n in parse_collateral_or_guarantee(Path(files[kind].stored_path)):
+            np = norm.normalize(n)
+            if not np.matched: continue
+            key = (np.canonical, np.branch)
+            if key in coll_seen: continue
+            coll_seen.add(key)
+            name = np.canonical + (f" {np.branch}" if np.branch else "")
+            coll_items.append({"name": name, "status": _in_cs_status(*key), "reason": ""})
+    coll_items.sort(key=lambda d: d["name"])
+
+    # Section 5: 우편 주소
+    addr_items = []
+    if cs_rows:
+        validator = AddressValidator()
+        for r in cs_rows:
+            if "우편" not in (r.get("channel") or ""): continue
+            text = " ".join(filter(None, [r.get("name"), r.get("branch")]))
+            np = norm.normalize(text or "")
+            address = r.get("address") or ""
+            res = validator.validate(address)
+            status = res.get("status", "")
+            # display label
+            label_map = {
+                "ok": "Y", "foreign": "Y (해외)",
+                "mismatch": "△ 정정필요", "incomplete": "△ 보완필요",
+                "not_found": "N (없음)", "failed": "수기확인",
+            }
+            addr_items.append({
+                "bc_no": r.get("bc_no", ""),
+                "name": np.canonical + (f" {np.branch}" if np.branch else ""),
+                "branch": r.get("branch", "") or "",
+                "address": address,
+                "status": label_map.get(status, status),
+            })
+
+    ac0_sections = {
+        "prior": prior_items,
+        "union": union_items,
+        "gl": gl_items,
+        "collateral": coll_items,
+        "address": addr_items,
+    }
+
+    # === AC1~AC8 records ===
+    def _load_recs(ac_section):
+        raw = session.exec(
             select(ExtractedRecord).where(
                 ExtractedRecord.project_id == project_id,
-                ExtractedRecord.ac_section == ac,
+                ExtractedRecord.ac_section == ac_section,
             )
         ).all()
+        return [json.loads(r.payload_json) for r in raw]
 
-        Model = MODEL_BY_SECTION[ac]
-        models = [Model.model_validate_json(r.payload_json) for r in records_raw]
-
-        filler.fill_section(ac, models)
-
-        cfg = SHEET_CONFIG[ac]
-        ws = filler.wb[cfg["sheet_name"]] if cfg["sheet_name"] in filler.wb.sheetnames else None
-        if ws:
-            for idx, raw in enumerate(records_raw):
-                if raw.confidence == "low":
-                    for col in cfg["cols"].keys():
-                        mark_low_confidence(ws, cfg["start_row"] + idx, col)
-
-    # Apply Toss palette
-    apply_toss_palette(filler.wb)
-    filler.save()
-
+    wb = toss_workbook.build_workbook(
+        company=project.name,
+        fiscal_date=project.fiscal_date,
+        cps=cps,
+        ac0_sections=ac0_sections,
+        ac1_recs=_load_recs("AC1"),
+        ac2_recs=_load_recs("AC2"),
+        ac3_recs=_load_recs("AC3"),
+        ac4_recs=_load_recs("AC4"),
+        ac5_recs=_load_recs("AC5"),
+        ac6_recs=_load_recs("AC6"),
+        ac7_recs=_load_recs("AC7"),
+        ac8_recs=_load_recs("AC8"),
+    )
+    wb.save(out_path)
     return out_path
 
 
@@ -254,7 +340,16 @@ def _fill_ac0(wb, cps: list[Counterparty], files: dict, norm):
         text = " ".join(filter(None, [r.get("name"), r.get("branch")]))
         np = norm.normalize(text or "")
         cp = next((c for c in cps if (c.canonical_name, c.branch) == (np.canonical, np.branch)), None)
-        addr_valid = "Y" if (cp and cp.address_valid == "ok") else "N"
+        # address_valid: ok|foreign → Y, mismatch|incomplete → △, not_found|failed → N
+        valid_status = (cp.address_valid if cp else None) or ""
+        if valid_status == "ok":
+            addr_valid = "Y"
+        elif valid_status == "foreign":
+            addr_valid = "Y (해외)"
+        elif valid_status in {"mismatch", "incomplete"}:
+            addr_valid = "△ 검토필요"
+        else:
+            addr_valid = "수기확인"
         display = np.canonical + (f" {np.branch}" if np.branch else "")
         _safe_write(sheet, f"C{row_idx}", display)
         _safe_write(sheet, f"D{row_idx}", r.get("branch") or "")
