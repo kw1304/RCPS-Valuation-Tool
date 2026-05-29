@@ -1,7 +1,8 @@
 """AC2 value-level golden test: 좌표 재구성 bank.txt fixture(국민은행) 기반.
-회신서 컬럼 순서(약정한도액 대출금액)대로 wrap 된 금액이 올바른 컬럼에
-귀속되는지 고정한다. (구 평면텍스트 fixture는 14.5bn 이 단독 줄로 떠서
-한도·잔액이 뒤바뀌어 있었으나, 좌표 재구성으로 회신서 원본 컬럼이 복원됨.)"""
+회계 항등(약정한도액 >= 대출금액)에 따라 wrap 된 금액이 올바른 컬럼에
+귀속되는지 고정한다. 국민 첫 대출 행은 '0.00 14,500,000,000.0' 로 0 이 먼저
+오는 wrap 순서지만, 잔액이 한도를 초과할 수 없으므로 한도=14.5bn / 잔액=0
+(미인출 한도) 가 회계적으로 옳다."""
 from decimal import Decimal
 from datetime import date
 from pathlib import Path
@@ -17,11 +18,17 @@ def test_ac2_bank_wrapped_limit_balance():
 
     assert len(recs) == 4, f"국민은행 sec2 대출 4건, got {len(recs)}"
 
-    # 첫 대출: 회신서 컬럼 = 약정한도액 0.00 / 대출금액(잔액) 14,500,000,000.
+    # 회계 항등: 약정한도액 >= 대출금액. 모든 행에서 성립해야 한다.
+    for r in recs:
+        assert r.limit_amt >= r.balance, \
+            f"한도<잔액 위반: {r.contract_type} lim={r.limit_amt} bal={r.balance}"
+
+    # 첫 대출: 원본 줄은 '0.00 14,500,000,000.0' (wrap 으로 0 이 먼저)지만,
+    # 잔액이 한도를 초과 불가하므로 한도=14.5bn / 대출금액(잔액)=0 (미인출 한도).
     # 14.5bn 은 줄바꿈으로 끝자리('0')가 다음 줄로 잘렸다가 복구된다.
-    wrapped = next((r for r in recs if r.balance == Decimal("14500000000.00")), None)
-    assert wrapped is not None, "대출금액 14,500,000,000 이 복구되지 않음"
-    assert wrapped.limit_amt == Decimal("0.00")
+    wrapped = next((r for r in recs if r.limit_amt == Decimal("14500000000.00")), None)
+    assert wrapped is not None, "약정한도액 14,500,000,000 이 복구되지 않음"
+    assert wrapped.balance == Decimal("0")
     assert wrapped.limit_amt != wrapped.balance
     assert wrapped.rate == Decimal("4.5000")
     assert wrapped.maturity == date(2026, 6, 10)

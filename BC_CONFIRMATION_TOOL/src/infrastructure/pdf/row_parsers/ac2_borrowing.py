@@ -131,13 +131,21 @@ def _num_frag_tokens(frag: "_Frag") -> list[str]:
 
 
 def _classify_amounts(values: list[Decimal]) -> tuple[Decimal, Decimal]:
-    """복구된 금액 후보 → (한도, 대출금액). rate-shaped 는 이미 제외돼 들어옴.
-    2개면 첫째=한도, 둘째=대출금액. 1개면 한도=그값, 대출금액=0 (한도 컬럼 우선).
-    0개면 (0,0)."""
+    """복구된 금액 후보 → (약정한도액, 대출금액).
+
+    회계 항등(invariant): 약정한도액 >= 대출금액 ALWAYS (잔액이 한도를 초과 불가).
+    따라서 금액이 2개면 **큰 값=한도, 작은 값=대출금액** 으로 귀속한다 — 좌표 재구성
+    wrap 으로 컬럼 순서가 뒤바뀌어도(국민 '0.00 14,500,000,000' 처럼 0 이 먼저
+    와도) 회계적으로 옳고 견고하다. 동액이면(완전인출 term loan: 하나·신한)
+    한도==잔액 으로 둘 다 같은 값.
+
+    1개면 그 값이 약정한도액(한도 컬럼 우선), 대출금액=0 (미인출 한도).
+    rate-shaped 는 이미 제외돼 들어온다. 0개면 (0,0)."""
     if not values:
         return Decimal("0"), Decimal("0")
     if len(values) >= 2:
-        return values[0], values[1]
+        a, b = values[0], values[1]
+        return (a, b) if a >= b else (b, a)
     return values[0], Decimal("0")
 
 

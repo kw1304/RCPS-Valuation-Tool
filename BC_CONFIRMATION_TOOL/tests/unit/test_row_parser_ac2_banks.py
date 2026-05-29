@@ -53,18 +53,23 @@ def _assert_type_clean(recs):
 
 
 def test_kookmin_still_correct():
-    """국민은행 회귀: 좌표 재구성으로 회신서 컬럼(약정한도액 대출금액)을 정확히 읽는다.
-    첫 대출 '기업일반운전자금대출' 행은 약정한도액 0.00 / 대출금액(잔액) 14,500,000,000
-    (구 평면텍스트 경로는 컬럼 연관이 깨져 한도·잔액이 뒤바뀌어 있었음).
+    """국민은행 회귀: 회계 항등(약정한도액 >= 대출금액)에 따라 컬럼을 귀속한다.
+    첫 대출 '운영일반운전자금대출' 행은 원본 줄이 '0.00 14,500,000,000.0' (wrap 으로
+    0 이 먼저)지만, 잔액이 한도를 초과할 수 없으므로 약정한도액 14.5bn / 대출금액 0
+    (미인출 한도) 가 회계적으로 옳다.
     외상매출채권전자대출은 한도 1bn·잔액 18,720,900."""
     recs = parse_ac2(_sec2("국민은행"), bc_no="BC-1", bank="국민은행")
     assert len(recs) == 4, [r.contract_type for r in recs]
     _assert_no_rate_as_amount(recs)
     _assert_type_clean(recs)
-    # 대출금액(잔액) 컬럼에 14.5bn — 좌표 재구성 후 회신서 컬럼 순서대로 정확히 귀속.
-    w = next((r for r in recs if r.balance == Decimal("14500000000.00")), None)
+    # 회계 항등: 모든 행에서 한도 >= 잔액.
+    for r in recs:
+        assert r.limit_amt >= r.balance, \
+            f"한도<잔액 위반: {r.contract_type} lim={r.limit_amt} bal={r.balance}"
+    # 약정한도액 14.5bn / 대출금액(잔액) 0 — 큰 값=한도, 작은 값=잔액.
+    w = next((r for r in recs if r.limit_amt == Decimal("14500000000.00")), None)
     assert w is not None, [(str(r.limit_amt), str(r.balance)) for r in recs]
-    assert w.limit_amt == Decimal("0.00")
+    assert w.balance == Decimal("0")
     assert w.rate == Decimal("4.5000")
     assert w.maturity == date(2026, 6, 10)
     two = next((r for r in recs if r.balance == Decimal("18720900.00")), None)
