@@ -20,3 +20,11 @@ def test_create_project_and_counterparty(engine):
         s.refresh(c)
         assert c.id is not None
         assert c.canonical_name == "국민은행"
+
+
+def test_extracted_record_manual_review_flag():
+    from src.infrastructure.db.models import ExtractedRecord
+    r = ExtractedRecord(project_id=1, counterparty_id=1, ac_section="AC2",
+                        payload_json="{}", needs_manual_review=True, form_family="unknown")
+    assert r.needs_manual_review is True
+    assert r.form_family == "unknown"

@@ -57,3 +57,5 @@ class ExtractedRecord(SQLModel, table=True):
     source_file: Optional[str] = None
     source_page: Optional[int] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    needs_manual_review: bool = False            # 우편/비표준 → 감사인 직접 확인
+    form_family: Optional[str] = None            # bank|securities|insurance|surety|unknown
