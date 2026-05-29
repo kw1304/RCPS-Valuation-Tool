@@ -5,25 +5,40 @@ from src.infrastructure.db.models import FileAsset, Counterparty, ExtractedRecor
 from src.infrastructure.pdf.extractor import extract_text_and_tables
 from src.infrastructure.pdf.ocr import ocr_pdf
 from src.infrastructure.pdf.filename_parser import parse_filename
-from src.infrastructure.pdf.section_classifier import classify_sections
-from src.infrastructure.pdf.generic_parser import (
-    parse_ac1_deposit, parse_ac1_security_details, parse_ac2_borrowing, parse_ac3_derivative,
-    parse_ac4_guarantee, parse_ac5_collateral, parse_ac6_bills,
-    parse_ac7_insurance, parse_ac8_general,
-)
+from src.infrastructure.pdf.form_fingerprint import identify_form
+from src.infrastructure.pdf.form_profile import FormProfile
+from src.infrastructure.pdf.section_splitter import split_sections
+from src.infrastructure.pdf.generic_parser import parse_ac1_deposit, parse_ac1_security_details
+from src.infrastructure.pdf.row_parsers.ac2_borrowing import parse_ac2
+from src.infrastructure.pdf.row_parsers.ac4_guarantee import parse_ac4
+from src.infrastructure.pdf.row_parsers.ac5_collateral import parse_ac5
+from src.infrastructure.pdf.row_parsers.ac6_bills import parse_ac6
+from src.infrastructure.pdf.row_parsers.fallback import fallback_parse
 from src.domain.party_normalize import PartyNormalizer
 
 ROOT = Path(__file__).resolve().parents[2]
-PARSERS = {
-    "AC1": parse_ac1_deposit, "AC2": parse_ac2_borrowing,
-    "AC3": parse_ac3_derivative, "AC4": parse_ac4_guarantee,
-    "AC5": parse_ac5_collateral, "AC6": parse_ac6_bills,
-    "AC7": parse_ac7_insurance, "AC8": parse_ac8_general,
-}
+
+
+def _dispatch(ac: str, block: str, bc_no: str, bank: str, route: dict):
+    direction = route.get("direction", "received")
+    if ac == "AC1":
+        return parse_ac1_deposit(block, bc_no=bc_no, bank=bank)
+    if ac == "AC1_DETAIL":
+        return parse_ac1_security_details(block, bc_no=bc_no, bank=bank)
+    if ac == "AC2":
+        return parse_ac2(block, bc_no=bc_no, bank=bank)
+    if ac == "AC4":
+        return parse_ac4(block, bc_no=bc_no, bank=bank, direction=direction)
+    if ac == "AC5":
+        return parse_ac5(block, bc_no=bc_no, bank=bank, direction=direction)
+    if ac == "AC6":
+        return parse_ac6(block, bc_no=bc_no, bank=bank, direction=direction, sub=route.get("sub"))
+    return []  # AC3·AC7·AC8 후순위
 
 
 def parse_responses(session: Session, project_id: int) -> dict:
     norm = PartyNormalizer.load(ROOT / "configs")
+    profile = FormProfile.load()
     files = session.exec(
         select(FileAsset).where(FileAsset.project_id == project_id, FileAsset.kind == "response")
     ).all()
@@ -31,68 +46,60 @@ def parse_responses(session: Session, project_id: int) -> dict:
         select(Counterparty).where(Counterparty.project_id == project_id)
     ).all()}
     records_summary = []
+
     for f in files:
         meta = parse_filename(f.original_name)
-        bc_no = meta.get("bc_no")
+        bc_no = meta.get("bc_no") or ""
         bank_raw = meta.get("bank_raw") or ""
         np = norm.normalize(bank_raw) if bank_raw else None
         bank = np.canonical if np else bank_raw
         ext = extract_text_and_tables(Path(f.stored_path))
         text = ext["text"]
-        if len(text.strip()) < 80:
-            # 스캔 PDF (텍스트 거의 없음) → OCR
-            ocr = ocr_pdf(Path(f.stored_path))
-            text = ocr["text"]
-            confidence = "low"
-        else:
-            confidence = "high"
-        sections = classify_sections(text)
+        # 스캔 PDF (텍스트 거의 없음) → OCR, 신뢰도 하향
+        ocr_used = len(text.strip()) < 80
+        if ocr_used:
+            text = ocr_pdf(Path(f.stored_path))["text"]
         cp = cps.get((np.canonical, np.branch)) if np else None
         if cp:
             cp.response_arrived = True
             session.add(cp)
-        # AC1_DETAIL — 유가증권 종목별 상세명세 (전체 text에서 추출)
-        try:
-            detail_recs = parse_ac1_security_details(text, bc_no=bc_no or "", bank=bank or "")
-        except Exception:
-            detail_recs = []
-        for rec in detail_recs:
-            payload = rec.model_dump_json()
+
+        family = identify_form(text)
+
+        def _persist(ac, payload_obj, manual, confidence):
+            payload = json.dumps(payload_obj, default=str, ensure_ascii=False) \
+                if isinstance(payload_obj, dict) else payload_obj.model_dump_json()
             er = ExtractedRecord(
-                project_id=project_id,
-                counterparty_id=cp.id if cp else 0,
-                ac_section="AC1_DETAIL",
-                payload_json=payload,
-                confidence=confidence,
-                source_file=f.original_name,
+                project_id=project_id, counterparty_id=cp.id if cp else 0,
+                ac_section=ac, payload_json=payload, confidence=confidence,
+                source_file=f.original_name, needs_manual_review=manual,
+                form_family=family,
             )
             session.add(er)
             session.flush()
-            records_summary.append({
-                "section": "AC1_DETAIL", "bc_no": bc_no, "bank": bank,
-                "confidence": confidence, "payload": json.loads(payload),
-            })
-        for ac, section_text in sections.items():
-            parser = PARSERS[ac]
+            records_summary.append({"section": ac, "bc_no": bc_no, "bank": bank,
+                                    "confidence": confidence, "needs_manual_review": manual,
+                                    "payload": json.loads(payload)})
+
+        if family == "unknown":
+            for rec in fallback_parse(text, bc_no=bc_no, bank=bank):
+                _persist(rec["ac_section"], rec["payload"], True, "low")
+            continue
+
+        blocks = split_sections(text)
+        for section_no, block in blocks.items():
+            route = profile.route(family, section_no)
+            if not route:
+                continue
+            ac = route["ac"]
             try:
-                recs = parser(section_text, bc_no=bc_no or "", bank=bank or "")
+                recs = _dispatch(ac, block, bc_no, bank, route)
             except Exception:
                 recs = []
+            store_ac = "AC1_DETAIL" if ac == "AC1_DETAIL" else ac
+            conf = "low" if ocr_used else "high"
             for rec in recs:
-                payload = rec.model_dump_json()
-                er = ExtractedRecord(
-                    project_id=project_id,
-                    counterparty_id=cp.id if cp else 0,
-                    ac_section=ac,
-                    payload_json=payload,
-                    confidence=confidence,
-                    source_file=f.original_name,
-                )
-                session.add(er)
-                session.flush()
-                records_summary.append({
-                    "section": ac, "bc_no": bc_no, "bank": bank,
-                    "confidence": confidence, "payload": json.loads(payload),
-                })
+                _persist(store_ac, rec, False, conf)
+
     session.commit()
     return {"records": records_summary}

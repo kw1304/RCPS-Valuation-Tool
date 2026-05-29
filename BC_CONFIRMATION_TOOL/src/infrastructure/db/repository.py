@@ -1,8 +1,30 @@
 from pathlib import Path
 from sqlmodel import Session, SQLModel, create_engine, select
+from sqlalchemy import text
 from .models import Project, Counterparty, FileAsset, ExtractedRecord
 
 DB_PATH = Path(__file__).resolve().parents[3] / "data" / "projects.db"
+
+# create_all 은 누락된 테이블만 만들 뿐 기존 테이블의 신규 컬럼은 추가하지 않는다.
+# 모델에 추가된 컬럼을 기존 SQLite DB에 idempotent 하게 반영하기 위한 경량 마이그레이션.
+_MIGRATIONS = {
+    "extractedrecord": {
+        "needs_manual_review": "BOOLEAN NOT NULL DEFAULT 0",
+        "form_family": "VARCHAR",
+    },
+}
+
+
+def _apply_migrations(eng) -> None:
+    with eng.connect() as conn:
+        for table, cols in _MIGRATIONS.items():
+            existing = {r[1] for r in conn.execute(text(f"PRAGMA table_info({table})"))}
+            if not existing:
+                continue  # 테이블 자체가 없으면 create_all 이 최신 스키마로 생성함
+            for col, ddl in cols.items():
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+        conn.commit()
 
 
 def get_engine(db_path: Path | None = None):
@@ -10,6 +32,7 @@ def get_engine(db_path: Path | None = None):
     p.parent.mkdir(parents=True, exist_ok=True)
     eng = create_engine(f"sqlite:///{p}")
     SQLModel.metadata.create_all(eng)
+    _apply_migrations(eng)
     return eng
 
 
