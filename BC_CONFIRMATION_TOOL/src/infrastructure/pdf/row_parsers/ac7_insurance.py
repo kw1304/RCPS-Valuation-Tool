@@ -304,7 +304,15 @@ def parse_ac7(block: str, bc_no: str, bank: str) -> list[Insurance]:
             if last is not None and not route_to_next:
                 # 직전 정책 후행 wrap → 상품명/부보금액 append.
                 if wrap_amts:
-                    coverage, premium = _extract_amounts(last_policy_amts, wrap_amts)
+                    # 삼성화재형: 정책행 금액이 전부 placeholder(임계치 미만)이고 실데이터가
+                    # 후행 wrap 줄('Liability Policy 9000 500,000,000 83,212,000')에 부보+보험료로
+                    # 함께 실린 경우 → 컬럼 순서(임계치)대로 부보/보험료 둘 다 채운다.
+                    policy_has_real = any(a >= _COVERAGE_MIN for a in last_policy_amts)
+                    wrap_has_real = any(a >= _COVERAGE_MIN for a in wrap_amts)
+                    if not policy_has_real and wrap_has_real:
+                        coverage, premium = _positional_threshold(wrap_amts)
+                    else:
+                        coverage, premium = _extract_amounts(last_policy_amts, wrap_amts)
                     last.coverage_amount = coverage
                     last.premium = premium
                 if txt:

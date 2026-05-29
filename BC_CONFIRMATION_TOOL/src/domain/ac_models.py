@@ -86,6 +86,7 @@ class Collateral(_Base):                  # AC5
     issuer: str | None = None
     book_amount: Decimal = Decimal("0")
     appraised_amount: Decimal | None = None
+    senior_lien: Decimal | None = None    # 선순위설정금액 (부동산 담보 4번째 금액)
     priority: int | None = None
     direction: str = "provided"           # provided=제공 / received=제공받음
 

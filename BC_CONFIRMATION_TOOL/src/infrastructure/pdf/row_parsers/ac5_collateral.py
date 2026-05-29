@@ -162,10 +162,14 @@ def parse_ac5(block: str, bc_no: str, bank: str, direction: str = "provided") ->
             # 금액 없는 줄 = 주소·면적·순위 조각 → record 미생성(조각 garbage 제거)
             continue
         ctype = _collateral_type(s)
+        # 부동산 담보: book(감정/채권최고액) + appraised(설정금액) + 선순위설정금액 3개 컬럼.
+        # 순위(rank) 정수(2/3)는 100만 임계 미만이라 _won_amounts 에서 이미 제외되므로,
+        # 임계 이상 금액이 3개면 세 번째가 선순위설정금액이다.
         out.append(Collateral(
             bc_no=bc_no, bank=bank, collateral_type=ctype,
             book_amount=amounts[0],
             appraised_amount=amounts[1] if len(amounts) >= 2 else None,
+            senior_lien=amounts[2] if len(amounts) >= 3 else None,
             direction=direction,
         ))
     return out
