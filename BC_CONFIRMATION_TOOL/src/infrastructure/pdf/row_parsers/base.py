@@ -16,15 +16,24 @@ _PAREN = re.compile(r"^\([\d,.\-]+\)$")
 _NOISE = [
     "조회기준일", "다음과 같", "참고 목적", "정확성", "해당 거래 없음",
     "해당사항 없음", "확인자", "당 은행", "당사", "면책", "유의사항",
-    "합계", "소계", "총계",
 ]
+
+# 합계/소계/총계 등 합산행 마커. substring 매칭하면 종합계약보증(="합계" 포함) 같은
+# 실제 상품명을 오탐하므로, 줄의 FIRST 토큰이 정확히 이 집합에 속할 때만 noise 로 본다.
+_TOTAL_TOKENS = {"합계", "소계", "총계", "합", "계"}
 
 
 def is_noise(line: str) -> bool:
     s = line.strip()
     if not s or len(s) < 4:
         return True
-    return any(p in s for p in _NOISE)
+    if any(p in s for p in _NOISE):
+        return True
+    # 합산행은 anchored(선행 토큰) 매칭으로만 판정
+    toks = s.split()
+    if toks and toks[0] in _TOTAL_TOKENS:
+        return True
+    return False
 
 
 def _ymd(s: str) -> date | None:

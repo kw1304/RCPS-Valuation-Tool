@@ -16,6 +16,11 @@ from src.infrastructure.pdf.row_parsers.base import (
     tokenize_row, is_noise, _DATE_8, _RATE,
 )
 
+
+def _amount_count(s: str) -> int:
+    """loan row 자체가 가진 금액 토큰 수 (한도/잔액 후보)."""
+    return len(tokenize_row(s).amounts)
+
 _REPAY_KW = ("상환",)
 _COLLAT_KW = ("담보", "보증")
 _PURE_NUM = re.compile(r"^[\d,]+(?:\.\d+)?$")
@@ -50,8 +55,17 @@ def _reassemble(block: str) -> list[str]:
         if not s:
             continue
         if _is_loan_row(s):
-            # pending(위에 떠 있던 한도/종류)을 loan row 앞에 prepend
-            merged = (" ".join(pending + [s])).strip() if pending else s
+            # pending 을 텍스트(종류)와 숫자(한도 wrap)로 분리.
+            # 종류 텍스트는 언제나 prepend 가능.
+            # 숫자(한도)는 loan row 가 한도를 못 가졌을 때(자체 금액 < 2)만 prepend.
+            # loan row 가 이미 금액 2개(한도+잔액)를 가지면, pending 숫자는 위 행의
+            # 꼬리(wrap)이므로 이 행에 섞지 않는다 → 교차오염 방지.
+            text_pend = [p for p in pending if not _is_pure_number_line(p)]
+            num_pend = [p for p in pending if _is_pure_number_line(p)]
+            if num_pend and _amount_count(s) >= 2:
+                num_pend = []  # loan row 가 이미 충분 → 숫자 wrap 버림(다음 행 오염 방지)
+            merged_parts = text_pend + num_pend + [s]
+            merged = (" ".join(merged_parts)).strip()
             out.append(merged)
             pending = []
         elif _is_pure_number_line(s) or _is_pure_text_line(s):

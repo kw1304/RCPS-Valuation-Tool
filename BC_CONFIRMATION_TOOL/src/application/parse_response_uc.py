@@ -40,8 +40,23 @@ def _dispatch(ac: str, block: str, bc_no: str, bank: str, route: dict):
 IMPLEMENTED_ACS = {"AC1", "AC1_DETAIL", "AC2", "AC4", "AC5", "AC6"}
 
 
-def _has_digit(s: str) -> bool:
-    return any(ch.isdigit() for ch in s)
+import re
+
+# 무거래 블록 마커 (공백 무관). 이런 블록은 스텁을 emit 하지 않는다.
+_NO_TX = re.compile(r"해당\s*거래\s*없음|해당\s*사항\s*없음|해당\s*거래없음")
+_MONEY = re.compile(r"\d{1,3}(?:,\d{3})+")          # 콤마 구분 금액
+_NUM_TOKEN = re.compile(r"\d+")
+
+
+def _has_real_data(block: str) -> bool:
+    """수동검토 스텁을 띄울 만한 '실제 데이터'가 있는지 판정.
+    무거래 블록(해당 거래 없음 등)은 False. 조회기준일·페이지번호(1/6)만 있는
+    블록도 False. 콤마 금액 또는 숫자 토큰 2개 이상이면 True."""
+    if _NO_TX.search(block):
+        return False
+    if _MONEY.search(block):
+        return True
+    return len(_NUM_TOKEN.findall(block)) >= 2
 
 
 def parse_responses(session: Session, project_id: int) -> dict:
@@ -114,7 +129,7 @@ def parse_responses(session: Session, project_id: int) -> dict:
             if recs:
                 for rec in recs:
                     _persist(store_ac, rec, False, conf)
-            elif ac not in IMPLEMENTED_ACS and _has_digit(block):
+            elif ac not in IMPLEMENTED_ACS and _has_real_data(block):
                 # BUG4: 미구현 AC(AC3·AC7·AC8)인데 실제 데이터(숫자)가 있는 섹션 →
                 # 감사인이 섹션 존재를 인지하도록 수동검토 스텁 1건 persist
                 _persist(store_ac, {
