@@ -1,7 +1,123 @@
-"""AC5 담보제공자산 파서. direction: provided(제공)/received(제공받음)."""
-from decimal import Decimal
+"""AC5 담보제공자산 파서. direction: provided(제공)/received(제공받음).
+
+회신서 §9(제3자/회사 담보·보증 현황)은 부동산 담보 표가 여러 물리 줄로 wrap 된다:
+  경기도 성남시 분당구 삼평동 622                              ← 주소(소재지) 조각, 금액 없음
+  집합건물상가(독립적) 에프동101호 ... (KRW)2,634,000,000 (KRW)12,000,000,000 3   ← 실데이터
+  386.15                                                       ← 면적(㎡) 조각, 금액 없음
+
+핵심 불변(invariant): **진짜 담보 record 는 천단위 콤마로 그룹된 원화 금액(>=1,000,000)을
+최소 1개 가진다**. 주소 번지(622)·설정순위(3/6)·면적(386.15)은 콤마 그룹이 아니거나 100만
+미만이라 금액으로 보지 않는다. 따라서:
+  - 금액 토큰: '(KRW)2,634,000,000' (KRW prefix) / '20,171,880,000.00' (국민, prefix 無) 둘 다 인식
+  - 천단위 콤마 그룹 + 정수부 환산 >= 1,000,000 인 값만 금액
+  - 그런 금액이 0개인 줄(주소·면적 조각)은 record 미생성 → 조각 garbage 제거
+  - book_amount = 첫 금액(감정금액/채권최고액), appraised_amount = 둘째 금액(설정금액) if 有
+  - collateral_type = 담보 종류 토큰(집합건물상가/상장주식/공장/토지/건물/예금/유가증권/근저당/
+    질권/보증인 등). 주소어(경기도/서울/부산/충청북도…) 로 시작하는 줄은 금액이 없어 어차피
+    rule 로 걸러지지만, 안전을 위해 type 후보에서도 주소·숫자 토큰을 배제한다.
+
+§5(타 법인 위한 담보)는 단순(예: '부동산근저당 1,200,000,000 900,000,000')할 수 있는데,
+1.2억은 100만 임계를 넘으므로 동일 로직으로 그대로 record 가 생성된다.
+"""
+import re
+from decimal import Decimal, InvalidOperation
 from src.domain.ac_models import Collateral
-from src.infrastructure.pdf.row_parsers.base import tokenize_row, is_noise
+from src.infrastructure.pdf.row_parsers.base import is_noise
+
+# 금액 임계: 이보다 작으면 번지(622)·순위(3)·면적(386.15)로 보고 금액 취급 안 함.
+_MIN_AMOUNT = Decimal("1000000")
+
+# 통화 prefix: (KRW) / (USD) … 또는 선행 KRW. 금액 토큰에 붙어 옴.
+_CCY_PREFIX = re.compile(r"^\((KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH)\)")
+_LEAD_CCY = re.compile(r"^(KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH)(?=\d)")
+
+# 천단위 콤마로 그룹된 원화 금액. '2,634,000,000' 또는 '20,171,880,000.00'.
+# 반드시 콤마 그룹이 있어야 함(번지 622·순위 3·면적 386.15 는 콤마 無 → 불일치).
+_GROUPED_AMOUNT = re.compile(r"^\d{1,3}(?:,\d{3})+(?:\.\d+)?$")
+
+# 담보 종류로 쓰면 안 되는 주소(소재지) 시작어. 이런 토큰으로 시작하는 줄은 소재지 조각.
+_ADDR_PREFIX = (
+    "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
+    "경기", "강원", "충청", "충북", "충남", "전라", "전북", "전남",
+    "경상", "경북", "경남", "제주",
+)
+
+# 헤더/합계 토큰 — 종류로 채택 금지.
+_HEADER_TOKENS = {
+    "구분", "담보보증의", "내용", "소유자", "감정금액", "설정금액",
+    "설정순위", "선순위", "담보", "보증", "합계", "소계", "총계",
+}
+
+
+def _strip_ccy(tok: str) -> str:
+    """토큰 앞의 통화 prefix((KRW)/(USD)/선행 KRW…) 제거."""
+    m = _CCY_PREFIX.match(tok)
+    if m:
+        return tok[m.end():]
+    m = _LEAD_CCY.match(tok)
+    if m:
+        return tok[m.end():]
+    return tok
+
+
+def _to_dec(s: str):
+    try:
+        return Decimal(s.replace(",", ""))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _won_amounts(line: str) -> list[Decimal]:
+    """줄에서 천단위 콤마로 그룹된 원화 금액(>= 100만)만 순서대로 추출.
+
+    번지(622)·설정순위(3/6)·면적(386.15)은 콤마 그룹이 아니거나 100만 미만 → 제외.
+    """
+    out: list[Decimal] = []
+    for tok in line.split():
+        bare = _strip_ccy(tok)
+        if not _GROUPED_AMOUNT.match(bare):
+            continue
+        v = _to_dec(bare)
+        if v is not None and v >= _MIN_AMOUNT:
+            out.append(v)
+    return out
+
+
+def _is_amount_token(tok: str) -> bool:
+    return bool(_GROUPED_AMOUNT.match(_strip_ccy(tok)))
+
+
+def _looks_numeric(tok: str) -> bool:
+    """순수 숫자/콤마/소수/하이픈 토큰(번지·순위·면적·금액·'-') → 종류 아님."""
+    t = tok.replace(",", "").replace(".", "").replace("-", "")
+    return t == "" or t.isdigit()
+
+
+def _collateral_type(line: str) -> str:
+    """담보 종류 토큰 추출 = 줄의 첫 '실텍스트' 토큰.
+
+    주소어/숫자/통화금액/헤더 토큰은 건너뛴다. 보통 데이터 줄의 첫 토큰이 종류
+    (집합건물상가(독립적), 상장주식, 공장, 보증인 …)다.
+    """
+    toks = line.split()
+    for tok in toks:
+        if _is_amount_token(tok):
+            break  # 금액 컬럼 도달 — 그 앞에서 종류를 못 찾았으면 포기
+        if _looks_numeric(tok):
+            continue
+        if tok.startswith(_ADDR_PREFIX):
+            continue
+        if tok in _HEADER_TOKENS:
+            continue
+        # 통화 코드 단독
+        if tok in ("KRW", "USD", "EUR", "JPY", "CNY", "HKD", "GBP", "AUD", "SGD", "CNH"):
+            continue
+        return tok[:40]
+    # 못 찾으면 첫 비숫자 토큰(최후)
+    for tok in toks:
+        if not _looks_numeric(tok) and not _is_amount_token(tok):
+            return tok[:40]
+    return (toks[0] if toks else "")[:40]
 
 
 def parse_ac5(block: str, bc_no: str, bank: str, direction: str = "provided") -> list[Collateral]:
@@ -10,14 +126,15 @@ def parse_ac5(block: str, bc_no: str, bank: str, direction: str = "provided") ->
         s = line.strip()
         if is_noise(s):
             continue
-        t = tokenize_row(s)
-        if not t.amounts:
+        amounts = _won_amounts(s)
+        if not amounts:
+            # 금액 없는 줄 = 주소·면적·순위 조각 → record 미생성(조각 garbage 제거)
             continue
-        ctype = (t.text_tokens[0] if t.text_tokens else s.split()[0])[:40]
+        ctype = _collateral_type(s)
         out.append(Collateral(
             bc_no=bc_no, bank=bank, collateral_type=ctype,
-            book_amount=t.amounts[0],
-            appraised_amount=t.amounts[1] if len(t.amounts) >= 2 else None,
+            book_amount=amounts[0],
+            appraised_amount=amounts[1] if len(amounts) >= 2 else None,
             direction=direction,
         ))
     return out
