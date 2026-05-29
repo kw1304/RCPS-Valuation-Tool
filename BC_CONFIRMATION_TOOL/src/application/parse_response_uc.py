@@ -55,6 +55,67 @@ _MONEY = re.compile(r"\d{1,3}(?:,\d{3})+")          # 콤마 구분 금액
 _NUM_TOKEN = re.compile(r"\d+")
 
 
+# --- 내용기반 라우팅 (미매핑 섹션 복구) -----------------------------------
+# 거래내역 첨부 마커: 이 문구 이후는 transaction log → 담보/어음 파싱 대상에서 제외.
+_TX_ATTACH = re.compile(r"거래\s*내역을?\s*첨부")
+# 거래내역(transaction log) 신호 토큰: 이 섹션은 무시해야 함.
+_TX_LOG_SIGNAL = ("거래내역", "입고", "출고", "매도", "매수", "잔고", "첨부",
+                  "정산금액", "예수금")
+# 담보(collateral) 신호.
+_COLLATERAL_SIGNAL = ("담보", "감정금액", "설정금액", "근저당", "질권", "담보제공",
+                      "감정 금액", "설정 금액")
+# 어음/수표 신호.
+_BILLS_SIGNAL = ("어음", "수표", "당좌")
+
+
+def _collateral_subblock(block: str) -> str:
+    """담보 sub-block = '거래내역을 첨부' 마커 이전 텍스트.
+
+    유가증권 회신서의 비표준 섹션은 [담보 표] + [거래내역 첨부] 가 한 섹션에
+    섞여 들어온다. 거래내역(transaction log)의 큰 금액(현금매도 10억 등)을 담보로
+    오인하지 않도록, 담보 판정·파싱은 마커 이전 부분만 대상으로 한다."""
+    m = _TX_ATTACH.search(block)
+    return block[: m.start()] if m else block
+
+
+def route_or_classify(family: str, section_no: int, block: str) -> dict | None:
+    """프로파일 라우팅 우선, 없으면 내용기반 분류.
+
+    반환: {ac, direction?, sub?, block?, content_routed?} 또는 None.
+      - 매핑된 섹션: FormProfile.route 결과 그대로.
+      - 미매핑 + 비자명(real 금액) 섹션: 담보 sub-block(거래내역 마커 이전) 내용으로 분류.
+          담보 신호 ∧ ¬거래내역 신호 → AC5(provided), block=담보 sub-block.
+          어음 신호 ∧ ¬거래내역 신호 → AC6.
+          그 외(거래내역/미상) → None (조용히 버리지 않되, 잘못 라우팅도 안 함).
+    content_routed=True 인 record 는 비표준 섹션 출신이므로 수동검토 플래그를 단다."""
+    route = _profile_singleton().route(family, section_no)
+    if route:
+        return route
+
+    sub = _collateral_subblock(block)
+    if not _has_real_data(sub):
+        return None  # 담보부 무거래(해당 거래 없음) 또는 금액 없음 → 무시
+    has_tx_log = any(k in sub for k in _TX_LOG_SIGNAL)
+    if has_tx_log:
+        return None  # 거래내역 신호가 담보부에 섞여 있으면 안전하게 무시
+    if any(k in sub for k in _COLLATERAL_SIGNAL):
+        return {"ac": "AC5", "direction": "provided",
+                "block": sub, "content_routed": True}
+    if any(k in sub for k in _BILLS_SIGNAL):
+        return {"ac": "AC6", "block": sub, "content_routed": True}
+    return None
+
+
+_PROFILE_CACHE: FormProfile | None = None
+
+
+def _profile_singleton() -> FormProfile:
+    global _PROFILE_CACHE
+    if _PROFILE_CACHE is None:
+        _PROFILE_CACHE = FormProfile.load()
+    return _PROFILE_CACHE
+
+
 def _has_real_data(block: str) -> bool:
     """수동검토 스텁을 띄울 만한 '실제 데이터'가 있는지 판정.
     무거래 블록(해당 거래 없음 등)은 False. 조회기준일·페이지번호(1/6)만 있는
@@ -118,24 +179,28 @@ def parse_responses(session: Session, project_id: int) -> dict:
 
         blocks = split_sections(text)
         for section_no, block in blocks.items():
-            route = profile.route(family, section_no)
+            route = route_or_classify(family, section_no, block)
             if not route:
                 continue
             ac = route["ac"]
             store_ac = "AC1_DETAIL" if ac == "AC1_DETAIL" else ac
+            content_routed = route.get("content_routed", False)
+            # 내용기반 라우팅 섹션은 담보 sub-block(거래내역 마커 이전)만 파싱한다.
+            parse_block = route.get("block", block)
             conf = "low" if ocr_used else "high"
             try:
-                recs = _dispatch(ac, block, bc_no, bank, route)
+                recs = _dispatch(ac, parse_block, bc_no, bank, route)
             except Exception as e:
                 # BUG5: 파서 예외를 삼키지 말고 수동검토 스텁으로 가시화 (계속 진행)
                 _persist(store_ac, {
-                    "raw": block[:300],
+                    "raw": parse_block[:300],
                     "note": f"parser 예외 — 수동확인 ({type(e).__name__}: {e})",
                 }, True, "low")
                 continue
             if recs:
+                # 비표준 섹션(content_routed) 출신은 감사인 확인용으로 수동검토 플래그.
                 for rec in recs:
-                    _persist(store_ac, rec, False, conf)
+                    _persist(store_ac, rec, content_routed, conf)
             elif ac not in IMPLEMENTED_ACS and _has_real_data(block):
                 # BUG4: 미구현 AC(AC3·AC7·AC8)인데 실제 데이터(숫자)가 있는 섹션 →
                 # 감사인이 섹션 존재를 인지하도록 수동검토 스텁 1건 persist
