@@ -278,6 +278,7 @@ def parse_ac1_security_details(text: str, bc_no: str, bank: str) -> list[Securit
         # 채권 표 컬럼순: '… 기준가 평가액 만기일' 이라 평가액은 만기일 토큰
         # '바로 앞'의 정수 원화이다(액면·수량은 평가액보다 클 수 있어 max() 부적합).
         nums: list[Decimal] = []                       # 금액 후보 (날짜 제외)
+        is_decimal: list[bool] = []                    # nums[i] 가 소수(기준가/단가)인가
         maturity: date | None = None
         val_before_date: Decimal | None = None         # 만기일 직전 정수 원화
         prev_amt: Decimal | None = None                # 직전 금액 토큰 값
@@ -294,22 +295,44 @@ def parse_ac1_security_details(text: str, bc_no: str, bank: str) -> list[Securit
                 d = _to_dec(t)
                 if d is not None:
                     nums.append(d)
+                    # 소수점(.dd) 포함 토큰 = 기준가/단가(예 9,947.19·163,000.00).
+                    is_decimal.append("." in t)
                     prev_amt = d
                     continue
             prev_amt = None
-        # 평가액:
-        #  - 만기일 직전 정수 원화가 있으면(채권) 그것을 우선.
-        #  - 없으면(주식 등) 1,000,000 이상 원화 금액 중 최댓값(기존 동작·KB 회귀 방지).
+        # 평가액(valuation) 결정.
+        #  ① 만기일 직전 정수 원화가 있으면(일부 채권 표) 그것을 우선.
+        #  ② 채권은 수량(첫 큰 정수)이 평가액보다 클 수 있다(기준가 ~9,9xx/10,000
+        #     이면 평가액 < 수량). 컬럼순 '수량 액면 기준가(소수) 평가액'에서
+        #     평가액은 소수 기준가 '바로 뒤'의 정수 원화다. 큰 금액이 ≥2개이고
+        #     소수 기준가 뒤에 큰 금액이 있으면 → 그것을 평가액으로(수량 오인 방지).
+        #     예) 미래에셋: 수량 10,650,000 · 기준가 9,947.19 · 평가액 10,593,757
+        #         → max()는 수량을 고르므로 부적합. 기준가 뒤 금액 채택.
+        #  ③ 그 외(주식 등)는 1,000,000 이상 원화 중 최댓값(기존 동작·KB 회귀 방지).
+        #     예) KB증권 코스맥스: 수량 190,000 · 기준가 163,000.00 ·
+        #         평가액 30,970,000,000 → 기준가 뒤 금액 = 최댓값이라 동일 결과.
         big = [n for n in nums if n >= _VALUATION_MIN]
+        # 소수 기준가 '바로 뒤'에 오는 큰(≥VALUATION_MIN) 정수 원화 후보.
+        after_base: Decimal | None = None
+        for i in range(1, len(nums)):
+            if is_decimal[i - 1] and not is_decimal[i] and nums[i] >= _VALUATION_MIN:
+                after_base = nums[i]
+                break
         if val_before_date is not None and val_before_date >= _VALUATION_MIN:
             val = val_before_date
+        elif after_base is not None and len(big) >= 2:
+            val = after_base
         else:
             val = max(big) if big else (max([n for n in nums if n > 0], default=None))
         # 수량 = 평가액·기준가가 아닌 첫 큰 정수 후보 (참고용)
         qty = nums[0] if nums else None
-        # 기준가(단가): 100 ~ 10,000,000, 평가액 아님
-        unit_prices = [n for n in nums if n and 100 <= n <= 10_000_000 and n != val]
-        base = unit_prices[0] if unit_prices else None
+        # 기준가(단가): 소수 토큰 우선, 없으면 100 ~ 10,000,000 정수 중 평가액 아닌 값.
+        dec_prices = [n for n, dec in zip(nums, is_decimal) if dec]
+        if dec_prices:
+            base = dec_prices[0]
+        else:
+            unit_prices = [n for n in nums if n and 100 <= n <= 10_000_000 and n != val]
+            base = unit_prices[0] if unit_prices else None
 
         # 종목명: 메인+continuation 전 토큰에서 한글 종목명 후보
         ticker = _pick_ticker(all_tokens) or "?"
