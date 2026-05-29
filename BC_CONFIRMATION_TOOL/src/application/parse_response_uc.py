@@ -17,7 +17,7 @@ from src.infrastructure.pdf.row_parsers.ac3_derivative import parse_ac3
 from src.infrastructure.pdf.row_parsers.ac7_insurance import parse_ac7
 from src.infrastructure.pdf.row_parsers.fallback import fallback_parse
 from src.domain.party_normalize import PartyNormalizer
-from src.domain.record_dedup import dedup_key
+from src.domain.record_dedup import dedup_records
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -191,9 +191,11 @@ def parse_responses(session: Session, project_id: int) -> dict:
         select(Counterparty).where(Counterparty.project_id == project_id)
     ).all()}
     records_summary = []
-    # 이중계상 방지: 개별 회신본 + 합본 스캔(파일명 메타 없음)이 함께 들어오면 같은
-    # holding 이 두 번 persist 된다. dedup_key 동일 레코드는 한 번만 저장한다.
-    seen_keys: set = set()
+    # 이중계상 방지: 개별 회신본(tagged) + 합본 스캔(untagged, 파일명 메타 없음)이 함께
+    # 들어오면 같은 holding 이 두 번 persist 된다. 모든 후보를 먼저 모은 뒤 dedup_records
+    # 로 한 번에 처리한다 — tagged 는 항상 보존(동일 금액의 다른 은행 행 병합 금지),
+    # untagged 결합본 중복만 제거.
+    pending: list[dict] = []  # 수집 버퍼: {ac, payload_obj, manual, confidence, bc_no, bank, cp, family}
 
     for f in files:
         meta = parse_filename(f.original_name)
@@ -215,28 +217,16 @@ def parse_responses(session: Session, project_id: int) -> dict:
         family = identify_form(text)
 
         def _persist(ac, payload_obj, manual, confidence):
-            # dedup: 같은 holding 이 개별 회신본+합본 스캔에서 두 번 오면 한 번만 저장.
-            # (수동검토 스텁은 payload 가 raw/note 뿐이라 balance 가 없어 키가 None → 보존.)
+            # 즉시 저장하지 않고 버퍼에 모은다. dedup_records 는 전체 집합을 봐야
+            # tagged/untagged 판단이 정확하다(파일 처리 순서 무관).
             payload_dict = payload_obj if isinstance(payload_obj, dict) \
                 else payload_obj.model_dump()
-            k = dedup_key(ac, payload_dict)
-            if k is not None:
-                if k in seen_keys:
-                    return
-                seen_keys.add(k)
-            payload = json.dumps(payload_obj, default=str, ensure_ascii=False) \
-                if isinstance(payload_obj, dict) else payload_obj.model_dump_json()
-            er = ExtractedRecord(
-                project_id=project_id, counterparty_id=cp.id if cp else 0,
-                ac_section=ac, payload_json=payload, confidence=confidence,
-                source_file=f.original_name, needs_manual_review=manual,
-                form_family=family,
-            )
-            session.add(er)
-            session.flush()
-            records_summary.append({"section": ac, "bc_no": bc_no, "bank": bank,
-                                    "confidence": confidence, "needs_manual_review": manual,
-                                    "payload": json.loads(payload)})
+            pending.append({
+                "ac_section": ac, "payload": payload_dict, "payload_obj": payload_obj,
+                "manual": manual, "confidence": confidence,
+                "bc_no": bc_no, "bank": bank, "cp": cp, "family": family,
+                "source_file": f.original_name,
+            })
 
         if family == "unknown":
             for rec in fallback_parse(text, bc_no=bc_no, bank=bank):
@@ -274,6 +264,25 @@ def parse_responses(session: Session, project_id: int) -> dict:
                     "raw": block[:300],
                     "note": "parser 미구현 — 수동확인",
                 }, True, "low")
+
+    # dedup: tagged(개별 회신본) 보존, untagged(합본 스캔) 중복만 제거 → 그 뒤 persist.
+    for rec in dedup_records(pending):
+        payload_obj = rec["payload_obj"]
+        cp = rec["cp"]
+        payload = json.dumps(payload_obj, default=str, ensure_ascii=False) \
+            if isinstance(payload_obj, dict) else payload_obj.model_dump_json()
+        er = ExtractedRecord(
+            project_id=project_id, counterparty_id=cp.id if cp else 0,
+            ac_section=rec["ac_section"], payload_json=payload,
+            confidence=rec["confidence"], source_file=rec["source_file"],
+            needs_manual_review=rec["manual"], form_family=rec["family"],
+        )
+        session.add(er)
+        session.flush()
+        records_summary.append({"section": rec["ac_section"], "bc_no": rec["bc_no"],
+                                "bank": rec["bank"], "confidence": rec["confidence"],
+                                "needs_manual_review": rec["manual"],
+                                "payload": json.loads(payload)})
 
     session.commit()
     return {"records": records_summary}

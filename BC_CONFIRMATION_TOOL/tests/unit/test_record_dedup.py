@@ -50,3 +50,60 @@ def test_decimal_and_string_balance_normalize_equal():
     a = dedup_key("AC1", {"account_no": "1", "balance": Decimal("5.00"), "currency": "KRW"})
     b = dedup_key("AC1", {"account_no": "1", "balance": "5", "currency": "KRW"})
     assert a is not None and a == b
+
+
+# ── dedup_records: tagged 보존 + untagged 결합본 중복만 제거 ──────────────────
+def test_distinct_banks_same_amount_both_kept():
+    from src.domain.record_dedup import dedup_records
+    recs = [
+        {"ac_section": "AC2", "bank": "국민은행", "bc_no": "BC-1",
+         "payload": {"contract_type": "일반자금대출", "balance": "1200000000",
+                     "account_no": None, "currency": "KRW"}},
+        {"ac_section": "AC2", "bank": "기업은행", "bc_no": "BC-2",
+         "payload": {"contract_type": "일반자금대출", "balance": "1200000000",
+                     "account_no": None, "currency": "KRW"}},
+    ]
+    out = dedup_records(recs)
+    assert len(out) == 2, '다른 은행 동일금액 행이 잘못 병합됨'
+
+
+def test_untagged_duplicate_of_tagged_dropped():
+    from src.domain.record_dedup import dedup_records
+    recs = [
+        {"ac_section": "AC1", "bank": "국민은행", "bc_no": "BC-1",
+         "payload": {"product": "보통예금", "account_no": "123",
+                     "balance": "500", "currency": "KRW"}},
+        {"ac_section": "AC1", "bank": "", "bc_no": "",  # combined-scan copy
+         "payload": {"product": "보통예금", "account_no": "123",
+                     "balance": "500", "currency": "KRW"}},
+    ]
+    out = dedup_records(recs)
+    assert len(out) == 1 and (out[0].get("bank") or "") != "", \
+        'untagged 결합본 중복 미제거 또는 tagged 제거됨'
+
+
+def test_untagged_unique_kept():
+    # untagged 인데 어떤 tagged 와도 안 겹치면 보존(합본만 단독 입력된 경우).
+    from src.domain.record_dedup import dedup_records
+    recs = [
+        {"ac_section": "AC1", "bank": "", "bc_no": "",
+         "payload": {"product": "보통예금", "account_no": "999",
+                     "balance": "700", "currency": "KRW"}},
+    ]
+    out = dedup_records(recs)
+    assert len(out) == 1
+
+
+def test_two_untagged_duplicates_collapse_to_one():
+    # tagged 가 없고 untagged 끼리 동일 holding 이 두 번이면 한 건만 남긴다.
+    from src.domain.record_dedup import dedup_records
+    recs = [
+        {"ac_section": "AC1", "bank": "", "bc_no": "",
+         "payload": {"product": "보통예금", "account_no": "555",
+                     "balance": "300", "currency": "KRW"}},
+        {"ac_section": "AC1", "bank": "", "bc_no": "",
+         "payload": {"product": "보통예금", "account_no": "555",
+                     "balance": "300", "currency": "KRW"}},
+    ]
+    out = dedup_records(recs)
+    assert len(out) == 1

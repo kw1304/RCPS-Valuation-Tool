@@ -52,7 +52,7 @@ from src.infrastructure.pdf.section_splitter import split_sections  # noqa: E402
 from src.infrastructure.pdf.filename_parser import parse_filename  # noqa: E402
 from src.application.parse_response_uc import route_or_classify, _dispatch  # noqa: E402
 from src.infrastructure.pdf.row_parsers.fallback import fallback_parse  # noqa: E402
-from src.domain.record_dedup import dedup_key  # noqa: E402
+from src.domain.record_dedup import dedup_records  # noqa: E402
 
 
 # ── 금액 정규화 ────────────────────────────────────────────────────────────
@@ -211,7 +211,10 @@ def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Count
     또한 AC1_DETAIL(유가증권 종목 상세명세)은 참고조서 AC1(요약)과 다른 영역이므로
     AC1 비교 버킷에 섞지 않는다(별도/제외)."""
     out: dict[str, Counter] = {ac: Counter() for ac in _COMPARE_ACS}
-    seen: set = set()  # dedup: 디렉터리 전체 정형 레코드 식별자
+    # 디렉터리 전체 정형 레코드를 먼저 수집 → dedup_records(tagged 보존 + untagged 결합본
+    # 중복만 제거) → 그 뒤 집계. (예전엔 단일 seen 집합이라 동일 금액의 다른 은행 행까지
+    # 잘못 병합돼 FY2025 AC2/AC4 회귀가 났다.)
+    collected: list[dict] = []
     pdfs = sorted(glob.glob(str(pdf_dir / "*.pdf")))
     for p in pdfs:
         path = Path(p)
@@ -254,15 +257,17 @@ def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Count
                 continue
             for rec in recs:
                 d = rec.model_dump() if hasattr(rec, "model_dump") else dict(rec)
-                k = dedup_key(store_ac, d)
-                if k is not None:
-                    if k in seen:
-                        continue  # 합본 스캔 등 중복 holding → 한 번만 집계
-                    seen.add(k)
-                for fld in _TOOL_FIELDS[store_ac]:
-                    iv = _to_int_amount(d.get(fld))
-                    if iv is not None:
-                        out[store_ac][iv] += 1
+                collected.append({"ac_section": store_ac, "bank": bank,
+                                  "bc_no": bc_no, "payload": d})
+
+    # dedup: tagged(개별 회신본) 보존, untagged(합본 스캔) 중복만 제거.
+    for rec in dedup_records(collected):
+        store_ac = rec["ac_section"]
+        d = rec["payload"]
+        for fld in _TOOL_FIELDS[store_ac]:
+            iv = _to_int_amount(d.get(fld))
+            if iv is not None:
+                out[store_ac][iv] += 1
     return out
 
 
