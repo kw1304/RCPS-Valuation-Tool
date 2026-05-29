@@ -143,68 +143,146 @@ def _to_dec(v: str | None) -> Decimal | None:
         return None
 
 
+# 평가액으로 인정하는 최소 원화 금액. 기준가(단가, 예 163,000.00)·담보수량은
+# 이보다 훨씬 작거나, 평가액(수십억~수천억)과 한 자릿수 이상 규모 차이가 난다.
+_VALUATION_MIN = Decimal("1000000")
+# 진짜 처분제한/담보 어휘만 collateral_type 으로 보존. 'KRW KRW'·계좌조각 등은 버린다.
+_COLLATERAL_WORDS = ["질권설정", "담보제공", "처분제한"]
+_HANGUL_RUN = re.compile(r"[가-힣]{2,}")
+
+
+def _is_detail_header(s: str) -> bool:
+    return "종목명" in s or ("수량" in s and "액면" in s)
+
+
+def _detail_acct(tokens: list[str]) -> str | None:
+    """첫 token 이 유가증권 상세 계좌번호면 반환. 아니면 None.
+
+    계좌는 숫자/대시로만 이뤄진 8~18자 토큰(숫자 8자리 이상). 금액/한글 wrap 줄과
+    구별하기 위해 콤마가 없어야 한다.
+    """
+    if not tokens:
+        return None
+    t = tokens[0]
+    if "," in t:
+        return None
+    if not re.fullmatch(r"[0-9\-]{8,18}", t):
+        return None
+    if len(re.sub(r"[^0-9]", "", t)) < 8:
+        return None
+    return t
+
+
+def _pick_ticker(tokens: list[str]) -> str | None:
+    """토큰열에서 한글 종목명(2자 이상 연속 한글 포함) 후보를 고른다.
+
+    계좌조각·참조번호(101-314-2362249 외)·통화(KRW)는 종목명이 아니다.
+    '1건' '외' 같은 참조 관용어는 제외하고, 코스맥스/코스맥스보통주 같은 실제
+    종목명을 우선한다.
+    """
+    best = None
+    for t in tokens:
+        if not _HANGUL_RUN.search(t):
+            continue
+        if t in {"주", "외", "본인", "건"}:
+            continue
+        # 참조 관용어(외/건/상세/명세/참조)만으로 된 토큰 제외
+        core = t
+        for w in ["외", "건", "상세", "명세", "참조", "주"]:
+            core = core.replace(w, "")
+        if not _HANGUL_RUN.search(core):
+            continue
+        # 더 긴(=더 구체적인) 종목명을 우선
+        if best is None or len(core) > len(best):
+            best = core
+    return best
+
+
 def parse_ac1_security_details(text: str, bc_no: str, bank: str) -> list[SecurityDetail]:
     """유가증권 상세명세 추출. PDF의 '상세명세' 헤더 다음 lines 파싱.
 
     표준 패턴: '계좌(11~16) 종목명(한글) 수량 액면 [기준가] 평가액 [만기] [담보수량 담보종류]'
     예: '25628241101 코스맥스 190,000 163,000.00 30,970,000,000 0'
         '25628241101 코스맥스엔비티 2,500,000 3,500.00 8,750,000,000 0 2,500,000 질권설정'
+
+    줄바꿈(wrap) 처리: 일부 증권사 회신서는 한 종목의 종목명·평가액을 다음
+    물리적 line 으로 흘린다. 예)
+      한국증권금융 §2:
+        '101--31-4-23622 101-314-2362249 외 1,262,000 주 KRW 631,000,000 ...'
+        '1건 코스맥스보통주 205,706,000,000'   ← 진짜 종목명·평가액
+      신한투자 §2:
+        '08312631129 코스맥스 150,000 KRW - 163,000.00 KRW 0 75,000'
+        '24,450,000,000'                        ← 진짜 평가액
+    따라서 계좌번호로 시작하는 데이터 행 + 그 아래 연속(continuation) line 들을
+    한 종목으로 묶어, 평가액 = 1,000,000 이상 원화 금액 중 최댓값으로 본다.
+    (기준가 163,000.00·담보수량은 평가액보다 훨씬 작아 자연히 탈락)
     """
     out: list[SecurityDetail] = []
-    # 새 파이프라인의 SectionSplitter가 '상세명세…다음' 헤더 line을 제거한 뒤
-    # 단일 섹션 블록만 넘기므로, 헤더 트리거에 의존하지 않고
-    # 첫 token이 계좌번호인 모든 row를 파싱한다. (헤더 line은 계좌번호가 없어 자연히 skip)
+
+    # 1) 데이터 행(계좌번호 시작)과 그에 딸린 continuation line 들을 묶는다.
+    rows: list[list[str]] = []          # 각 row = [main_line, cont1, cont2, ...]
     for line in text.splitlines():
         s = line.strip()
         if not s:
             continue
-        # 헤더 line (계좌번호 종목명 수량 ...) skip
-        if "종목명" in s or ("수량" in s and "액면" in s):
+        if _is_detail_header(s):
+            continue
+        if _is_noise(s):
             continue
         tokens = s.split()
-        if len(tokens) < 4:
+        acct = _detail_acct(tokens)
+        if acct is not None:
+            rows.append([s])
             continue
-        # 첫 token이 계좌(긴 숫자)인지
-        acct = tokens[0]
-        if not re.match(r"^[0-9\-]{8,18}$", acct):
+        # 계좌번호가 없는 line: 진행 중인 row 의 continuation 후보.
+        # (은행명·페이지번호·확인자 등은 _is_noise 또는 아래 필터로 제외)
+        if not rows:
             continue
-        # 종목명: 한글 (2~3 token일 수 있음 — 끝 까지 숫자 아닌 부분 흡수)
-        # 끝쪽 숫자/금액 tokens 추출
-        i = 1
-        ticker_parts = []
-        while i < len(tokens) and not _NUM_TOKEN.match(tokens[i]):
-            ticker_parts.append(tokens[i])
-            i += 1
-        ticker = " ".join(ticker_parts) or "?"
-        nums = []
-        last_text = []
-        for t in tokens[i:]:
-            if _NUM_TOKEN.match(t) or t in {"0","-"}:
-                nums.append(_to_dec(t))
-            else:
-                last_text.append(t)
-        # heuristic: 평가액 = 가장 큰 숫자, 수량 = 가장 첫 숫자, 액면·기준가 = 단가 (천~십만)
+        # 은행명 단독 줄(예: '한국증권금융')·페이지('1/5')는 continuation 아님
+        if s == bank or re.fullmatch(r"\d+/\d+", s):
+            continue
+        # continuation 으로 인정: 한글 종목명이 있거나 금액 토큰이 있을 때만
+        has_amt = any(_NUM_TOKEN.match(t) for t in tokens)
+        has_hangul = bool(_HANGUL_RUN.search(s))
+        if has_amt or has_hangul:
+            rows[-1].append(s)
+
+    # 2) 각 row(메인 + continuation)를 한 종목으로 파싱
+    for parts in rows:
+        main_tokens = parts[0].split()
+        acct = main_tokens[0]
+        all_tokens: list[str] = []
+        for p in parts:
+            all_tokens.extend(p.split())
+
+        # 숫자 토큰 수집 (계좌번호 토큰은 제외)
+        nums: list[Decimal] = []
+        for t in all_tokens[1:]:        # skip 계좌번호
+            if "," in t or _NUM_TOKEN.match(t):
+                d = _to_dec(t)
+                if d is not None:
+                    nums.append(d)
+        # 평가액 = 1,000,000 이상 원화 금액 중 최댓값
+        big = [n for n in nums if n >= _VALUATION_MIN]
+        val = max(big) if big else (max([n for n in nums if n > 0], default=None))
+        # 수량 = 평가액·기준가가 아닌 첫 큰 정수 후보 (참고용)
         qty = nums[0] if nums else None
-        # largest 추정 평가액
-        non_null = [n for n in nums if n and n > 0]
-        val = max(non_null) if non_null else None
-        # 단가 후보 (1,000 ~ 10,000,000) — 기준가/액면
-        unit_prices = [n for n in nums[1:] if n and 100 <= n <= 10_000_000]
+        # 기준가(단가): 100 ~ 10,000,000, 평가액 아님
+        unit_prices = [n for n in nums if n and 100 <= n <= 10_000_000 and n != val]
         base = unit_prices[0] if unit_prices else None
-        face = None  # 회신서 보통 액면금액 빠짐
-        # collateral: 마지막 숫자 (담보수량) + 텍스트
+
+        # 종목명: 메인+continuation 전 토큰에서 한글 종목명 후보
+        ticker = _pick_ticker(all_tokens) or "?"
+
+        # collateral_type: 진짜 처분제한/담보 어휘만 (KRW·계좌조각 garbage 제외)
+        coll_words = [w for w in _COLLATERAL_WORDS if w in " ".join(all_tokens)]
+        coll_type = coll_words[0] if coll_words else None
         coll_qty = None
-        coll_type = None
-        if last_text:
-            coll_type = " ".join(last_text)[:30]
-            # text 앞에 숫자 있으면 담보수량
-            for n in reversed(nums):
-                if n and n != val and n != qty and n != base:
-                    coll_qty = n; break
+
         out.append(SecurityDetail(
             bc_no=bc_no, bank=bank,
             account_no=acct, ticker_name=ticker,
-            quantity=qty, face_value=face,
+            quantity=qty, face_value=None,
             base_price=base, valuation=val,
             collateral_qty=coll_qty, collateral_type=coll_type,
         ))
