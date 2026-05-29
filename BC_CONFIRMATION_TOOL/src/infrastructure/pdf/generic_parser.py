@@ -83,39 +83,64 @@ def _date(text: str, anchor: str) -> date | None:
 
 
 def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
-    """Parse AC1 (Financial Assets) from PDF section text."""
+    """Parse AC1 (Financial Assets) from PDF section text.
+
+    회신서 표준 패턴:
+      "상품명 계좌번호 잔액[ (이자)] 이자율 최종이자지급일 만기일"
+    예: "사업자응원통장-보통예금 09360101044822 10,218.00 (0.00) 0.0000 20251213 00000000"
+    """
     out: list[FinancialAsset] = []
     keywords = [
-        "보통예금",
-        "정기예금",
-        "당좌예금",
-        "외화예금",
-        "MMDA",
-        "MMF",
-        "CMA",
-        "RP",
-        "주식",
-        "채권",
-        "수익증권",
-        "ETF",
-        "신탁",
+        "보통예금", "정기예금", "당좌예금", "외화예금",
+        "MMDA", "MMF", "CMA", "RP",
+        "주식", "채권", "수익증권", "ETF", "신탁",
     ]
+
+    # 강건한 라인 패턴 (account is 10~16 digit, balance has comma·.00, rate has 4 decimal, date 8digit)
+    LINE_RE = re.compile(
+        r"(?P<product>.+?)\s+"
+        r"(?P<acct>\d{10,16})\s+"
+        r"(?:(?P<balance>[\d,]+(?:\.\d+)?)\s+)?"          # 잔액 (옵션, 외화예금 등 비어있을 수 있음)
+        r"(?:\((?P<interest>[\d,.\-]+)\)\s+)?"             # 누적이자 (옵션)
+        r"(?P<rate>\d+\.\d{2,4})\s+"                       # 이자율
+        r"(?P<last>\d{8})\s*"                              # 최종이자지급일
+        r"(?P<mat>\d{8})?"                                 # 만기일 (옵션)
+    )
 
     for line in text.splitlines():
         s = line.strip()
-        if _is_noise(s): continue
+        if _is_noise(s):
+            continue
         if not any(kw in s for kw in keywords):
             continue
 
-        balance = _amount(s, "잔액") or _amount(s, "금액") or Decimal("0")
-        acct = (ACCT_RE.search(s).group(1) if ACCT_RE.search(s) else None)
-        ccy = (CCY_RE.search(s).group(1) if CCY_RE.search(s) else "KRW")
-        rate_m = RATE_RE.search(s)
-        rate = Decimal(rate_m.group(1)) if rate_m else None
+        m = LINE_RE.search(s)
+        if m:
+            product = m.group("product").strip()
+            acct = m.group("acct")
+            balance = Decimal(m.group("balance").replace(",", "")) if m.group("balance") else Decimal("0")
+            rate = Decimal(m.group("rate"))
+            last_str = m.group("last") or ""
+            mat_str = m.group("mat") or ""
+            last_interest = _parse_yyyymmdd(last_str)
+            maturity = _parse_yyyymmdd(mat_str)
+        else:
+            # fallback: 안전 안전한 partial 추출
+            product = s[:60]
+            acct_m = ACCT_RE.search(s)
+            acct = acct_m.group(1) if acct_m else None
+            balance = _amount(s, "잔액") or _amount(s, "금액") or Decimal("0")
+            rate_m = RATE_RE.search(s)
+            rate = Decimal(rate_m.group(1)) if rate_m else None
+            last_interest = None
+            maturity = None
+
+        ccy_m = CCY_RE.search(s)
+        ccy = ccy_m.group(1) if ccy_m else ("USD" if "외화" in s else "KRW")
 
         if any(k in s for k in ["주식", "ETF"]):
             atype = "stock"
-        elif any(k in s for k in ["채권"]):
+        elif "채권" in s:
             atype = "bond"
         elif any(k in s for k in ["MMF", "RP", "수익증권", "신탁"]):
             atype = "fund"
@@ -126,18 +151,23 @@ def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
 
         out.append(
             FinancialAsset(
-                bc_no=bc_no,
-                bank=bank,
-                asset_type=atype,
-                product=s[:60],
-                account_no=acct,
-                currency=ccy,
-                balance=balance,
-                interest_rate=rate,
+                bc_no=bc_no, bank=bank, asset_type=atype,
+                product=product[:60], account_no=acct, currency=ccy,
+                balance=balance, interest_rate=rate,
+                last_interest_date=last_interest, maturity=maturity,
             )
         )
-
     return out
+
+
+def _parse_yyyymmdd(s: str) -> date | None:
+    """8자리 YYYYMMDD → date. 00000000 또는 invalid → None."""
+    if not s or s == "00000000" or len(s) != 8:
+        return None
+    try:
+        return date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+    except (ValueError, IndexError):
+        return None
 
 
 def parse_ac2_borrowing(text: str, bc_no: str, bank: str) -> list[Borrowing]:

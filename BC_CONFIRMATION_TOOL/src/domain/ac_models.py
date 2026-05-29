@@ -10,17 +10,20 @@ class _Base(BaseModel):
     bank: str
 
 
-class FinancialAsset(_Base):              # AC1
+class FinancialAsset(_Base):              # AC1 — V1 13컬럼 매핑
     asset_type: Literal["deposit", "stock", "bond", "fund", "other"]
-    product: str
-    account_no: str | None = None
-    currency: str = "KRW"
-    quantity: Decimal | None = None
-    face_amount: Decimal | None = None
-    balance: Decimal
-    interest_rate: Decimal | None = None
-    open_date: date | None = None
-    maturity: date | None = None
+    product: str                              # 금융상품 종류
+    account_no: str | None = None             # 계좌번호
+    currency: str = "KRW"                     # 통화
+    quantity: Decimal | None = None           # 수량 (주식·채권)
+    face_amount: Decimal | None = None        # 액면금액 (채권)
+    balance: Decimal                          # 금액 (잔액)
+    interest_rate: Decimal | None = None      # 이자율
+    last_interest_date: date | None = None    # 최종이자지급일
+    maturity: date | None = None              # 만기일
+    withdrawal_limit: str | None = None       # 인출제한 등
+    company_account: str | None = None        # 회사 계정과목명
+    open_date: date | None = None             # (legacy)
 
 
 class Borrowing(_Base):                   # AC2

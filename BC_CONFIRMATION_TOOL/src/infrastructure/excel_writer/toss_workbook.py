@@ -288,22 +288,28 @@ def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
 
 
 def build_ac1_assets(wb, company, fiscal_date, records):
-    """AC1 금융자산 (ac_models.FinancialAsset fields)."""
+    """AC1 금융자산 (V1 13컬럼 구조)."""
     def _row(r):
         return [
             r.get("bc_no",""), r.get("bank",""), r.get("product",""),
             r.get("account_no","") or "", r.get("currency","KRW"),
             float(r.get("balance") or 0),
-            r.get("interest_rate","") or "",
-            str(r.get("open_date","") or ""),
+            float(r.get("interest_rate") or 0),
+            str(r.get("last_interest_date","") or ""),
+            str(r.get("maturity","") or ""),
+            r.get("withdrawal_limit","") or "",
+            r.get("company_account","") or "",
+            float(r.get("quantity") or 0) if r.get("quantity") else "",
+            float(r.get("face_amount") or 0) if r.get("face_amount") else "",
         ]
     rows = [_row(r) for r in records]
     return _build_record_sheet(wb, "AC1. 금융자산", "AC1",
         company, fiscal_date,
         "AC1. 금융조회서 요약 — 금융자산",
         "회사의 금융자산 실재성 검토",
-        ["조서번호", "금융기관", "금융상품", "계좌번호", "통화", "잔액", "이자율", "거래개시일"],
-        [10, 18, 30, 18, 8, 16, 10, 12],
+        ["조서번호", "금융기관명", "금융상품 종류", "계좌번호", "통화", "금액",
+         "이자율", "최종이자지급일", "만기일", "인출제한 등", "회사 계정과목명", "수량", "액면금액"],
+        [10, 16, 28, 18, 8, 16, 10, 14, 14, 14, 18, 10, 14],
         rows,
         "회사 장부상 금융자산을 금융조회서상 금액과 대사한 바, 적정함.",
     )
