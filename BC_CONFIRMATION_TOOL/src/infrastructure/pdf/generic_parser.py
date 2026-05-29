@@ -82,82 +82,142 @@ def _date(text: str, anchor: str) -> date | None:
         return None
 
 
-def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
-    """Parse AC1 (Financial Assets) from PDF section text.
+_AC1_KEYWORDS = [
+    "보통예금", "정기예금", "당좌예금", "외화예금", "기업자유", "MMDA",
+    "MMF", "CMA", "RP", "수익증권", "ETF",
+    "주식", "채권", "신탁",
+    "퇴직연금", "발행어음", "랩", "위탁자상품", "펀드상품", "종합투자",
+]
+_CCY_SET = {"KRW","USD","EUR","JPY","CNY","HKD","GBP","AUD","SGD","CNH"}
+_DATE_8 = re.compile(r"^\d{8}$")
+_RATE_PATTERN = re.compile(r"^\d+\.\d{2,5}$")
+_NUM_TOKEN = re.compile(r"^[\d,]+(?:\.\d+)?$")
+_ACCT_TOKEN = re.compile(r"^[0-9\-]{8,22}$")
+_PAREN = re.compile(r"^\([\d,.\-]+\)$")
 
-    회신서 표준 패턴:
-      "상품명 계좌번호 잔액[ (이자)] 이자율 최종이자지급일 만기일"
-    예: "사업자응원통장-보통예금 09360101044822 10,218.00 (0.00) 0.0000 20251213 00000000"
+
+def _classify(s: str) -> tuple[str, str]:
+    """(asset_type, category)."""
+    if any(k in s for k in ["주식", "ETF"]):
+        return "stock", "securities"
+    if "채권" in s:
+        return "bond", "securities"
+    if any(k in s for k in ["수익증권", "신탁", "랩", "펀드", "위탁자상품", "종합투자", "발행어음", "MMF", "RP"]):
+        return "fund", "securities"
+    if any(k in s for k in ["예금", "CMA", "MMDA", "기업자유", "퇴직연금"]):
+        return "deposit", "bank"
+    return "other", "bank"
+
+
+def _to_dec(v: str | None) -> Decimal | None:
+    if v is None or v in {"-", "", "0"}:
+        return Decimal("0") if v == "0" else None
+    try:
+        return Decimal(v.replace(",", ""))
+    except Exception:
+        return None
+
+
+def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
+    """AC1 token-based parser. 은행 예금 + 증권사 자산 모두 처리.
+
+    Strategy:
+      1. tokenize by whitespace
+      2. acct: 10~18 digit (no comma)
+      3. ccy: KRW/USD/...
+      4. dates: 8-digit at end (last 1~2)
+      5. rate: 0.NNNN
+      6. balance: largest numeric token (with comma)
+      7. parens: 누적이자 etc — skip
+      8. rest = product
     """
     out: list[FinancialAsset] = []
-    keywords = [
-        "보통예금", "정기예금", "당좌예금", "외화예금",
-        "MMDA", "MMF", "CMA", "RP",
-        "주식", "채권", "수익증권", "ETF", "신탁",
-    ]
-
-    # 강건한 라인 패턴 (account is 10~16 digit, balance has comma·.00, rate has 4 decimal, date 8digit)
-    LINE_RE = re.compile(
-        r"(?P<product>.+?)\s+"
-        r"(?P<acct>\d{10,16})\s+"
-        r"(?:(?P<balance>[\d,]+(?:\.\d+)?)\s+)?"          # 잔액 (옵션, 외화예금 등 비어있을 수 있음)
-        r"(?:\((?P<interest>[\d,.\-]+)\)\s+)?"             # 누적이자 (옵션)
-        r"(?P<rate>\d+\.\d{2,4})\s+"                       # 이자율
-        r"(?P<last>\d{8})\s*"                              # 최종이자지급일
-        r"(?P<mat>\d{8})?"                                 # 만기일 (옵션)
-    )
-
     for line in text.splitlines():
         s = line.strip()
         if _is_noise(s):
             continue
-        if not any(kw in s for kw in keywords):
+        if not any(kw in s for kw in _AC1_KEYWORDS):
             continue
-
-        m = LINE_RE.search(s)
-        if m:
-            product = m.group("product").strip()
-            acct = m.group("acct")
-            balance = Decimal(m.group("balance").replace(",", "")) if m.group("balance") else Decimal("0")
-            rate = Decimal(m.group("rate"))
-            last_str = m.group("last") or ""
-            mat_str = m.group("mat") or ""
-            last_interest = _parse_yyyymmdd(last_str)
-            maturity = _parse_yyyymmdd(mat_str)
-        else:
-            # fallback: 안전 안전한 partial 추출
-            product = s[:60]
-            acct_m = ACCT_RE.search(s)
-            acct = acct_m.group(1) if acct_m else None
-            balance = _amount(s, "잔액") or _amount(s, "금액") or Decimal("0")
-            rate_m = RATE_RE.search(s)
-            rate = Decimal(rate_m.group(1)) if rate_m else None
-            last_interest = None
-            maturity = None
-
-        ccy_m = CCY_RE.search(s)
-        ccy = ccy_m.group(1) if ccy_m else ("USD" if "외화" in s else "KRW")
-
-        if any(k in s for k in ["주식", "ETF"]):
-            atype = "stock"
-        elif "채권" in s:
-            atype = "bond"
-        elif any(k in s for k in ["MMF", "RP", "수익증권", "신탁"]):
-            atype = "fund"
-        elif any(k in s for k in ["예금", "CMA", "MMDA"]):
-            atype = "deposit"
-        else:
-            atype = "other"
-
-        out.append(
-            FinancialAsset(
-                bc_no=bc_no, bank=bank, asset_type=atype,
-                product=product[:60], account_no=acct, currency=ccy,
-                balance=balance, interest_rate=rate,
-                last_interest_date=last_interest, maturity=maturity,
-            )
-        )
+        rec = _parse_line(s, bc_no, bank)
+        if rec:
+            out.append(rec)
     return out
+
+
+def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:
+    tokens = s.split()
+    if len(tokens) < 2:
+        return None
+    atype, cat = _classify(s)
+
+    # extract dates from right (up to 2 trailing 8-digit numbers)
+    dates: list[date | None] = []
+    while tokens and _DATE_8.match(tokens[-1]):
+        dates.insert(0, _parse_yyyymmdd(tokens.pop()))
+        if len(dates) >= 2:
+            break
+    maturity = dates[-1] if len(dates) >= 1 else None
+    last_interest = dates[-2] if len(dates) >= 2 else None
+    if len(dates) == 1:
+        last_interest, maturity = dates[0], None
+
+    # extract rate
+    rate = None
+    if tokens and _RATE_PATTERN.match(tokens[-1]):
+        rate = Decimal(tokens.pop())
+
+    # remove "()" or "(0.00)" interest token
+    while tokens and (_PAREN.match(tokens[-1]) or tokens[-1] in {"()","(0.00)"}):
+        tokens.pop()
+
+    # extract ccy + numeric tokens from remaining
+    ccy = None
+    numeric_tokens = []
+    other_tokens = []
+    acct = None
+    for t in tokens:
+        if t in _CCY_SET:
+            ccy = t
+        elif _ACCT_TOKEN.match(t) and "," not in t and acct is None:
+            acct = t
+        elif _NUM_TOKEN.match(t) or t == "-":
+            numeric_tokens.append(t)
+        else:
+            other_tokens.append(t)
+
+    if not ccy:
+        ccy = "USD" if "외화" in s else "KRW"
+
+    # balance: largest numeric (assume the first non-zero, or just first)
+    balance = Decimal("0")
+    deposit_money = margin = receivable = None
+    if cat == "bank":
+        if numeric_tokens:
+            balance = _to_dec(numeric_tokens[0]) or Decimal("0")
+    else:
+        # securities: balance, deposit, margin, receivable (in order)
+        nums = [_to_dec(t) for t in numeric_tokens]
+        if len(nums) >= 1: balance = nums[0] or Decimal("0")
+        if len(nums) >= 2: deposit_money = nums[1]
+        if len(nums) >= 3: margin = nums[2]
+        if len(nums) >= 4: receivable = nums[3]
+
+    product = " ".join(other_tokens).strip()[:60] or s.split()[0][:60]
+    restriction = None
+    if cat == "securities":
+        # last non-numeric tokens after numbers may be "담보제공·처분제한 / 해당사항없음"
+        restriction_tokens = [t for t in other_tokens if any(k in t for k in ["담보","처분","상세","해당"])]
+        if restriction_tokens:
+            restriction = " ".join(restriction_tokens)[:40]
+
+    return FinancialAsset(
+        bc_no=bc_no, bank=bank, asset_type=atype, category=cat,
+        product=product, account_no=acct, currency=ccy,
+        balance=balance, interest_rate=rate,
+        last_interest_date=last_interest, maturity=maturity,
+        deposit_money=deposit_money, margin_deposit=margin, receivable=receivable,
+        collateral_restriction=restriction,
+    )
 
 
 def _parse_yyyymmdd(s: str) -> date | None:

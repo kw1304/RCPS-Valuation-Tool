@@ -288,31 +288,61 @@ def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
 
 
 def build_ac1_assets(wb, company, fiscal_date, records):
-    """AC1 금융자산 (V1 13컬럼 구조)."""
-    def _row(r):
-        return [
-            r.get("bc_no",""), r.get("bank",""), r.get("product",""),
-            r.get("account_no","") or "", r.get("currency","KRW"),
-            float(r.get("balance") or 0),
-            float(r.get("interest_rate") or 0),
-            str(r.get("last_interest_date","") or ""),
-            str(r.get("maturity","") or ""),
-            r.get("withdrawal_limit","") or "",
-            r.get("company_account","") or "",
-            float(r.get("quantity") or 0) if r.get("quantity") else "",
-            float(r.get("face_amount") or 0) if r.get("face_amount") else "",
+    """AC1 금융자산 — V1 구조: ① 은행 예금 + ② 증권사 자산 2개 sub-table."""
+    ws = wb.create_sheet("AC1. 금융자산")
+    _write_title_block(ws, company, "AC1. 금융조회서 요약 — 금융자산", fiscal_date, "AC1")
+    r = _write_procedure_block(ws, 5, "1. 감사목적", ["회사의 금융자산 실재성 검토"])
+    r = _write_procedure_block(ws, r, "2. 감사절차", [
+        "1) 금융조회서상 회사의 금융자산을 요약 정리함",
+        "2) 회사 장부와 대사하여 차이 여부 확인",
+    ])
+    bank_recs = [rec for rec in records if rec.get("category", "bank") == "bank"]
+    sec_recs = [rec for rec in records if rec.get("category") == "securities"]
+
+    # === ① 은행 예금·신탁 ===
+    r = _write_section_title(ws, r, "① 은행 예금·신탁")
+    bank_headers = ["조서번호", "금융기관명", "금융상품 종류", "계좌번호", "통화",
+                    "금액", "이자율", "최종이자지급일", "만기일", "인출제한 등"]
+    _write_table_header(ws, r, bank_headers,
+                        col_widths=[10, 16, 28, 20, 8, 16, 10, 14, 14, 18])
+    r += 1
+    for i, rec in enumerate(bank_recs):
+        values = [
+            rec.get("bc_no",""), rec.get("bank",""), rec.get("product",""),
+            rec.get("account_no","") or "", rec.get("currency","KRW"),
+            float(rec.get("balance") or 0),
+            float(rec.get("interest_rate") or 0),
+            str(rec.get("last_interest_date","") or ""),
+            str(rec.get("maturity","") or ""),
+            rec.get("withdrawal_limit","") or "",
         ]
-    rows = [_row(r) for r in records]
-    return _build_record_sheet(wb, "AC1. 금융자산", "AC1",
-        company, fiscal_date,
-        "AC1. 금융조회서 요약 — 금융자산",
-        "회사의 금융자산 실재성 검토",
-        ["조서번호", "금융기관명", "금융상품 종류", "계좌번호", "통화", "금액",
-         "이자율", "최종이자지급일", "만기일", "인출제한 등", "회사 계정과목명", "수량", "액면금액"],
-        [10, 16, 28, 18, 8, 16, 10, 14, 14, 14, 18, 10, 14],
-        rows,
-        "회사 장부상 금융자산을 금융조회서상 금액과 대사한 바, 적정함.",
-    )
+        _write_data_row(ws, r, values, alt=(i % 2 == 1))
+        r += 1
+    r += 1
+
+    # === ② 증권사 자산 (주식·신탁·펀드 등) ===
+    r = _write_section_title(ws, r, "② 증권사 자산 (주식·신탁·펀드 등)")
+    sec_headers = ["조서번호", "금융기관명", "금융상품 종류", "계좌번호", "통화",
+                   "금액", "예수금", "신용설정 보증금", "미수금액", "담보제공·처분제한"]
+    _write_table_header(ws, r, sec_headers,
+                        col_widths=[10, 16, 24, 20, 8, 16, 12, 14, 12, 20])
+    r += 1
+    for i, rec in enumerate(sec_recs):
+        values = [
+            rec.get("bc_no",""), rec.get("bank",""), rec.get("product",""),
+            rec.get("account_no","") or "", rec.get("currency","KRW"),
+            float(rec.get("balance") or 0),
+            float(rec.get("deposit_money") or 0) if rec.get("deposit_money") else "",
+            float(rec.get("margin_deposit") or 0) if rec.get("margin_deposit") else "",
+            float(rec.get("receivable") or 0) if rec.get("receivable") else "",
+            rec.get("collateral_restriction","") or "",
+        ]
+        _write_data_row(ws, r, values, alt=(i % 2 == 1))
+        r += 1
+
+    # === 결론 ===
+    _write_conclusion(ws, r, "회사 장부상 금융자산을 금융조회서상 금액과 대사한 바, 적정함.")
+    return ws
 
 
 def build_ac2_borrowings(wb, company, fiscal_date, records):
