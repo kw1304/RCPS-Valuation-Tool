@@ -33,7 +33,15 @@ def _dispatch(ac: str, block: str, bc_no: str, bank: str, route: dict):
         return parse_ac5(block, bc_no=bc_no, bank=bank, direction=direction)
     if ac == "AC6":
         return parse_ac6(block, bc_no=bc_no, bank=bank, direction=direction, sub=route.get("sub"))
-    return []  # AC3·AC7·AC8 후순위
+    return []  # AC3·AC7·AC8 후순위 (파서 미구현)
+
+
+# 구현된 파서가 있는 AC. 그 외로 라우팅되면 수동검토 스텁을 emit 한다.
+IMPLEMENTED_ACS = {"AC1", "AC1_DETAIL", "AC2", "AC4", "AC5", "AC6"}
+
+
+def _has_digit(s: str) -> bool:
+    return any(ch.isdigit() for ch in s)
 
 
 def parse_responses(session: Session, project_id: int) -> dict:
@@ -92,14 +100,27 @@ def parse_responses(session: Session, project_id: int) -> dict:
             if not route:
                 continue
             ac = route["ac"]
-            try:
-                recs = _dispatch(ac, block, bc_no, bank, route)
-            except Exception:
-                recs = []
             store_ac = "AC1_DETAIL" if ac == "AC1_DETAIL" else ac
             conf = "low" if ocr_used else "high"
-            for rec in recs:
-                _persist(store_ac, rec, False, conf)
+            try:
+                recs = _dispatch(ac, block, bc_no, bank, route)
+            except Exception as e:
+                # BUG5: 파서 예외를 삼키지 말고 수동검토 스텁으로 가시화 (계속 진행)
+                _persist(store_ac, {
+                    "raw": block[:300],
+                    "note": f"parser 예외 — 수동확인 ({type(e).__name__}: {e})",
+                }, True, "low")
+                continue
+            if recs:
+                for rec in recs:
+                    _persist(store_ac, rec, False, conf)
+            elif ac not in IMPLEMENTED_ACS and _has_digit(block):
+                # BUG4: 미구현 AC(AC3·AC7·AC8)인데 실제 데이터(숫자)가 있는 섹션 →
+                # 감사인이 섹션 존재를 인지하도록 수동검토 스텁 1건 persist
+                _persist(store_ac, {
+                    "raw": block[:300],
+                    "note": "parser 미구현 — 수동확인",
+                }, True, "low")
 
     session.commit()
     return {"records": records_summary}
