@@ -6,7 +6,9 @@ from decimal import Decimal
 
 _CCY_SET = {"KRW", "USD", "EUR", "JPY", "CNY", "HKD", "GBP", "AUD", "SGD", "CNH"}
 _DATE_8 = re.compile(r"^\d{8}$")
-_RATE = re.compile(r"^\d+\.\d{2,5}$")
+# 이자율은 회신서에서 소수 3~5자리로 표기(4.5000, 0.0000)되고 1000 미만이다.
+# 소수 2자리(0.00, 18,720,900.00)는 금액이므로 rate 로 오인하면 안 된다.
+_RATE = re.compile(r"^\d{1,3}\.\d{3,5}$")
 _NUM = re.compile(r"^[\d,]+(?:\.\d+)?$")
 _ACCT = re.compile(r"^[0-9\-]{8,22}$")
 _PAREN = re.compile(r"^\([\d,.\-]+\)$")
@@ -14,6 +16,7 @@ _PAREN = re.compile(r"^\([\d,.\-]+\)$")
 _NOISE = [
     "조회기준일", "다음과 같", "참고 목적", "정확성", "해당 거래 없음",
     "해당사항 없음", "확인자", "당 은행", "당사", "면책", "유의사항",
+    "합계", "소계", "총계",
 ]
 
 
