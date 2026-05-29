@@ -18,7 +18,7 @@
 ----
   python tools/compare_to_reference.py \
       "INPUT/4150_AC 금융기관 조회_코스맥스비티아이_FY2025_V1.xlsx" \
-      "INPUT/온라인"
+      "INPUT/온라인" [우편디렉터리]
 
 출력
 ----
@@ -50,6 +50,7 @@ from src.infrastructure.pdf.form_fingerprint import identify_form  # noqa: E402
 from src.infrastructure.pdf.section_splitter import split_sections  # noqa: E402
 from src.infrastructure.pdf.filename_parser import parse_filename  # noqa: E402
 from src.application.parse_response_uc import route_or_classify, _dispatch  # noqa: E402
+from src.infrastructure.pdf.row_parsers.fallback import fallback_parse  # noqa: E402
 
 
 # ── 금액 정규화 ────────────────────────────────────────────────────────────
@@ -178,9 +179,30 @@ _TOOL_FIELDS = {
 }
 
 
-def parse_pdf_dir(pdf_dir: Path) -> dict[str, Counter]:
-    """회신본 PDF 디렉터리 → {AC: Counter(정수금액)} (툴 파싱 결과)."""
-    out: dict[str, Counter] = {ac: Counter() for ac in _TOOL_FIELDS}
+# 비교에 포함하는 AC (참고조서가 가진 시트). AC8 은 참고조서에 없어 제외.
+_COMPARE_ACS = ["AC1", "AC2", "AC4", "AC5", "AC7"]
+
+
+def _add_fallback_amounts(out: dict[str, Counter], text: str, bc_no: str, bank: str) -> None:
+    """우편/unknown → fallback_parse. 행별 최대 금액(보조금액 아닌 대표값)을 AC별 수집."""
+    for rec in fallback_parse(text, bc_no=bc_no, bank=bank):
+        ac = rec["ac_section"]
+        if ac not in _COMPARE_ACS:
+            continue
+        amts = [_to_int_amount(a) for a in rec["payload"].get("amounts", [])]
+        amts = [a for a in amts if a is not None]
+        if not amts:
+            continue
+        out[ac][max(amts)] += 1
+
+
+def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Counter]:
+    """회신본 PDF 디렉터리 → {AC: Counter(정수금액)} (툴 파싱 결과).
+
+    fallback_only=True 면 정형 파서를 쓰지 않고 fallback_parse 만 적용한다
+    (우편/OCR 디렉터리용). False 면 정형 family 는 섹션 파서로, unknown 은
+    fallback 으로 파싱한다(온라인 디렉터리에 섞인 비정형 회신 포함)."""
+    out: dict[str, Counter] = {ac: Counter() for ac in _COMPARE_ACS}
     pdfs = sorted(glob.glob(str(pdf_dir / "*.pdf")))
     for p in pdfs:
         path = Path(p)
@@ -193,7 +215,8 @@ def parse_pdf_dir(pdf_dir: Path) -> dict[str, Counter]:
             print(f"  [WARN] extract 실패 {path.name}: {e}", file=sys.stderr)
             continue
         family = identify_form(text)
-        if family == "unknown":
+        if fallback_only or family == "unknown":
+            _add_fallback_amounts(out, text, bc_no, bank)
             continue
         blocks = split_sections(text)
         for section_no, block in blocks.items():
@@ -218,13 +241,32 @@ def parse_pdf_dir(pdf_dir: Path) -> dict[str, Counter]:
     return out
 
 
+def _merge_counters(a: dict[str, Counter], b: dict[str, Counter]) -> dict[str, Counter]:
+    out: dict[str, Counter] = {ac: Counter() for ac in _COMPARE_ACS}
+    for ac in _COMPARE_ACS:
+        out[ac] = (a.get(ac, Counter()) + b.get(ac, Counter()))
+    return out
+
+
 # ── 비교 ───────────────────────────────────────────────────────────────────
 def _fmt(n: int) -> str:
     return f"{n:,}"
 
 
+def _amount_sum(c: Counter) -> int:
+    """멀티셋 금액 총합 = Σ(금액 × 건수)."""
+    return sum(amt * cnt for amt, cnt in c.items())
+
+
+def _pct_err(tool_sum: int, ref_sum: int) -> float | None:
+    """abs(tool−ref)/ref ×100. ref_sum==0 이면 None(정의 불가)."""
+    if ref_sum == 0:
+        return None
+    return abs(tool_sum - ref_sum) / ref_sum * 100.0
+
+
 def compare(ref: dict[str, Counter], tool: dict[str, Counter]) -> None:
-    acs = ["AC1", "AC2", "AC4", "AC5", "AC7"]
+    acs = _COMPARE_ACS
     print("=" * 72)
     print("참고조서(정답) ↔ 툴 파싱 금액집합 비교  (0·비금액 제외)")
     print("=" * 72)
@@ -240,10 +282,17 @@ def compare(ref: dict[str, Counter], tool: dict[str, Counter]) -> None:
         n_matched = sum(matched_multiset.values())
         n_missed = sum(missed.values())
         n_extra = sum(extra.values())
-        summary.append((ac, n_ref, n_matched, n_missed, n_extra))
+        ref_sum = _amount_sum(r)
+        tool_sum = _amount_sum(t)
+        pct = _pct_err(tool_sum, ref_sum)
+        summary.append((ac, n_ref, n_matched, n_missed, n_extra,
+                        ref_sum, tool_sum, pct))
 
+        pct_str = f"{pct:.1f}%" if pct is not None else "n/a"
         print(f"\n── {ac} ── (정답 {n_ref}건, matched {n_matched}, "
-              f"missed {n_missed}, extra {n_extra})")
+              f"missed {n_missed}, extra {n_extra} | "
+              f"오차 {pct_str})")
+        print(f"  금액합  정답 {_fmt(ref_sum)} | 툴 {_fmt(tool_sum)}")
         if missed:
             print("  MISSED (정답엔 있는데 툴엔 없음):")
             for amt, c in sorted(missed.items(), reverse=True):
@@ -258,30 +307,48 @@ def compare(ref: dict[str, Counter], tool: dict[str, Counter]) -> None:
             print("  (완전 일치)")
 
     print("\n" + "=" * 72)
-    print("요약  AC | #정답 | matched | missed | extra")
+    print("요약  AC | #정답 | matched | missed | extra |   오차%  | 정답금액합 → 툴금액합")
     print("-" * 72)
-    for ac, n_ref, n_matched, n_missed, n_extra in summary:
-        print(f"  {ac:5} | {n_ref:5} | {n_matched:7} | {n_missed:6} | {n_extra:5}")
+    tot_ref = tot_tool = 0
+    for ac, n_ref, n_matched, n_missed, n_extra, ref_sum, tool_sum, pct in summary:
+        tot_ref += ref_sum
+        tot_tool += tool_sum
+        pct_str = f"{pct:6.1f}%" if pct is not None else "   n/a "
+        print(f"  {ac:5} | {n_ref:5} | {n_matched:7} | {n_missed:6} | {n_extra:5} | "
+              f"{pct_str} | {_fmt(ref_sum)} → {_fmt(tool_sum)}")
     print("=" * 72)
+    overall = _pct_err(tot_tool, tot_ref)
+    overall_str = f"{overall:.1f}%" if overall is not None else "n/a"
+    print(f"전체 금액합  정답 {_fmt(tot_ref)} | 툴 {_fmt(tot_tool)}")
+    print(f"OVERALL AMOUNT ERROR: {overall_str}")
 
 
 def main(argv: list[str]) -> int:
     if len(argv) < 3:
         print(__doc__)
-        print("사용: python tools/compare_to_reference.py <참고조서.xlsx> <회신본PDF디렉터리>")
+        print("사용: python tools/compare_to_reference.py "
+              "<참고조서.xlsx> <온라인디렉터리> [우편디렉터리]")
         return 2
     xlsx = Path(argv[1])
-    pdf_dir = Path(argv[2])
+    online_dir = Path(argv[2])
+    postal_dir = Path(argv[3]) if len(argv) >= 4 else None
     if not xlsx.exists():
         print(f"참고조서 없음: {xlsx}", file=sys.stderr)
         return 2
-    if not pdf_dir.is_dir():
-        print(f"PDF 디렉터리 없음: {pdf_dir}", file=sys.stderr)
+    if not online_dir.is_dir():
+        print(f"온라인 디렉터리 없음: {online_dir}", file=sys.stderr)
         return 2
     print(f"참고조서: {xlsx}")
-    print(f"회신본  : {pdf_dir}")
+    print(f"온라인  : {online_dir}")
     ref = read_reference_amounts(xlsx)
-    tool = parse_pdf_dir(pdf_dir)
+    tool = parse_pdf_dir(online_dir)
+    if postal_dir is not None:
+        if postal_dir.is_dir():
+            print(f"우편    : {postal_dir} (fallback/OCR)")
+            postal = parse_pdf_dir(postal_dir, fallback_only=True)
+            tool = _merge_counters(tool, postal)
+        else:
+            print(f"  [WARN] 우편 디렉터리 없음, 건너뜀: {postal_dir}", file=sys.stderr)
     compare(ref, tool)
     return 0
 
