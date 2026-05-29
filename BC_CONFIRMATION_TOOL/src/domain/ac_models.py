@@ -94,6 +94,8 @@ class BillCheck(_Base):                   # AC6
     kind: str
     count: int = 0
     balance: Decimal = Decimal("0")
+    direction: str = "received"           # received=교부받음 / provided=교부 / 당좌
+    sub: str | None = None                # 당좌 등
 
 
 class Insurance(_Base):                   # AC7
