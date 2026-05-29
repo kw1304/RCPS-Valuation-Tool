@@ -30,6 +30,7 @@ def run_sampling(session: Session, project_id: int, gl_path: Path) -> list[Sampl
         )
         c.bs_balance = sp.bs_amount
         c.pl_volume = sp.pl_amount
+        c.gl_sampled = True                  # G/L sampling 출처 flag
         session.add(c)
     session.commit()
     return parties

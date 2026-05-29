@@ -27,6 +27,7 @@ class Counterparty(SQLModel, table=True):
     collateral_listed: Optional[bool] = None
     guarantee_listed: Optional[bool] = None
     response_arrived: bool = False
+    gl_sampled: bool = False                     # True iff sampled from G/L (Step 4)
     bs_balance: float = 0.0
     pl_volume: float = 0.0
     notes: Optional[str] = None

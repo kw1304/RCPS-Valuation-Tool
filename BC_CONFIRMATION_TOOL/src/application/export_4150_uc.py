@@ -187,30 +187,44 @@ def _fill_ac0(wb, cps: list[Counterparty], files: dict, norm):
                 break
 
     # === Section 3: G/L 계정별원장 검토 ===
-    # G/L sampling 결과 (bs_balance 또는 pl_volume != 0 = G/L 발견)
-    row_idx = 72
+    # gl_sampled=True 인 모든 counterparty, 중요도(|bs|+|pl|) 큰 순 sort
+    gl_cps = [
+        cp for cp in cps
+        if getattr(cp, "gl_sampled", False) or cp.bs_balance != 0 or cp.pl_volume != 0
+    ]
+    gl_cps.sort(key=lambda c: -(abs(c.bs_balance) + abs(c.pl_volume)))
+    # 행 확장으로 모든 G/L cp 표시 (Section 4 헤더 R90~ 이후 row shift 됨)
+    SEC3_START = 72
+    SEC3_DEFAULT_END = 88
+    needed = len(gl_cps)
+    sec3_extra = max(0, needed - (SEC3_DEFAULT_END - SEC3_START + 1))
+    if sec3_extra > 0:
+        try:
+            sheet.insert_rows(idx=SEC3_DEFAULT_END + 1, amount=sec3_extra)
+        except Exception:
+            sec3_extra = 0
+    row_idx = SEC3_START
     seen = set()
-    for cp in cps:
-        if cp.bs_balance == 0 and cp.pl_volume == 0:
-            continue  # CS-only counterparty, G/L에 흔적 없음
+    for cp in gl_cps:
         key = (cp.canonical_name, cp.branch)
         if key in seen:
             continue
         seen.add(key)
-        # 계정 구분: 잔액 있으면 B/S, 거래액 있으면 P/L
         if cp.bs_balance != 0:
             acc_label = "B/S 잔액"
-        else:
+        elif cp.pl_volume != 0:
             acc_label = "P/L 거래"
+        else:
+            acc_label = "거래 발생"
         display = cp.canonical_name + (f" {cp.branch}" if cp.branch else "")
         _safe_write(sheet, f"C{row_idx}", acc_label)
         _safe_write(sheet, f"D{row_idx}", display)
         _safe_write(sheet, f"E{row_idx}", _in_cs(cp.canonical_name, cp.branch))
         row_idx += 1
-        if row_idx > 88:
+        if row_idx > SEC3_DEFAULT_END + sec3_extra:
             break
 
-    # === Section 4: 담보·보증 명세서 ===
+    # === Section 4: 담보·보증 명세서 (Section 3 확장에 따라 row shift) ===
     listed_names = set()
     if "collateral" in files:
         for n in parse_collateral_or_guarantee(Path(files["collateral"].stored_path)):
@@ -222,18 +236,17 @@ def _fill_ac0(wb, cps: list[Counterparty], files: dict, norm):
             np = norm.normalize(n)
             if np.matched:
                 listed_names.add((np.canonical, np.branch))
-    row_idx = 92
+    row_idx = 92 + sec3_extra
     for canon, branch in sorted(listed_names, key=lambda kb: (kb[0], kb[1] or "")):
         display = canon + (f" {branch}" if branch else "")
         _safe_write(sheet, f"C{row_idx}", display)
         _safe_write(sheet, f"D{row_idx}", _in_cs(canon, branch))
         row_idx += 1
-        if row_idx > 100:
+        if row_idx > 100 + sec3_extra:
             break
 
     # === Section 5: 우편 조회처 주소 유효성 ===
-    # CS의 우편 채널 row를 그대로
-    row_idx = 103
+    row_idx = 103 + sec3_extra
     for r in cs_rows:
         if "우편" not in (r.get("channel") or ""):
             continue
@@ -248,7 +261,7 @@ def _fill_ac0(wb, cps: list[Counterparty], files: dict, norm):
         _safe_write(sheet, f"E{row_idx}", r.get("address") or "")
         _safe_write(sheet, f"G{row_idx}", addr_valid)
         row_idx += 1
-        if row_idx > 110:
+        if row_idx > 110 + sec3_extra:
             break
 
 
