@@ -84,9 +84,10 @@ class Collateral(_Base):                  # AC5
     collateral_type: str
     creditor: str | None = None
     issuer: str | None = None
-    book_amount: Decimal
+    book_amount: Decimal = Decimal("0")
     appraised_amount: Decimal | None = None
     priority: int | None = None
+    direction: str = "provided"           # provided=제공 / received=제공받음
 
 
 class BillCheck(_Base):                   # AC6
