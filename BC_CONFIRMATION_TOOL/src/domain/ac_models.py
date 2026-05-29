@@ -72,11 +72,12 @@ class Derivative(_Base):                  # AC3
 
 class Guarantee(_Base):                   # AC4
     guarantee_type: str
-    limit_amt: Decimal
     limit_ccy: str = "KRW"
-    balance: Decimal
+    limit_amt: Decimal = Decimal("0")
     balance_ccy: str = "KRW"
+    balance: Decimal = Decimal("0")
     maturity: date | None = None
+    direction: str = "received"           # received=제공받음 / provided=제공
 
 
 class Collateral(_Base):                  # AC5
