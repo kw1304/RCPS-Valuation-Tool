@@ -18,6 +18,47 @@ CCY_RE = re.compile(r"\b(KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD)\b")
 RATE_RE = re.compile(r"([\d.]+)\s*%")
 DATE_RE = re.compile(r"(\d{4})[-./]?\s*(\d{1,2})[-./]?\s*(\d{1,2})")
 
+# 회신서 보일러플레이트 — record 만들면 안 되는 안내 문구
+_NOISE_PATTERNS = [
+    "조회기준일",          # "4. 조회기준일 현재 조회대상회사..."
+    "당사의",
+    "다음과 같습니다",
+    "다음과같음",
+    "참고 목적으로",
+    "정확성",
+    "표시되어",
+    "이는 참고",
+    "조회대상회사",
+    "당 금융회사",
+    "당 은행",
+    "해당 거래 없음",
+    "해당사항 없음",
+    "(주)",                # 보통 헤더 텍스트 "코스맥스비티아이(주)" 등
+    "유의사항",
+    "면책",
+    "비고",
+    "기재 사항",
+    "기재사항",
+]
+
+
+def _is_noise(line: str) -> bool:
+    """회신서 안내·면책·헤더 문구 skip 판정. 짧은 문구·번호로 시작하는 절 제외."""
+    s = line.strip()
+    if not s or len(s) < 6:
+        return True
+    if len(s) > 200:    # 너무 긴 줄 — 한 record 아닌 paragraph
+        return True
+    # 번호 절 ("1.", "1)", "①", "가.", "(1)", "4. 조회기준일") → noise
+    if re.match(r"^\s*[\d①②③④⑤⑥⑦⑧⑨⑩가-힣]\s*[.)]\s", s):
+        # 단 숫자 다음 금융상품 키워드는 record (e.g. "1. 보통예금")
+        pass
+    # 보일러플레이트 키워드 포함
+    for p in _NOISE_PATTERNS:
+        if p in s:
+            return True
+    return False
+
 
 def _amount(text: str, anchor: str) -> Decimal | None:
     """Extract amount following anchor keyword."""
@@ -62,6 +103,7 @@ def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
 
     for line in text.splitlines():
         s = line.strip()
+        if _is_noise(s): continue
         if not any(kw in s for kw in keywords):
             continue
 
@@ -105,6 +147,7 @@ def parse_ac2_borrowing(text: str, bc_no: str, bank: str) -> list[Borrowing]:
 
     for line in text.splitlines():
         s = line.strip()
+        if _is_noise(s): continue
         if not any(kw in s for kw in keywords):
             continue
 
@@ -136,6 +179,7 @@ def parse_ac3_derivative(text: str, bc_no: str, bank: str) -> list[Derivative]:
 
     for line in text.splitlines():
         s = line.strip()
+        if _is_noise(s): continue
         if not any(k in s for k in ["선도", "스왑", "옵션", "FX"]):
             continue
 
@@ -162,6 +206,7 @@ def parse_ac4_guarantee(text: str, bc_no: str, bank: str) -> list[Guarantee]:
 
     for line in text.splitlines():
         s = line.strip()
+        if _is_noise(s): continue
         if not any(k in s for k in ["지급보증", "보증", "L/C", "신용장"]):
             continue
 
@@ -186,6 +231,7 @@ def parse_ac5_collateral(text: str, bc_no: str, bank: str) -> list[Collateral]:
 
     for line in text.splitlines():
         s = line.strip()
+        if _is_noise(s): continue
         if not any(k in s for k in ["담보", "근저당", "질권"]):
             continue
 
@@ -203,6 +249,7 @@ def parse_ac6_bills(text: str, bc_no: str, bank: str) -> list[BillCheck]:
 
     for line in text.splitlines():
         s = line.strip()
+        if _is_noise(s): continue
         if not any(k in s for k in ["어음", "수표"]):
             continue
 
@@ -217,6 +264,7 @@ def parse_ac7_insurance(text: str, bc_no: str, bank: str) -> list[Insurance]:
 
     for line in text.splitlines():
         s = line.strip()
+        if _is_noise(s): continue
         if not any(
             k in s for k in ["보험증권", "보험상품", "보험계약", "가입"]
         ):

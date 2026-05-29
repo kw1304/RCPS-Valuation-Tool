@@ -51,6 +51,12 @@ class ACFiller:
         self.path = template_path
         self.wb = openpyxl.load_workbook(template_path)
 
+    # AC sheet별 최대 data row (결론 직전). fill_section은 이 한계 초과 시 skip.
+    _MAX_DATA_ROW = {
+        "AC1": 128, "AC2": 47, "AC3": 26, "AC4": 61,
+        "AC5": 60, "AC6": 43, "AC7": 45, "AC8": 20,
+    }
+
     def fill_section(self, ac: str, records: list):
         cfg = SHEET_CONFIG[ac]
         # exact match first, prefix fallback (sheet 이름이 미세하게 다를 수 있음)
@@ -65,8 +71,12 @@ class ACFiller:
         if ws is None:
             return
         start = cfg["start_row"]
+        max_row = self._MAX_DATA_ROW.get(ac, start + 999)
         for idx, rec in enumerate(records):
             row = start + idx
+            if row > max_row:
+                # 결론·합계 영역 침범 방지 — 초과 record는 skip (사용자 검토 column에 별도 표시 가능)
+                break
             self._ensure_row_style(ws, start, row)
             for col, attr in cfg["cols"].items():
                 val = self._extract(rec, attr)
