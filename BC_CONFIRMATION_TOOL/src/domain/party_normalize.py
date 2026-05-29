@@ -3,6 +3,21 @@ import yaml
 from dataclasses import dataclass
 from pathlib import Path
 
+# 금융기관 구조 접미사 — 미등록 기관도 이 토큰을 포함/종료하면 금융기관으로 인정.
+# 긴 토큰이 짧은 토큰을 포함하는 경우가 있으므로 canonical 산출엔 영향 없음(이름 그대로 유지).
+# 비금융(법무법인·회계법인·날짜·숫자·회사자기이름)은 이 목록에 포함하지 않는다.
+_FIN_SUFFIX_TOKENS: tuple[str, ...] = (
+    "화재해상보험", "손해보험", "보증보험", "저축은행", "상호금융",
+    "금융투자", "투자운용", "자산운용", "공제조합", "협동조합",
+    "은행", "증권", "생명보험", "생명", "화재", "해상", "손보",
+    "공제회", "중앙회", "카드", "캐피탈", "신탁", "렌탈", "리스",
+)
+
+# 회사명 앞뒤 법인격 표기 제거용
+_LEGAL_PREFIX_RE = re.compile(r"^(주식회사|유한회사|\(주\)|（주）|\(유\)|（유）)\s*")
+_LEGAL_SUFFIX_RE = re.compile(r"\s*(주식회사|유한회사|\(주\)|（주）|\(유\)|（유）)$")
+_WS_RE = re.compile(r"\s+")
+
 @dataclass(frozen=True)
 class NormalizedParty:
     canonical: str          # 국민은행
@@ -46,6 +61,34 @@ class PartyNormalizer:
                 return canon
         return None
 
+    @staticmethod
+    def _clean_name(text: str) -> str:
+        """법인격 표기(주식회사·(주)·（주） 등) 제거 + 내부 공백 1칸으로 정리."""
+        s = _LEGAL_PREFIX_RE.sub("", text)
+        s = _LEGAL_SUFFIX_RE.sub("", s)
+        s = _WS_RE.sub(" ", s).strip()
+        return s
+
+    @staticmethod
+    def _structural_canonical(text: str) -> str | None:
+        """미등록 이름이 금융기관 접미사 토큰을 포함/종료하면 정리된 이름을 canonical로 반환.
+
+        비금융(법무법인·회계법인·날짜·순수숫자)은 None.
+        """
+        cleaned = PartyNormalizer._clean_name(text)
+        if not cleaned:
+            return None
+        # 비금융 배제: 법무법인/회계법인/세무법인, 날짜(2024-12-31), 순수 숫자
+        if any(x in cleaned for x in ("법무법인", "회계법인", "세무법인", "노무법인", "특허법인")):
+            return None
+        if re.fullmatch(r"[\d\s.\-/]+", cleaned):
+            return None
+        # 접미사 토큰 포함 여부 (어디에 있든 포함이면 인정 — 'OO은행 OO지점' 같은 형태 대응)
+        for tok in _FIN_SUFFIX_TOKENS:
+            if tok in cleaned:
+                return cleaned
+        return None
+
     def _detect_foreign(self, text: str) -> str | None:
         """Returns the foreign city/marker found, or None."""
         # Korean foreign cities
@@ -75,9 +118,20 @@ class PartyNormalizer:
 
     def normalize(self, raw: str) -> NormalizedParty:
         s = (raw or "").strip()
+        # 1) curated lookup 우선 (longest-first)
         matched_canon = self._match_canonical(s)
-        canon = matched_canon or s
-        matched = matched_canon is not None
+        if matched_canon is not None:
+            canon = matched_canon
+            matched = True
+        else:
+            # 2) 구조 접미사 fallback — 미등록 금융기관도 인정
+            struct = self._structural_canonical(s)
+            if struct is not None:
+                canon = struct
+                matched = True
+            else:
+                canon = s
+                matched = False
         # Priority 1: foreign?
         foreign_marker = self._detect_foreign(s)
         if foreign_marker:

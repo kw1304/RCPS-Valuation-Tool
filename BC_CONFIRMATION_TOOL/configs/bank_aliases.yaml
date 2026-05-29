@@ -1,27 +1,113 @@
 financial_institutions:
-  - {canonical: 국민은행,    aliases: [KB국민은행, KB국민, KB, 국민銀]}
+  # ── 은행 (시중·국책·지방·인터넷·특수) ──────────────────────────────
+  - {canonical: 국민은행,    aliases: [KB국민은행, KB국민, KB, 국민銀, 국민]}
   - {canonical: 신한은행,    aliases: [신한, 신한銀, SHINHAN]}
   - {canonical: 우리은행,    aliases: [우리, WOORI]}
   - {canonical: KEB하나은행, aliases: [하나은행, 하나, KEB, KEB하나]}
-  - {canonical: 농협은행,    aliases: [농협, NH, NH농협]}
+  - {canonical: 농협은행,    aliases: [농협, NH, NH농협, 농협중앙회]}
   - {canonical: 기업은행,    aliases: [IBK, IBK기업은행, 중소기업은행]}
-  - {canonical: 산업은행,    aliases: [KDB, KDB산업은행]}
+  - {canonical: 산업은행,    aliases: [KDB, KDB산업은행, 한국산업은행]}
   - {canonical: 한국수출입은행, aliases: [수출입은행, KEXIM]}
-  - {canonical: 한국증권금융, aliases: [증권금융]}
-  - {canonical: 아이엠뱅크,  aliases: [iM뱅크, IM뱅크, 대구은행]}
-  - {canonical: 대신증권,    aliases: [대신]}
-  - {canonical: 메리츠증권,  aliases: [메리츠증권(주)]}
-  - {canonical: 신한투자증권, aliases: [신한금융투자, 신한투자]}
-  - {canonical: KB증권,     aliases: [KB증권(주)]}
-  - {canonical: NH투자증권, aliases: [NH투자, NH증권]}
-  - {canonical: 삼성증권,    aliases: [삼성증]}
+  - {canonical: SC제일은행,   aliases: [SC은행, 스탠다드차타드, 한국스탠다드차타드은행, 제일은행]}
+  - {canonical: 한국씨티은행, aliases: [씨티은행, CITI, 씨티]}
+  - {canonical: 수협은행,    aliases: [Sh수협은행, 수협중앙회, 수산업협동조합]}
+  - {canonical: 부산은행,    aliases: [BNK부산은행]}
+  - {canonical: 경남은행,    aliases: [BNK경남은행]}
+  - {canonical: 광주은행,    aliases: [JB광주은행]}
+  - {canonical: 전북은행,    aliases: [JB전북은행]}
+  - {canonical: 제주은행,    aliases: []}
+  - {canonical: 아이엠뱅크,  aliases: [iM뱅크, IM뱅크, 대구은행, DGB대구은행]}
+  - {canonical: 카카오뱅크,  aliases: [한국카카오은행, 카카오]}
+  - {canonical: 케이뱅크,    aliases: [K뱅크, 케이뱅크은행]}
+  - {canonical: 토스뱅크,    aliases: []}
+  - {canonical: 새마을금고,  aliases: [MG새마을금고, 새마을금고중앙회]}
+  - {canonical: 신협,        aliases: [신용협동조합, 신협중앙회]}
+  - {canonical: 우체국,      aliases: [우정사업본부]}
+
+  # ── 증권 (금융투자) ───────────────────────────────────────────────
   - {canonical: 미래에셋증권, aliases: [미래에셋대우, 미래에셋]}
+  - {canonical: 한국투자증권, aliases: [한투증권, 한국투자]}
+  - {canonical: NH투자증권,  aliases: [NH투자, NH증권]}
+  - {canonical: 삼성증권,    aliases: [삼성증]}
+  - {canonical: KB증권,     aliases: [KB증권(주)]}
+  - {canonical: 신한투자증권, aliases: [신한금융투자, 신한투자]}
   - {canonical: 키움증권,    aliases: [키움]}
+  - {canonical: 대신증권,    aliases: [대신]}
+  - {canonical: 메리츠증권,  aliases: [메리츠증권(주), 메리츠종합금융증권]}
+  - {canonical: 하나증권,    aliases: [하나금융투자, 하나대투증권]}
   - {canonical: 한화투자증권, aliases: [한화증권]}
-  - {canonical: KB손해보험,  aliases: [KB손보]}
+  - {canonical: 유안타증권,  aliases: [동양증권]}
+  - {canonical: 교보증권,    aliases: []}
+  - {canonical: 신영증권,    aliases: []}
+  - {canonical: DB금융투자,  aliases: [DB증권, DB금융투자(주)]}
+  - {canonical: 유진투자증권, aliases: [유진증권]}
+  - {canonical: IBK투자증권, aliases: []}
+  - {canonical: SK증권,     aliases: []}
+  - {canonical: 아이엠증권,  aliases: [iM증권, IM증권, 하이투자증권]}
+  - {canonical: 부국증권,    aliases: []}
+  - {canonical: 한양증권,    aliases: []}
+  - {canonical: 다올투자증권, aliases: [KTB투자증권]}
+  - {canonical: 상상인증권,  aliases: []}
+  - {canonical: BNK투자증권, aliases: []}
+  - {canonical: 한국증권금융, aliases: [증권금융]}
+
+  # ── 생명보험 ──────────────────────────────────────────────────────
+  - {canonical: 삼성생명,    aliases: [삼성생명보험]}
+  - {canonical: 한화생명,    aliases: [한화생명보험]}
+  - {canonical: 교보생명,    aliases: [교보생명보험]}
+  - {canonical: 신한라이프,  aliases: [신한라이프생명, 신한생명, 오렌지라이프]}
+  - {canonical: NH농협생명,  aliases: [농협생명, 농협생명보험]}
+  - {canonical: 미래에셋생명, aliases: [미래에셋생명보험]}
+  - {canonical: 동양생명,    aliases: [동양생명보험]}
+  - {canonical: KB라이프,    aliases: [KB생명, KB라이프생명, 푸르덴셜생명]}
+  - {canonical: 흥국생명,    aliases: [흥국생명보험]}
+  - {canonical: DB생명,      aliases: [DB생명보험]}
+  - {canonical: 메트라이프,  aliases: [메트라이프생명, 메트라이프생명보험]}
+  - {canonical: 푸본현대생명, aliases: [현대라이프, 푸본현대생명보험]}
+  - {canonical: AIA생명,     aliases: [AIA생명보험]}
+  - {canonical: 라이나생명,  aliases: [라이나생명보험]}
+  - {canonical: ABL생명,     aliases: [ABL생명보험, 알리안츠생명]}
+  - {canonical: KDB생명,     aliases: [KDB생명보험]}
+  - {canonical: 하나생명,    aliases: [하나생명보험]}
+  - {canonical: 처브라이프생명, aliases: [에이스생명, 처브라이프]}
+  - {canonical: IBK연금보험, aliases: []}
+  - {canonical: 교보라이프플래닛생명, aliases: [교보라이프플래닛]}
+
+  # ── 손해보험 ──────────────────────────────────────────────────────
+  - {canonical: 삼성화재,    aliases: [삼성화재해상보험]}
+  - {canonical: DB손해보험,  aliases: [DB손보, 동부화재]}
+  - {canonical: 현대해상,    aliases: [현대해상화재보험, 현대화재]}
+  - {canonical: KB손해보험,  aliases: [KB손보, LIG손해보험]}
+  - {canonical: 메리츠화재,  aliases: [메리츠화재해상보험]}
   - {canonical: 한화손해보험, aliases: [한화손보]}
-  - {canonical: 메리츠화재해상보험, aliases: [메리츠화재]}
-  - {canonical: 서울보증보험, aliases: [SGI서울보증, 서울보증]}
-  - {canonical: 현대해상화재보험, aliases: [현대해상, 현대화재]}
-  - {canonical: 흥국화재,    aliases: [흥국화재해상]}
+  - {canonical: 롯데손해보험, aliases: [롯데손보]}
+  - {canonical: 흥국화재,    aliases: [흥국화재해상보험, 흥국화재해상]}
+  - {canonical: MG손해보험,  aliases: [MG손보, 그린손해보험]}
+  - {canonical: NH농협손해보험, aliases: [농협손해보험, 농협손보, NH손해보험]}
+  - {canonical: 하나손해보험, aliases: [하나손보, 더케이손해보험]}
+  - {canonical: 캐롯손해보험, aliases: [캐롯손보]}
+  - {canonical: AXA손해보험, aliases: [악사손해보험, 악사다이렉트]}
+  - {canonical: 에이스아메리칸화재해상보험, aliases: [에이스아메리칸, 처브, 처브손해보험]}
+  - {canonical: 서울보증보험, aliases: [SGI서울보증, 서울보증, SGI]}
+  - {canonical: 코리안리,    aliases: [코리안리재보험]}
   - {canonical: 예별손해보험, aliases: [예별손보]}
+
+  # ── 카드 ──────────────────────────────────────────────────────────
+  - {canonical: KB국민카드,  aliases: [국민카드, KB카드]}
+  - {canonical: 신한카드,    aliases: []}
+  - {canonical: 삼성카드,    aliases: []}
+  - {canonical: 현대카드,    aliases: []}
+  - {canonical: 롯데카드,    aliases: []}
+  - {canonical: 우리카드,    aliases: []}
+  - {canonical: 하나카드,    aliases: []}
+  - {canonical: NH농협카드,  aliases: [농협카드]}
+  - {canonical: BC카드,     aliases: [비씨카드]}
+
+  # ── 공제조합·중앙회·협동조합 (curated; 그 외는 구조 접미사로 매칭) ──
+  - {canonical: 소프트웨어공제조합, aliases: [SW공제조합]}
+  - {canonical: 엔지니어링공제조합, aliases: []}
+  - {canonical: 전기공사공제조합, aliases: []}
+  - {canonical: 정보통신공제조합, aliases: []}
+  - {canonical: 건설공제조합, aliases: []}
+  - {canonical: 중소기업중앙회, aliases: [중소기업협동조합중앙회]}
+  - {canonical: 한국전자산업협동조합, aliases: []}
