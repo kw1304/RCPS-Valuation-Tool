@@ -45,6 +45,8 @@ _COLLAT_KW = ("담보", "보증", "부동산", "유가증권", "신용")
 # 통화 prefix: (KRW) / (USD) / 선행 KRW/USD 등
 _CCY_PREFIX = re.compile(r"^\((KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH|CNH)\)")
 _LEAD_CCY = re.compile(r"^(KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH)")
+# 통화 suffix: 대출종류 꼬리에 '(KRW)' 가 붙는 은행이 있다(광주 '신용카드(KRW)').
+_CCY_SUFFIX = re.compile(r"\((KRW|USD|EUR|JPY|CNY|HKD|GBP|AUD|SGD|CNH)\)$")
 # 순수 숫자 조각(천단위 콤마·소수 허용). prefix 제거 후 검사.
 _NUM_FRAG = re.compile(r"^\d[\d,]*(?:\.\d+)?$")
 # AC2 이자율: 콤마 없는 소수, 정수부 1~3자리(0.00, 4.51, 4.8, 4.17000, 3.815).
@@ -96,14 +98,44 @@ def _to_dec(s: str):
         return None
 
 
-def _detail_idx(toks: list[str]) -> bool:
-    """이 줄이 detail 줄인가 = 8자리 날짜 AND 이자율(콤마없는 소수) 토큰을 모두 가진다.
+_ACCT_REF = re.compile(r"^\d{9,}$")   # 9자리+ 콤마없는 정수 = 계좌/약정 ref (금액 아님)
 
-    base._RATE(소수 3~5자리)는 신한 '4.51'·하나 '4.8' 를 놓치므로 _AC2_RATE 로 판정.
-    8자리 날짜(20250627)는 _AC2_RATE 에 안 걸린다(소수점 없음)."""
+
+def _is_acct_ref(t: str) -> bool:
+    """콤마 없는 9자리 이상 정수 = 계좌번호/약정 ref. 8자리는 날짜로 별도 처리.
+    실측 한도 금액은 콤마 포함이거나 wrap 복구로만 들어오므로 inline 에선 ref 로 본다.
+    (NH투자 '20201965236' 계좌번호 vs 산업 '20000000000' 은 adjacent 복구 경로라 무관.)"""
+    return bool(_ACCT_REF.match(t)) and not _DATE_8.match(t)
+
+
+def _is_loan_type_token(t: str) -> bool:
+    """이 토큰이 유효한 대출종류(상품명) 인가. _clean_type_token 통과 + 상품성 보유."""
+    ct = _clean_type_token(t)
+    if not ct:
+        return False
+    return (ct.endswith("대출") or ct.endswith("여신") or "대출" in ct
+            or "카드" in ct or ct.endswith("한도"))
+
+
+def _detail_idx(toks: list[str]) -> bool:
+    """이 줄이 detail 줄인가.
+
+    (1) 기존: 8자리 날짜 AND 이자율(콤마없는 소수) 토큰을 모두 가진다.
+        base._RATE(소수 3~5자리)는 신한 '4.51'·하나 '4.8' 를 놓치므로 _AC2_RATE 로 판정.
+    (2) 신규: 날짜·이자율이 없어도, 유효한 대출종류 토큰 AND 100만원 이상 실금액(>=1,000,000)
+        토큰을 가지면 detail 줄로 본다. 미인출 담보대출·신용카드 한도처럼 날짜/이자율이
+        비어 있는 행을 잃지 않기 위함(광주 신용카드 한도, NH투자 보통담보대출 한도)."""
     has_date = any(_DATE_8.match(t) for t in toks)
     has_rate = any(_rate_value(t) is not None for t in toks)
-    return has_date and has_rate
+    if has_date and has_rate:
+        return True
+    has_type = any(_is_loan_type_token(t) for t in toks)
+    has_won = any(
+        _is_wellformed_amount(t) and not _is_acct_ref(t)
+        and (v := _to_dec(t)) is not None and v >= 1000000
+        for t in toks
+    )
+    return has_type and has_won
 
 
 class _Frag:
@@ -217,6 +249,9 @@ def parse_ac2(block: str, bc_no: str, bank: str) -> list[Borrowing]:
             if t in _CCY_SET:
                 if currency is None:
                     currency = t
+                continue
+            # 계좌번호/약정 ref(콤마없는 9자리+ 정수) 는 금액 아님 → 버린다(NH투자 account-first).
+            if _is_acct_ref(t):
                 continue
             v = _to_dec(t) if _NUM_FRAG.match(t) else None
             if v is not None:
@@ -367,6 +402,10 @@ def _clean_type_token(t: str) -> str | None:
     """type 후보 토큰 정제: 헤더/은행명/숫자/날짜/통화 거르고 유효하면 반환."""
     if not t:
         return None
+    # 대출종류 꼬리에 통화 suffix 가 붙는 경우 제거(광주 '신용카드(KRW)' → '신용카드').
+    t = _CCY_SUFFIX.sub("", t)
+    if not t:
+        return None
     # 순수 숫자/콤마/소수/날짜 토큰(금액·날짜·ref)은 제거. 단 'B2B'·'<기운>' 처럼
     # 글자가 섞인 상품명 토큰은 유지(B2B 의 '2' 때문에 통째로 버리면 안 됨).
     if _NUM_FRAG.match(t) or _DATE_8.match(t):
@@ -379,9 +418,11 @@ def _clean_type_token(t: str) -> str | None:
         return None
     if t in _CCY_SET:
         return None
-    # '대출/여신/한도' 로 끝나는 토큰은 진짜 상품명 → 상환/담보어 포함돼도 종류로 인정
-    #   (예 '기업운전일반분할상환대출' 은 '상환' 을 포함하지만 종류임)
-    is_product = t.endswith("대출") or t.endswith("여신") or "대출" in t
+    # '대출/여신/한도/카드' 로 끝나거나 포함하는 토큰은 진짜 상품명 → 상환/담보어 포함돼도
+    # 종류로 인정 (예 '기업운전일반분할상환대출' 은 '상환' 을, '신용카드' 는 '신용' 을 포함
+    # 하지만 둘 다 종류임).
+    is_product = (t.endswith("대출") or t.endswith("여신") or "대출" in t
+                  or "카드" in t)
     if not is_product:
         if any(k in t for k in _REPAY_KW):
             return None
