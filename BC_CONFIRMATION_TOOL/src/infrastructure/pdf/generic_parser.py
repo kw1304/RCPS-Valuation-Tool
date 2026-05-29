@@ -81,6 +81,7 @@ _AC1_KEYWORDS = [
     "MMF", "CMA", "RP", "수익증권", "ETF",
     "주식", "채권", "신탁",
     "퇴직연금", "발행어음", "랩", "위탁자상품", "펀드상품", "종합투자",
+    "당좌개설보증금", "보증금",
 ]
 _CCY_SET = {"KRW","USD","EUR","JPY","CNY","HKD","GBP","AUD","SGD","CNH"}
 _DATE_8 = re.compile(r"^\d{8}$")
@@ -203,7 +204,18 @@ def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
         # '계좌번호 토큰(10~18자리 무콤마)'이 있으면 진짜 데이터 행으로 본다.
         # 헤더("금융상품의 종류 ...")·footer·괄호 누적이자 줄은 계좌번호가
         # 없어 자연히 제외된다(당좌개설보증금·ONE KB 행 복구).
-        if not (any(kw in s for kw in _AC1_KEYWORDS) or _has_acct_token(s)):
+        # 헤더 line ("금융상품의 종류 계좌번호 금액 ...") 명시 차단:
+        # 통화/금액 토큰이 없고 헤더 단어만 있는 줄.
+        if ("계좌번호" in s and "금액" in s) and not _has_ccy_amount_token(s):
+            continue
+        # 데이터 행 판정: (a) 키워드, (b) 계좌번호 토큰, 또는
+        # (c) 통화(KRW/USD/…)+금액 토큰이 함께 있으면 진짜 데이터 행으로 본다.
+        # (c)는 계좌번호 없는 당좌개설보증금 행도 살린다.
+        if not (
+            any(kw in s for kw in _AC1_KEYWORDS)
+            or _has_acct_token(s)
+            or _has_ccy_amount_token(s)
+        ):
             continue
         rec = _parse_line(s, bc_no, bank)
         if rec:
@@ -215,6 +227,24 @@ def _has_acct_token(s: str) -> bool:
     """줄에 계좌번호 형태(콤마 없는 10~18자리 숫자) 토큰이 있는지."""
     for t in s.split():
         if "," not in t and re.fullmatch(r"\d{10,18}", t):
+            return True
+    return False
+
+
+def _has_ccy_amount_token(s: str) -> bool:
+    """줄에 통화 토큰(KRW/USD/…)과 금액 토큰(>0 가능한 숫자)이 함께 있는지.
+
+    계좌번호도 키워드도 없는 데이터 행(예: '당좌개설보증금 KRW 3000000.00')을
+    살리기 위한 판정. 헤더·footer는 통화+금액 조합이 없어 자연히 제외된다.
+    """
+    tokens = s.split()
+    has_ccy = any(t in _CCY_SET for t in tokens)
+    if not has_ccy:
+        return False
+    for t in tokens:
+        if t in _CCY_SET or _DATE_8.match(t):
+            continue
+        if _NUM_TOKEN.match(t) or _PAREN.match(t):
             return True
     return False
 
@@ -236,10 +266,15 @@ def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:
     if len(dates) == 1:
         last_interest, maturity = dates[0], None
 
-    # extract rate
+    # extract rate — 단, 값이 작아야 진짜 이자율(<100). 무콤마 금액
+    # (503905003.00)도 `\d+\.\d{2,5}` 패턴에 걸리므로, 100 이상이면
+    # 금액으로 보고 rate로 pop하지 않는다 (balance 0 오인 방지).
     rate = None
     if tokens and _RATE_PATTERN.match(tokens[-1]):
-        rate = Decimal(tokens.pop())
+        cand = Decimal(tokens[-1])
+        if cand < 100:
+            rate = cand
+            tokens.pop()
 
     # remove "()" or "(0.00)" interest token
     while tokens and (_PAREN.match(tokens[-1]) or tokens[-1] in {"()","(0.00)"}):
