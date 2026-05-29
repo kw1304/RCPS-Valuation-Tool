@@ -126,7 +126,7 @@ def run_crosscheck(session: Session, project_id: int) -> dict:
     if cs_rows_full:
         validator = AddressValidator()
         for r in cs_rows_full:
-            if (r.get("channel") or "").strip() in {"우편","우편 회신"}:
+            if "우편" in (r.get("channel") or ""):
                 addr = r.get("address") or ""
                 address_results.append({
                     "bc_no": r.get("bc_no"),

@@ -61,6 +61,6 @@ foreign_cities:
     - "Sao Paulo"
     - Toronto
     - Vancouver
-  generic:
-    - Branch
-    - Overseas
+  # generic 키워드(Branch/Overseas)는 너무 광범위해 국내 CS branch 컬럼과 충돌 (예: NH투자증권 Branch=잠실)
+  # 도시명 매칭만 사용. 진짜 해외지점은 도시명이 있어야 함.
+  generic: []
