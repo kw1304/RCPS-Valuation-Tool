@@ -151,6 +151,11 @@ def _collateral_type(line: str) -> str:
     return (toks[0] if toks else "")[:40]
 
 
+def _is_stock(ctype: str) -> bool:
+    """주식/상장주식 등 유가증권성 담보 종류인가 (선순위설정금액 비적용 대상)."""
+    return "주식" in (ctype or "")
+
+
 def parse_ac5(block: str, bc_no: str, bank: str, direction: str = "provided") -> list[Collateral]:
     out: list[Collateral] = []
     for line in block.splitlines():
@@ -165,11 +170,19 @@ def parse_ac5(block: str, bc_no: str, bank: str, direction: str = "provided") ->
         # 부동산 담보: book(감정/채권최고액) + appraised(설정금액) + 선순위설정금액 3개 컬럼.
         # 순위(rank) 정수(2/3)는 100만 임계 미만이라 _won_amounts 에서 이미 제외되므로,
         # 임계 이상 금액이 3개면 세 번째가 선순위설정금액이다.
+        senior = amounts[2] if len(amounts) >= 3 else None
+        # 주식/상장주식 담보는 선순위설정금액을 잡지 않는다. 참고조서 선순위 설정금액
+        # 컬럼은 부동산 담보(집합건물상가 등)에만 채워지며, 주식의 후순위 행 뒤
+        # (KRW)59,400,000,000 등은 동일 발행주식의 선순위(순위1) 설정금액으로 이미
+        # 설정금액 컬럼에 공시된 값이라 선순위 컬럼에 중복 기재하지 않는다. 잡으면
+        # 같은 금액이 설정·선순위 두 곳에서 이중계상돼 AC5 가 과대해진다.
+        if _is_stock(ctype):
+            senior = None
         out.append(Collateral(
             bc_no=bc_no, bank=bank, collateral_type=ctype,
             book_amount=amounts[0],
             appraised_amount=amounts[1] if len(amounts) >= 2 else None,
-            senior_lien=amounts[2] if len(amounts) >= 3 else None,
+            senior_lien=senior,
             direction=direction,
         ))
     return out

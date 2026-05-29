@@ -176,7 +176,11 @@ _TOOL_FIELDS = {
     "AC1": ["balance"],
     "AC2": ["limit_amt", "balance"],
     "AC4": ["limit_amt", "balance"],
-    "AC5": ["book_amount", "appraised_amount"],
+    # 참고조서 AC5 는 감정금액·설정금액·선순위 설정금액 3개 컬럼을 모두 금액합에
+    # 반영한다(부동산 담보를 설정순위별 별도 행으로 적으며, 순위6 행은 선순위
+    # 설정금액 컬럼에 51bn 을 운반 — 물건 10개면 510B). 따라서 툴 비교도 senior_lien
+    # 을 합산해야 정답 컬럼과 정합한다(누락 시 AC5 ~24% 과소 오차).
+    "AC5": ["book_amount", "appraised_amount", "senior_lien"],
     "AC7": ["coverage_amount"],
 }
 
