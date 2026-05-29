@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
-_CCY_SET = {"KRW", "USD", "EUR", "JPY", "CNY", "HKD", "GBP", "AUD", "SGD", "CNH"}
+# 일부 보험사는 원화를 'WON' 으로 표기한다. 통화 토큰으로 인식하되 KRW 로 정규화한다.
+_CCY_SET = {"KRW", "WON", "USD", "EUR", "JPY", "CNY", "HKD", "GBP", "AUD", "SGD", "CNH"}
+# 통화 표기 정규화 (WON → KRW). 인식되지 않으면 원문 유지.
+_CCY_NORMALIZE = {"WON": "KRW"}
 _DATE_8 = re.compile(r"^\d{8}$")
 # 이자율은 회신서에서 소수 3~5자리로 표기(4.5000, 0.0000)되고 1000 미만이다.
 # 소수 2자리(0.00, 18,720,900.00)는 금액이므로 rate 로 오인하면 안 된다.
@@ -66,7 +69,7 @@ def tokenize_row(row: str) -> RowTokens:
     t = RowTokens()
     for tok in row.split():
         if tok in _CCY_SET:
-            t.currency = tok
+            t.currency = _CCY_NORMALIZE.get(tok, tok)
         elif _DATE_8.match(tok):
             d = _ymd(tok)
             if d:
