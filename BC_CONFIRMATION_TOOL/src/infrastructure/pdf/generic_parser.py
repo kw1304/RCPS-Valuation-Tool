@@ -123,7 +123,7 @@ def _strip_ccy_prefix(tok: str) -> tuple[str | None, str]:
 
 def _classify(s: str) -> tuple[str, str]:
     """(asset_type, category)."""
-    if any(k in s for k in ["주식", "ETF"]):
+    if any(k in s for k in ["주식", "보통주", "우선주", "ETF"]):
         return "stock", "securities"
     if "채권" in s:
         return "bond", "securities"
@@ -227,6 +227,17 @@ def parse_ac1_deposit(text: str, bc_no: str, bank: str) -> list[FinancialAsset]:
     out: list[FinancialAsset] = []
     for line in text.splitlines():
         s = line.strip()
+        # 줄바꿈된 종목명 끌어올리기: 직전 증권행의 product 가 참조번호류뿐이고
+        # 이 줄이 한글 전용 짧은 종목명이면 직전 행에 붙이고 재분류한다.
+        if (
+            out
+            and _is_wrapped_ticker(s)
+            and out[-1].category in ("securities", "bank")
+            and _product_is_reference_only(out[-1].product)
+            and out[-1].balance > 0
+        ):
+            _attach_ticker(out[-1], s)
+            continue
         if _is_noise(s):
             continue
         # 예금 행 판정: 상품명 키워드가 매칭되거나(빠른 경로), 키워드가
@@ -297,6 +308,68 @@ def _has_ccy_amount_token(s: str) -> bool:
         if _NUM_TOKEN.match(t) or _PAREN.match(t):
             has_amt = True
     return has_ccy and has_amt
+
+
+# 한글 종목명(보통주/우선주 등)만 단독으로 다음 줄에 줄바꿈된 wrapped line 판정용.
+# 증권사 회신서가 종목명을 데이터 행 아래 줄로 흘리는 경우(좌표 재구성),
+# 데이터 행의 상품칸엔 참조번호(101-314-2362249 외 1건)만 남고 진짜 종목명은
+# 다음 줄("코스맥스보통주")에 떨어진다. 이 줄을 직전 행의 product 로 끌어올린다.
+_HANGUL_ONLY = re.compile(r"^[가-힣()·\s]+$")
+
+
+def _is_wrapped_ticker(s: str) -> bool:
+    """다음 줄로 흘러내린 종목명(한글 전용·짧은 줄)인지.
+
+    숫자·계좌번호·통화·금액 토큰이 전혀 없고, 한글(괄호 포함)만으로 구성된
+    짧은 줄(2~20자)이며 AC1 상품 키워드(예금/발행어음 등)를 포함하지 않을 때만
+    종목명 wrap 으로 본다. (그 자체가 독립 데이터 행이거나 안내문이면 제외)
+    """
+    t = s.strip()
+    if not (2 <= len(t) <= 20):
+        return False
+    if not _HANGUL_ONLY.match(t):
+        return False
+    if any(ch.isdigit() for ch in t):
+        return False
+    # 독립 상품 행 키워드(예금/발행어음/수익증권 등)면 wrap 아님 — 자기 행으로 파싱
+    if any(kw in t for kw in _AC1_KEYWORDS):
+        return False
+    # 안내·면책 등은 _is_noise 가 이미 걸렀지만 한 번 더 방어
+    if _is_noise(t):
+        return False
+    return True
+
+
+def _product_is_reference_only(product: str) -> bool:
+    """product 가 참조번호/계좌번호류로만 구성돼 진짜 종목명이 없는지.
+
+    한글 2자 이상이 들어 있으면(예: '주식', '코스맥스') 이미 종목명이 있다고 본다.
+    숫자·대시·'외 N건'·'상세명세참조' 같은 참조 텍스트만 있으면 True.
+    """
+    if not product:
+        return True
+    hangul = re.findall(r"[가-힣]", product)
+    # '외', '건', '상세', '명세', '참조' 등 참조 관용어를 뺀 한글 글자 수
+    ref_words = ["외", "건", "상세", "명세", "참조", "담보", "제공", "처분", "제한"]
+    core = product
+    for w in ref_words:
+        core = core.replace(w, "")
+    core_hangul = re.findall(r"[가-힣]", core)
+    return len(core_hangul) < 2
+
+
+def _attach_ticker(rec: FinancialAsset, ticker: str) -> None:
+    """직전 증권행에 wrapped 종목명을 product 로 끌어올리고 재분류."""
+    ticker = ticker.strip()
+    # 기존 참조번호는 종목명 뒤에 보존(감사 추적용)하되 종목명을 앞세운다.
+    old = rec.product or ""
+    if old and old not in ticker:
+        rec.product = (ticker + " " + old).strip()[:60]
+    else:
+        rec.product = ticker[:60]
+    atype, cat = _classify(rec.product)
+    rec.asset_type = atype
+    rec.category = cat
 
 
 def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:
@@ -378,13 +451,13 @@ def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:
         if len(nums) >= 3: margin = nums[2]
         if len(nums) >= 4: receivable = nums[3]
 
-    product = " ".join(other_tokens).strip()[:60] or s.split()[0][:60]
-    restriction = None
-    if cat == "securities":
-        # last non-numeric tokens after numbers may be "담보제공·처분제한 / 해당사항없음"
-        restriction_tokens = [t for t in other_tokens if any(k in t for k in ["담보","처분","상세","해당"])]
-        if restriction_tokens:
-            restriction = " ".join(restriction_tokens)[:40]
+    # 제한사항 토큰("담보제공·처분제한 / 상세명세참조 / 해당사항없음")은
+    # category 와 무관하게 분리한다. 담보로 묶인 예금(bank)도 감사자가
+    # 처분제한을 봐야 하고, product(종목명/상품명)도 깨끗해진다.
+    restriction_tokens = [t for t in other_tokens if any(k in t for k in ["담보","처분","상세","명세","해당"])]
+    product_tokens = [t for t in other_tokens if t not in restriction_tokens]
+    product = " ".join(product_tokens).strip()[:60] or " ".join(other_tokens).strip()[:60] or s.split()[0][:60]
+    restriction = " ".join(restriction_tokens)[:40] if restriction_tokens else None
 
     return FinancialAsset(
         bc_no=bc_no, bank=bank, asset_type=atype, category=cat,
