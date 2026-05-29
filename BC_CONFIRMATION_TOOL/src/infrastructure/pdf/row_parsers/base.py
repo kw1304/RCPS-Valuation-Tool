@@ -1,0 +1,74 @@
+"""AC별 RowParser 공통 토큰 추출. generic_parser._parse_line 일반화."""
+import re
+from dataclasses import dataclass, field
+from datetime import date
+from decimal import Decimal
+
+_CCY_SET = {"KRW", "USD", "EUR", "JPY", "CNY", "HKD", "GBP", "AUD", "SGD", "CNH"}
+_DATE_8 = re.compile(r"^\d{8}$")
+_RATE = re.compile(r"^\d+\.\d{2,5}$")
+_NUM = re.compile(r"^[\d,]+(?:\.\d+)?$")
+_ACCT = re.compile(r"^[0-9\-]{8,22}$")
+_PAREN = re.compile(r"^\([\d,.\-]+\)$")
+
+_NOISE = [
+    "조회기준일", "다음과 같", "참고 목적", "정확성", "해당 거래 없음",
+    "해당사항 없음", "확인자", "당 은행", "당사", "면책", "유의사항",
+]
+
+
+def is_noise(line: str) -> bool:
+    s = line.strip()
+    if not s or len(s) < 4:
+        return True
+    return any(p in s for p in _NOISE)
+
+
+def _ymd(s: str) -> date | None:
+    if not s or s == "00000000" or len(s) != 8:
+        return None
+    try:
+        return date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+    except ValueError:
+        return None
+
+
+def _dec(s: str) -> Decimal | None:
+    try:
+        return Decimal(s.replace(",", ""))
+    except Exception:
+        return None
+
+
+@dataclass
+class RowTokens:
+    account: str | None = None
+    currency: str | None = None
+    amounts: list[Decimal] = field(default_factory=list)
+    dates: list[date] = field(default_factory=list)
+    rate: Decimal | None = None
+    text_tokens: list[str] = field(default_factory=list)
+
+
+def tokenize_row(row: str) -> RowTokens:
+    t = RowTokens()
+    for tok in row.split():
+        if tok in _CCY_SET:
+            t.currency = tok
+        elif _DATE_8.match(tok):
+            d = _ymd(tok)
+            if d:
+                t.dates.append(d)
+        elif _RATE.match(tok) and t.rate is None:
+            t.rate = _dec(tok)
+        elif _PAREN.match(tok):
+            continue
+        elif _ACCT.match(tok) and "," not in tok and t.account is None:
+            t.account = tok
+        elif _NUM.match(tok):
+            v = _dec(tok)
+            if v is not None:
+                t.amounts.append(v)
+        else:
+            t.text_tokens.append(tok)
+    return t
