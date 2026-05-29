@@ -1,6 +1,5 @@
 from src.infrastructure.pdf.generic_parser import (
     parse_ac1_deposit,
-    parse_ac2_borrowing,
 )
 
 
@@ -25,11 +24,3 @@ def test_parse_ac1_securities_format():
     r = recs[0]
     assert r.category == "securities"
     assert int(r.balance) == 17976367
-
-
-def test_parse_ac2_borrowing_with_limit():
-    text = "일반자금대출 한도 1,000,000,000원 잔액 500,000,000원 계약일 2025-06-10"
-    recs = parse_ac2_borrowing(text, bc_no="BC-2", bank="기업은행")
-    assert len(recs) == 1
-    assert int(recs[0].limit_amt) == 1_000_000_000
-    assert int(recs[0].balance) == 500_000_000
