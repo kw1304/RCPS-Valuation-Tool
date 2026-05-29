@@ -127,22 +127,15 @@ def parse_ac1_security_details(text: str, bc_no: str, bank: str) -> list[Securit
         '25628241101 코스맥스엔비티 2,500,000 3,500.00 8,750,000,000 0 2,500,000 질권설정'
     """
     out: list[SecurityDetail] = []
-    in_detail = False
+    # 새 파이프라인의 SectionSplitter가 '상세명세…다음' 헤더 line을 제거한 뒤
+    # 단일 섹션 블록만 넘기므로, 헤더 트리거에 의존하지 않고
+    # 첫 token이 계좌번호인 모든 row를 파싱한다. (헤더 line은 계좌번호가 없어 자연히 skip)
     for line in text.splitlines():
         s = line.strip()
         if not s:
             continue
-        if "상세명세" in s and "다음" in s:
-            in_detail = True
-            continue
-        if in_detail and any(k in s for k in ["다음과 같습니다", "조회기준일 현재", "구분 번호 금액"]) and "상세명세" not in s:
-            # 다른 section 진입 → 종료
-            in_detail = False
-            continue
-        if not in_detail:
-            continue
         # 헤더 line (계좌번호 종목명 수량 ...) skip
-        if "종목명" in s or "수량" in s and "액면" in s:
+        if "종목명" in s or ("수량" in s and "액면" in s):
             continue
         tokens = s.split()
         if len(tokens) < 4:
