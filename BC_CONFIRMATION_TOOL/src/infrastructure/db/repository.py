@@ -1,5 +1,5 @@
 from pathlib import Path
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine, select, delete
 from sqlalchemy import text
 from .models import Project, Counterparty, FileAsset, ExtractedRecord
 
@@ -48,6 +48,27 @@ def list_counterparties(session: Session, project_id: int) -> list[Counterparty]
     return session.exec(
         select(Counterparty).where(Counterparty.project_id == project_id).order_by(Counterparty.bc_no)
     ).all()
+
+
+def delete_counterparty(session: Session, project_id: int, cp_id: int) -> bool:
+    """샘플링된 거래처 1건 제거 (감사인 판단으로 조회대상 제외).
+
+    해당 거래처의 ExtractedRecord(회신 추출분)도 함께 삭제. 없으면 False.
+    bc_no 연번은 이후 crosscheck 재실행 시 재부여되므로 여기서 재정렬 안 함.
+    """
+    from src.infrastructure.db.models import ExtractedRecord
+    cp = session.get(Counterparty, cp_id)
+    if cp is None or cp.project_id != project_id:
+        return False
+    session.exec(
+        delete(ExtractedRecord).where(
+            ExtractedRecord.project_id == project_id,
+            ExtractedRecord.counterparty_id == cp_id,
+        )
+    )
+    session.delete(cp)
+    session.commit()
+    return True
 
 
 def upsert_counterparty(session: Session, project_id: int, canonical_name: str,

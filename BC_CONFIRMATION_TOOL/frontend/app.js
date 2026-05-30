@@ -114,6 +114,12 @@ async function post(path, body, isForm=false){
   return r.json();
 }
 
+async function del(path){
+  const r = await fetch(API + path, { method:"DELETE" });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
 function renderStep1(panel){
   const card = el("div", { className:"card" });
   card.append(el("h2", {}, "프로젝트 설정"));
@@ -188,18 +194,40 @@ function renderStep4(panel){
       el("th", {}, "Canonical"), el("th", {}, "Branch"),
       el("th", {}, "B/S 잔액"), el("th", {}, "P/L 거래액"),
       el("th", {}, "B/S 계정"), el("th", {}, "P/L 계정"),
+      el("th", {}, "제거"),
     ));
+    const countLabel = el("div", { className:"muted" });
+    const refreshCount = () => {
+      const n = tbl.querySelectorAll("tr").length - 1;
+      countLabel.textContent = `조회대상 ${n}건`;
+    };
     for(const p of r.parties){
-      tbl.append(el("tr", {},
+      const rmBtn = el("button", { className:"btn secondary", title:"이 거래처를 조회대상에서 제외" }, "제거");
+      const row = el("tr", {},
         el("td", {}, p.canonical),
         el("td", {}, p.branch || ""),
         el("td", {}, p.bs_amount.toLocaleString()),
         el("td", {}, p.pl_amount.toLocaleString()),
         el("td", {}, p.bs_accounts.join(", ")),
         el("td", {}, p.pl_accounts.join(", ")),
-      ));
+        el("td", {}, rmBtn),
+      );
+      rmBtn.onclick = async () => {
+        if(p.id == null){ alert("거래처 ID 없음 — 샘플링 재실행 필요"); return; }
+        rmBtn.disabled = true; rmBtn.textContent = "…";
+        try {
+          await del(`/projects/${state.projectId}/counterparty/${p.id}`);
+          row.remove();
+          refreshCount();
+        } catch(e){
+          rmBtn.disabled = false; rmBtn.textContent = "제거";
+          alert("제거 실패: " + e.message);
+        }
+      };
+      tbl.append(row);
     }
-    result.append(tbl);
+    result.append(tbl, countLabel);
+    refreshCount();
     btn.textContent = "재실행"; btn.disabled = false;
     state.done.add(4);
   };
