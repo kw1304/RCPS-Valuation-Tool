@@ -48,6 +48,21 @@ def _dispatch(ac: str, block: str, bc_no: str, bank: str, route: dict | None = N
 IMPLEMENTED_ACS = {"AC1", "AC1_DETAIL", "AC2", "AC3", "AC4", "AC5", "AC6", "AC7"}
 
 
+def is_unidentified_aggregate(filename: str) -> bool:
+    """파일명만으로 per-institution 회신인지 판정 — 합본/미상 스캔이면 True.
+
+    표준 회신본은 전자_[BC-N]_… (온라인) 또는 BC-N_… (우편) 형식이라 항상
+    bc_no 를 가진다. parse_filename 이 bc_no·bank 둘 다 못 잡으면 개별 금융기관
+    회신이 아니라 합본(aggregate) 스캔(new-document-… 등)이거나 미상 파일이다.
+
+    합본 스캔은 모든 개별 BC-N 회신을 중복 포함하면서 단일 family 로 fingerprint
+    돼 연대보증/담보를 개별 파일과 다른 AC로 mis-route 한다(record_dedup 은 동일
+    내용만 제거하므로 mis-route 된 사본을 못 잡는다). 따라서 파싱에서 제외한다.
+    """
+    meta = parse_filename(filename)
+    return not meta.get("bc_no") and not meta.get("bank_raw")
+
+
 import re
 
 # 무거래 블록 마커 (공백 무관). 이런 블록은 스텁을 emit 하지 않는다.
@@ -198,6 +213,10 @@ def parse_responses(session: Session, project_id: int) -> dict:
     pending: list[dict] = []  # 수집 버퍼: {ac, payload_obj, manual, confidence, bc_no, bank, cp, family}
 
     for f in files:
+        # 합본(aggregate)/미상 스캔(파일명에 BC-N 없음)은 개별 회신 중복 + mis-route
+        # 누출원이므로 파싱 대상에서 제외한다. 표준 회신은 항상 BC-N 파일명을 가진다.
+        if is_unidentified_aggregate(f.original_name):
+            continue
         meta = parse_filename(f.original_name)
         bc_no = meta.get("bc_no") or ""
         bank_raw = meta.get("bank_raw") or ""

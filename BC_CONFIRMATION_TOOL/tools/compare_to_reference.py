@@ -50,7 +50,9 @@ from src.infrastructure.pdf.ocr import ocr_pdf  # noqa: E402
 from src.infrastructure.pdf.form_fingerprint import identify_form  # noqa: E402
 from src.infrastructure.pdf.section_splitter import split_sections  # noqa: E402
 from src.infrastructure.pdf.filename_parser import parse_filename  # noqa: E402
-from src.application.parse_response_uc import route_or_classify, _dispatch  # noqa: E402
+from src.application.parse_response_uc import (  # noqa: E402
+    route_or_classify, _dispatch, is_unidentified_aggregate,
+)
 from src.infrastructure.pdf.row_parsers.fallback import fallback_parse  # noqa: E402
 from src.domain.record_dedup import dedup_records  # noqa: E402
 
@@ -222,6 +224,11 @@ def parse_pdf_dir(pdf_dir: Path, fallback_only: bool = False) -> dict[str, Count
     pdfs = sorted(glob.glob(str(pdf_dir / "*.pdf")))
     for p in pdfs:
         path = Path(p)
+        # 합본(aggregate)/미상 스캔(파일명에 BC-N 없음)은 개별 회신 중복 + mis-route
+        # 누출원 → 제외(production parse_response_uc 와 동일 기준). 표준 회신은
+        # 항상 BC-N 파일명(전자_[BC-N]_… / BC-N_…)을 가진다.
+        if is_unidentified_aggregate(path.name):
+            continue
         meta = parse_filename(path.name)
         bc_no = meta.get("bc_no") or ""
         bank = meta.get("bank_raw") or ""
