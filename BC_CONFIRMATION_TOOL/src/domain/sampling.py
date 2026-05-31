@@ -12,6 +12,7 @@ class SampledParty:
     pl_amount: float = 0.0
     row_count: int = 0
     confidence: float = 1.0
+    from_financial: bool = False   # True iff 금융계정(예금·차입·유가증권·보험 등) row에서 매칭 — 0잔액이어도 조회대상
 
     def entity_key(self) -> str:
         return self.party.entity_key()
@@ -84,9 +85,9 @@ class Sampler:
                 if np.matched:
                     self._add(agg, np, "기타", acc, amount, conf=conf)
                     break
-        # 적요에 기관명만 스친 phantom(접대비·법인카드 등) 제외 — 실거래(B/S 잔액 or P/L 거래) 있는 G/L 거래처만.
-        # 전체 조회대상(증권사 유가증권 등)은 CS 업로드+크로스체크 단계에서 보강됨.
-        return [sp for sp in agg.values() if sp.bs_amount or sp.pl_amount]
+        # 금융계정(예금·MMF·차입·유가증권·보험 등) 출처는 0잔액이어도 유지 (완전성 — 0잔액 계좌도 조회대상).
+        # 접대비·법인카드 적요에 기관명만 스친 phantom(Step B 기타, 0/0)만 제외.
+        return [sp for sp in agg.values() if sp.from_financial or sp.bs_amount or sp.pl_amount]
 
     def _add(self, agg, np: NormalizedParty, bucket: str, acc: str, amount: float, conf: float):
         key = np.entity_key()
@@ -100,6 +101,8 @@ class Sampler:
         else:
             sp.pl_accounts.add(acc) if amount else sp.bs_accounts.add(acc)
             sp.bs_amount += amount if not amount else 0
+        if bucket != "기타":
+            sp.from_financial = True   # 금융계정 출처 → 0잔액이어도 표본 유지
         sp.row_count += 1
         sp.confidence = min(sp.confidence, conf)
         agg[key] = sp
