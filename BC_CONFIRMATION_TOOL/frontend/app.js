@@ -76,8 +76,13 @@ function renderStep1(panel){
   const btn = el("button", { className:"btn" }, "프로젝트 생성");
   btn.onclick = async () => {
     btn.disabled = true;
-    const r = await post("/projects", { name: name.value, fiscal_date: date.value });
-    state.projectId = r.id; state.done.add(1); state.current = 2; render();
+    try {
+      const r = await post("/projects", { name: name.value, fiscal_date: date.value });
+      state.projectId = r.id; state.done.add(1); state.current = 2; render();
+    } catch(e){
+      btn.disabled = false;
+      alert("프로젝트 생성 실패: " + e.message);
+    }
   };
   card.append(name, " ", date, " ", btn);
   panel.append(card);
@@ -127,7 +132,14 @@ function renderStep4(panel){
   const result = el("div");
   btn.onclick = async () => {
     btn.disabled = true; btn.textContent = "추출 중…";
-    const r = await post(`/projects/${state.projectId}/sampling/run`);
+    let r;
+    try {
+      r = await post(`/projects/${state.projectId}/sampling/run`);
+    } catch(e){
+      btn.textContent = "재실행"; btn.disabled = false;
+      result.innerHTML = ""; result.append(el("p", { className:"err" }, "표본추출 실패: " + e.message));
+      return;
+    }
     result.innerHTML = "";
     const tbl = el("table");
     tbl.append(el("tr", {},
@@ -184,7 +196,14 @@ function renderStep7(panel){
   const result = el("div");
   btn.onclick = async () => {
     btn.disabled = true;
-    const r = await post(`/projects/${state.projectId}/crosscheck/run`);
+    let r;
+    try {
+      r = await post(`/projects/${state.projectId}/crosscheck/run`);
+    } catch(e){
+      btn.disabled = false;
+      result.innerHTML = ""; result.append(el("p", { className:"err" }, "교차검증 실패: " + e.message));
+      return;
+    }
     result.innerHTML = "";
     for(const section of ["bidirectional","prior","union","collateral","guarantee","address"]){
       result.append(el("h3", {}, SECTION_LABEL[section]||section));
@@ -222,9 +241,16 @@ function renderStep8(panel){
 }
 
 async function uploadResponse(file, list){
+  if(!state.projectId){ list.append(el("li", { className:"err" }, "✗ " + file.name + " — 프로젝트 미생성")); return; }
   const fd = new FormData(); fd.append("file", file);
-  await post(`/projects/${state.projectId}/upload/response`, fd, true);
-  list.append(el("li", {}, "✓ " + file.name));
+  const li = el("li", {}, "⏳ " + file.name);
+  list.append(li);
+  try {
+    await post(`/projects/${state.projectId}/upload/response`, fd, true);
+    li.textContent = "✓ " + file.name;
+  } catch(e){
+    li.className = "err"; li.textContent = "✗ " + file.name + " — " + e.message;
+  }
 }
 
 function renderStep9(panel){
@@ -233,7 +259,14 @@ function renderStep9(panel){
   const result = el("div");
   btn.onclick = async () => {
     btn.disabled = true;
-    const r = await post(`/projects/${state.projectId}/response/parse`);
+    let r;
+    try {
+      r = await post(`/projects/${state.projectId}/response/parse`);
+    } catch(e){
+      btn.disabled = false;
+      result.innerHTML = ""; result.append(el("p", { className:"err" }, "회신 추출 실패: " + e.message));
+      return;
+    }
     const tbl = el("table");
     tbl.append(el("tr", {},
       el("th", {}, "Section"), el("th", {}, "BC"), el("th", {}, "Bank"),
@@ -262,16 +295,26 @@ function renderStep9(panel){
 function renderStep10(panel){
   panel.append(el("h2", {}, "4150 조서 생성"));
   const btn = el("button", { className:"btn" }, "Excel 다운로드");
+  const result = el("div");
   btn.onclick = async () => {
     btn.disabled = true; btn.textContent = "생성 중…";
-    const r = await fetch(`${API}/projects/${state.projectId}/workpaper/export`, { method:"POST" });
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = el("a", { href:url, download:`4150_AC_금융기관조회_${Date.now()}.xlsx` });
-    a.click();
-    btn.textContent = "재생성"; btn.disabled = false;
-    state.done.add(state.current);
+    result.innerHTML = "";
+    try {
+      const r = await fetch(`${API}/projects/${state.projectId}/workpaper/export`, { method:"POST" });
+      if(!r.ok) throw new Error(await r.text());
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = el("a", { href:url, download:`4150_AC_금융기관조회_${Date.now()}.xlsx` });
+      a.click();
+      URL.revokeObjectURL(url);
+      btn.textContent = "재생성"; btn.disabled = false;
+      state.done.add(state.current);
+    } catch(e){
+      btn.textContent = "재시도"; btn.disabled = false;
+      result.append(el("p", { className:"err" }, "조서 생성 실패: " + e.message));
+    }
   };
+  panel.append(result);
   panel.append(btn);
 }
 

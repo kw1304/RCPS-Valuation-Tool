@@ -100,6 +100,8 @@ tr:hover td{background:var(--bg3)}
 .drop-zone{border:2px dashed var(--border);border-radius:8px;padding:2rem;text-align:center;color:var(--text3);cursor:pointer}
 .drop-zone.dragover{border-color:var(--accent);background:#EAF2FE}
 .muted{font-size:.78rem;color:var(--text3);margin-top:.4rem}
+.err{color:var(--danger);font-size:.82rem;margin-top:.5rem;font-weight:600}
+li.err{color:var(--danger)}
 .tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:.68rem;font-weight:700}
 .tag.ok{background:rgba(0,192,115,.12);color:var(--green)}
 .tag.warn{background:rgba(255,159,0,.15);color:var(--amber)}
