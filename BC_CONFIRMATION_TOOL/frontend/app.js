@@ -1,16 +1,26 @@
 // frontend/app.js
 const API = "/api";
 const STEPS = [
-  { id: 1, title: "회사·기준일",       render: renderStep1 },
-  { id: 2, title: "G/L · 회사 CS 업로드", render: renderUpload(["gl","cs"]) },
-  { id: 3, title: "Sampling 실행",       render: renderStep4 },
-  { id: 4, title: "전기 CS 비교",         render: renderUpload(["prior_cs"], true) },
-  { id: 5, title: "월보 · 담보 · 보증",    render: renderUpload(["union","collateral","guarantee"], true) },
-  { id: 6, title: "주소 유효성",          render: renderStep7 },
-  { id: 7, title: "회신본 업로드",         render: renderStep8 },
-  { id: 8, title: "파싱 결과 검토",        render: renderStep9 },
-  { id: 9, title: "4150 조서 생성",        render: renderStep10 },
+  { id: 1, title: "회사·기준일",           render: renderStep1 },
+  { id: 2, title: "원장 · Control Sheet 업로드", render: renderUpload(["gl","cs"]) },
+  { id: 3, title: "표본추출 실행",          render: renderStep4 },
+  { id: 4, title: "전기 Control Sheet 비교", render: renderUpload(["prior_cs"], true) },
+  { id: 5, title: "월보 · 담보 · 보증",      render: renderUpload(["union","collateral","guarantee"], true) },
+  { id: 6, title: "주소 유효성",            render: renderStep7 },
+  { id: 7, title: "회신본 업로드",           render: renderStep8 },
+  { id: 8, title: "추출 결과 검토",          render: renderStep9 },
+  { id: 9, title: "4150 조서 생성",          render: renderStep10 },
 ];
+
+// 파일 종류·교차검증 섹션 한글 라벨 (원장·Control Sheet 같은 정착 용어는 유지)
+const KIND_LABEL = {
+  gl:"원장(G/L)", cs:"Control Sheet", prior_cs:"전기 Control Sheet",
+  union:"은행연합회 월보", collateral:"담보제공명세", guarantee:"연대보증명세",
+};
+const SECTION_LABEL = {
+  bidirectional:"양방향 대사", prior:"전기 비교", union:"월보 대사",
+  collateral:"담보 대사", guarantee:"보증 대사", address:"주소 유효성",
+};
 
 const state = { projectId: null, current: 1, done: new Set() };
 
@@ -75,11 +85,11 @@ function renderStep1(panel){
 
 function renderUpload(kinds, optional=false){
   return function(panel){
-    panel.append(el("h2", {}, `파일 업로드 (${kinds.join(" · ")})${optional?" - 선택":""}`));
+    panel.append(el("h2", {}, `파일 업로드 (${kinds.map(k=>KIND_LABEL[k]||k).join(" · ")})${optional?" - 선택":""}`));
     for(const kind of kinds){
       const card = el("div", { className:"card" });
-      card.append(el("h3", {}, kind));
-      const drop = el("div", { className:"drop-zone", textContent:`${kind} 파일 드롭 또는 클릭` });
+      card.append(el("h3", {}, KIND_LABEL[kind]||kind));
+      const drop = el("div", { className:"drop-zone", textContent:`${KIND_LABEL[kind]||kind} 파일 드롭 또는 클릭` });
       drop.onclick = () => {
         const f = el("input", { type:"file" });
         f.onchange = async (e) => uploadFile(kind, e.target.files[0], drop);
@@ -112,8 +122,8 @@ async function uploadFile(kind, file, drop){
 
 function renderStep4(panel){
   const card = el("div", { className:"card" });
-  card.append(el("h2", {}, "Sampling 실행"));
-  const btn = el("button", { className:"btn" }, "G/L에서 금융기관 추출");
+  card.append(el("h2", {}, "표본추출 실행"));
+  const btn = el("button", { className:"btn" }, "원장에서 금융기관 표본추출");
   const result = el("div");
   btn.onclick = async () => {
     btn.disabled = true; btn.textContent = "추출 중…";
@@ -121,7 +131,7 @@ function renderStep4(panel){
     result.innerHTML = "";
     const tbl = el("table");
     tbl.append(el("tr", {},
-      el("th", {}, "Canonical"), el("th", {}, "Branch"),
+      el("th", {}, "금융기관"), el("th", {}, "지점"),
       el("th", {}, "B/S 잔액"), el("th", {}, "P/L 거래액"),
       el("th", {}, "B/S 계정"), el("th", {}, "P/L 계정"),
       el("th", {}, "제거"),
@@ -143,7 +153,7 @@ function renderStep4(panel){
         el("td", {}, rmBtn),
       );
       rmBtn.onclick = async () => {
-        if(p.id == null){ alert("거래처 ID 없음 — 샘플링 재실행 필요"); return; }
+        if(p.id == null){ alert("거래처 ID 없음 — 표본추출 재실행 필요"); return; }
         rmBtn.disabled = true; rmBtn.textContent = "…";
         try {
           await del(`/projects/${state.projectId}/counterparty/${p.id}`);
@@ -169,15 +179,15 @@ function renderStep4(panel){
 }
 
 function renderStep7(panel){
-  panel.append(el("h2", {}, "주소 유효성 + cross-check 실행"));
-  const btn = el("button", { className:"btn" }, "Cross-check 실행");
+  panel.append(el("h2", {}, "주소 유효성 + 교차검증 실행"));
+  const btn = el("button", { className:"btn" }, "교차검증 실행");
   const result = el("div");
   btn.onclick = async () => {
     btn.disabled = true;
     const r = await post(`/projects/${state.projectId}/crosscheck/run`);
     result.innerHTML = "";
     for(const section of ["bidirectional","prior","union","collateral","guarantee","address"]){
-      result.append(el("h3", {}, section));
+      result.append(el("h3", {}, SECTION_LABEL[section]||section));
       result.append(el("pre", { textContent: JSON.stringify(r[section], null, 2).slice(0, 1500) }));
     }
     btn.disabled = false;
@@ -218,8 +228,8 @@ async function uploadResponse(file, list){
 }
 
 function renderStep9(panel){
-  panel.append(el("h2", {}, "회신 파싱·매칭"));
-  const btn = el("button", { className:"btn" }, "파싱 실행");
+  panel.append(el("h2", {}, "회신 추출·매칭"));
+  const btn = el("button", { className:"btn" }, "회신 추출 실행");
   const result = el("div");
   btn.onclick = async () => {
     btn.disabled = true;
