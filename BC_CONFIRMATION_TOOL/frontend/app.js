@@ -158,10 +158,10 @@ function renderStep4(panel){
       const row = el("tr", {},
         el("td", {}, p.canonical),
         el("td", {}, p.branch || ""),
-        el("td", { className:"num" }, p.bs_amount.toLocaleString()),
-        el("td", { className:"num" }, p.pl_amount.toLocaleString()),
-        el("td", {}, p.bs_accounts.join(", ")),
-        el("td", {}, p.pl_accounts.join(", ")),
+        el("td", { className:"num" }, (p.bs_amount ?? 0).toLocaleString()),
+        el("td", { className:"num" }, (p.pl_amount ?? 0).toLocaleString()),
+        el("td", {}, (p.bs_accounts || []).join(", ")),
+        el("td", {}, (p.pl_accounts || []).join(", ")),
         el("td", {}, rmBtn),
       );
       rmBtn.onclick = async () => {
@@ -314,8 +314,8 @@ function renderStep10(panel){
       result.append(el("p", { className:"err" }, "조서 생성 실패: " + e.message));
     }
   };
-  panel.append(result);
   panel.append(btn);
+  panel.append(result);
 }
 
 render();
