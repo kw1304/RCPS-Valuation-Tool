@@ -84,7 +84,9 @@ class Sampler:
                 if np.matched:
                     self._add(agg, np, "기타", acc, amount, conf=conf)
                     break
-        return list(agg.values())
+        # B/S 잔액·P/L 거래액 둘 다 0인 거래처 제외 — 적요에 기관명만 스친 spurious 매칭 제거.
+        # (실거래 없는 기관은 G/L 표본 대상 아님. CS 기반 crosscheck 단계에서 완전성 보강)
+        return [sp for sp in agg.values() if sp.bs_amount or sp.pl_amount]
 
     def _add(self, agg, np: NormalizedParty, bucket: str, acc: str, amount: float, conf: float):
         key = np.entity_key()
