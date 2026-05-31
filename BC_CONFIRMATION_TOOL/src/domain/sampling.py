@@ -85,9 +85,9 @@ class Sampler:
                 if np.matched:
                     self._add(agg, np, "기타", acc, amount, conf=conf)
                     break
-        # 금융계정(예금·MMF·차입·유가증권·보험 등) 출처는 0잔액이어도 유지 (완전성 — 0잔액 계좌도 조회대상).
-        # 접대비·법인카드 적요에 기관명만 스친 phantom(Step B 기타, 0/0)만 제외.
-        return [sp for sp in agg.values() if sp.from_financial or sp.bs_amount or sp.pl_amount]
+        # G/L에 등장한 모든 금융기관(거래처·계정명·적요 언급 포함)을 표본 후보로 — 잔액 0 무관.
+        # (계정과목·메모문장·IT'뱅크'·렌탈 vendor 등 비금융 noise는 normalize 단계에서 이미 배제됨)
+        return list(agg.values())
 
     def _add(self, agg, np: NormalizedParty, bucket: str, acc: str, amount: float, conf: float):
         key = np.entity_key()
