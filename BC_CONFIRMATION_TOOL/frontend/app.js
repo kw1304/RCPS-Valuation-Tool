@@ -1,21 +1,21 @@
 // frontend/app.js
 const API = "/api";
 const STEPS = [
-  { id: 1,  title: "회사·기준일",       render: renderStep1 },
-  { id: 2,  title: "G/L · 회사 CS 업로드", render: renderUpload(["gl","cs"]) },
-  { id: 3,  title: "사전 확장",           render: renderStep3 },
-  { id: 4,  title: "Sampling 실행",       render: renderStep4 },
-  { id: 5,  title: "전기 CS 비교",         render: renderUpload(["prior_cs"], true) },
-  { id: 6,  title: "월보 · 담보 · 보증",    render: renderUpload(["union","collateral","guarantee"], true) },
-  { id: 7,  title: "주소 유효성",          render: renderStep7 },
-  { id: 8,  title: "회신본 업로드",         render: renderStep8 },
-  { id: 9,  title: "파싱 결과 검토",        render: renderStep9 },
-  { id: 10, title: "4150 조서 생성",        render: renderStep10 },
+  { id: 1, title: "회사·기준일",       render: renderStep1 },
+  { id: 2, title: "G/L · 회사 CS 업로드", render: renderUpload(["gl","cs"]) },
+  { id: 3, title: "Sampling 실행",       render: renderStep4 },
+  { id: 4, title: "전기 CS 비교",         render: renderUpload(["prior_cs"], true) },
+  { id: 5, title: "월보 · 담보 · 보증",    render: renderUpload(["union","collateral","guarantee"], true) },
+  { id: 6, title: "주소 유효성",          render: renderStep7 },
+  { id: 7, title: "회신본 업로드",         render: renderStep8 },
+  { id: 8, title: "파싱 결과 검토",        render: renderStep9 },
+  { id: 9, title: "4150 조서 생성",        render: renderStep10 },
 ];
 
 const state = { projectId: null, current: 1, done: new Set() };
 
 function $(s){ return document.querySelector(s); }
+function goNext(){ state.done.add(state.current); state.current++; render(); }
 function el(tag, props={}, ...children){
   const n = document.createElement(tag);
   Object.assign(n, props);
@@ -110,14 +110,6 @@ async function uploadFile(kind, file, drop){
   }catch(err){ drop.textContent = "실패: " + err.message; }
 }
 
-function renderStep3(panel){
-  panel.append(el("div", { className:"card" },
-    el("h2", {}, "사전 확장 (선택)"),
-    el("p", {}, "현재 MVP: yaml 파일 직접 수정. UI에서 자동 발견된 계정·alias 수락은 Phase 2."),
-    (() => { const b = el("button", { className:"btn" }, "건너뛰기"); b.onclick = () => { state.done.add(3); state.current = 4; render(); }; return b; })()
-  ));
-}
-
 function renderStep4(panel){
   const card = el("div", { className:"card" });
   card.append(el("h2", {}, "Sampling 실행"));
@@ -167,12 +159,12 @@ function renderStep4(panel){
     result.append(tbl, countLabel);
     refreshCount();
     btn.textContent = "재실행"; btn.disabled = false;
-    state.done.add(4);
+    state.done.add(state.current);
   };
   card.append(btn, result);
   panel.append(card);
   const next = el("button", { className:"btn" }, "다음 →");
-  next.onclick = () => { state.current = 5; render(); };
+  next.onclick = goNext;
   panel.append(next);
 }
 
@@ -192,7 +184,7 @@ function renderStep7(panel){
   };
   panel.append(btn, result);
   const next = el("button", { className:"btn secondary" }, "다음 →");
-  next.onclick = () => { state.done.add(7); state.current = 8; render(); };
+  next.onclick = goNext;
   panel.append(next);
 }
 
@@ -215,7 +207,7 @@ function renderStep8(panel){
   card.append(drop, list);
   panel.append(card);
   const next = el("button", { className:"btn" }, "다음 →");
-  next.onclick = () => { state.done.add(8); state.current = 9; render(); };
+  next.onclick = goNext;
   panel.append(next);
 }
 
@@ -253,7 +245,7 @@ function renderStep9(panel){
   };
   panel.append(btn, result);
   const next = el("button", { className:"btn secondary" }, "다음 →");
-  next.onclick = () => { state.done.add(9); state.current = 10; render(); };
+  next.onclick = goNext;
   panel.append(next);
 }
 
@@ -268,7 +260,7 @@ function renderStep10(panel){
     const a = el("a", { href:url, download:`4150_AC_금융기관조회_${Date.now()}.xlsx` });
     a.click();
     btn.textContent = "재생성"; btn.disabled = false;
-    state.done.add(10);
+    state.done.add(state.current);
   };
   panel.append(btn);
 }
