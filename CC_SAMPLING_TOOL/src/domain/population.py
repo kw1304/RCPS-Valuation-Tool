@@ -228,9 +228,10 @@ def aggregate_by_party(
     채무는 원장에서 음수로 적재되므로 sign_normalize=True 시 절대값화.
 
     활동량 계산 (ISA 505 완전성 검토용):
-        우선순위 1: LedgerRow.increase > 0 → 해당 값 사용
-                   (코스맥스네오 양식처럼 증가/감소 컬럼이 별도 존재할 때)
-        우선순위 2: |기초| + |change| (기존 7620 양식 — 순증감만 있을 때)
+        우선순위 1 (증가 컬럼 존재 시): max(0, 증가 - |기말|) = paid-off 추정액.
+                   증가 컸지만 기말 작음 → 결제 많음/일부 누락 의심 → metric 큼.
+                   증가·기말 모두 큼 → 정상 거래(기말잔액 sample에서 포착) → metric 작음.
+        우선순위 2 (순증감만 존재 시): |기초| + |change|.
     당기 매입활동이 활발하지만 기말 잔액이 작은 거래처(지급 완료 등)는
     단순 기말 잔액 sampling에서 누락되어 채무 under-statement risk를 놓칠 수 있다.
     activity 기준을 채무 MUS에 사용하면 이 risk를 포착한다.
@@ -245,12 +246,13 @@ def aggregate_by_party(
         # 기말 잔액 (채권: 실재성 기준 / 채무: 재무제표 대사용 기말 잔액)
         amt_ending = abs(r.ending) if sign_normalize else r.ending
 
-        # ── 당기 활동량 결정 ────────────────────────────────────────────────
-        # 증가 컬럼이 명시된 경우(코스맥스네오): 그 값을 그대로 사용.
-        # 없는 경우(7620 양식): |기초| + |change| 로 추정.
-        # 이 값이 채무 MUS의 sampling 기준이 됨. (ISA 505 완전성)
+        # ── 당기 활동량 결정 (ISA 505 채무 완전성) ────────────────────────────
+        # under-statement risk = 매입 활발한데 기말 잔액 작은 거래처
+        # 산식: max(0, 증가 - 기말)
+        #   - 증가 컸지만 기말 작으면: 결제 많이 했거나 일부 누락 → metric 큼
+        #   - 증가 크고 기말도 큰 거래처: 정상 거래 → metric 작음 (잔액 sample에서 이미 포착)
         if r.increase > 0:
-            amt_activity = r.increase
+            amt_activity = max(0.0, r.increase - abs(r.ending))
         else:
             amt_activity = abs(r.beginning) + abs(r.change)
 

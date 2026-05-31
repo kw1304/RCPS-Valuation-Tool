@@ -28,10 +28,19 @@ def test_fully_provisioned_zero_balance_false():
 
 
 def test_fully_provisioned_not_flagged_bad():
-    # allowance == balance인데 is_bad_debt 플래그 없으면 False
+    # 실무: 충당금 100%면 부실 플래그 없어도 제외 (순장부가 0)
     a = Account(party_id="p", name="p", gl_account="x",
                 balance_orig=1000, ccy="KRW", fx_rate=1.0,
                 balance_krw=1000, allowance_amt=1000, is_bad_debt=False)
+    assert is_fully_provisioned(a) is True
+
+
+def test_flagged_bad_partial_provision_kept():
+    # 부실 플래그라도 충당 부족(순장부가 유의적)이면 제외 안 함
+    # — 외부조회/대체절차 대상 (완전성 누락 방지).
+    a = Account(party_id="p", name="p", gl_account="x",
+                balance_orig=1000, ccy="KRW", fx_rate=1.0,
+                balance_krw=1000, allowance_amt=200, is_bad_debt=True)
     assert is_fully_provisioned(a) is False
 
 

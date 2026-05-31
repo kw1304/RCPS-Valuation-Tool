@@ -3,9 +3,16 @@
 
 sheets:
   AR:
+    - 채권
     - 채권원장
+    - 채권명세
+    - 채권명세서
+    - 채권잔액
+    - 채권잔액명세서
     - 매출처원장
     - 매출원장
+    - 매출처별
+    - 거래처원장채권
     - AR
     - 매출채권
     - 외상매출금
@@ -14,14 +21,24 @@ sheets:
     - 받을어음
     - 단기대여금
     - 장기대여금
+    - 대여금
+    - 선급금
     - 보증금
     - 임대보증금
     - 임차보증금
     - Trade Receivables
+    - Receivables
+    - Receivable
   AP:
+    - 채무
     - 채무원장
+    - 채무명세
+    - 채무명세서
+    - 채무잔액
     - 매입처원장
     - 매입원장
+    - 매입처별
+    - 거래처원장채무
     - AP
     - 매입채무
     - 외상매입금
@@ -32,6 +49,8 @@ sheets:
     - 장기차입금
     - 사채
     - Trade Payables
+    - Payables
+    - Payable
   FS:
     - 재무제표
     - 재무상태표
@@ -49,8 +68,20 @@ sheets:
     - 충당금명세
     - 대손충당금명세서
     - Allowance
+  MIXED:
+    - 통합원본
+    - 통합
+    - 채권채무
+    - 채권채무명세서
+    - 채권채무통합
+    - 거래처원장통합
 
 columns:
+  kind_col:
+    - 구분
+    - 채권채무구분
+    - 종류
+    - AR/AP
   party_id:
     - 거래처코드
     - 거래처번호
@@ -58,12 +89,36 @@ columns:
     - party_id
     - code
     - 코드
+    - 고객코드
+    - 공급업체코드
+    - 매출처코드
+    - 매입처코드
   name:
     - 거래처명
     - 거래처
     - 상호
     - name
     - 회사명
+    - 고객명
+    - 공급업체명
+    - 매출처명
+    - 매입처명
+    - 상대거래선
+    - 상대거래선명
+    - 업체명
+    - 업체
+    - 매출처
+    - 매입처
+    - 채권자
+    - 채무자
+    - 거래선
+    - 회사
+    - vendor
+    - customer
+    - supplier
+    - client
+    - counterparty
+    - party
   business_number:
     - 사업자번호
     - 사업자등록번호
@@ -71,17 +126,39 @@ columns:
     - business_number
     - tax_id
   gl_account:
+    - 계정과목명
     - 계정과목
     - 계정코드
     - 계정
     - account
     - GL
+  opening:
+    - 기초
+    - 기초잔액
+    - 전기말
+    - 전기이월
+    - 전월이월
+    - opening
   balance:
     - 기말잔액
-    - 잔액
-    - balance
-    - 당기말잔액
     - 기말금액
+    - 당기말잔액
+    - 기말잔고
+    - 기말
+    - 잔액
+    - 잔고
+    - 현재잔액
+    - 미수잔액
+    - 미지급잔액
+    - 채권잔액
+    - 채무잔액
+    - 미회수액
+    - 미결제액
+    - balance
+    - ending
+    - closing
+    - amount
+    - 금액
   ccy:
     - 통화
     - 통화코드
@@ -100,18 +177,56 @@ columns:
     - 대손충당금
     - allowance
     - allowance_amt
-  debit:
+  debit:        # 증가측(차변) — AR 매출/AP 매입 발생
     - 차변
     - debit
+    - 증감
     - 증가
     - 당기증가
+    - 발생
+    - 발생액
     - 매출액
     - 매입액
-    - 발생액
-  credit:
+    - 청구액
+    - increase
+    - charged
+    - billed
+  credit:       # 감소측(대변) — 회수·입금·결제 (debit과 중복 금지: 부호 역전 방지)
     - 대변
     - credit
     - 감소
     - 당기감소
     - 회수액
+    - 회수
+    - 입금
+    - 수령액
     - 결제액
+    - decrease
+    - collected
+    - received
+
+# party_synonyms — 동일 회사로 간주할 한·영·중 표기 그룹.
+# RP 시트에서 발견 못한 경우 fallback. 추가 원하면 각 행을 한 그룹으로 작성.
+# 행 안의 모든 표기 = 같은 회사. 한글 이름이 그룹 대표로 채택됨.
+party_synonyms:
+  # 화장품·뷰티
+  - ["코스맥스", "Cosmax", "COSMAX", "科丝美诗"]
+  - ["코스맥스비티아이", "Cosmax BTI", "COSMAX BTI"]
+  - ["코스맥스네오", "Cosmax Neo", "COSMAX NEO"]
+  - ["코스맥스펫", "Cosmax Pet", "COSMAX PET"]
+  - ["코스맥스차이나", "Cosmax China", "COSMAX China", "科丝美诗(中国)", "科丝美诗中国"]
+  - ["코스맥스인도네시아", "Cosmax Indonesia", "PT Cosmax Indonesia"]
+  - ["코스맥스타일랜드", "Cosmax Thailand"]
+  - ["코스맥스미국", "Cosmax USA", "Cosmax US"]
+  - ["코스맥스재팬", "Cosmax Japan", "コスマックスジャパン"]
+  - ["달바글로벌", "dalba Global", "DALBA GLOBAL"]
+  - ["아모레퍼시픽", "AmorePacific", "AMOREPACIFIC", "爱茉莉太平洋"]
+  - ["엘지생활건강", "LG H&H", "LG Household", "LG Household & Health Care"]
+  # 거래처 흔한 영문 표기
+  - ["삼성전자", "Samsung Electronics", "SAMSUNG ELECTRONICS"]
+  - ["에스케이하이닉스", "SK Hynix", "SK HYNIX"]
+  - ["현대자동차", "Hyundai Motor", "HYUNDAI MOTOR"]
+  - ["기아", "Kia", "KIA", "기아자동차"]
+  - ["엘지화학", "LG Chem", "LG CHEM"]
+  - ["에스케이이노베이션", "SK Innovation", "SK INNOVATION"]
+  - ["포스코", "POSCO", "Posco"]

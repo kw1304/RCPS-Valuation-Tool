@@ -1,11 +1,37 @@
 """Flask app factory with route registration."""
 from __future__ import annotations
+import os
+from pathlib import Path
 from typing import Optional
 from flask import Flask, jsonify, g
 from src.infrastructure.db.session import make_engine, make_session
 
 
+def _load_dotenv() -> None:
+    """프로젝트 루트 .env 로드 (무의존). 이미 설정된 환경변수는 덮어쓰지 않음.
+
+    KEY=VALUE 한 줄씩. # 주석·빈 줄 무시. 따옴표 제거.
+    DART_API_KEY·ANTHROPIC_API_KEY·CC_MAPPING_PROVIDER 등 여기서 주입.
+    """
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if not env_path.exists():
+        return
+    try:
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+    except OSError:
+        pass
+
+
 def create_app(testing: bool = False, session_factory=None) -> Flask:
+    _load_dotenv()
     app = Flask(__name__, static_folder="../frontend",
                 static_url_path="")
     app.config["TESTING"] = testing
@@ -28,6 +54,10 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
     def close_session(exc):
         s = g.pop("session", None)
         if s is not None:
+            # 예외 종료 시 미커밋 변경 폐기 — rollback 없이 close만 하면
+            # 동일 요청 내 부분 write가 다음 세션에 새어나갈 수 있음.
+            if exc is not None:
+                s.rollback()
             s.close()
 
     @app.get("/healthz")
@@ -57,5 +87,8 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
 
     from api.routes.workpaper import bp as workpaper_bp
     app.register_blueprint(workpaper_bp)
+
+    from api.routes.upload_guide import bp as upload_guide_bp
+    app.register_blueprint(upload_guide_bp)
 
     return app

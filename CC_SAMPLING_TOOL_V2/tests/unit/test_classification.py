@@ -49,10 +49,13 @@ def test_rp_skips_key_check():
     assert forced[0][1] == SelectionReason.FORCED_RP
 
 
-def test_key_forced():
+def test_key_no_longer_forced():
+    # 설계 변경: FORCED_KEY 제거 — 잔액 큰 거래처는 PPS 가중추출로 선정,
+    # 강제포함은 RP만. (감사상 Key item 전수 보장 약화 — 별도 검토 대상)
     accs = [_acc("p", 5_000_000)]
-    forced, _, _ = classify_population(accs, key_threshold=1_000_000)
-    assert forced[0][1] == SelectionReason.FORCED_KEY
+    forced, _, remaining = classify_population(accs, key_threshold=1_000_000)
+    assert not forced
+    assert remaining == accs
 
 
 def test_below_key_goes_to_remaining():
@@ -73,6 +76,7 @@ def test_classify_full_example():
     forced_ids = {a.party_id for a, _ in forced}
     excluded_ids = {a.party_id for a, _ in excluded}
     remaining_ids = {a.party_id for a in remaining}
-    assert forced_ids == {"rp", "key"}
+    # FORCED_KEY 제거 → 'key'는 강제포함 아닌 remaining(PPS 후보)으로
+    assert forced_ids == {"rp"}
     assert excluded_ids == {"bad", "zero"}
-    assert remaining_ids == {"rep"}
+    assert remaining_ids == {"rep", "key"}

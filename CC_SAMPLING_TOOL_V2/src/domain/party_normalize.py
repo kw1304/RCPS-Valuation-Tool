@@ -4,19 +4,46 @@
 """
 from __future__ import annotations
 import re
+from pathlib import Path
 from typing import Optional
 
 
-_CORP_PREFIXES = ["(주)", "(유)", "(합)", "주식회사", "유한회사", "합자회사"]
+_SEP_RE = re.compile(r"[\s\+\-_.,()/&·㈜#%@$:;'\"!?\[\]{}]+")
+
+# 괄호형 corp 마커 — 괄호와 함께 제거 (㈜·(주)·(유)·(株) 등).
+# 반드시 괄호 컨텍스트로 제거 → "(광주)"의 "주"는 보존.
+_PAREN_CORP_RE = re.compile(r"[\(（]\s*(?:주|유|합|株|有|有限公司|股份有限公司)\s*[\)）]|㈜")
+
+# 단어형 corp 마커 — 구분자 제거·소문자 후 형태. 양끝(접두·접미)에서만, 최장 우선 제거.
+# 글로벌 substring 치환 금지 (예: "광주"의 "주", "incheon"의 "inc" 오삭제 방지).
+_CORP_WORDS = sorted({
+    "주식회사", "유한회사", "합자회사", "유한책임회사", "유한공사",
+    "有限公司", "股份有限公司",
+    "corporation", "coltd", "coltd.", "corp", "incorporated", "inc",
+    "limited", "ltd", "llc", "plc", "gmbh", "sa", "pteltd", "nv", "bv",
+}, key=len, reverse=True)
 
 
 def normalize_party_name(name: str) -> str:
-    """거래처명 정규화: corp prefix 제거 + 모든 공백 제거 + 영문 소문자."""
-    s = name
-    for p in _CORP_PREFIXES:
-        s = s.replace(p, "")
-    s = re.sub(r"\s+", "", s)
-    s = s.lower()
+    """거래처명 정규화: corp 마커 제거 + 공백/구분자 제거 + 영문 소문자.
+
+    1) 괄호형 corp 마커((주)·㈜ 등)는 괄호째 제거 — "(광주)" 같은 지명은 보존.
+    2) 구분자·공백 제거 + 소문자.
+    3) 단어형 corp 접미·접두(주식회사·Co.,Ltd·Inc 등)는 **양끝에서만** 최장 우선 제거.
+       글로벌 치환을 피해 "주식회사"의 "주", "vinci"의 "inc" 등 오삭제 방지.
+    """
+    s = _PAREN_CORP_RE.sub("", str(name)).lower()
+    s = _SEP_RE.sub("", s)
+    changed = True
+    while changed and s:
+        changed = False
+        for w in _CORP_WORDS:
+            if len(s) > len(w) and s.endswith(w):   # 접미 (전체가 마커면 보존)
+                s = s[:-len(w)]
+                changed = True
+            if len(s) > len(w) and s.startswith(w):  # 접두
+                s = s[len(w):]
+                changed = True
     return s
 
 
@@ -84,6 +111,39 @@ def build_synonym_groups(party_lists: list[list[str]]) -> dict[str, str]:
     return out
 
 
+_DEFAULT_SYNONYM_CACHE: Optional[dict[str, str]] = None
+
+
+def load_default_synonyms() -> dict[str, str]:
+    """default_aliases.yaml의 party_synonyms 섹션 → 정규화 이름 → 대표 dict.
+
+    한 번만 로드 후 캐싱. 한·영·중 기본 별칭 사전.
+    """
+    global _DEFAULT_SYNONYM_CACHE
+    if _DEFAULT_SYNONYM_CACHE is not None:
+        return _DEFAULT_SYNONYM_CACHE
+    try:
+        import yaml
+        cfg_path = (Path(__file__).resolve().parent.parent.parent
+                    / "configs" / "schema_mapping" / "default_aliases.yaml")
+        with open(cfg_path, encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+        groups = cfg.get("party_synonyms") or []
+        _DEFAULT_SYNONYM_CACHE = build_synonym_groups(groups)
+    except Exception:
+        _DEFAULT_SYNONYM_CACHE = {}
+    return _DEFAULT_SYNONYM_CACHE
+
+
+def merge_synonym_maps(*maps: dict[str, str]) -> dict[str, str]:
+    """여러 synonym_map 머지. 뒤쪽 우선."""
+    out: dict[str, str] = {}
+    for m in maps:
+        if m:
+            out.update(m)
+    return out
+
+
 def canonical_party_key(
     name: str,
     business_number: Optional[str],
@@ -92,11 +152,17 @@ def canonical_party_key(
     """거래처 매칭용 canonical key.
 
     우선순위:
-    1. 사업자번호 있으면 그 번호 사용 (가장 신뢰성 높음)
-    2. 정규화 이름이 synonym_map에 있으면 그룹 대표
-    3. 정규화 이름 그대로
+    1. 사업자번호 있으면 사업자번호 — 가장 신뢰 가능한 법인 식별자.
+       번호가 다르면 정규화 이름이 같아도 별개 법인이므로 병합하지 않음
+       (브랜드 공유 모·자회사, 동명 이법인 오병합 방지).
+    2. 사업자번호 없으면 정규화 이름이 synonym_map에 있으면 그룹 대표 이름.
+       (주)·㈜·Co.,Ltd corp prefix + 공백 + 대소문자 차이 흡수, 한·영·중 synonym 적용.
+    3. 정규화 이름 그대로.
     """
-    if business_number:
-        return f"BN:{business_number}"
+    bn = (business_number or "").strip()
+    if bn:
+        return f"BN:{bn}"
     n = normalize_party_name(name) if name else ""
-    return synonym_map.get(n, n) if n else ""
+    if n:
+        return synonym_map.get(n, n)
+    return ""

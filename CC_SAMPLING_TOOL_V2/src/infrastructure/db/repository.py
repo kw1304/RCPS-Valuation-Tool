@@ -53,12 +53,13 @@ class ProjectRepo:
         from src.infrastructure.db.models import (
             ProjectRow, AccountRow, SampleRow,
             ConfirmationRow, AlternativeProcedureRow, ProjectionRow,
+            UploadGuideRow,
         )
         row = self.s.get(ProjectRow, project_id)
         if row is None:
             raise KeyError(f"project {project_id} not found")
         for M in (ProjectionRow, AlternativeProcedureRow, ConfirmationRow,
-                  SampleRow, AccountRow):
+                  SampleRow, UploadGuideRow, AccountRow):
             (self.s.query(M)
              .filter(M.project_id == project_id)
              .delete(synchronize_session=False))
@@ -110,7 +111,35 @@ class AccountRepo:
 
     def replace_all(self, project_id: int, kind: Kind,
                     accounts: list[Account]) -> None:
-        """재ingest 시: 기존 동일 (project, kind) 모두 삭제 후 insert (atomic)."""
+        """재ingest 시: 기존 동일 (project, kind) 모두 삭제 후 insert.
+
+        AccountRow 삭제 전 dependent (Confirmation·Alternative·Sample) 모두 cascade.
+        Sample design은 새 ingest로 invalidate.
+        """
+        from src.infrastructure.db.models import (
+            SampleRow, ConfirmationRow, AlternativeProcedureRow,
+            SampleDesignRow,
+        )
+        sample_ids_q = (self.s.query(SampleRow.id)
+                        .filter(SampleRow.project_id == project_id,
+                                SampleRow.kind == kind.value))
+        sample_ids = [r[0] for r in sample_ids_q.all()]
+        if sample_ids:
+            (self.s.query(ConfirmationRow)
+             .filter(ConfirmationRow.sample_id.in_(sample_ids))
+             .delete(synchronize_session=False))
+            (self.s.query(AlternativeProcedureRow)
+             .filter(AlternativeProcedureRow.sample_id.in_(sample_ids))
+             .delete(synchronize_session=False))
+            (self.s.query(SampleRow)
+             .filter(SampleRow.id.in_(sample_ids))
+             .delete(synchronize_session=False))
+        # Sample design도 invalidate — 폐기된 모집단으로 산출된 설계가
+        # 새 ingest 후에도 남아 잘못된 표본규모 근거가 표시되는 것 방지.
+        (self.s.query(SampleDesignRow)
+         .filter(SampleDesignRow.project_id == project_id,
+                 SampleDesignRow.kind == kind.value)
+         .delete(synchronize_session=False))
         (self.s.query(AccountRow)
          .filter(AccountRow.project_id == project_id,
                  AccountRow.kind == kind.value)
@@ -202,6 +231,25 @@ class SampleRepo:
              SelectionReason(s_row.selection_reason))
             for s_row, a_row in rows
         ]
+
+    def delete_by_account_name(self, project_id: int, kind: Kind,
+                                party_name: str) -> int:
+        """거래처명 정규화 매칭으로 sample 행 삭제."""
+        from src.domain.party_normalize import normalize_party_name
+        target = normalize_party_name(party_name)
+        rows = (self.s.query(SampleRow, AccountRow)
+                .join(AccountRow, SampleRow.account_id == AccountRow.id)
+                .filter(SampleRow.project_id == project_id,
+                        SampleRow.kind == kind.value)
+                .all())
+        deleted = 0
+        for s_row, a_row in rows:
+            if normalize_party_name(a_row.name or "") == target:
+                self.s.delete(s_row)
+                deleted += 1
+        if deleted:
+            self.s.commit()
+        return deleted
 
 
 @dataclass
@@ -434,6 +482,142 @@ class ProjectionRepo:
             "computed_at": row.computed_at.isoformat()
                             if row.computed_at else None,
         }
+
+
+class UploadGuideRepo:
+    def __init__(self, session):
+        self.s = session
+
+    def replace_all(self, project_id: int, rows: list[dict]) -> None:
+        """기존 row 삭제 후 일괄 insert.
+
+        rows: [{kind, gl_account, ccy, expected, party_name, canonical_key,
+                business_number, country, party_type, rep_name,
+                contact_name, phone, email, required_complete, src_row}, ...]
+        """
+        from src.infrastructure.db.models import UploadGuideRow
+        (self.s.query(UploadGuideRow)
+         .filter(UploadGuideRow.project_id == project_id)
+         .delete(synchronize_session=False))
+        for r in rows:
+            self.s.add(UploadGuideRow(
+                project_id=project_id,
+                kind=r["kind"],
+                gl_account=r["gl_account"],
+                ccy=r.get("ccy", "KRW"),
+                expected=r["expected"],
+                party_name=r["party_name"],
+                canonical_key=r["canonical_key"],
+                country=r.get("country"),
+                party_type=r.get("party_type"),
+                business_number=r.get("business_number"),
+                rep_name=r.get("rep_name"),
+                contact_name=r.get("contact_name"),
+                phone=r.get("phone"),
+                email=r.get("email"),
+                required_complete=r.get("required_complete"),
+                src_row=r.get("src_row"),
+            ))
+        self.s.commit()
+
+    def list_by_project(self, project_id: int) -> list:
+        from src.infrastructure.db.models import UploadGuideRow
+        return (self.s.query(UploadGuideRow)
+                .filter(UploadGuideRow.project_id == project_id)
+                .order_by(UploadGuideRow.id)
+                .all())
+
+    def candidate_party_names(self, project_id: int) -> list[str]:
+        """매칭용 거래처명 list (중복 제거, 원본 표기 유지)."""
+        from src.infrastructure.db.models import UploadGuideRow
+        rows = (self.s.query(UploadGuideRow.party_name)
+                .filter(UploadGuideRow.project_id == project_id)
+                .distinct()
+                .all())
+        return [r[0] for r in rows]
+
+    def update_match_result(
+        self, project_id: int, canonical_key: str, *,
+        confirmed_total: Optional[float],
+        matched_pdf: Optional[str],
+        verdict: str,
+    ) -> int:
+        """[legacy] canonical_key 같은 모든 행에 매칭 결과 일괄 갱신.
+
+        새 행별 매칭에서는 update_row_match 사용.
+        """
+        from src.infrastructure.db.models import UploadGuideRow
+        rows = (self.s.query(UploadGuideRow)
+                .filter(UploadGuideRow.project_id == project_id,
+                        UploadGuideRow.canonical_key == canonical_key)
+                .all())
+        now = datetime.utcnow()
+        for r in rows:
+            r.confirmed_total = confirmed_total
+            r.matched_pdf = matched_pdf
+            r.verdict = verdict
+            r.matched_at = now
+        self.s.commit()
+        return len(rows)
+
+    def update_row_match(
+        self, row_id: int, *,
+        confirmed: Optional[float],
+        matched_pdf: Optional[str],
+        verdict: str,
+    ) -> None:
+        """한 UploadGuideRow의 행별 매칭 결과 갱신."""
+        from src.infrastructure.db.models import UploadGuideRow
+        row = self.s.get(UploadGuideRow, row_id)
+        if row is None:
+            return
+        row.confirmed_total = confirmed
+        row.matched_pdf = matched_pdf
+        row.verdict = verdict
+        row.matched_at = datetime.utcnow()
+        self.s.commit()
+
+
+class MappingTemplateRepo:
+    """양식 지문 → 매핑 템플릿 CRUD."""
+    def __init__(self, session):
+        self.s = session
+
+    def find(self, fingerprint: str) -> Optional[list[dict]]:
+        """지문 매칭 → mapping list. 없으면 None."""
+        from src.infrastructure.db.models import MappingTemplateRow
+        row = (self.s.query(MappingTemplateRow)
+               .filter(MappingTemplateRow.fingerprint == fingerprint)
+               .first())
+        if row is None:
+            return None
+        try:
+            return json.loads(row.mapping_json)
+        except (ValueError, TypeError):
+            return None
+
+    def save(self, fingerprint: str, mappings: list[dict],
+             label: Optional[str] = None) -> None:
+        """지문 upsert. 기존이면 매핑 갱신 + used_count++."""
+        from src.infrastructure.db.models import MappingTemplateRow
+        payload = json.dumps(mappings, ensure_ascii=False)
+        row = (self.s.query(MappingTemplateRow)
+               .filter(MappingTemplateRow.fingerprint == fingerprint)
+               .first())
+        now = datetime.utcnow()
+        if row is None:
+            self.s.add(MappingTemplateRow(
+                fingerprint=fingerprint, label=label,
+                mapping_json=payload, used_count=1,
+                created_at=now, updated_at=now,
+            ))
+        else:
+            row.mapping_json = payload
+            if label:
+                row.label = label
+            row.used_count = (row.used_count or 0) + 1
+            row.updated_at = now
+        self.s.commit()
 
 
 class SampleDesignRepo:

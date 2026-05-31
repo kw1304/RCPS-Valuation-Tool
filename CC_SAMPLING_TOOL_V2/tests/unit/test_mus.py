@@ -67,10 +67,11 @@ def test_pps_large_item_not_duplicated():
     assert ids.count("monster") <= 1
 
 
-def test_pps_preserves_input_order():
-    """Returned sample follows input order (cumsum position)."""
+def test_pps_returns_n_distinct():
+    """weight 큰 순 정렬 후 systematic 선택 — 정확히 n개 중복없이 반환."""
     accs = [_acc(f"P{i:02d}", 100 * (i + 1)) for i in range(10)]
     s = pps_select(accs, n=4, seed=42)
-    selected_ids = [a.party_id for a in s]
-    sorted_ids = sorted(selected_ids)  # 입력 순서가 P00, P01, ...이므로 단순 정렬과 같음
-    assert selected_ids == sorted_ids
+    ids = [a.party_id for a in s]
+    assert len(ids) == 4               # 대형항목 흡수해도 backfill로 n 보장
+    assert len(set(ids)) == 4          # 중복 없음
+    assert set(ids) <= {a.party_id for a in accs}

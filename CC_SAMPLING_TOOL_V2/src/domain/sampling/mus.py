@@ -37,6 +37,11 @@ def pps_select(
     if n >= len(positives):
         return list(positives)
 
+    # weight 큰 순 정렬 — systematic 첫 interval에 잔액 최대 거래처 보장.
+    # interval ≤ 최대 weight면 첫 인터벌이 최대 거래처를 항상 cover.
+    positives = sorted(positives,
+                        key=lambda a: -abs(getattr(a, weight_attr, 0.0)))
+
     cumsum = []
     running = 0.0
     for a in positives:
@@ -46,9 +51,13 @@ def pps_select(
     interval = total / n
 
     rng = random.Random(seed)
-    start = rng.uniform(0, interval)
+    # 첫 거래처(가장 큰 weight) 100% 보장 — start ≤ cumsum[0].
+    # interval > cumsum[0]면 start 범위 축소 (PPS 통계 representativeness 유지).
+    upper = min(interval, cumsum[0])
+    start = rng.uniform(0, upper)
 
     selected: list[Account] = []
+    seen: set[int] = set()
     j = 0
     for i in range(n):
         target = start + i * interval
@@ -56,7 +65,20 @@ def pps_select(
             j += 1
         if j >= len(positives):
             break
-        if not selected or selected[-1] is not positives[j]:
-            selected.append(positives[j])
+        a = positives[j]
+        if id(a) not in seen:
+            selected.append(a)
+            seen.add(id(a))
+
+    # 대형 항목이 복수 interval 흡수 → systematic만으론 n 미달.
+    # 미선정 항목을 weight 큰 순(이미 정렬됨)으로 채워 정확히 n 보장.
+    # (n < len(positives)는 위에서 보장됨.)
+    if len(selected) < n:
+        for a in positives:
+            if id(a) not in seen:
+                selected.append(a)
+                seen.add(id(a))
+                if len(selected) >= n:
+                    break
 
     return selected

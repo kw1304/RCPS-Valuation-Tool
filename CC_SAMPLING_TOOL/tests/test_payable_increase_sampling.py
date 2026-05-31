@@ -43,20 +43,25 @@ def _row(name, beginning, increase, decrease, ending, acct="외상매입금") ->
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_activity_uses_increase_when_present():
-    """LedgerRow.increase > 0 이면 activity = increase (기초+change 무시)."""
+    """increase 컬럼 존재 시 activity = max(0, 증가 - |기말|) (paid-off 추정액).
+
+    증가 컸지만 기말 작음 → under-statement risk 큼. 정상 잔액은 기말 sample에서 포착.
+    """
     rows = [
         _row("A거래처", beginning=500_000_000, increase=10_000_000_000,
              decrease=9_800_000_000, ending=700_000_000),
     ]
     parties = aggregate_by_party(rows, kind="payable")
-    # activity = increase = 100억
-    assert parties["A거래처"].activity == pytest.approx(10_000_000_000)
+    # activity = max(0, 100억 - 7억) = 93억
+    assert parties["A거래처"].activity == pytest.approx(
+        max(0.0, 10_000_000_000 - 700_000_000)
+    )
     # 기말 잔액은 별도 보존
     assert parties["A거래처"].total == pytest.approx(700_000_000)
 
 
 def test_activity_multiple_accounts_summed():
-    """같은 거래처가 여러 계정과목에 걸쳐 있으면 activity 합산."""
+    """같은 거래처가 여러 계정과목에 걸쳐 있으면 activity(=max(0,증가-기말)) 합산."""
     rows = [
         _row("코스맥스(주)", beginning=491_270_593, increase=10_040_619_675,
              decrease=10_019_893_727, ending=511_996_541, acct="외상매입금"),
@@ -64,8 +69,8 @@ def test_activity_multiple_accounts_summed():
              decrease=12_163_984_357, ending=1_116_539_449, acct="지급어음"),
     ]
     parties = aggregate_by_party(rows, kind="payable")
-    # activity = 10,040,619,675 + 11,782,807,218
-    expected = 10_040_619_675 + 11_782_807_218
+    expected = (max(0.0, 10_040_619_675 - 511_996_541)
+                + max(0.0, 11_782_807_218 - 1_116_539_449))
     assert parties["코스맥스(주)"].activity == pytest.approx(expected)
 
 

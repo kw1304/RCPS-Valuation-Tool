@@ -26,6 +26,9 @@ class DesignParams:
     n_strata: int = 4
     seed: Optional[int] = None
     n_override: Optional[int] = None  # 수동 표본수. None이면 자동산정
+    # AR 커버리지 모드: 잔액 큰 순 누적합 ≥ coverage_pct * total 도달까지 강제포함.
+    # 0이면 비활성. 0.70 = 70% 커버. 표준 절차 3-2 (AR 70~80% 커버리지).
+    coverage_pct: float = 0.0
 
 
 @dataclass
@@ -56,9 +59,23 @@ class DesignSamplingUC:
         project = self.proj.get(project_id)
         accounts = self.acc.list_by_project_kind(project_id, kind)
 
-        # AP는 당기증가(차변) 기반 PPS — ISA 505 완전성 검토
-        # (잔액 작아도 활동량 큰 거래처 누락 방지)
-        weight_attr = "debit_amt" if kind == Kind.AP else "balance_krw"
+        # AP 샘플링 기준 — ISA 505 완전성:
+        #   (활동량 큰) AND (기말 잔액 작은) 거래처 우선.
+        # score = max(0, |활동량| - |잔액|) = paid-off 추정액.
+        # 활동량 큰데 잔액 거의 0 → score 큼 (채무 누락 의심).
+        # 활동량 작은 거래처 → score 작음 (무관).
+        # 잔액 ≥ 활동량 → score 0 (정상 채무 잔액 있음).
+        # ledger에 활동량(debit) 분리 안 됨 → 잔액 fallback.
+        weight_attr = "balance_krw"
+        if kind == Kind.AP and accounts:
+            has_activity = any(abs(getattr(a, "debit_amt", 0)) > 0
+                                for a in accounts)
+            if has_activity:
+                for a in accounts:
+                    activity = abs(getattr(a, "debit_amt", 0) or 0)
+                    bal = abs(getattr(a, "balance_krw", 0) or 0)
+                    a._ap_completeness_score = max(0.0, activity - bal)
+                weight_attr = "_ap_completeness_score"
 
         if not accounts:
             return DesignResult(
@@ -67,15 +84,42 @@ class DesignSamplingUC:
                 strata=[], population_bv=0.0,
             )
 
-        # classification은 잔액(balance_krw) 기준 그대로
-        # (KEY = 잔액 큰 거래처, RP·bad debt 등 자산성 분류)
+        # classification — 자기회사 self-deal 제외 + AP는 잔액0+활동량 남김
         forced, excluded, remaining = classify_population(
             accounts, key_threshold=params.key_threshold,
+            self_name=project.client, kind=kind.value,
         )
 
-        population_bv = sum(abs(getattr(a, weight_attr, 0.0)) for a in accounts)
+        # AR 커버리지 모드: 잔액 큰 순 누적 ≥ target까지 추가 강제포함.
+        # 커버리지 기준은 비RP(remaining=제3자) 모집단 — RP는 별도 강제포함이고
+        # 특관자 조회는 외부조회 대비 증거력이 약해, RP 잔액을 커버리지에 산입하면
+        # RP가 커버리지를 다 채워 제3자 거래처가 한 곳도 선정 안 되는 결함 발생.
+        # cum=0에서 시작해 제3자 큰 거래처가 비RP 잔액의 coverage_pct를 직접 채우게 함.
+        if (kind == Kind.AR and params.coverage_pct
+                and params.coverage_pct > 0 and remaining):
+            total_remaining = sum(abs(a.balance_krw) for a in remaining)
+            target = total_remaining * params.coverage_pct
+            rem_sorted = sorted(remaining, key=lambda a: -abs(a.balance_krw))
+            cum = 0.0
+            new_remaining: list[Account] = []
+            for a in rem_sorted:
+                if cum < target:
+                    forced.append((a, SelectionReason.FORCED_COVERAGE))
+                    cum += abs(a.balance_krw)
+                else:
+                    new_remaining.append(a)
+            remaining = new_remaining
+
+        # population_bv는 sample_size 계산용 — excluded(self-deal·비거래처·
+        # bad debt·잔액 0) 제외한 forced + remaining만. 모집단 과대 → 표본수 과대 방지.
+        forced_bv_sum = sum(abs(getattr(a, "balance_krw", 0.0)) for a, _ in forced)
+        rem_bv_sum = sum(abs(getattr(a, "balance_krw", 0.0)) for a in remaining)
+        population_bv = forced_bv_sum + rem_bv_sum
         expected_ms = project.tolerable * params.expected_ms_pct
-        if params.n_override is not None:
+        if params.coverage_pct and params.coverage_pct > 0:
+            # AR 커버리지 모드: forced(RP + 커버리지 KEY)만 표본. PPS X.
+            n_total = len(forced)
+        elif params.n_override is not None:
             # 사용자 수동 입력 — 강제포함 보장 + 그 만큼 채우기
             n_total = max(len(forced), params.n_override)
         else:
@@ -88,18 +132,37 @@ class DesignSamplingUC:
 
         n_rep_target = max(0, n_total - len(forced))
 
-        if remaining and not should_use_single_stratum(remaining, weight_attr=weight_attr):
-            strata = suggest_strata(remaining, n_strata=params.n_strata,
-                                     weight_attr=weight_attr)
+        # AP completeness 모드: stratify 우회 → score 큰 순 top N 직접 채택
+        # (활동량 큰 + 잔액 작은 거래처 보장).
+        if kind == Kind.AP and weight_attr == "_ap_completeness_score":
+            scored = sorted(
+                [a for a in remaining
+                  if getattr(a, "_ap_completeness_score", 0) > 0],
+                key=lambda a: -a._ap_completeness_score,
+            )
+            rep_sample = scored[:n_rep_target]
+            strata = [Strata(low=0.0, high=0.0, n_required=n_rep_target)]
         else:
+            # 단일 strata + 전체 PPS — 최대 weight 거래처 systematic 첫 interval 보장.
+            # (stratify는 top strata에 n_required=1 할당 시 최대 거래처 누락 가능)
             max_b = max((abs(getattr(a, weight_attr, 0.0)) for a in remaining),
                          default=0.0)
-            strata = [Strata(low=0.0, high=max_b, n_required=0)]
-        strata = allocate_strata(strata, remaining, total_n=n_rep_target,
-                                  weight_attr=weight_attr)
-
-        rep_sample = stratified_pps(remaining, strata, seed=params.seed,
+            strata = [Strata(low=0.0, high=max_b, n_required=n_rep_target)]
+            from src.domain.sampling.mus import pps_select
+            rep_sample = pps_select(remaining, n_rep_target,
+                                      seed=params.seed,
                                       weight_attr=weight_attr)
+        # fillers 보강 — count 모드(n_override 명시)만 적용.
+        # materiality·coverage 모드는 통계 분포 왜곡 방지 위해 PPS 결과 그대로.
+        if (params.n_override is not None
+                and len(rep_sample) < n_rep_target):
+            chosen_ids = {id(a) for a in rep_sample}
+            fillers = sorted(
+                (a for a in remaining if id(a) not in chosen_ids),
+                key=lambda a: -abs(getattr(a, weight_attr, 0.0)),
+            )
+            need = n_rep_target - len(rep_sample)
+            rep_sample = list(rep_sample) + fillers[:need]
         rep_with_reason: list[tuple[Account, SelectionReason]] = [
             (a, SelectionReason.REP) for a in rep_sample
         ]

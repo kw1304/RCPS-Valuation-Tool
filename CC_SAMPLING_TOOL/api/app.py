@@ -64,6 +64,7 @@ UPLOAD_DIR = ROOT / "input" / "_uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__, static_folder=str(FRONTEND))
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB 업로드 제한 (DoS 방지)
 log = logging.getLogger("cc_sampling")
 
 # DB 초기화 (첫 실행 시 테이블 생성)
@@ -401,9 +402,24 @@ def upload():
             sheets = wb.sheetnames
             wb.close()
             result["sheets"] = sheets
-            sheet_map = detect_ledger_sheets(sheets)
-            result["sheet_map"] = sheet_map
-            STATE["sheets"] = sheet_map
+            # 다중 시트 (시트명=계정과목) 우선 — 코스맥스네오 양식
+            from src.infrastructure.schemas.ledger_schema import (
+                detect_multi_account_sheets, is_multi_sheet_ledger,
+            )
+            if is_multi_sheet_ledger(sheets):
+                multi = detect_multi_account_sheets(sheets)
+                STATE["sheets"] = {
+                    "receivable": multi.get("receivable") or [],
+                    "payable": multi.get("payable") or [],
+                }
+                STATE["multi_sheet"] = True
+                result["sheet_map"] = STATE["sheets"]
+                result["multi_sheet"] = True
+            else:
+                sheet_map = detect_ledger_sheets(sheets)
+                result["sheet_map"] = sheet_map
+                STATE["sheets"] = sheet_map
+                STATE["multi_sheet"] = False
         except Exception as e:
             log.warning(f"거래처원장 시트 감지 실패: {e}")
             result["sheets_warning"] = f"시트 자동 감지 실패: {e!s}. 시트명을 직접 지정하세요."
@@ -472,8 +488,15 @@ def inspect():
 # 3. 샘플링 실행
 # ─────────────────────────────────────────────────────────────
 def _run_single_kind(data: dict, kind: str, sheet: str | None,
-                     project_id: str, related_parties: set) -> tuple:
-    """단일 kind(채권 or 채무) 샘플링 실행 → (serialized_dict | None, error_str | None)."""
+                     project_id: str, related_parties: set,
+                     apply_target: bool = True) -> tuple:
+    """단일 kind(채권 or 채무) 샘플링 실행 → (serialized_dict | None, error_str | None).
+
+    apply_target: True면 target_sample_size를 orchestrator에 전달해 해당 kind 단독으로
+        총 거래처 수(Key+Rep+특관자)를 target에 맞춤. kind="both"는 양쪽을 자연
+        산정 후 union-cut으로 통합 target을 맞추므로 per-kind 적용 시 이중 적용 →
+        False로 호출.
+    """
     if not STATE.get("ledger_path"):
         return None, "거래처원장 파일을 먼저 업로드하세요"
 
@@ -491,7 +514,11 @@ def _run_single_kind(data: dict, kind: str, sheet: str | None,
         return None, "수행 중요성(PM)은 0보다 커야 합니다"
 
     try:
-        df = pd.read_excel(STATE["ledger_path"], sheet_name=actual_sheet)
+        if isinstance(actual_sheet, list):
+            from src.infrastructure.loaders import load_multi_sheet_ledger
+            df, _ = load_multi_sheet_ledger(STATE["ledger_path"], kind=kind)
+        else:
+            df = pd.read_excel(STATE["ledger_path"], sheet_name=actual_sheet)
     except Exception as e:
         return None, f"거래처원장 파일 읽기 실패 ({kind}): {e!s}"
 
@@ -523,6 +550,8 @@ def _run_single_kind(data: dict, kind: str, sheet: str | None,
         random_seed=_i(data.get("seed", 42)),
         preparer=data.get("preparer", ""),
         reviewer=data.get("reviewer", ""),
+        target_sample_size=(_i(data.get("target_sample_size", 0)) or None)
+                            if apply_target else None,
     )
 
     result = run_sampling(df, params)
@@ -604,6 +633,7 @@ def run():
             serialized, err = _run_single_kind(
                 data=data, kind=chk_kind, sheet=chk_sheet,
                 project_id=project_id, related_parties=related_parties,
+                apply_target=False,  # 통합 target은 아래 union-cut이 담당
             )
             if err:
                 errors[chk_kind] = err
@@ -611,16 +641,90 @@ def run():
                 results[chk_kind] = serialized
 
         if not results:
-            # 양쪽 모두 실패
             return jsonify({
                 "error": "채권·채무 샘플링 모두 실패했습니다",
                 "receivable_error": errors.get("receivable"),
                 "payable_error": errors.get("payable"),
             }), 400
 
-        combined_final = sum(
-            (r.get("size", {}).get("final_sample_size", 0) for r in results.values()), 0
-        )
+        # ── 통합 target_sample_size strict cut ─────────────────────────
+        # 양쪽 sampled 거래처 union 후 target N개로 cut
+        # 우선순위 보존: 특관자 > Key item > Rep (잔액 큰 순)
+        target_total = data.get("target_sample_size")
+        if target_total and int(target_total) > 0:
+            target_total = int(target_total)
+            # 거래처명별 메타 수집
+            def _norm(s):
+                if not s: return ""
+                return s.replace(" ","").replace("㈜","").replace("(주)","").replace("주식회사","").upper()
+            party_meta: dict[str, dict] = {}  # norm_name → {is_rp, is_ki, is_rep, balance, kinds}
+            for k, r in results.items():
+                for d in r.get("decisions", []):
+                    if not d.get("final_sampled"):
+                        continue
+                    nn = _norm(d["name"])
+                    if nn not in party_meta:
+                        party_meta[nn] = {"name": d["name"], "is_rp": False, "is_ki": False, "is_rep": False, "balance": 0.0, "kinds": set()}
+                    party_meta[nn]["is_rp"] |= d.get("is_related_party", False)
+                    party_meta[nn]["is_ki"] |= d.get("is_key_item", False)
+                    party_meta[nn]["is_rep"] |= d.get("is_representative", False)
+                    party_meta[nn]["balance"] = max(party_meta[nn]["balance"], d.get("balance", 0.0))
+                    party_meta[nn]["kinds"].add(k)
+            unique_total = len(party_meta)
+
+            if unique_total > target_total:
+                # cut 우선순위 (제거 대상): is_rp X · is_ki X · 잔액 작은 순
+                sorted_parties = sorted(
+                    party_meta.items(),
+                    key=lambda kv: (kv[1]["is_rp"], kv[1]["is_ki"], kv[1]["balance"]),
+                )
+                excess = unique_total - target_total
+                # 앞에서부터 excess 만큼 제거 — 단 특관자·Key item은 필수라 보존.
+                # 보존 항목이 많아 target까지 못 줄이면 결과가 target을 초과하되
+                # 필수 항목(특관자·Key) 전수 테스트 원칙을 우선한다.
+                to_remove_norms = set()
+                removed = 0
+                for nn, meta in sorted_parties:
+                    if meta["is_rp"] or meta["is_ki"]:  # 특관자·Key item 보존
+                        continue
+                    if removed >= excess:
+                        break
+                    to_remove_norms.add(nn)
+                    removed += 1
+
+                # results 각 decision final_sampled 조정
+                for k, r in results.items():
+                    for d in r.get("decisions", []):
+                        if _norm(d.get("name","")) in to_remove_norms:
+                            d["final_sampled"] = False
+                            d["is_representative"] = False
+                    # size.final_sample_size를 cut 반영해 갱신 (DB·응답·발송명단 일치)
+                    if isinstance(r.get("size"), dict):
+                        r["size"]["final_sample_size"] = sum(
+                            1 for d in r.get("decisions", [])
+                            if d.get("final_sampled")
+                        )
+
+                # ── cut 결과를 DB에 재persist (step3/build 가 DB에서 읽음) ───
+                with get_session() as _s_cut:
+                    _wp_repo = WorkpaperRepository(_s_cut)
+                    for k, r in results.items():
+                        _wp = _wp_repo.get_or_create(project_id, k)
+                        _params_dict = json.loads(_wp.sampling_params) if _wp.sampling_params else {
+                            "company_name": data.get("company_name", ""),
+                            "period_end": data.get("period_end", ""),
+                            "kind": k,
+                            "performance_materiality": data.get("performance_materiality", 0),
+                            "risk_level": data.get("risk_level", "유의적위험"),
+                            "control_reliance": data.get("control_reliance", "Y"),
+                        }
+                        _wp_repo.save_sampling_result(_wp.id, _params_dict, r)
+
+        # size.final_sample_size는 cut 블록에서 실제 final_sampled 수로 갱신됨
+        # (cut 미발생 시 orchestrator 산정값 그대로). 합산해 combined 구성.
+        def _final_size(r):
+            return (r.get("size", {}) or {}).get("final_sample_size", 0)
+        combined_final = sum(_final_size(r) for r in results.values())
         combined_population = sum(
             (r.get("population_amount", 0) for r in results.values()), 0.0
         )
@@ -632,8 +736,8 @@ def run():
             "combined": {
                 "total_population": combined_population,
                 "total_final_sample_size": combined_final,
-                "receivable_sample": results.get("receivable", {}).get("size", {}).get("final_sample_size", 0),
-                "payable_sample": results.get("payable", {}).get("size", {}).get("final_sample_size", 0),
+                "receivable_sample": _final_size(results.get("receivable", {}) or {}),
+                "payable_sample": _final_size(results.get("payable", {}) or {}),
             },
         }
         if errors:
