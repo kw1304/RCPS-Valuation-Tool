@@ -9,9 +9,16 @@ from pathlib import Path
 _FIN_SUFFIX_TOKENS: tuple[str, ...] = (
     "화재해상보험", "손해보험", "보증보험", "저축은행", "상호금융",
     "금융투자", "투자운용", "자산운용", "공제조합", "협동조합",
-    "은행", "증권", "생명보험", "생명", "화재", "해상", "손보",
+    "은행", "뱅크", "증권", "생명보험", "생명", "화재", "해상", "손보",
     "공제회", "중앙회", "카드", "캐피탈", "신탁", "렌탈", "리스",
 )
+
+# 발행기관 없는 단독 계정과목 용어 — 금융기관으로 오인 금지
+_GENERIC_ACCOUNT_TERMS: frozenset[str] = frozenset({
+    "카드", "신용카드", "법인카드", "체크카드", "직불카드", "선불카드",
+    "리스", "신탁", "렌탈", "보험", "예금", "적금", "보통예금", "당좌예금",
+    "정기예금", "정기적금", "퇴직연금", "차입금", "대출", "사채", "보증금",
+})
 
 # 회사명 앞뒤 법인격 표기 제거용
 _LEGAL_PREFIX_RE = re.compile(r"^(주식회사|유한회사|\(주\)|（주）|\(유\)|（유）)\s*")
@@ -83,9 +90,19 @@ class PartyNormalizer:
             return None
         if re.fullmatch(r"[\d\s.\-/]+", cleaned):
             return None
-        # 접미사 토큰 포함 여부 (어디에 있든 포함이면 인정 — 'OO은행 OO지점' 같은 형태 대응)
+        # 일반 계정과목 단어(발행기관 없는 단독 용어) 배제 — 금융기관 아님
+        if cleaned in _GENERIC_ACCOUNT_TERMS:
+            return None
+        # 구조매칭은 '이름 전체가 금융기관'일 때만 인정 — 적요(거래 메모) 오인 방지.
+        # 조건: (1) 접미사 토큰으로 끝남, (2) 숫자 없음(날짜·금액 메모 배제),
+        #       (3) 짧음(≤16자) + 공백 ≤1 (문장형 메모 배제).
+        # 'OO은행 홍콩지점' 등 지점형은 _detect_foreign/_detect_domestic_branch + 등록 alias가 먼저 처리.
+        if any(ch.isdigit() for ch in cleaned):
+            return None
+        if len(cleaned) > 16 or cleaned.count(" ") > 1:
+            return None
         for tok in _FIN_SUFFIX_TOKENS:
-            if tok in cleaned:
+            if cleaned.endswith(tok):
                 return cleaned
         return None
 
