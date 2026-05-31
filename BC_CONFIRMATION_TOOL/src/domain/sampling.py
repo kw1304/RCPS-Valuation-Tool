@@ -12,7 +12,6 @@ class SampledParty:
     pl_amount: float = 0.0
     row_count: int = 0
     confidence: float = 1.0
-    from_financial: bool = False   # True iff 금융계정(예금·차입·유가증권·보험 등) row에서 매칭 — 0잔액이어도 조회대상
 
     def entity_key(self) -> str:
         return self.party.entity_key()
@@ -101,8 +100,6 @@ class Sampler:
         else:
             sp.pl_accounts.add(acc) if amount else sp.bs_accounts.add(acc)
             sp.bs_amount += amount if not amount else 0
-        if bucket != "기타":
-            sp.from_financial = True   # 금융계정 출처 → 0잔액이어도 표본 유지
         sp.row_count += 1
         sp.confidence = min(sp.confidence, conf)
         agg[key] = sp
