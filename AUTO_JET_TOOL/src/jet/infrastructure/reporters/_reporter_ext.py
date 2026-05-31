@@ -136,6 +136,7 @@ class _ReporterExt:
         ratio = result.params.get("materiality_ratio", 0.005)
         mode = result.params.get("sales_calc_mode", "net_credit")
         abs_thr = result.params.get("absolute_threshold")
+        sales_id_failed = result.extra.get("sales_identification_failed", False)
 
         if abs_thr is not None:
             test_method = (
@@ -148,7 +149,12 @@ class _ReporterExt:
                 f"매출 산정: {mode} / 매출합계 {total_sales:,.0f}원 / 임계치 {threshold:,.0f}원"
             )
         unique_entries = result.extra.get("unique_entry_count", 0)
-        if result.finding_count > 0:
+        if sales_id_failed:
+            test_result = (
+                "매출 식별 실패 — 계정과목명 키워드 매칭 0건 → 임계치 0원 → 검증 수행 불가. "
+                "GL 계정명 누락·영문 가능성. absolute_threshold 주입 검토."
+            )
+        elif result.finding_count > 0:
             test_result = f"라인 {result.finding_count:,}건 / 전표 {unique_entries:,}개"
         else:
             test_result = "임계치 초과 분개 없음"
@@ -160,6 +166,16 @@ class _ReporterExt:
             ("매출합계", f"{total_sales:,.0f}원"), ("임계치", f"{threshold:,.0f}원"),
             ("적출 (전표/라인)", f"{unique_entries:,}전표 / {result.finding_count:,}라인"),
         ], row)
+        if sales_id_failed:
+            ws.merge_range(
+                row, 0, row, 7,
+                "⚠ 매출 식별 실패 — 계정과목명 키워드(매출)에 매칭되는 분개가 없습니다. "
+                "임계치가 0원으로 산정되어 모든 분개 검증이 건너뛰어졌습니다. "
+                "GL 계정명 누락 또는 영문 계정명일 가능성이 높습니다. "
+                "absolute_threshold 파라미터로 외부 산정 임계치 주입을 검토하세요.",
+                fmt.get("warn_badge", fmt["pass_badge"]),
+            )
+            row += 1
 
         if findings_data:
             headers = ["전표번호", "전기일", "계정코드", "계정과목명", "적요", "차변금액", "대변금액", "최대금액"]
@@ -642,6 +658,35 @@ class _ReporterExt:
         legacy_combos = result.extra.get("combo_findings", [])
         threshold = result.extra.get("threshold", 0)
         total_sales = result.extra.get("total_sales", 0)
+        sales_id_failed = result.extra.get("sales_identification_failed", False)
+
+        if sales_id_failed and not analysis_rows:
+            mode = result.params.get("sales_calc_mode", "net_credit")
+            ratio = result.params.get("materiality_ratio", 0.005)
+            self._write_rule_sheet_header(
+                ws, fmt, spec,
+                "B08. 전표유형-계정 분석",
+                "매출 임계치 초과 전표의 전표유형별 계정 집계",
+                f"매출 산정: {mode} / 매출합계 {total_sales:,.0f}원 / 임계치 {threshold:,.0f}원 / 비율 {ratio*100:.2f}%",
+                "매출 식별 실패 — 임계치 산정 불가, 검증 수행 불가",
+            )
+            row = 7
+            row = self._write_kpi_row(ws, fmt, [
+                ("매출 합계", f"{total_sales:,.0f}원"),
+                ("임계치", f"{threshold:,.0f}원"),
+                ("분석표 행수", "0행"),
+            ], row)
+            ws.merge_range(
+                row, 0, row, 7,
+                "⚠ 매출 식별 실패 — 계정과목명 키워드(매출)에 매칭되는 분개가 없습니다. "
+                "임계치가 0원으로 산정되어 모든 분개 검증이 건너뛰어졌습니다. "
+                "GL 계정명 누락 또는 영문 계정명일 가능성이 높습니다. "
+                "absolute_threshold 파라미터로 외부 산정 임계치 주입을 검토하세요.",
+                fmt.get("warn_badge", fmt["pass_badge"]),
+            )
+            self._write_exec_meta(ws, fmt, result, row + 2)
+            self._apply_print_setup(ws, spec, "B08. DocType Analysis", landscape=True, fit_width=1, fit_height=0, repeat_header_row=7)
+            return
 
         if analysis_rows:
             mode = result.params.get("sales_calc_mode", "net_credit")

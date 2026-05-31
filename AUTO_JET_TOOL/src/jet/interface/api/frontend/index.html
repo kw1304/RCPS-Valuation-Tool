@@ -1976,9 +1976,10 @@ function renderDonePanel(result) {
     const badgeClass = s.status === 'pass' ? 'pass' : s.status === 'fail' ? 'fail' : s.status === 'waived' ? 'waived' : 'warn';
     const badgeText  = s.status === 'pass' ? 'PASS' : s.status === 'fail' ? 'FAIL' : s.status === 'waived' ? 'N/A' : '주의';
     const isQ01 = s.code === 'Q01';
-    return `<tr class="clickable${isQ01 ? ' q01-row' : ''}" data-code="${s.code}" data-q01="${isQ01}" onclick="onScenarioClick('${s.code}')">
+    const warnAttr = s.warning ? ` title="${s.warning.replace(/"/g, '&quot;')}"` : '';
+    return `<tr class="clickable${isQ01 ? ' q01-row' : ''}" data-code="${s.code}" data-q01="${isQ01}" onclick="onScenarioClick('${s.code}')"${warnAttr}>
       <td><strong>${s.code}</strong></td>
-      <td>${s.name}</td>
+      <td>${s.name}${s.warning ? ' <span style="color:#F59E0B" title="' + s.warning.replace(/"/g, '&quot;') + '">⚠</span>' : ''}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums">${s.findings.toLocaleString()}</td>
       <td><span class="badge badge-${badgeClass}">${badgeText}</span></td>
     </tr>`;

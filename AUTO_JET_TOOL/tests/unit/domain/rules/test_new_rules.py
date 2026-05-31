@@ -22,6 +22,7 @@ def _entry(
     entry_type: str = "SA",
     posting_date: datetime | None = None,
     entry_date: datetime | None = None,
+    account_name: str | None = None,
 ) -> JournalEntry:
     ed = entry_date or datetime(2025, 6, 15)
     pd_ = posting_date or datetime(2025, 6, 15)
@@ -33,7 +34,7 @@ def _entry(
         user_id=user_id,
         user_name=None,
         account_code=account_code,
-        account_name=None,
+        account_name=account_name,
         debit_amount=Decimal(str(debit)),
         credit_amount=Decimal(str(credit)),
         description=None,
@@ -213,8 +214,8 @@ class TestB01LargePLItem:
         }
         # 매출 1억 → 임계치 50만원
         entries = [
-            _entry("E001", "40000000", credit=100_000_000),  # 매출
-            _entry("E002", "50000000", debit=600_000),        # 매출원가 > 50만
+            _entry("E001", "40000000", credit=100_000_000, account_name="매출"),
+            _entry("E002", "50000000", debit=600_000, account_name="매출원가"),
         ]
         rule = B01LargePLItem()
         rule.configure({"materiality_ratio": 0.005})
@@ -230,18 +231,18 @@ class TestB01LargePLItem:
             "40000000": AccountMaster("40000000", "매출", "P", None, "1000"),
             "50000000": AccountMaster("50000000", "매출원가", "P", None, "1000"),
         }
+        # 매출 1억 → 임계치 50만원. E002 매출원가 10만(임계치 미달)만 검증 대상.
+        # E001 매출 대변(임계치 산정 분개)는 절대값 1억 > 50만이라 적출 후 별도 검증.
         entries = [
-            _entry("E001", "40000000", credit=100_000_000),
-            _entry("E002", "50000000", debit=100_000),  # 10만 < 50만 임계치
+            _entry("E001", "40000000", credit=100_000_000, account_name="매출"),
+            _entry("E002", "50000000", debit=100_000, account_name="매출원가"),
         ]
         rule = B01LargePLItem()
         rule.configure({"materiality_ratio": 0.005})
         result = rule.apply(entries, _ctx(coa_master=coa))
-        # E001 매출 대변도 있지만 4로 시작하는 계정은 매출이므로 PL
-        # 임계치 초과만 적출
-        assert result.finding_count == 0 or all(
-            f.amount >= Decimal("500000") for f in result.findings
-        )
+        # E002(매출원가 10만)은 임계치 50만 미달 → 적출 X
+        finding_codes = {f.entry_no for f in result.findings}
+        assert "E002" not in finding_codes
 
 
 # ── B04 Seldom Used ───────────────────────────────────────────────────────
@@ -393,29 +394,34 @@ class TestB08DocTypeAccountCombo:
     """B08 Document Type × Account Combo 룰 테스트."""
 
     def test_rare_combo_detected(self):
-        """1회 나타나는 조합이 적출된다."""
+        """매출 임계치 초과 분개의 (전표유형, 계정, 차/대변) 집계 행이 생성된다."""
         from jet.domain.rules.b08_doc_type_account import B08DocTypeAccountCombo
 
-        # SA × 11101010이 1회, SA × 40000000이 10회
-        entries = (
-            [_entry(f"E{i:03d}", "40000000", credit=1000, entry_type="SA") for i in range(10)] +
-            [_entry("R001", "11101010", debit=1000, entry_type="HR")]  # HR × 11101010 = 1회
-        )
+        # 매출 1억 → 임계치 50만원. 600,000 차변 분개가 임계치 초과
+        entries = [
+            _entry("E000", "40000000", credit=100_000_000, entry_type="SA", account_name="매출"),
+            _entry("E001", "11101010", debit=600_000, entry_type="HR", account_name="현금"),
+        ]
         rule = B08DocTypeAccountCombo()
-        rule.configure({"min_frequency": 2})
+        rule.configure({"materiality_ratio": 0.005})
         result = rule.apply(entries, _ctx())
-        # HR × 11101010이 1회 → 적출
         assert result.finding_count >= 1
 
-    def test_frequent_combo_not_detected(self):
-        """3회 이상 나타나는 조합은 적출되지 않는다."""
+    def test_below_threshold_not_detected(self):
+        """매출 임계치 미달 분개는 집계 행에 포함되지 않는다."""
         from jet.domain.rules.b08_doc_type_account import B08DocTypeAccountCombo
 
-        entries = [_entry(f"E{i:03d}", "11101010", debit=1000, entry_type="SA") for i in range(10)]
+        # 매출 1억 → 임계치 50만원. 1000원 라인은 모두 미달
+        entries = (
+            [_entry("E000", "40000000", credit=100_000_000, entry_type="SA", account_name="매출")] +
+            [_entry(f"E{i:03d}", "11101010", debit=1000, entry_type="SA", account_name="현금") for i in range(1, 11)]
+        )
         rule = B08DocTypeAccountCombo()
-        rule.configure({"min_frequency": 2})
+        rule.configure({"materiality_ratio": 0.005})
         result = rule.apply(entries, _ctx())
-        assert result.finding_count == 0
+        # 11101010 라인(1000원)은 모두 미달 → 집계 행 0
+        analysis_rows = result.extra.get("analysis_rows", [])
+        assert not any(r.account_code == "11101010" for r in analysis_rows)
 
 
 # ── B09 Counter Account ────────────────────────────────────────────────────
@@ -446,8 +452,8 @@ class TestB09CounterAccountAnalysis:
         from jet.domain.rules.b09_counter_account import B09CounterAccountAnalysis
 
         entries = [
-            _entry("E001", "41101010", credit=1_000_000),  # 매출 대변
-            _entry("E001", "11201010", debit=1_000_000),   # 외상매출금 차변
+            _entry("E001", "41101010", credit=1_000_000, account_name="제품매출"),
+            _entry("E001", "11201010", debit=1_000_000, account_name="외상매출금"),
         ]
         rule = B09CounterAccountAnalysis()
         rule.configure({})
@@ -460,6 +466,12 @@ class TestB09CounterAccountAnalysis:
         types = {r.account_type for r in b09_1.rows}
         assert "상대계정" in types
         assert "본계정" in types
+        # 명시 검증: 41101010 본계정 ← 11201010 상대계정 tuple 존재
+        row_map = {
+            (r.main_account_code, r.counter_account_code): r.account_type
+            for r in b09_1.rows
+        }
+        assert row_map.get(("41101010", "11201010")) == "상대계정"
 
     def test_counter_account_direction(self):
         """상대계정(차대 반대) vs 참고계정(차대 동일) 분류가 정확하다.
@@ -472,9 +484,9 @@ class TestB09CounterAccountAnalysis:
         from jet.domain.rules.b09_counter_account import B09CounterAccountAnalysis
 
         entries = [
-            _entry("E001", "41101010", credit=1_000_000),  # 매출 대변
-            _entry("E001", "11201010", debit=1_100_000),   # 외상매출금 차변
-            _entry("E001", "25401010", credit=100_000),    # 부가세예수금 대변
+            _entry("E001", "41101010", credit=1_000_000, account_name="제품매출"),
+            _entry("E001", "11201010", debit=1_100_000, account_name="외상매출금"),
+            _entry("E001", "25401010", credit=100_000, account_name="부가세예수금"),
         ]
         rule = B09CounterAccountAnalysis()
         rule.configure({})
@@ -522,8 +534,8 @@ class TestB09CounterAccountAnalysis:
         from jet.domain.rules.b09_counter_account import B09CounterAccountAnalysis
 
         entries = [
-            _entry("E001", "41101010", credit=1_000_000),  # B09-1 본계정군
-            _entry("E001", "11201010", debit=1_000_000),   # B09-2 본계정군 + B09-1 상대
+            _entry("E001", "41101010", credit=1_000_000, account_name="제품매출"),
+            _entry("E001", "11201010", debit=1_000_000, account_name="외상매출금"),
         ]
         rule = B09CounterAccountAnalysis()
         rule.configure({})

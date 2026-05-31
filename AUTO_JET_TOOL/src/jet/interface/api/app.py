@@ -187,7 +187,6 @@ _RULE_META: list[dict] = [
         "default_enabled": True,
         "params_schema": {
             "materiality_ratio": {"type": "number", "default": 0.005, "label": "중요성 비율"},
-            "sales_account_pattern": {"type": "string", "default": "^4", "label": "매출계정 패턴"},
         },
     },
     {
@@ -731,17 +730,11 @@ def _run_jet_background(
             # B01 파라미터 기본값 주입
             if code == "B01":
                 params.setdefault("materiality_ratio", 0.005)
-                params.setdefault("sales_account_pattern", "^4")
             # B06 waive 처리
             if code == "B06":
                 params.setdefault("waived", True)
                 params.setdefault("waive_reason", "승인자 컬럼 미포함")
-            # B08 파라미터 기본값 주입
-            if code == "B08" and "min_frequency" not in params:
-                params["min_frequency"] = 2
-            # B09 파라미터 기본값 주입
-            if code == "B09" and "min_frequency" not in params:
-                params["min_frequency"] = 2
+            # B08·B09는 v2.0에서 min_frequency 미사용 (B01 매출 임계치·계정명 키워드 사용)
             # B10 파라미터 기본값 주입
             if code == "B10":
                 params.setdefault("min_length", 5)
@@ -803,12 +796,21 @@ def _run_jet_background(
             else:
                 status = "fail"
             rule_meta = next((m for m in _RULE_META if m["code"] == code), None)
-            scenarios_summary.append({
+            scenario_entry = {
                 "code": code,
                 "name": rule_meta["name"] if rule_meta else code,
                 "findings": finding_cnt,
                 "status": status,
-            })
+            }
+            # B01/B08 매출 식별 실패 경고 노출 (status는 fail 처리 회피 — pass로 두고 warning 플래그만)
+            if r.extra.get("sales_identification_failed"):
+                scenario_entry["warning"] = (
+                    "매출 식별 실패 — 계정과목명 키워드 매칭 0건. "
+                    "임계치 0원으로 검증 skip. absolute_threshold 주입 검토."
+                )
+                if status == "pass":
+                    scenario_entry["status"] = "warn"
+            scenarios_summary.append(scenario_entry)
 
         run_result = {
             "run_id": run_id,

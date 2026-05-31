@@ -44,7 +44,7 @@ scenarios:
     enabled: true
     params:
       materiality_ratio: 0.005
-      sales_account_pattern: "^4"
+      # 매출 식별: 계정과목명 키워드("매출" 범주, 원가·자산성 제외) 자동 분류
       # gross_credit: 대변 합계 전체(총매출) — 음수 대변이 없는 파일
       # net_credit: 대변-차변(순매출) — 음수 대변(취소분개)이 있는 파일 기본값
       sales_calc_mode: "net_credit"
@@ -118,7 +118,7 @@ scenarios:
     # B08 v2.0: 매출 임계치 초과 라인의 전표유형 × 계정 집계표
     params:
       materiality_ratio: 0.005
-      sales_account_pattern: "^4"
+      # 매출 식별: B01과 동일 — 계정과목명 키워드 자동 분류
       sales_calc_mode: "net_credit"
       # absolute_threshold: 889000000   # B01과 같은 임계치를 주입 가능
 
