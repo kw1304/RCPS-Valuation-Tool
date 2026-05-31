@@ -9,7 +9,7 @@ from pathlib import Path
 _FIN_SUFFIX_TOKENS: tuple[str, ...] = (
     "화재해상보험", "손해보험", "보증보험", "저축은행", "상호금융",
     "금융투자", "투자운용", "자산운용", "공제조합",
-    "은행", "증권", "생명보험", "생명", "화재", "해상", "손보",
+    "은행", "증권", "생명보험", "생명", "화재해상", "화재", "손보",
     "공제회", "중앙회", "카드", "캐피탈", "신탁",
 )
 # 제거된 과광범 토큰: '뱅크'(인포뱅크·이씨뱅크 등 IT/SMS사) → 인터넷은행은 등록 alias로,
@@ -136,10 +136,15 @@ class PartyNormalizer:
         for c in self._foreign_ko:
             if c in text:
                 return c
-        # English foreign cities (case-insensitive)
+        # English foreign cities (case-insensitive).
+        # 짧은 약자(HK/SH/SG/NY/BJ/LA/KL 등 ≤3자)는 단어경계 필요 — 'SHINHAN'의 SH, 'SHB'의 SH 오탐 방지.
         upper = text.upper()
         for c in self._foreign_en:
-            if c.upper() in upper:
+            cu = c.upper()
+            if len(cu.replace(" ", "")) <= 3:
+                if re.search(r"(?<![A-Z])" + re.escape(cu) + r"(?![A-Z])", upper):
+                    return c
+            elif cu in upper:
                 return c
         # generic (Branch/Overseas)
         for c in self._foreign_generic:
