@@ -22,6 +22,28 @@ _GENERIC_ACCOUNT_TERMS: frozenset[str] = frozenset({
     "정기예금", "정기적금", "퇴직연금", "차입금", "대출", "사채", "보증금",
 })
 
+# 해외도시 영문·변형 → canonical 한글 (HK지점·홍콩지점 통합 등). key는 .upper() 기준(한글은 그대로).
+_CITY_CANON: dict[str, str] = {
+    "HK": "홍콩", "HONGKONG": "홍콩", "HONG KONG": "홍콩", "홍콩": "홍콩",
+    "SH": "상해", "SHANGHAI": "상해", "상하이": "상해", "상해": "상해",
+    "SG": "싱가포르", "SINGAPORE": "싱가포르", "싱가폴": "싱가포르", "싱가포르": "싱가포르",
+    "NY": "뉴욕", "NEWYORK": "뉴욕", "NEW YORK": "뉴욕", "뉴욕": "뉴욕",
+    "TOKYO": "도쿄", "도쿄": "도쿄", "동경": "도쿄",
+    "LONDON": "런던", "런던": "런던",
+    "BJ": "베이징", "BEIJING": "베이징", "베이징": "베이징", "북경": "베이징",
+    "LA": "로스앤젤레스", "로스앤젤레스": "로스앤젤레스",
+    "PARIS": "파리", "파리": "파리",
+    "FRANKFURT": "프랑크푸르트", "프랑크푸르트": "프랑크푸르트",
+    "SYDNEY": "시드니", "시드니": "시드니", "DUBAI": "두바이", "두바이": "두바이",
+    "JAKARTA": "자카르타", "자카르타": "자카르타", "HANOI": "하노이", "하노이": "하노이",
+    "HO CHI MINH": "호치민", "호치민": "호치민", "BANGKOK": "방콕", "방콕": "방콕",
+    "KL": "쿠알라룸푸르", "쿠알라룸푸르": "쿠알라룸푸르", "MANILA": "마닐라", "마닐라": "마닐라",
+    "ZURICH": "취리히", "취리히": "취리히", "MUMBAI": "뭄바이", "뭄바이": "뭄바이",
+    "ISTANBUL": "이스탄불", "이스탄불": "이스탄불", "MOSCOW": "모스크바", "모스크바": "모스크바",
+    "SAO PAULO": "상파울루", "TORONTO": "토론토", "토론토": "토론토",
+    "VANCOUVER": "밴쿠버", "밴쿠버": "밴쿠버",
+}
+
 # 회사명 앞뒤 법인격 표기 제거용
 _LEGAL_PREFIX_RE = re.compile(r"^(주식회사|유한회사|\(주\)|（주）|\(유\)|（유）)\s*")
 _LEGAL_SUFFIX_RE = re.compile(r"\s*(주식회사|유한회사|\(주\)|（주）|\(유\)|（유）)$")
@@ -154,11 +176,8 @@ class PartyNormalizer:
         # Priority 1: foreign?
         foreign_marker = self._detect_foreign(s)
         if foreign_marker:
-            # canonical + 도시지점 유지
-            # branch 표현 통일: "<city>지점"
-            ko_form = foreign_marker
-            if foreign_marker.upper() in {c.upper() for c in self._foreign_en}:
-                ko_form = foreign_marker
+            # branch 표현 통일: 영문·변형 도시명 → canonical 한글 (HK·홍콩 통합), "<city>지점"
+            ko_form = _CITY_CANON.get(foreign_marker.upper(), foreign_marker)
             branch = f"{ko_form}지점" if not ko_form.endswith("지점") else ko_form
             return NormalizedParty(canonical=canon, branch=branch, is_foreign=True, raw=raw, matched=matched)
         # Priority 2: domestic branch → collapse
