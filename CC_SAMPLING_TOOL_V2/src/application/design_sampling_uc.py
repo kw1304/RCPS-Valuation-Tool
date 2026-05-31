@@ -29,6 +29,9 @@ class DesignParams:
     # AR 커버리지 모드: 잔액 큰 순 누적합 ≥ coverage_pct * total 도달까지 강제포함.
     # 0이면 비활성. 0.70 = 70% 커버. 표준 절차 3-2 (AR 70~80% 커버리지).
     coverage_pct: float = 0.0
+    # 개별중요항목(|잔액| ≥ key_threshold) 강제포함 = 전수검사(ISA 530 top-stratum).
+    # 커버리지 모드는 FORCED_COVERAGE가 큰 항목을 이미 포함하므로 False로 호출해 중복 방지.
+    force_key_items: bool = True
 
 
 @dataclass
@@ -89,6 +92,25 @@ class DesignSamplingUC:
             accounts, key_threshold=params.key_threshold,
             self_name=project.client, kind=kind.value,
         )
+
+        # 개별중요항목(|잔액| ≥ key_threshold) 강제포함 — 전수검사(ISA 530 top-stratum).
+        # ① 개수지정·③ MUS 모드에서 거액 거래처가 확률추출로 누락되는 것을 방지.
+        # ② 커버리지 모드는 force_key_items=False — 아래 FORCED_COVERAGE가 이미 포함.
+        # count 모드는 표본수=max(필수, 지정수)라 중요항목이 지정수 내면 개수 불변,
+        # 초과하면 늘어남(중요항목 수 자체가 지정수 초과 → 전수 원칙상 정상).
+        import math as _math
+        if (params.force_key_items and remaining
+                and params.key_threshold
+                and _math.isfinite(params.key_threshold)
+                and params.key_threshold > 0):
+            kt = params.key_threshold
+            _kept: list[Account] = []
+            for a in remaining:
+                if abs(getattr(a, "balance_krw", 0.0)) >= kt:
+                    forced.append((a, SelectionReason.FORCED_KEY))
+                else:
+                    _kept.append(a)
+            remaining = _kept
 
         # AR 커버리지 모드: 잔액 큰 순 누적 ≥ target까지 추가 강제포함.
         # 커버리지 기준은 비RP(remaining=제3자) 모집단 — RP는 별도 강제포함이고

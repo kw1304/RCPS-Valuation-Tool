@@ -114,6 +114,9 @@ def design_combined(pid: int):
         "key_threshold": key_th_in,
         "n_strata": int(data.get("n_strata", 4)),
         "seed": data.get("seed"),
+        # 개별중요항목 강제포함은 ①개수지정·③MUS만. ②커버리지는 FORCED_COVERAGE가
+        # 큰 항목을 이미 포함하므로 제외(중복 방지).
+        "force_key_items": mode != "coverage",
     }
 
     n_ar = 0

@@ -64,6 +64,12 @@ def create_app(testing: bool = False, session_factory=None) -> Flask:
     def healthz():
         return jsonify({"status": "ok"})
 
+    @app.get("/")
+    def index():
+        # 루트 접속 시 프론트(index.html) 서빙 — static_url_path=""라
+        # /index.html은 자동 서빙되나 "/"는 라우트가 없어 404였음.
+        return app.send_static_file("index.html")
+
     from api.routes.project import bp as project_bp
     app.register_blueprint(project_bp)
 
