@@ -802,12 +802,22 @@ def _run_jet_background(
                 "findings": finding_cnt,
                 "status": status,
             }
-            # B01/B08 매출 식별 실패 경고 노출 (status는 fail 처리 회피 — pass로 두고 warning 플래그만)
+            # 룰별 경고 surface — pass 시 warn으로 승격
+            warning_msg = None
             if r.extra.get("sales_identification_failed"):
-                scenario_entry["warning"] = (
+                warning_msg = (
                     "매출 식별 실패 — 계정과목명 키워드 매칭 0건. "
                     "임계치 0원으로 검증 skip. absolute_threshold 주입 검토."
                 )
+            elif r.extra.get("coa_missing_waive"):
+                warning_msg = (
+                    r.extra.get("coa_missing_reason")
+                    or "COA 마스터 미제공 — 미등록 계정 적출 불가, 면제 처리."
+                )
+            elif r.extra.get("skipped_reason") == "gl_entries_empty":
+                warning_msg = "GL 분개 0건 — 입력 데이터 정상성 확인 필요."
+            if warning_msg:
+                scenario_entry["warning"] = warning_msg
                 if status == "pass":
                     scenario_entry["status"] = "warn"
             scenarios_summary.append(scenario_entry)

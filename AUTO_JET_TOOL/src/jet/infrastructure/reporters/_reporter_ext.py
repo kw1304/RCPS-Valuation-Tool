@@ -49,6 +49,7 @@ class _ReporterExt:
         gl_dr_total = result.extra.get("gl_total_debit", 0)
         tb_dr_total = result.extra.get("tb_total_debit", 0)
         skipped = result.params.get("skipped", "")
+        skipped_reason = result.extra.get("skipped_reason", "")
 
         equity_adj_count = result.extra.get("equity_adjusted_codes", [])
         equity_note = (
@@ -56,7 +57,9 @@ class _ReporterExt:
             if equity_adj_count else ""
         )
 
-        if skipped:
+        if skipped == "gl_entries_empty" or skipped_reason == "gl_entries_empty":
+            test_result = "GL 분개 0건 — 입력 데이터 정상성 확인 필요"
+        elif skipped:
             test_result = "TB 마스터 미제공으로 수행 생략"
         elif scope_warn:
             test_result = (
@@ -195,16 +198,29 @@ class _ReporterExt:
 
         findings_data = result.extra.get("unmatched_findings", [])
         skipped = result.params.get("skipped", "")
-        test_result = "수행 생략" if skipped else (
-            f"적출 {result.finding_count:,}건" if result.finding_count > 0 else "미등록 계정 없음"
-        )
+        coa_missing = result.extra.get("coa_missing_waive", False)
+        coa_missing_reason = result.extra.get("coa_missing_reason", "")
+        if coa_missing:
+            test_result = "COA 마스터 미제공 — 면제 처리 (적출 불가)"
+        elif skipped:
+            test_result = "수행 생략"
+        elif result.finding_count > 0:
+            test_result = f"적출 {result.finding_count:,}건"
+        else:
+            test_result = "미등록 계정 없음"
 
         self._write_rule_sheet_header(ws, fmt, spec, "B02. Unmatched Accounts Test",
                                       "COA 미등록 계정코드 사용 분개 적출",
                                       "분개 계정코드와 COA 마스터를 비교하여 미등록 계정코드를 적출한다.",
                                       test_result)
         row = 7
-        if findings_data:
+        if coa_missing:
+            ws.merge_range(
+                row, 0, row, 7,
+                f"⚠ {coa_missing_reason or 'COA 마스터 미제공 — 미등록 계정 적출 불가, 면제 처리.'}",
+                fmt.get("warn_badge", fmt["pass_badge"]),
+            )
+        elif findings_data:
             headers = ["전표번호", "전기일", "계정코드", "적요", "차변금액", "대변금액", "", ""]
             rows = [[f.entry_no, f.entry_date.strftime("%Y-%m-%d"),
                      f.account_code, f.description or "", f.debit_amount, f.credit_amount, "", ""]

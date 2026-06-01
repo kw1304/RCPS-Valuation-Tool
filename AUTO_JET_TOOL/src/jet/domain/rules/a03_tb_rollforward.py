@@ -104,12 +104,22 @@ class A03TBRollforward(Rule):
 
         if context.tb_master is None:
             logger.warning("A03: tb_master 미제공 — TB 검증 생략")
-            return self._make_result(started, 0, [], {"skipped": "tb_master_not_provided"})
+            return self._make_result(
+                started, 0, [],
+                {"skipped": "tb_master_not_provided"},
+                # extra 플래그로 UI/Reporter에 가시화
+            )
 
         # GL 집계: 계정코드 → (차변합, 대변합)
         all_entries = list(entries)
         if not all_entries:
-            return self._make_result(started, 0, [], {})
+            logger.warning("A03: GL 분개 0건 — TB 검증 skip (입력 데이터 정상성 확인 필요)")
+            result = self._make_result(
+                started, 0, [],
+                {"skipped": "gl_entries_empty"},
+            )
+            result.extra["skipped_reason"] = "gl_entries_empty"
+            return result
 
         gl_debit: dict[str, float] = {}
         gl_credit: dict[str, float] = {}
