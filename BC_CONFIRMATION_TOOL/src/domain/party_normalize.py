@@ -22,6 +22,23 @@ _GENERIC_ACCOUNT_TERMS: frozenset[str] = frozenset({
     "정기예금", "정기적금", "퇴직연금", "차입금", "대출", "사채", "보증금",
 })
 
+# 비금융 상호 표지 — 짧은 alias(국민/우리/하나/신한/KB 등)가 비금융 회사명에
+# 부분일치(국민연금공단·우리들병원·하나투어·신한금융지주·KB부동산)하는 오탐 차단.
+# 짧은 alias 매칭 시 이 토큰이 텍스트에 있으면 금융기관 인정을 기각한다.
+# (긴 정식명 '국민은행'이 같이 있으면 longest-first로 그게 먼저 매칭되어 veto 안 탐)
+_NONFINANCIAL_VETO: tuple[str, ...] = (
+    "연금공단", "공단", "병원", "의원", "약국", "투어", "여행사", "항공",
+    "지주", "홀딩스", "부동산", "건설", "산업개발", "서비스", "시스템",
+    "텔레콤", "전자", "화학", "제약", "바이오", "물산", "상사", "유통",
+    "백화점", "마트", "대학교", "학교", "재단", "협회", "교회", "호텔", "리조트",
+)
+
+# 짧은 은행 alias가 매칭됐으나 텍스트가 은행 아닌 금융 접미사로 끝나면(예: 'JB우리캐피탈')
+# 본점 은행으로 오병합 말고 구조매칭(별도 entity)에 양보할 토큰.
+_NON_BANK_FIN_SUFFIX: tuple[str, ...] = (
+    "캐피탈", "캐피털", "카드", "저축은행", "증권", "생명", "화재", "손해보험",
+)
+
 # 해외도시 영문·변형 → canonical 한글 (HK지점·홍콩지점 통합 등). key는 .upper() 기준(한글은 그대로).
 _CITY_CANON: dict[str, str] = {
     "HK": "홍콩", "HONGKONG": "홍콩", "HONG KONG": "홍콩", "홍콩": "홍콩",
@@ -87,9 +104,23 @@ class PartyNormalizer:
         return cls(aliases, domestic, foreign)
 
     def _match_canonical(self, text: str) -> str | None:
+        cleaned = self._clean_name(text)
         for key, canon in self._lookup:
-            if key in text:
-                return canon
+            if key not in text:
+                continue
+            # (1) 비금융 상호 표지로 끝나면 기각 (삼성생명서비스·신한금융지주·우리들병원·하나투어).
+            #     긴 정식명도 적용 — '삼성생명'(O) vs '삼성생명서비스'(X) 구분.
+            if cleaned.endswith(_NONFINANCIAL_VETO):
+                continue
+            # (2) 짧은 alias(≤3자)는 비금융 부분일치 위험 ↑ → 표지가 어디든 있으면 기각
+            #     (국민연금공단·KB부동산 — veto 토큰이 끝이 아니어도 차단)
+            if len(key) <= 3 and any(v in cleaned for v in _NONFINANCIAL_VETO):
+                continue
+            # (3) 짧은 은행 alias인데 비은행 금융 접미사로 끝나면 오병합 방지
+            #     (JB우리캐피탈→우리은행 X). 구조매칭이 별도 entity로 처리하도록 양보.
+            if len(key) <= 3 and canon.endswith("은행") and cleaned.endswith(_NON_BANK_FIN_SUFFIX):
+                continue
+            return canon
         return None
 
     @staticmethod

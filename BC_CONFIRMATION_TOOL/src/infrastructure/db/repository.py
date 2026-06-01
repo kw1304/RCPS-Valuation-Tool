@@ -24,6 +24,17 @@ def _apply_migrations(eng) -> None:
             for col, ddl in cols.items():
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+        # Counterparty 중복 방지 unique index (기존 테이블엔 create_all 이 제약 추가 못함).
+        # 기존 DB에 이미 중복이 있으면 인덱스 생성이 실패하므로 — 서버 기동을 막지 않도록
+        # 보류(신규 DB·중복 없는 DB만 적용). upsert_counterparty 가 1차 방어.
+        if {r[1] for r in conn.execute(text("PRAGMA table_info(counterparty)"))}:
+            try:
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_cp_project_name_branch "
+                    "ON counterparty(project_id, canonical_name, branch)"
+                ))
+            except Exception:
+                pass  # 기존 중복 존재 → 인덱스 보류(기동 우선)
         conn.commit()
 
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
 
 
 class Project(SQLModel, table=True):
@@ -11,6 +11,11 @@ class Project(SQLModel, table=True):
 
 
 class Counterparty(SQLModel, table=True):
+    # 같은 프로젝트 내 (정규화명, 지점) 중복 거래처 방지 backstop.
+    __table_args__ = (
+        UniqueConstraint("project_id", "canonical_name", "branch",
+                         name="uq_cp_project_name_branch"),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id", index=True)
     bc_no: str                                  # BC-1
@@ -50,6 +55,8 @@ class ExtractedRecord(SQLModel, table=True):
     """AC1~AC8 추출 record. ac_section으로 시트 구분."""
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id", index=True)
+    # 매칭 안 된 회신본은 0(미배정). FK 강제(PRAGMA)는 기존 테이블 NOT NULL 재구축이
+    # 필요해 보류 — nullable 전환은 별도 마이그레이션 작업으로 분리.
     counterparty_id: int = Field(foreign_key="counterparty.id", index=True)
     ac_section: str                              # AC1 | AC2 | ... | AC8
     payload_json: str                            # 도메인 모델 직렬화

@@ -55,6 +55,28 @@ def _dec(s: str) -> Decimal | None:
         return None
 
 
+_OCR_THOUSAND_TOK = re.compile(r"^\d[\d.,]*\d$")
+
+
+def _ocr_thousand(tok: str) -> Decimal | None:
+    """OCR 천단위 점·콤마 혼용 토큰(20.215.243.773 · 5.135.784,000)을 정수로 복원.
+
+    _NUM(단일 구분자)이 못 잡는 다중 구분자 토큰만 대상. 첫 그룹 1~3자리 +
+    이후 그룹이 전부 정확히 3자리일 때만 천단위 정수로 본다 — 날짜(24.11.07,
+    마지막 2자리)·이자율(0.0000)·일반 소수(.00)는 복원하지 않는다."""
+    if not _OCR_THOUSAND_TOK.match(tok):
+        return None
+    groups = re.split(r"[.,]", tok)
+    if len(groups) < 2:
+        return None
+    first, rest = groups[0], groups[1:]
+    if not (1 <= len(first) <= 3) or not first.isdigit():
+        return None
+    if not all(len(g) == 3 and g.isdigit() for g in rest):
+        return None
+    return _dec("".join(groups))
+
+
 @dataclass
 class RowTokens:
     account: str | None = None
@@ -77,7 +99,13 @@ def tokenize_row(row: str) -> RowTokens:
         elif _RATE.match(tok) and t.rate is None:
             t.rate = _dec(tok)
         elif _PAREN.match(tok):
-            continue
+            # 괄호 = 음수(평가손실·차감). 이전엔 폐기 → 부호·금액 손실. 복원해 음수로 보존.
+            inner = tok[1:-1]
+            v = _dec(inner)
+            if v is None:
+                v = _ocr_thousand(inner)
+            if v is not None:
+                t.amounts.append(-v)
         elif _ACCT.match(tok) and "," not in tok and t.account is None:
             t.account = tok
         elif _NUM.match(tok):
@@ -85,5 +113,10 @@ def tokenize_row(row: str) -> RowTokens:
             if v is not None:
                 t.amounts.append(v)
         else:
-            t.text_tokens.append(tok)
+            # _NUM 이 못 잡는 OCR 다중구분자 천단위 토큰(20.215.243.773) 복원 시도.
+            v = _ocr_thousand(tok)
+            if v is not None:
+                t.amounts.append(v)
+            else:
+                t.text_tokens.append(tok)
     return t

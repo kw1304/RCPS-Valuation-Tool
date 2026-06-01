@@ -1,6 +1,9 @@
+import logging
 from dataclasses import dataclass, field
 from .financial_account import FinancialAccountClassifier
 from .party_normalize import PartyNormalizer, NormalizedParty
+
+logger = logging.getLogger("bc.sampling")
 
 
 @dataclass
@@ -86,7 +89,13 @@ class Sampler:
                     break
         # G/L에 등장한 모든 금융기관(거래처·계정명·적요 언급 포함)을 표본 후보로 — 잔액 0 무관.
         # (계정과목·메모문장·IT'뱅크'·렌탈 vendor 등 비금융 noise는 normalize 단계에서 이미 배제됨)
-        return list(agg.values())
+        result = list(agg.values())
+        # 합계 가시화(검산용) — 집계 누락/중복을 로그로 추적.
+        bs_total = sum(sp.bs_amount for sp in result)
+        pl_total = sum(sp.pl_amount for sp in result)
+        logger.info("표본추출 완료: 거래처 %d건 · B/S 합 %.0f · P/L 합 %.0f",
+                    len(result), bs_total, pl_total)
+        return result
 
     def _add(self, agg, np: NormalizedParty, bucket: str, acc: str, amount: float, conf: float):
         key = np.entity_key()

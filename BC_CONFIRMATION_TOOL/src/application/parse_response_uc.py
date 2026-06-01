@@ -1,7 +1,10 @@
 import json
+import logging
 from pathlib import Path
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 from src.infrastructure.db.models import FileAsset, Counterparty, ExtractedRecord
+
+logger = logging.getLogger("bc.parse")
 from src.infrastructure.pdf.extractor import extract_text_and_tables, extract_rows
 from src.infrastructure.pdf.ocr import ocr_pdf
 from src.infrastructure.pdf.filename_parser import parse_filename
@@ -205,7 +208,10 @@ def parse_responses(session: Session, project_id: int) -> dict:
     cps = {(c.canonical_name, c.branch): c for c in session.exec(
         select(Counterparty).where(Counterparty.project_id == project_id)
     ).all()}
+    # 멱등: 재파싱 시 이전 추출분(append-only) 중복 누적 방지 — 시작 시 전량 삭제 후 재계산.
+    session.exec(delete(ExtractedRecord).where(ExtractedRecord.project_id == project_id))
     records_summary = []
+    diagnostics: list[dict] = []  # 파일별 {추출길이·섹션수·레코드수·OCR·오류} — 침묵손실 가시화
     # 이중계상 방지: 개별 회신본(tagged) + 합본 스캔(untagged, 파일명 메타 없음)이 함께
     # 들어오면 같은 holding 이 두 번 persist 된다. 모든 후보를 먼저 모은 뒤 dedup_records
     # 로 한 번에 처리한다 — tagged 는 항상 보존(동일 금액의 다른 은행 행 병합 금지),
@@ -216,73 +222,105 @@ def parse_responses(session: Session, project_id: int) -> dict:
         # 합본(aggregate)/미상 스캔(파일명에 BC-N 없음)은 개별 회신 중복 + mis-route
         # 누출원이므로 파싱 대상에서 제외한다. 표준 회신은 항상 BC-N 파일명을 가진다.
         if is_unidentified_aggregate(f.original_name):
+            diagnostics.append({"file": f.original_name, "skipped": "합본/미상"})
             continue
-        meta = parse_filename(f.original_name)
-        bc_no = meta.get("bc_no") or ""
-        bank_raw = meta.get("bank_raw") or ""
-        np = norm.normalize(bank_raw) if bank_raw else None
-        bank = np.canonical if np else bank_raw
-        # 좌표 기반 행 재구성: 무테 표의 줄바꿈 금액을 라벨 행과 재결합한다.
-        text = extract_rows(Path(f.stored_path))
-        # 스캔 PDF (텍스트 거의 없음) → OCR, 신뢰도 하향
-        ocr_used = len(text.strip()) < 80
-        if ocr_used:
-            text = ocr_pdf(Path(f.stored_path))["text"]
-        cp = cps.get((np.canonical, np.branch)) if np else None
-        if cp:
-            cp.response_arrived = True
-            session.add(cp)
+        n_before = len(pending)
+        # 파일 단위 예외격리: 암호화·손상 PDF 1건이 배치 전체를 중단시키지 않도록.
+        try:
+            meta = parse_filename(f.original_name)
+            bc_no = meta.get("bc_no") or ""
+            bank_raw = meta.get("bank_raw") or ""
+            np = norm.normalize(bank_raw) if bank_raw else None
+            bank = np.canonical if np else bank_raw
+            # 좌표 기반 행 재구성: 무테 표의 줄바꿈 금액을 라벨 행과 재결합한다.
+            text = extract_rows(Path(f.stored_path))
+            # 스캔 PDF (텍스트 거의 없음) → OCR, 신뢰도 하향
+            ocr_used = len(text.strip()) < 80
+            if ocr_used:
+                text = ocr_pdf(Path(f.stored_path))["text"]
+            cp = cps.get((np.canonical, np.branch)) if np else None
+            if cp:
+                cp.response_arrived = True
+                session.add(cp)
 
-        family = identify_form(text)
+            family = identify_form(text)
 
-        def _persist(ac, payload_obj, manual, confidence):
-            # 즉시 저장하지 않고 버퍼에 모은다. dedup_records 는 전체 집합을 봐야
-            # tagged/untagged 판단이 정확하다(파일 처리 순서 무관).
-            payload_dict = payload_obj if isinstance(payload_obj, dict) \
-                else payload_obj.model_dump()
+            def _persist(ac, payload_obj, manual, confidence,
+                         _bc=bc_no, _bank=bank, _cp=cp, _fam=family, _src=f.original_name):
+                # 즉시 저장하지 않고 버퍼에 모은다. dedup_records 는 전체 집합을 봐야
+                # tagged/untagged 판단이 정확하다(파일 처리 순서 무관).
+                payload_dict = payload_obj if isinstance(payload_obj, dict) \
+                    else payload_obj.model_dump()
+                pending.append({
+                    "ac_section": ac, "payload": payload_dict, "payload_obj": payload_obj,
+                    "manual": manual, "confidence": confidence,
+                    "bc_no": _bc, "bank": _bank, "cp": _cp, "family": _fam,
+                    "source_file": _src,
+                })
+
+            n_sections = 0
+            if family == "unknown":
+                for rec in fallback_parse(text, bc_no=bc_no, bank=bank):
+                    _persist(rec["ac_section"], rec["payload"], True, "low")
+            else:
+                blocks = split_sections(text)
+                n_sections = len(blocks)
+                # 헤더 미인식(OCR '습니다'→'숩니다' 등)으로 섹션 0개인데 실데이터가 있으면
+                # 통째 침묵 손실 → 수동검토 스텁으로 가시화.
+                if not blocks and _has_real_data(text):
+                    _persist("AC0", {"raw": text[:300],
+                                     "note": "섹션 헤더 미인식 — 수동확인(전체)"}, True, "low")
+                for section_no, block in blocks.items():
+                    route = route_or_classify(family, section_no, block)
+                    if not route:
+                        # 미매핑 섹션이 실데이터를 담고 있으면 침묵 폐기 말고 스텁(신규 양식 대응).
+                        if _has_real_data(block):
+                            _persist("AC0", {"raw": block[:300],
+                                             "note": f"미매핑 섹션({section_no}) — 수동확인"}, True, "low")
+                        continue
+                    ac = route["ac"]
+                    store_ac = "AC1_DETAIL" if ac == "AC1_DETAIL" else ac
+                    content_routed = route.get("content_routed", False)
+                    # 내용기반 라우팅 섹션은 담보 sub-block(거래내역 마커 이전)만 파싱한다.
+                    parse_block = route.get("block", block)
+                    conf = "low" if ocr_used else "high"
+                    try:
+                        recs = _dispatch(ac, parse_block, bc_no, bank, route)
+                    except Exception as e:
+                        # 파서 예외를 삼키지 말고 수동검토 스텁으로 가시화 (계속 진행)
+                        _persist(store_ac, {
+                            "raw": parse_block[:300],
+                            "note": f"parser 예외 — 수동확인 ({type(e).__name__}: {e})",
+                        }, True, "low")
+                        continue
+                    if recs:
+                        # 비표준 섹션(content_routed) 출신은 감사인 확인용으로 수동검토 플래그.
+                        for rec in recs:
+                            _persist(store_ac, rec, content_routed, conf)
+                    elif _has_real_data(block):
+                        # 파서가 0건인데 실데이터(숫자)가 있으면 — 구현/미구현 무관 — 스텁.
+                        # (이전엔 미구현 AC만 처리해, 구현 AC의 레이아웃 미스 0건이 침묵 손실됐다)
+                        note = "parser 미구현 — 수동확인" if ac not in IMPLEMENTED_ACS \
+                            else "파서 0건(레이아웃 상이) — 수동확인"
+                        _persist(store_ac, {"raw": block[:300], "note": note}, True, "low")
+            diagnostics.append({"file": f.original_name, "family": family,
+                                "text_len": len(text), "sections": n_sections,
+                                "ocr": ocr_used, "records": len(pending) - n_before})
+        except Exception as e:
+            logger.exception("회신 파싱 실패: %s", f.original_name)
+            # 파일 1건 실패가 배치를 멈추지 않도록 — 실패 사실을 스텁으로 남기고 다음 파일로.
             pending.append({
-                "ac_section": ac, "payload": payload_dict, "payload_obj": payload_obj,
-                "manual": manual, "confidence": confidence,
-                "bc_no": bc_no, "bank": bank, "cp": cp, "family": family,
+                "ac_section": "AC0",
+                "payload": {"raw": f.original_name,
+                            "note": f"파일 파싱 실패 — 수동확인 ({type(e).__name__}: {e})"},
+                "payload_obj": {"raw": f.original_name,
+                                "note": f"파일 파싱 실패 ({type(e).__name__}: {e})"},
+                "manual": True, "confidence": "low",
+                "bc_no": "", "bank": "", "cp": None, "family": "error",
                 "source_file": f.original_name,
             })
-
-        if family == "unknown":
-            for rec in fallback_parse(text, bc_no=bc_no, bank=bank):
-                _persist(rec["ac_section"], rec["payload"], True, "low")
+            diagnostics.append({"file": f.original_name, "error": f"{type(e).__name__}: {e}"})
             continue
-
-        blocks = split_sections(text)
-        for section_no, block in blocks.items():
-            route = route_or_classify(family, section_no, block)
-            if not route:
-                continue
-            ac = route["ac"]
-            store_ac = "AC1_DETAIL" if ac == "AC1_DETAIL" else ac
-            content_routed = route.get("content_routed", False)
-            # 내용기반 라우팅 섹션은 담보 sub-block(거래내역 마커 이전)만 파싱한다.
-            parse_block = route.get("block", block)
-            conf = "low" if ocr_used else "high"
-            try:
-                recs = _dispatch(ac, parse_block, bc_no, bank, route)
-            except Exception as e:
-                # BUG5: 파서 예외를 삼키지 말고 수동검토 스텁으로 가시화 (계속 진행)
-                _persist(store_ac, {
-                    "raw": parse_block[:300],
-                    "note": f"parser 예외 — 수동확인 ({type(e).__name__}: {e})",
-                }, True, "low")
-                continue
-            if recs:
-                # 비표준 섹션(content_routed) 출신은 감사인 확인용으로 수동검토 플래그.
-                for rec in recs:
-                    _persist(store_ac, rec, content_routed, conf)
-            elif ac not in IMPLEMENTED_ACS and _has_real_data(block):
-                # BUG4: 미구현 AC(AC3·AC7·AC8)인데 실제 데이터(숫자)가 있는 섹션 →
-                # 감사인이 섹션 존재를 인지하도록 수동검토 스텁 1건 persist
-                _persist(store_ac, {
-                    "raw": block[:300],
-                    "note": "parser 미구현 — 수동확인",
-                }, True, "low")
 
     # dedup: tagged(개별 회신본) 보존, untagged(합본 스캔) 중복만 제거 → 그 뒤 persist.
     for rec in dedup_records(pending):
@@ -304,4 +342,4 @@ def parse_responses(session: Session, project_id: int) -> dict:
                                 "payload": json.loads(payload)})
 
     session.commit()
-    return {"records": records_summary}
+    return {"records": records_summary, "diagnostics": diagnostics}
