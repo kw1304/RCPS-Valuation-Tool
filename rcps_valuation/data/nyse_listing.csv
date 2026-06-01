@@ -2,2663 +2,2661 @@ Symbol,Name
 TSM,Taiwan Semiconductor Manufacturing Co Ltd ADR
 LLY,Eli Lilly and Co
 JPM,JPMorgan Chase & Co
+ORCL,Oracle Corp
 BRK.B,Berkshire Hathaway Inc Class B
 XOM,Exxon Mobil Corp
 V,Visa Inc
 JNJ,Johnson & Johnson
-ORCL,Oracle Corp
 MA,Mastercard Inc
 CAT,Caterpillar Inc
-CVX,Chevron Corp
 ABBV,AbbVie Inc
-BRK.A,Berkshire Hathaway Inc Class A
+CVX,Chevron Corp
 BAC,Bank of America Corp
+BRK.A,Berkshire Hathaway Inc Class A
 UNH,UnitedHealth Group Inc
-KO,Coca-Cola Co
-PG,Procter & Gamble Co
-MS,Morgan Stanley
-HSBC,HSBC Holdings PLC ADR
 GE,General Electric Co
-BABA,Alibaba Group Holding Ltd ADR
-HD,Home Depot Inc
-MRK,Merck & Co Inc
-PM,Philip Morris International Inc
+KO,Coca-Cola Co
+MS,Morgan Stanley
+PG,Procter & Gamble Co
+HSBC,HSBC Holdings PLC ADR
 GS,Goldman Sachs Group Inc
+HD,Home Depot Inc
+DELL,Dell Technologies Inc
+BABA,Alibaba Group Holding Ltd ADR
+IBM,International Business Machines Corp
+MRK,Merck & Co Inc
+SMFG,Sumitomo Mitsui Financial Group  Inc ADR
 AZN,AstraZeneca PLC
 NVS,Novartis AG ADR
-SMFG,Sumitomo Mitsui Financial Group  Inc ADR
-GEV,GE Vernova Inc
+PM,Philip Morris International Inc
 RY,Royal Bank of Canada
+GEV,GE Vernova Inc
 SHEL,Shell PLC ADR
-IBM,International Business Machines Corp
 RTX,RTX Corp
 WFC,Wells Fargo & Co
-TM,Toyota Motor Corp ADR
-MUFG,Mitsubishi UFJ Financial Group Inc ADR
 BHP,BHP Group Ltd ADR
-C,Citigroup Inc
-AXP,American Express Co
-TTE,TotalEnergies SE
 SAP,SAP SE ADR
+C,Citigroup Inc
+TM,Toyota Motor Corp ADR
+ANET,Arista Networks Inc
+AXP,American Express Co
+MUFG,Mitsubishi UFJ Financial Group Inc ADR
+TTE,TotalEnergies SE
 VZ,Verizon Communications Inc
 MCD,McDonald's Corp
-ANET,Arista Networks Inc
-DELL,Dell Technologies Inc
 TD,Toronto-Dominion Bank
-NEE,Nextera Energy Inc
+TMO,Thermo Fisher Scientific Inc
+APH,Amphenol Corp
 DIS,Walt Disney Co
+SAN,Banco Santander  S.a ADR
+BA,Boeing Co
+NEE,Nextera Energy Inc
+CRM,Salesforce Inc
 T,AT&T Inc
 TJX,TJX Companies Inc
 BLK,BlackRock Inc
-SAN,Banco Santander  S.a ADR
-BA,Boeing Co
-GLW,Corning Inc
-TMO,Thermo Fisher Scientific Inc
-APH,Amphenol Corp
-UNP,Union Pacific Corp
-SCHW,Charles Schwab Corp
-UBS,UBS Group AG
-ABT,Abbott Laboratories
-WELL,Welltower Inc
-ETN,Eaton Corporation PLC
-NVO,Novo Nordisk A/S ADR
 SCCO,Southern Copper Corp
-PFE,Pfizer Inc
-CRM,Salesforce Inc
-COP,ConocoPhillips
+UNP,Union Pacific Corp
+ETN,Eaton Corporation PLC
+GLW,Corning Inc
+UBS,UBS Group AG
+SCHW,Charles Schwab Corp
+ABT,Abbott Laboratories
 UBER,Uber Technologies Inc
-BUD,Anheuser-Busch Inbev SA ADR
+NVO,Novo Nordisk A/S ADR
 DE,Deere & Co
-BTI,British American Tobacco P.l.c ADR
+PFE,Pfizer Inc
+COP,ConocoPhillips
 BX,Blackstone Inc
-PLD,Prologis Inc
+NOW,ServiceNow Inc
+WELL,Welltower Inc
+BUD,Anheuser-Busch Inbev SA ADR
 RIO,Rio Tinto PLC ADR
 SONY,Sony Group Corp ADR
-CB,Chubb Limited
-HDB,HDFC Bank Ltd ADR
-ENB,Enbridge Inc
+BTI,British American Tobacco P.l.c ADR
 BBVA,Banco Bilbao Vizcaya Argentaria SA ADR
-VRT,Vertiv Holdings Co
-UL,Unilever PLC ADR
-SPGI,S&P Global Inc
-MO,Altria Group Inc
-LMT,Lockheed Martin Corp
+PLD,Prologis Inc
 DHR,Danaher Corp
-BMY,Bristol-Myers Squibb Co
-SYK,Stryker Corp
+SPGI,S&P Global Inc
+VRT,Vertiv Holdings Co
+ACN,Accenture PLC
+UL,Unilever PLC ADR
+HDB,HDFC Bank Ltd ADR
+CB,Chubb Limited
+ENB,Enbridge Inc
+LMT,Lockheed Martin Corp
 LOW,Lowe's Companies Inc
 CVS,CVS Health Corp
+NEM,Newmont Corporation
+SYK,Stryker Corp
 COF,Capital One Financial Corp
+MO,Altria Group Inc
+BMO,Bank of Montreal
 PGR,Progressive Corp
 BP,BP PLC ADR
-NEM,Newmont Corporation
-BMO,Bank of Montreal
-MFG,Mizuho Financial Group Inc ADR
+BMY,Bristol-Myers Squibb Co
 BN,Brookfield Corp
-ACN,Accenture PLC
-PH,Parker-Hannifin Corp
+MFG,Mizuho Financial Group Inc ADR
 SPOT,Spotify Technology SA
+PH,Parker-Hannifin Corp
 PWR,Quanta Services Inc
-CM,Canadian Imperial Bank of Commerce
-SO,Southern Co
-NOW,ServiceNow Inc
-GSK,GSK plc ADR
 HWM,Howmet Aerospace Inc
+SO,Southern Co
+GSK,GSK plc ADR
+TT,Trane Technologies PLC
+BNY,Bank of New York Mellon Corp
+CM,Canadian Imperial Bank of Commerce
+BNS,Bank of Nova Scotia
+FCX,Freeport-McMoRan Inc
 CNQ,Canadian Natural Resources Ltd
 MDT,Medtronic PLC
-TT,Trane Technologies PLC
-BNS,Bank of Nova Scotia
-DUK,Duke Energy Corp
 EQNR,Equinor ASA ADR
-WMB,Williams Companies Inc
-BNY,Bank of New York Mellon Corp
-FDX,FedEx Corp
+DUK,Duke Energy Corp
+UPS,United Parcel Service Inc
 IBN,ICICI Bank Ltd ADR
 GD,General Dynamics Corp
-MCK,McKesson Corp
-FCX,Freeport-McMoRan Inc
-AEM,Agnico Eagle Mines Ltd
 ING,ING Groep NV ADR
 CMI,Cummins Inc
-PNC,PNC Financial Services Group Inc
-WM,Waste Management Inc
-HCA,HCA Healthcare Inc
+AEM,Agnico Eagle Mines Ltd
+MCK,McKesson Corp
+SNOW,Snowflake Inc
+NET,Cloudflare Inc
 NOK,Nokia Oyj ADR
-ICE,Intercontinental Exchange Inc
-NGG,National Grid PLC ADR
-BE,Bloom Energy Corp
-BSX,Boston Scientific Corp
-UPS,United Parcel Service Inc
-EPD,Enterprise Products Partners Units
 ELV,Elevance Health Inc
 AMT,American Tower Corp
-SLB,SLB NV
-USB,US Bancorp
+PNC,PNC Financial Services Group Inc
+WMB,Williams Companies Inc
+WM,Waste Management Inc
 KKR,KKR & Co Inc
-JCI,Johnson Controls International PLC
-CIEN,Ciena Corp
+ASX,ASE Technology Holding Co Ltd ADR
 BCS,Barclays PLC ADR
+HCA,HCA Healthcare Inc
+USB,US Bancorp
+JCI,Johnson Controls International PLC
+ICE,Intercontinental Exchange Inc
+SLB,SLB NV
+FDX,FedEx Corp
+MCO,Moody's Corp
+EPD,Enterprise Products Partners Units
+NGG,National Grid PLC ADR
+CIEN,Ciena Corp
+BAM,BROOKFIELD ASSET MANAGEMENT LTD
+EMR,Emerson Electric Co
+CP,Canadian Pacific Kansas City Ltd
+LYG,Lloyds Banking Group PLC ADR
+BE,Bloom Energy Corp
 E,Eni SpA ADR
-SU,Suncor Energy Inc (Canada)
 MMM,3M Co
+CVNA,Carvana Co
 MRSH,Marsh & McLennan Companies Inc
+RCL,Royal Caribbean Cruises Ltd
 NOC,Northrop Grumman Corp
 AMX,America Movil SAB de CV ADR
-BAM,BROOKFIELD ASSET MANAGEMENT LTD
-MCO,Moody's Corp
-LYG,Lloyds Banking Group PLC ADR
-CP,Canadian Pacific Kansas City Ltd
-EMR,Emerson Electric Co
-NET,Cloudflare Inc
-ASX,ASE Technology Holding Co Ltd ADR
-SHW,Sherwin-Williams Co
-CI,Cigna Group
-EOG,EOG Resources Inc
-KMI,Kinder Morgan Inc
-CVNA,Carvana Co
 MPC,Marathon Petroleum Corp
-APO,Apollo Global Management Inc
-PBR,Petroleo Brasileiro ADR Reptg 2
-TRP,TC Energy Corp
-COHR,Coherent Corp
 VLO,Valero Energy Corp
 HLT,Hilton Worldwide Holdings Inc
-ITW,Illinois Tool Works Inc
-CL,Colgate-Palmolive Co
-ECL,Ecolab Inc
-PSX,Phillips 66
+SU,Suncor Energy Inc (Canada)
+APO,Apollo Global Management Inc
 GM,General Motors Co
-NSC,Norfolk Southern Corp
-VALE,Vale SA ADR
 CNI,Canadian National Railway Co
-AON,Aon PLC
-ET,Energy Transfer Units
-RCL,Royal Caribbean Cruises Ltd
-B,Barrick Mining Corp
-TDG,TransDigm Group Inc
-RACE,Ferrari NV
-DLR,Digital Realty Trust Inc
+EOG,EOG Resources Inc
+SHW,Sherwin-Williams Co
+PSX,Phillips 66
+CI,Cigna Group
 CRH,CRH PLC
-MSI,Motorola Solutions Inc
-SPG,Simon Property Group Inc
+BSX,Boston Scientific Corp
+B,Barrick Mining Corp
+COHR,Coherent Corp
+ITW,Illinois Tool Works Inc
+ECL,Ecolab Inc
+CL,Colgate-Palmolive Co
+PBR,Petroleo Brasileiro ADR Reptg 2
+TDG,TransDigm Group Inc
+VALE,Vale SA ADR
+TRP,TC Energy Corp
+KMI,Kinder Morgan Inc
+NSC,Norfolk Southern Corp
+AON,Aon PLC
 NKE,Nike Inc
-TRV,Travelers Companies Inc
-APD,Air Products and Chemicals Inc
+F,Ford Motor Co
+MSI,Motorola Solutions Inc
+RACE,Ferrari NV
+ET,Energy Transfer Units
+SPG,Simon Property Group Inc
+DLR,Digital Realty Trust Inc
+NWG,NatWest Group PLC ADR
+NU,Nu Holdings Ltd.
 FIX,Comfort Systems USA Inc
 MFC,Manulife Financial Corp
-RSG,Republic Services Inc
-NWG,NatWest Group PLC ADR
-DB,Deutsche Bank AG
-NU,Nu Holdings Ltd.
-SRE,Sempra
-TFC,Truist Financial Corp
-AFL,Aflac Inc
-SNOW,Snowflake Inc
-D,Dominion Energy Inc
-F,Ford Motor Co
-STM,STMicroelectronics NV ADR
-TRGP,Targa Resources Corp
-KEYS,Keysight Technologies Inc
-OKE,ONEOK Inc
-TEL,TE Connectivity PLC
-GWW,WW Grainger Inc
+HPE,Hewlett Packard Enterprise Co
 URI,United Rentals Inc
+APD,Air Products and Chemicals Inc
+RSG,Republic Services Inc
+TEL,TE Connectivity PLC
+TRV,Travelers Companies Inc
+DB,Deutsche Bank AG
 RELX,Relx PLC ADR
-OXY,Occidental Petroleum Corp
-LHX,L3harris Technologies  Inc
-O,Realty Income Corp
+STM,STMicroelectronics NV ADR
+SE,Sea Ltd ADR
 WPM,Wheaton Precious Metals Corp
-MPLX,MPLX Common Units
+OXY,Occidental Petroleum Corp
+GWW,WW Grainger Inc
+TFC,Truist Financial Corp
+LHX,L3harris Technologies  Inc
+UMC,United Microelectronics Corp ADR
+AFL,Aflac Inc
+NUE,Nucor Corp
+SRE,Sempra
+D,Dominion Energy Inc
 TGT,Target Corp
-CVE,Cenovus Energy Incorporation
-AZO,Autozone Inc
+MPLX,MPLX Common Units
+KEYS,Keysight Technologies Inc
+O,Realty Income Corp
+TRGP,Targa Resources Corp
+INFY,Infosys Ltd ADR
+CARR,Carrier Global Corp
+OKE,ONEOK Inc
 ALL,Allstate Corp
+DAL,Delta Air Lines Inc
 DVN,Devon Energy Corp
+MT,ArcelorMittal SA ADR
+AJG,Arthur J. Gallagher & Co.
+CVE,Cenovus Energy Incorporation
 MET,MetLife Inc
+CTVA,Corteva Inc
+VST,Vistra Corp
 PSA,Public Storage
 COR,Cencora Inc
-SE,Sea Ltd ADR
-CTVA,Corteva Inc
-AJG,Arthur J. Gallagher & Co.
-NUE,Nucor Corp
-VST,Vistra Corp
-CARR,Carrier Global Corp
-ETR,Entergy Corp
 AME,AMETEK Inc
-TAK,Takeda Pharmaceutical Co Ltd ADR
-INFY,Infosys Ltd ADR
-LNG,Cheniere Energy Inc
-ROK,Rockwell Automation Inc
-MT,ArcelorMittal SA ADR
-DAL,Delta Air Lines Inc
-ABEV,Ambev SA ADR
 EW,Edwards Lifesciences Corp
-PBR.A,Petroleo Brasileiro ADR Reptg 2 Pref Shs
-DEO,Diageo PLC ADR
-CAH,Cardinal Health Inc
-GRMN,Garmin Ltd
-UMC,United Microelectronics Corp ADR
-AU,Anglogold Ashanti PLC
-HPE,Hewlett Packard Enterprise Co
+ABEV,Ambev SA ADR
+AZO,Autozone Inc
+ROK,Rockwell Automation Inc
 CCJ,Cameco Corp
+ETR,Entergy Corp
+TAK,Takeda Pharmaceutical Co Ltd ADR
+LNG,Cheniere Energy Inc
+MSCI,MSCI Inc
+AU,Anglogold Ashanti PLC
+CAH,Cardinal Health Inc
+CLS,Celestica Inc
+PBR.A,Petroleo Brasileiro ADR Reptg 2 Pref Shs
+GRMN,Garmin Ltd
+XYZ,Block Inc
+DEO,Diageo PLC ADR
 FNV,Franco-Nevada Corp
+STT,State Street Corp
 WAB,Westinghouse Air Brake Technologies Corp
 FERG,Ferguson Enterprises Inc
-WDS,Woodside Energy Group Ltd ADR
-VTR,Ventas Inc
-MSCI,MSCI Inc
 IX,ORIX Corp ADR
-YUM,Yum! Brands Inc
-STT,State Street Corp
-ITUB,Itau Unibanco Holding SA ADR
-CLS,Celestica Inc
-CMG,Chipotle Mexican Grill Inc
-KR,Kroger Co
-HLN,Haleon PLC ADR
 ARES,Ares Management Corp
-AIG,American International Group Inc
+ITUB,Itau Unibanco Holding SA ADR
+WDS,Woodside Energy Group Ltd ADR
 DHI,D.R. Horton Inc
-BDX,Becton Dickinson and Co
-AMP,Ameriprise Financial Inc
-XYZ,Block Inc
-SLF,Sun Life Financial Inc
-TFIN PR,Triumph Financial 40 Dep Shs Repstg 1 Perp Non Cum 7 125  Pref Shs Series C
-ED,Consolidated Edison Inc
-CCI,Crown Castle Inc
-TEVA,Teva Pharmaceutical Industries Limited.. ADR
-PEG,Public Service Enterprise Group Inc
-WCN,Waste Connections  Inc
-HSY,Hershey Co
-RKT,Rocket Companies Inc
-LYV,Live Nation Entertainment Inc
-PUK,Prudential PLC ADR
-JBL,Jabil Inc
-CBRE,CBRE Group Inc
-EME,EMCOR Group Inc
-IRM,Iron Mountain Inc
 VIK,Viking Holdings Ltd(Pembroke)
-ADM,Archer-Daniels-Midland Co
-HIG,Hartford Insurance Group Inc
-KB,KB Financial Group Inc ADR
-HUM,Humana Inc
-UI,Ubiquiti Inc
-WEC,WEC Energy Group Inc
+YUM,Yum! Brands Inc
+TEVA,Teva Pharmaceutical Industries Limited.. ADR
+AMP,Ameriprise Financial Inc
+BDX,Becton Dickinson and Co
+RKT,Rocket Companies Inc
 TKO,TKO Group Holdings Inc
-SYY,Sysco Corp
-PCG,PG&E Corp
-EQT,EQT Corp
-PRU,Prudential Financial Inc
-GFI,Gold Fields Ltd ADR
-HAL,Halliburton Co
-VG,Venture Global Inc
-HMC,Honda Motor Co Ltd ADR
-ZTS,Zoetis Inc
-CHT,Chunghwa Telecom Co Ltd ADR
-ALC,Alcon AG
-VMC,Vulcan Materials Co
-KGC,Kinross Gold Corp
-NTR,Nutrien Ltd
-KVUE,Kenvue Inc
-RBLX,Roblox Corp
-WAT,Waters Corp
-Q,Qnity Electronics Inc
-LVS,Las Vegas Sands Corp
+TFIN PR,Triumph Financial 40 Dep Shs Repstg 1 Perp Non Cum 7 125  Pref Shs Series C
+VTR,Ventas Inc
+ADM,Archer-Daniels-Midland Co
+LYV,Live Nation Entertainment Inc
+CCI,Crown Castle Inc
+CMG,Chipotle Mexican Grill Inc
+SLF,Sun Life Financial Inc
+HLN,Haleon PLC ADR
+AIG,American International Group Inc
+HUM,Humana Inc
 A,Agilent Technologies Inc
+ED,Consolidated Edison Inc
+WCN,Waste Connections  Inc
+PEG,Public Service Enterprise Group Inc
+JBL,Jabil Inc
+KR,Kroger Co
+IRM,Iron Mountain Inc
+HSY,Hershey Co
+EME,EMCOR Group Inc
+WAT,Waters Corp
+VMC,Vulcan Materials Co
+PUK,Prudential PLC ADR
+KB,KB Financial Group Inc ADR
+CBRE,CBRE Group Inc
+PCG,PG&E Corp
+WEC,WEC Energy Group Inc
+UI,Ubiquiti Inc
+SYY,Sysco Corp
+CHT,Chunghwa Telecom Co Ltd ADR
+KGC,Kinross Gold Corp
+PRU,Prudential Financial Inc
+RDDT,Reddit Inc
+HIG,Hartford Insurance Group Inc
+EQT,EQT Corp
 MLM,Martin Marietta Materials Inc
 CCL,Carnival Corp
+HMC,Honda Motor Co Ltd ADR
+RBLX,Roblox Corp
+GFI,Gold Fields Ltd ADR
+LVS,Las Vegas Sands Corp
+TWLO,Twilio Inc
+NTR,Nutrien Ltd
+EC,Ecopetrol SA ADR
+KVUE,Kenvue Inc
+HAL,Halliburton Co
+ALC,Alcon AG
+TECK,Teck Resources Ltd
+ZTS,Zoetis Inc
+VG,Venture Global Inc
 SUNB,Sunbelt Rentals Holdings Inc
+Q,Qnity Electronics Inc
+TS,Tenaris SA ADR
+IQV,IQVIA Holdings Inc
 EL,Estee Lauder Companies Inc
 MTB,M&T Bank Corp
-VICI,VICI Properties Inc
-TS,Tenaris SA ADR
-SHG,Shinhan Financial Group Co Ltd ADR
-AEE,Ameren Corp
-CQP,Cheniere Energy Partners Units
-EXR,Extra Space Storage Inc
-DTE,DTE Energy Co
-TECK,Teck Resources Ltd
-MTZ,MasTec Inc
-RMD,Resmed Inc
-ATO,Atmos Energy Corp
-RJF,Raymond James Financial Inc
-CNC,Centene Corp
-NRG,NRG Energy Inc
-P,Everpure Inc
-CPNG,Coupang Inc
-PBA,Pembina Pipeline Corp
-FICO,Fair Isaac Corp
-FTS,Fortis Inc
-TDY,Teledyne Technologies Inc
-TWLO,Twilio Inc
-EC,Ecopetrol SA ADR
-FTI,TechnipFMC PLC
-DOV,Dover Corp
-CRCL,Circle Internet Group Inc
-IQV,IQVIA Holdings Inc
-CNP,CenterPoint Energy Inc
-TPR,Tapestry Inc
-OTIS,Otis Worldwide Corp
-IR,Ingersoll Rand Inc
-TPL,Texas Pacific Land Corp
-AMRZ,Amrize AG
-EIX,Edison International
-PPL,PPL Corp
-RDDT,Reddit Inc
-CW,Curtiss-Wright Corp
-FE,FirstEnergy Corp
-NVT,nVent Electric PLC
-CFG,Citizens Financial Group Inc
-BAP,Credicorp Ltd
-AVB,AvalonBay Communities Inc
-ES,Eversource Energy
-XYL,Xylem Inc
-QSR,Restaurant Brands International Inc
 VEEV,Veeva Systems Inc
-DOW,Dow Inc
-STZ,Constellation Brands Inc
-ROL,Rollins Inc
-PHG,Koninklijke Philips NV ADR
-FN,Fabrinet
-WRB,W. R. Berkley Corp
-HUBB,Hubbell Inc
-EQR,Equity Residential
-AWK,American Water Works Co Inc
-SYF,Synchrony Financial
-FMX,Fomento Economico Mexicano SAB de CV ADR
-PPG,PPG Industries Inc
-XPO,XPO Inc
+CNC,Centene Corp
+VICI,VICI Properties Inc
+SHG,Shinhan Financial Group Co Ltd ADR
+FICO,Fair Isaac Corp
+CPNG,Coupang Inc
+EXR,Extra Space Storage Inc
+CQP,Cheniere Energy Partners Units
+AMRZ,Amrize AG
+DTE,DTE Energy Co
+AEE,Ameren Corp
+MTZ,MasTec Inc
+RJF,Raymond James Financial Inc
+P,Everpure Inc
+TDY,Teledyne Technologies Inc
+ATO,Atmos Energy Corp
+TPR,Tapestry Inc
+DOV,Dover Corp
+NVT,nVent Electric PLC
+IR,Ingersoll Rand Inc
+PBA,Pembina Pipeline Corp
+FTS,Fortis Inc
+NRG,NRG Energy Inc
+RMD,Resmed Inc
+FTI,TechnipFMC PLC
+BAP,Credicorp Ltd
+CNP,CenterPoint Energy Inc
+CW,Curtiss-Wright Corp
+EIX,Edison International
+OTIS,Otis Worldwide Corp
+CRCL,Circle Internet Group Inc
+FE,FirstEnergy Corp
 IONQ,IONQ Inc
-RF,Regions Financial Corp
-NMR,Nomura Holdings Inc ADR
-BG,Bunge Global SA
-KEY,KeyCorp
-DRI,Darden Restaurants Inc
-DG,Dollar General Corp
-MKL,Markel Group Inc
+AVB,AvalonBay Communities Inc
+XPO,XPO Inc
+PPL,PPL Corp
+XYL,Xylem Inc
+CFG,Citizens Financial Group Inc
+TPL,Texas Pacific Land Corp
+QSR,Restaurant Brands International Inc
+ES,Eversource Energy
+PPG,PPG Industries Inc
+PHG,Koninklijke Philips NV ADR
+HUBB,Hubbell Inc
 HPQ,HP Inc
-CMS,CMS Energy Corp
-NI,NiSource Inc
-BCE,BCE Inc
-IHG,InterContinental Hotels Group PLC ADR
-TSN,Tyson Foods Inc
-CHD,Church & Dwight Co Inc
-CPAY,Corpay Inc
-PAAS,Pan American Silver Corp
-WSM,Williams-Sonoma Inc
-PKX,Posco Holdings Inc ADR
-FIS,Fidelity National Information Services Inc
-LYB,Lyondellbasell Industries N.v
-RL,Ralph Lauren Corp
-L,Loews Corp
-WST,West Pharmaceutical Services Inc
-MTD,Mettler-toledo International Inc
-PHM,Pultegroup Inc
+WIT,Wipro Ltd ADR
+BG,Bunge Global SA
+DOW,Dow Inc
+EQR,Equity Residential
 ATI,ATI Inc
+CRS,Carpenter Technology Corp
+DG,Dollar General Corp
+MTD,Mettler-toledo International Inc
+CPAY,Corpay Inc
+NMR,Nomura Holdings Inc ADR
+WRB,W. R. Berkley Corp
+SYF,Synchrony Financial
+WSM,Williams-Sonoma Inc
+AWK,American Water Works Co Inc
+PAAS,Pan American Silver Corp
+FMX,Fomento Economico Mexicano SAB de CV ADR
+BCE,BCE Inc
+STZ,Constellation Brands Inc
+DRI,Darden Restaurants Inc
+RF,Regions Financial Corp
+IHG,InterContinental Hotels Group PLC ADR
+KEY,KeyCorp
 STLA,Stellantis NV
+CHD,Church & Dwight Co Inc
+IOT,Samsara Inc
+FIS,Fidelity National Information Services Inc
+PHM,Pultegroup Inc
+ROL,Rollins Inc
+FN,Fabrinet
+MKL,Markel Group Inc
+WST,West Pharmaceutical Services Inc
+MAIR,Madison Air Solutions Corp
+RL,Ralph Lauren Corp
+SNX,TD Synnex Corp
+CMS,CMS Energy Corp
+LYB,Lyondellbasell Industries N.v
+NI,NiSource Inc
+OMC,Omnicom Group Inc
+SW,Smurfit WestRock PLC
+YPF,YPF SA ADR
 AER,AerCap Holdings NV
 DGX,Quest Diagnostics Inc
-CRS,Carpenter Technology Corp
+PKX,Posco Holdings Inc ADR
+L,Loews Corp
 VIV,Telefonica Brasil SA ADR
-OMC,Omnicom Group Inc
-VLTO,Veralto Corp
 LH,Labcorp Holdings Inc
-AXIA,Axia Energia SA ADR
-STE,STERIS plc
-WIT,Wipro Ltd ADR
-ULS,UL Solutions Inc
-EXPD,Expeditors International of Washington Inc
-DKS,DICK'S Sporting Goods Inc
-BSBR,Banco Santander Brasil SA ADR
-AS,Amer Sports Inc
-BURL,Burlington Stores Inc
-ALB,Albemarle Corp
-GPN,Global Payments Inc
-LUV,Southwest Airlines Co
-SW,Smurfit WestRock PLC
-SBS,Companhia de Saneamento Basico do Estado de Sao Paulo - SABESP ADR
-TU,Telus Corporation
-BRO,Brown & Brown Inc
-BEKE,KE Holdings Inc ADR
-MAIR,Madison Air Solutions Corp
-DD,Dupont De Nemours Inc
-EFX,Equifax Inc
-RBA,RB Global Inc
-PKG,Packaging Corp of America
-IFF,International Flavors & Fragrances Inc
-LEN,Lennar Corp Class A
-SNX,TD Synnex Corp
-CX,Cemex SAB de CV ADR
-SNA,Snap-On Inc
-BCH,Banco de Chile ADR
+TSN,Tyson Foods Inc
 HEI.A,HEICO Corp Class A
-YPF,YPF SA ADR
+EXPD,Expeditors International of Washington Inc
+LUV,Southwest Airlines Co
 AA,Alcoa Corp
-RS,Reliance Inc
-CF,CF Industries Holdings Inc
-BWXT,BWX Technologies Inc
-BBD,Banco Bradesco ADR Reptg 1 Pref Shs
-BIP,Brookfield Infrastructure Partners Units
+AS,Amer Sports Inc
+BSBR,Banco Santander Brasil SA ADR
+GPN,Global Payments Inc
+STE,STERIS plc
+ALB,Albemarle Corp
+AXIA,Axia Energia SA ADR
+BURL,Burlington Stores Inc
+DKS,DICK'S Sporting Goods Inc
+EFX,Equifax Inc
+VLTO,Veralto Corp
+ULS,UL Solutions Inc
+BEKE,KE Holdings Inc ADR
+CX,Cemex SAB de CV ADR
 CDE,Coeur Mining  Inc
-IOT,Samsara Inc
-WES,Western Midstream Partners Common Units
-APG,APi Group Corp
-FTV,Fortive Corp
-GIS,General Mills Inc
-MGA,Magna International Inc
-ESS,Essex Property Trust Inc
-AMCR,Amcor PLC
-USFD,US Foods Holding Corp
+TU,Telus Corporation
+PKG,Packaging Corp of America
+RBA,RB Global Inc
+RS,Reliance Inc
+BRO,Brown & Brown Inc
+LEN,Lennar Corp Class A
+SBS,Companhia de Saneamento Basico do Estado de Sao Paulo - SABESP ADR
+DD,Dupont De Nemours Inc
+SNA,Snap-On Inc
+IFF,International Flavors & Fragrances Inc
+BCH,Banco de Chile ADR
+HEI,HEICO Corp
+BR,Broadridge Financial Solutions Inc
+BBD,Banco Bradesco ADR Reptg 1 Pref Shs
+FLUT,Flutter Entertainment PLC
 RBC,RBC Bearings Inc
+GIS,General Mills Inc
+BIP,Brookfield Infrastructure Partners Units
+USFD,US Foods Holding Corp
+MGA,Magna International Inc
+FTV,Fortive Corp
+ESS,Essex Property Trust Inc
+DOCN,DigitalOcean Holdings Inc
+IP,International Paper Co
+APG,APi Group Corp
+RBRK,Rubrik Inc
+CF,CF Industries Holdings Inc
+FPS,Forgent Power Solutions  Inc
+AMCR,Amcor PLC
+LII,Lennox International Inc
+H,Hyatt Hotels Corp
+INVH,Invitation Homes Inc
 WCC,Wesco International Inc
 ZTO,ZTO Express (Cayman) Inc ADR
-ITT,ITT Inc
-BR,Broadridge Financial Solutions Inc
-INVH,Invitation Homes Inc
-PR,Permian Resources Corp
-WY,Weyerhaeuser Co
-FLUT,Flutter Entertainment PLC
-LII,Lennox International Inc
-KEP,Korea Electric Power Corp ADR
-OVV,Ovintiv Inc
-HEI,HEICO Corp
-WPC,W.p. Carey Inc
-IP,International Paper Co
-ZBH,Zimmer Biomet Holdings  Inc
-DOCN,DigitalOcean Holdings Inc
-H,Hyatt Hotels Corp
-BBDO,Banco Bradesco ADS Representing 1 Ord Shs
-NVR,NVR Inc
-KIM,Kimco Realty Corp
-EMA,Emera Inc
-TLK,Telkom Indonesia (Persero) Tbk PT ADR
-BEN,Franklin Resources Inc
-AGI,Alamos Gold Inc
-TXT,Textron Inc
 SN,Sharkninja Inc
-RTO,Rentokil Initial PLC ADR
-NLY,Annaly Capital Management Inc
-RCI,Rogers Communications Inc
-OWL,Blue Owl Capital Inc
-GNRC,Generac Holdings Inc
-LDOS,Leidos Holdings Inc
+BWXT,BWX Technologies Inc
+WY,Weyerhaeuser Co
+WES,Western Midstream Partners Common Units
+ITT,ITT Inc
 PL,Planet Labs PBC
-SUI,Sun Communities Inc
-YUMC,Yum China Holdings Inc
-WF,Woori Financial Group Inc ADR
+RCI,Rogers Communications Inc
+AGI,Alamos Gold Inc
+BBDO,Banco Bradesco ADS Representing 1 Ord Shs
+KEP,Korea Electric Power Corp ADR
+NVR,NVR Inc
+PR,Permian Resources Corp
+OWL,Blue Owl Capital Inc
+TLK,Telkom Indonesia (Persero) Tbk PT ADR
+WPC,W.p. Carey Inc
+LDOS,Leidos Holdings Inc
+BEN,Franklin Resources Inc
+KIM,Kimco Realty Corp
+BBY,Best Buy Co Inc
+GNRC,Generac Holdings Inc
+SKM,SK Telecom Co Ltd ADR
+XPEV,Xpeng Inc ADR
+OVV,Ovintiv Inc
+TOST,Toast Inc
+ZBH,Zimmer Biomet Holdings  Inc
+NLY,Annaly Capital Management Inc
+PS,Pershing Square Inc
+TXT,Textron Inc
+EMA,Emera Inc
+MOD,Modine Manufacturing Co
+DECK,Deckers Outdoor Corp
 IEX,IDEX Corp
-DTM,DT Midstream Inc
+PFGC,Performance Food Group Co
+GIB,CGI Inc
+RTO,Rentokil Initial PLC ADR
+TME,Tencent Music Entertainment Group ADR
 MAA,Mid-America Apartment Communities Inc
 CLH,Clean Harbors Inc
-DECK,Deckers Outdoor Corp
-BALL,Ball Corp
-THC,Tenet Healthcare Corp
-XPEV,Xpeng Inc ADR
-MLI,Mueller Industries Inc
-PFGC,Performance Food Group Co
-PNFP,Pinnacle Financial Partners Inc
-JBS,Jbs NV
-BSAC,Banco Santander Chile ADR
-FPS,Forgent Power Solutions  Inc
-SKM,SK Telecom Co Ltd ADR
-SUN,Sunoco Common Units
-LTM,LATAM Airlines Group SA ADR
-EVR,Evercore Inc
-PS,Pershing Square Inc
-OHI,Omega Healthcare Investors  Inc
-GIB,CGI Inc
-SGI,Somnigroup International Inc
-RGA,Reinsurance Group of America Inc
-EG,Everest Group Ltd
-TME,Tencent Music Entertainment Group ADR
-MOD,Modine Manufacturing Co
-RBRK,Rubrik Inc
-TRU,TransUnion
-DOC,Healthpeak Properties  Inc
-MAS,Masco Corp
-J,Jacobs Solutions Inc
-JLL,Jones Lang LaSalle Inc
-CSL,Carlisle Companies Inc
-UNM,Unum Group
-BWA,Borgwarner Inc
-ARMK,Aramark
-GPC,Genuine Parts Co
-TOST,Toast Inc
-RRX,Regal Rexnord Corp
-SOLV,Solventum Corp
-ONON,On Holding AG
-TYL,Tyler Technologies Inc
-WSO,Watsco Inc
-FNF,Fidelity National Financial Inc
-ONTO,Onto Innovation Inc
-SNN,Smith & Nephew PLC ADR
-BBY,Best Buy Co Inc
-ALLY,Ally Financial Inc
-AEG,Aegon Ltd ADR
-PEN,Penumbra Inc
-GFL,GFL Environmental Inc
-DVA,DaVita Inc
-NIO,NIO Inc ADR
-RNR,Renaissancere Holdings Ltd
-RPM,RPM International Inc
-CRBG,Corebridge Financial Inc
-HII,Huntington Ingalls Industries Inc
-AIZ,Assurant Inc
-DINO,HF Sinclair Corp
-TOL,Toll Brothers Inc
-GGG,Graco Inc
-CNH,CNH Industrial NV
-PNW,Pinnacle West Capital Corp
-UDR,UDR Inc
+YUMC,Yum China Holdings Inc
+SUI,Sun Communities Inc
 DY,Dycom Industries Inc
-ELS,Equity LifeStyle Properties Inc
-AVY,Avery Dennison Corp
-TFII,TFI International Inc
-MKC,McCormick & Co Non-Voting Ord Shs
-APTV,APTIV PLC
-GL,Globe Life Inc
-NYT,New York Times Co
-PNR,Pentair PLC
-QXO,QXO Inc
-JHX,James Hardie Industries PLC
-DT,Dynatrace  Inc
-FIG,Figma Inc
-IVZ,Invesco Ltd
-EQH,Equitable Holdings Inc
-GDDY,GoDaddy Inc
-CNA,CNA Financial Corp
-SWK,Stanley Black & Decker Inc
+LTM,LATAM Airlines Group SA ADR
+THC,Tenet Healthcare Corp
+WF,Woori Financial Group Inc ADR
 GWRE,Guidewire Software Inc
-FMS,Fresenius Medical Care AG ADR
-HRL,Hormel Foods Corp
-AMH,American Homes 4 Rent
-WBS,Webster Financial Corp
-GMED,Globus Medical Inc
-CLX,Clorox Co
-FHN,First Horizon Corp
-BLD,TopBuild Corp
-MP,MP Materials Corp
-OKLO,Oklo Inc
-SQM,Sociedad Quimica y Minera de Chile SA ADR
-KNX,Knight-Swift Transportation Holdings Inc
-HL,Hecla Mining Co
-AR,Antero Resources Corp
-AFG,American Financial Group Inc
-WLK,Westlake Corp
-AIT,Applied Industrial Technologies Inc
-RDY,Dr Reddy's Laboratories Ltd ADR
-ALLE,Allegion PLC
+NIO,NIO Inc ADR
+J,Jacobs Solutions Inc
+BSAC,Banco Santander Chile ADR
+SGI,Somnigroup International Inc
+FIG,Figma Inc
+BWA,Borgwarner Inc
+APTV,APTIV PLC
+BALL,Ball Corp
+PNFP,Pinnacle Financial Partners Inc
+EVR,Evercore Inc
+ARMK,Aramark
+TRU,TransUnion
 U,Unity Software Inc
-SF,Stifel Financial Corp
-ARW,Arrow Electronics Inc
-CACI,CACI International Inc
-BJ,BJ's Wholesale Club Holdings Inc
-EGP,Eastgroup Properties Inc
-SJM,J.M. Smucker Co
-BEP,Brookfield Renewable Partners Non Voting Units
-CCK,Crown Holdings Inc
-GIL,Gildan Activewear Inc
-TIMB,Tim SA ADR
-HMY,Harmony Gold Mining Company Ltd ADR
-QBTS,D-Wave Quantum Inc
-ELAN,Elanco Animal Health Inc
-PAG,Penske Automotive Group Inc
-RVTY,Revvity Inc
-PINS,Pinterest Inc
-CPT,Camden Property Trust
-JOBY,Joby Aviation Inc
-IT,Gartner Inc
-SCI,Service Corporation International
-JEF,Jefferies Financial Group Inc
-WTRG,Essential Utilities Inc
-HLI,Houlihan Lokey Inc
-AM,Antero Midstream Corp
-AES,AES Corp
-EHC,Encompass Health Corp
-SPXC,SPX Technologies Inc
-CR,Crane Co
-FRT,Federal Realty Investment Trust
+DTM,DT Midstream Inc
+TYL,Tyler Technologies Inc
+MLI,Mueller Industries Inc
+MAS,Masco Corp
+CSL,Carlisle Companies Inc
+OHI,Omega Healthcare Investors  Inc
+SUN,Sunoco Common Units
+JBS,Jbs NV
+GPC,Genuine Parts Co
+ONON,On Holding AG
+UNM,Unum Group
+RPM,RPM International Inc
+RRX,Regal Rexnord Corp
+JHX,James Hardie Industries PLC
+JLL,Jones Lang LaSalle Inc
+SOLV,Solventum Corp
+DOC,Healthpeak Properties  Inc
+RGA,Reinsurance Group of America Inc
+TOL,Toll Brothers Inc
+ALLY,Ally Financial Inc
+ONTO,Onto Innovation Inc
+WSO,Watsco Inc
 HUBS,HubSpot Inc
-PAC,Grupo Aeroportuario del Pacifico SAB de CV ADR
-SUZ,Suzano SA ADR
-EMBJ,Embraer SA ADR
-WMS,Advanced Drainage Systems Inc
-BMNR,Bitmine Immersion Technologies Inc
-WTS,Watts Water Technologies Inc
-MUSA,Murphy USA Inc
-OGE,OGE Energy Corp
-VMI,Valmont Industries Inc
-GTLS,Chart Industries Inc
-ESI,Element Solutions Inc
-BAX,Baxter International Inc
-GME,GameStop Corp
-MICC,Magnum Ice Cream Company NV
 MGM,MGM Resorts International
-CTRE,CareTrust REIT Inc
-LUMN,Lumen Technologies Inc
-DCI,Donaldson Company Inc
+DT,Dynatrace  Inc
+DINO,HF Sinclair Corp
+TFII,TFI International Inc
+EG,Everest Group Ltd
+HRL,Hormel Foods Corp
+KNX,Knight-Swift Transportation Holdings Inc
+AEG,Aegon Ltd ADR
+SNN,Smith & Nephew PLC ADR
+MP,MP Materials Corp
+PEN,Penumbra Inc
+FNF,Fidelity National Financial Inc
+GDDY,GoDaddy Inc
+GFL,GFL Environmental Inc
+NYT,New York Times Co
+DVA,DaVita Inc
+CNH,CNH Industrial NV
+AIZ,Assurant Inc
+GGG,Graco Inc
 HBM,Hudbay Minerals Inc
-AHR,American Healthcare REIT Inc
-RRC,Range Resources Corp
-BXP,BXP Inc
-MOH,Molina Healthcare Inc
-AG,First Majestic Silver Corp
-ORI,Old Republic International Corp
-UHS,Universal Health Services Inc
-IAG,IAMGOLD Corp
-BAH,Booz Allen Hamilton Holding Corp
-SNAP,Snap Inc
-BRX,Brixmor Property Group Inc
-OC,Owens Corning
-R,Ryder System Inc
-CAVA,CAVA Group Inc
-DAR,Darling Ingredients Inc
-SSB,SouthState Bank Corp
-BVN,Compania de Minas Buenaventura SAA ADR
-CNM,Core & Main Inc
-PSO,Pearson PLC ADR
-BROS,Dutch Bros Inc
-ASR,Grupo Aeroportuario del Sureste SAB de CV ADR
-YMM,Full Truck Alliance Co Ltd ADR
-TX,Ternium SA ADR
-ACM,AECOM
-AGX,Argan Inc
-ALV,Autoliv Inc
-ALSN,Allison Transmission Holdings Inc
-CUBE,CubeSmart
+IVZ,Invesco Ltd
+QXO,QXO Inc
+CRBG,Corebridge Financial Inc
+SWK,Stanley Black & Decker Inc
+PINS,Pinterest Inc
+SQM,Sociedad Quimica y Minera de Chile SA ADR
+AVY,Avery Dennison Corp
+ELAN,Elanco Animal Health Inc
+UDR,UDR Inc
+GL,Globe Life Inc
+JOBY,Joby Aviation Inc
+RNR,Renaissancere Holdings Ltd
+ELS,Equity LifeStyle Properties Inc
+OKLO,Oklo Inc
+PNW,Pinnacle West Capital Corp
+HL,Hecla Mining Co
+MKC,McCormick & Co Non-Voting Ord Shs
+CACI,CACI International Inc
+WBS,Webster Financial Corp
+AMH,American Homes 4 Rent
+HII,Huntington Ingalls Industries Inc
+BLD,TopBuild Corp
+PNR,Pentair PLC
+EQH,Equitable Holdings Inc
+AR,Antero Resources Corp
+FMS,Fresenius Medical Care AG ADR
+CNA,CNA Financial Corp
+BEP,Brookfield Renewable Partners Non Voting Units
+RVTY,Revvity Inc
+FHN,First Horizon Corp
+ALLE,Allegion PLC
+AIT,Applied Industrial Technologies Inc
+QBTS,D-Wave Quantum Inc
+WLK,Westlake Corp
+RDY,Dr Reddy's Laboratories Ltd ADR
+LUMN,Lumen Technologies Inc
+HMY,Harmony Gold Mining Company Ltd ADR
+GIL,Gildan Activewear Inc
+GMED,Globus Medical Inc
+IT,Gartner Inc
+BJ,BJ's Wholesale Club Holdings Inc
+PAG,Penske Automotive Group Inc
+SPXC,SPX Technologies Inc
+ARW,Arrow Electronics Inc
+JEF,Jefferies Financial Group Inc
+CLX,Clorox Co
+SJM,J.M. Smucker Co
+CPT,Camden Property Trust
+SF,Stifel Financial Corp
+AFG,American Financial Group Inc
+CCK,Crown Holdings Inc
+CR,Crane Co
+EGP,Eastgroup Properties Inc
 MOG.A,Moog Inc Class A
-ADC,Agree Realty Corp
+AES,AES Corp
+TIMB,Tim SA ADR
+WMS,Advanced Drainage Systems Inc
+WTRG,Essential Utilities Inc
+AG,First Majestic Silver Corp
+VMI,Valmont Industries Inc
+FRT,Federal Realty Investment Trust
+BROS,Dutch Bros Inc
+EHC,Encompass Health Corp
+EMBJ,Embraer SA ADR
+WTS,Watts Water Technologies Inc
+BMNR,Bitmine Immersion Technologies Inc
+SCI,Service Corporation International
+ESI,Element Solutions Inc
+IAG,IAMGOLD Corp
+SUZ,Suzano SA ADR
+OC,Owens Corning
+BAH,Booz Allen Hamilton Holding Corp
+PAC,Grupo Aeroportuario del Pacifico SAB de CV ADR
+GTLS,Chart Industries Inc
+AM,Antero Midstream Corp
+MICC,Magnum Ice Cream Company NV
+SNAP,Snap Inc
+TX,Ternium SA ADR
+R,Ryder System Inc
+BVN,Compania de Minas Buenaventura SAA ADR
+HLI,Houlihan Lokey Inc
 FLS,Flowserve Corp
-SARO,StandardAero  Inc.
+DAR,Darling Ingredients Inc
+GME,GameStop Corp
 W,Wayfair Inc
-KT,KT Corp ADR
-TTC,Toro Co
-DDS,Dillard's Inc
-CFR,Cullen/Frost Bankers Inc
-STN,Stantec Inc
-PRI,Primerica Inc
-AYI,Acuity Inc
-ELPC,Companhia Paranaense de Energia ADR
-CHWY,Chewy Inc
-RYAN,Ryan Specialty Holdings Inc
-WAL,Western Alliance Bancorp
-NNN,NNN REIT Inc
-GAP,Gap Inc
-PRMB,Primo Brands Corp
-MSGS,Madison Square Garden Sports Corp
-KRMN,Karman Holdings Inc
-ENS,EnerSys
-EMN,Eastman Chemical Co
-LEVI,Levi Strauss & Co
-SSL,Sasol Ltd ADR
+BAX,Baxter International Inc
+ALV,Autoliv Inc
+DCI,Donaldson Company Inc
+OGE,OGE Energy Corp
+CNM,Core & Main Inc
+MUSA,Murphy USA Inc
+BXP,BXP Inc
+ALSN,Allison Transmission Holdings Inc
+CTRE,CareTrust REIT Inc
+BRX,Brixmor Property Group Inc
+AHR,American Healthcare REIT Inc
+SARO,StandardAero  Inc.
+AGX,Argan Inc
+SSB,SouthState Bank Corp
 FDS,Factset Research Systems Inc
-ARE,Alexandria Real Estate Equities  Inc
-FR,First Industrial Realty Trust Inc
-HESM,Hess Midstream LP
-ICL,ICL Group Ltd
-TKR,Timken Co
+MOH,Molina Healthcare Inc
+YMM,Full Truck Alliance Co Ltd ADR
+RRC,Range Resources Corp
+AYI,Acuity Inc
+ACM,AECOM
+PSO,Pearson PLC ADR
+DDS,Dillard's Inc
+MSGS,Madison Square Garden Sports Corp
+CHWY,Chewy Inc
 UHAL.B,U-Haul Holding Co Series N
-NE,Noble Corporation PLC
-FRO,Frontline PLC
-KNTK,Kinetik Holdings Inc
-ORA,Ormat Technologies Inc
-AGCO,AGCO Corp
-REXR,Rexford Industrial Realty Inc
-VIRT,Virtu Financial Inc
-SM,SM Energy Co
-SBSW,Sibanye Stillwater Ltd ADR
-BA PR A,Boeing Depositary Shares Representing a 1 20th int in a share of 6 00 Mndtry
-YOU,Clear Secure Inc
-ACI,Albertsons Companies Inc
-OSK,Oshkosh Corp
-ZWS,Zurn Elkay Water Solutions Corp
-JHG,Janus Henderson Group PLC
-BLDR,Builders FirstSource Inc
-AMG,Affiliated Managers Group Inc
-EDU,New Oriental Education & Technology Group Inc ADR
-AOS,A O Smith Corp
-VCX,Fundrise Innovation Fund  LLC
-CAE,CAE Inc
-GKOS,Glaukos Corp
-CWEN,Clearway Energy Inc
-CMC,Commercial Metals Co
-SOBO,South Bow Corp
-IDA,Idacorp Inc
-VIST,Vista Energy SAB de CV ADR
+ORI,Old Republic International Corp
+PRMB,Primo Brands Corp
+ASR,Grupo Aeroportuario del Sureste SAB de CV ADR
+LEVI,Levi Strauss & Co
+CUBE,CubeSmart
+CAVA,CAVA Group Inc
+TKR,Timken Co
+UHS,Universal Health Services Inc
+TTC,Toro Co
+RYAN,Ryan Specialty Holdings Inc
+KT,KT Corp ADR
 CRL,Charles River Laboratories International Inc
-NFG,National Fuel Gas Co
-KEX,Kirby Corp
-PDI,PIMCO Dynamic Income Fund
-ESE,ESCO Technologies Inc
-UGI,Ugi Corp
-SSD,Simpson Manufacturing Co Inc
-BIRK,Birkenstock Holding PLC
-BF.B,Brown-Forman Corp Class B
-RIG,Transocean Ltd
-ECG,Everus Construction Group Inc
-NCLH,Norwegian Cruise Line Holdings Ltd
-VOYA,Voya Financial Inc
-NOV,Nov Inc
-JXN,Jackson Financial Inc
-TAP,Molson Coors Beverage Co Class B
+ADC,Agree Realty Corp
+EGO,Eldorado Gold Corp
+STN,Stantec Inc
+EMN,Eastman Chemical Co
+ELPC,Companhia Paranaense de Energia ADR
+WAL,Western Alliance Bancorp
+ARE,Alexandria Real Estate Equities  Inc
+CMC,Commercial Metals Co
+ORA,Ormat Technologies Inc
+ICL,ICL Group Ltd
+CFR,Cullen/Frost Bankers Inc
 CIB,Grupo Cibest SA ADR
-KGS,Kodiak Gas Services Inc
-ATR,Aptargroup Inc
-AXS,AXIS Capital Holdings Ltd
-STAG,STAG Industrial Inc
-CWAN,Clearwater Analytics Holdings Inc
-QGEN,Qiagen NV
-MOS,Mosaic Co
-KNSL,Kinsale Capital Group Inc
-LTH,Life Time Group Holdings  Inc
+CWEN,Clearway Energy Inc
+PRI,Primerica Inc
+SBSW,Sibanye Stillwater Ltd ADR
+ENS,EnerSys
+NCLH,Norwegian Cruise Line Holdings Ltd
+CAE,CAE Inc
+NNN,NNN REIT Inc
+BIRK,Birkenstock Holding PLC
+AGCO,AGCO Corp
+BA PR A,Boeing Depositary Shares Representing a 1 20th int in a share of 6 00 Mndtry
+BLDR,Builders FirstSource Inc
+SSL,Sasol Ltd ADR
+EDU,New Oriental Education & Technology Group Inc ADR
+AMG,Affiliated Managers Group Inc
+VIRT,Virtu Financial Inc
+JHG,Janus Henderson Group PLC
+FR,First Industrial Realty Trust Inc
+OSK,Oshkosh Corp
+REXR,Rexford Industrial Realty Inc
+ZWS,Zurn Elkay Water Solutions Corp
+CLF,Cleveland-Cliffs Inc
+PDI,PIMCO Dynamic Income Fund
+AOS,A O Smith Corp
+SSD,Simpson Manufacturing Co Inc
+IDA,Idacorp Inc
 PCOR,Procore Technologies Inc
-ST,Sensata Technologies Holding PLC
-RHP,Ryman Hospitality Properties Inc
+VIST,Vista Energy SAB de CV ADR
+HESM,Hess Midstream LP
+SM,SM Energy Co
+FRO,Frontline PLC
+VSH,Vishay Intertechnology Inc
+KEX,Kirby Corp
+ACI,Albertsons Companies Inc
 NXE,Nexgen Energy Ltd
-HR,Healthcare Realty Trust Inc
-MTDR,Matador Resources Co
-TRNO,Terreno Realty Corp
-VAL,Valaris Ltd
-LEA,Lear Corp
-PB,Prosperity Bancshares  Inc
-FAF,First American Financial Corp
-BBUC,Brookfield Business Holdings Corp
-VIPS,Vipshop Holdings Ltd ADR
-RAL,Ralliant Corp
-LNC,Lincoln National Corp
-JBTM,JBT Marel Corp
-FSS,Federal Signal Corp
-SGHC,SGHC Ltd
-BEPC,Brookfield Renewable Corp
-THG,Hanover Insurance Group Inc
-OSCR,Oscar Health Inc
+YOU,Clear Secure Inc
+SOBO,South Bow Corp
+GAP,Gap Inc
+NE,Noble Corporation PLC
+QGEN,Qiagen NV
+KNTK,Kinetik Holdings Inc
+ESE,ESCO Technologies Inc
+VOYA,Voya Financial Inc
+MOS,Mosaic Co
+ECG,Everus Construction Group Inc
+NFG,National Fuel Gas Co
+BF.B,Brown-Forman Corp Class B
+CWAN,Clearwater Analytics Holdings Inc
+RHP,Ryman Hospitality Properties Inc
 NEU,NewMarket Corp
-EPRT,Essential Properties Realty Trust Inc
-AWI,Armstrong World Industries Inc
+UGI,Ugi Corp
+KRMN,Karman Holdings Inc
+JXN,Jackson Financial Inc
+NOV,Nov Inc
+ATR,Aptargroup Inc
+LEA,Lear Corp
+BEPC,Brookfield Renewable Corp
+ST,Sensata Technologies Holding PLC
+ESTC,Elastic NV
+AXS,AXIS Capital Holdings Ltd
+OSCR,Oscar Health Inc
+STAG,STAG Industrial Inc
+RIG,Transocean Ltd
+VIPS,Vipshop Holdings Ltd ADR
+MTDR,Matador Resources Co
+LTH,Life Time Group Holdings  Inc
+KNSL,Kinsale Capital Group Inc
+EXP,Eagle Materials Inc
+TAP,Molson Coors Beverage Co Class B
+RAL,Ralliant Corp
+BBUC,Brookfield Business Holdings Corp
+PB,Prosperity Bancshares  Inc
+JBTM,JBT Marel Corp
+KLAR,Klarna Group PLC
+HR,Healthcare Realty Trust Inc
 OR,OR Royalties Inc
+TRNO,Terreno Realty Corp
+HXL,Hexcel Corp
+PRIM,Primoris Services Corp
+AWI,Armstrong World Industries Inc
+BIO,Bio Rad Laboratories Inc Class A
+LNC,Lincoln National Corp
+KGS,Kodiak Gas Services Inc
+FAF,First American Financial Corp
+VFC,VF Corp
+OGC,OceanaGold Corp
+ORCL PR D,Oracle Depositary Shares Rep 1 2000th Prf Series D
+PAYC,Paycom Software Inc
+INGM,Ingram Micro Holding Corp
+PATH,UiPath Inc
+SGHC,SGHC Ltd
+LAD,Lithia Motors Inc
+GTES,Gates Industrial Corporation PLC
 TEX,Terex Corp
 TXNM,TXNM Energy Inc
-OGC,OceanaGold Corp
-TFPM,Triple Flag Precious Metals Corp
-MSA,MSA Safety Inc
-VFC,VF Corp
-AROC,Archrock Inc
-NPO,Enpro Inc
-SWX,Southwest Gas Holdings Inc
-HXL,Hexcel Corp
-CAG,Conagra Brands Inc
-INGR,Ingredion Inc
-VSH,Vishay Intertechnology Inc
-PAYC,Paycom Software Inc
-STWD,Starwood Property Trust Inc (Maryland)
-CLF,Cleveland-Cliffs Inc
-S,SentinelOne Inc
-PRIM,Primoris Services Corp
-AN,AutoNation Inc
-LAD,Lithia Motors Inc
-RSI,Rush Street Interactive Inc
-MAC,Macerich Co
-COMP,Compass Inc
-FLR,Fluor Corp
-KLAR,Klarna Group PLC
-PJT,PJT Partners Inc
-AXTA,Axalta Coating Systems Ltd
-BIO,Bio Rad Laboratories Inc Class A
-MHK,Mohawk Industries Inc
-FNB,FNB Corp
-EGO,Eldorado Gold Corp
-GTES,Gates Industrial Corporation PLC
-GBCI,Glacier Bancorp Inc
-OMF,OneMain Holdings Inc
-EXP,Eagle Materials Inc
-INGM,Ingram Micro Holding Corp
-RYN,Rayonier Inc
-UGP,Ultrapar Participacoes SA ADR
-LB,LandBridge Co LLC
-LW,Lamb Weston Holdings Inc
-GATX,GATX Corp
-VNO,Vornado Realty Trust
-MDA,Mda Space Ltd
-PACS,Pacs Group Inc
-MSM,MSC Industrial Direct Co Inc
-TAL,TAL Education Group ADR
-GGB,Gerdau SA ADR
-ACA,Arcosa Inc
-WH,Wyndham Hotels & Resorts Inc
+PSN,Parsons Corp
 ETSY,ETSY Inc
-OUT,Outfront Media Inc
+FLR,Fluor Corp
+AXTA,Axalta Coating Systems Ltd
+VAL,Valaris Ltd
 BYD,Boyd Gaming Corp
-EAT,Brinker International Inc
-TFX,Teleflex Inc
+THG,Hanover Insurance Group Inc
+FSS,Federal Signal Corp
+MHK,Mohawk Industries Inc
+EPRT,Essential Properties Realty Trust Inc
+INGR,Ingredion Inc
+HIMS,Hims & Hers Health Inc
+NPO,Enpro Inc
+COMP,Compass Inc
+VCX,Fundrise Innovation Fund  LLC
+KMX,Carmax Inc
+OMF,OneMain Holdings Inc
 SNDR,Schneider National Inc
+AN,AutoNation Inc
+MAC,Macerich Co
+AVTR,Avantor Inc
+TFPM,Triple Flag Precious Metals Corp
+CAG,Conagra Brands Inc
+VNO,Vornado Realty Trust
+MSA,MSA Safety Inc
+MSM,Msc Industrial Direct Co.  Inc
+STWD,Starwood Property Trust Inc (Maryland)
+PJT,PJT Partners Inc
+TAL,TAL Education Group ADR
+RYN,Rayonier Inc
+CE,Celanese Corp
+SWX,Southwest Gas Holdings Inc
+GKOS,Glaukos Corp
+ACA,Arcosa Inc
+EAT,Brinker International Inc
+FNB,FNB Corp
+GBCI,Glacier Bancorp Inc
+RSI,Rush Street Interactive Inc
+GVA,Granite Construction Inc
 ENIC,Enel Chile SA ADR
 LOAR,Loar Holdings Inc
-CHE,Chemed Corp
-NJR,New Jersey Resources Corp
-POR,Portland General Electric Co
-CE,Celanese Corp
-PIPR,Piper Sandler Companies
-IBP,Installed Building Products Inc
-BLCO,Bausch + Lomb Corp
+MDA,Mda Space Ltd
+WH,Wyndham Hotels & Resorts Inc
+LW,Lamb Weston Holdings Inc
+GATX,GATX Corp
 FLG,Flagstar Bank NA
-PSN,Parsons Corp
-KMX,Carmax Inc
-ABCB,Ameris Bancorp
-PATH,UiPath Inc
-GVA,Granite Construction Inc
-AMTM,Amentum Holdings Inc
-ESTC,Elastic NV
-ORCL PR D,Oracle Depositary Shares Rep 1 2000th Prf Series D
-BKH,Black Hills Corp
-KOF,Coca-Cola Femsa SAB de CV ADR
-ESNT,Essent Group Ltd
-MCY,Mercury General Corp
-ESAB,ESAB Corp
-CPA,Copa Holdings SA
-AVTR,Avantor Inc
-CRC,California Resources Corp
-ADT,ADT Inc
-MATX,Matson Inc
-MTG,MGIC Investment Corp
-HIMS,Hims & Hers Health Inc
-KRG,Kite Realty Group Trust
-OBDC,Blue Owl Capital Corp
-SEI,Solaris Energy Infrastructure Inc
 GXO,GXO Logistics Inc
-STVN,Stevanato Group SpA
-M,Macy's Inc
-IFS,Intercorp Financial Services Inc
-MUR,Murphy Oil Corp
-BXSL,Blackstone Secured Lending Fund
+AROC,Archrock Inc
+CPA,Copa Holdings SA
+PACS,Pacs Group Inc
+POR,Portland General Electric Co
 TMHC,Taylor Morrison Home Corp
-G,Genpact Ltd
-MGY,Magnolia Oil & Gas Corp
-AUB,Atlantic Union Bankshares Corp
-EPAM,Epam Systems Inc
-HOMB,Home BancShares Inc
-CMBT,CMB.TECH NV
-WTM,White Mountains Insurance Group Ltd
-BLSH,Bullish
-BC,Brunswick Corp
-WEX,WEX Inc
-FND,Floor & Decor Holdings Inc
-LBRT,Liberty Energy Inc
-HASI,HA Sustainable Infrastructure Capital Inc
-BIPC,Brookfield Infrastructure Corp
-GOLF,Acushnet Holdings Corp
-OGS,ONE Gas Inc
-DLB,Dolby Laboratories Inc
-RITM,Rithm Capital Corp
-MC,Moelis & Co
-CHH,Choice Hotels International Inc
-SR,Spire Inc
-TKC,Turkcell Iletisim Hizmetleri AS ADR
-PRM,Perimeter Solutions Inc
-SITE,SiteOne Landscape Supply Inc
-ATH PR A,Athene Holding DS Representing 1 1000 Pref Shs Series A
-JAN,Janus Living Inc
-CNX,CNX Resources Corp
-WHD,Cactus Inc
-XXI,Twenty One Capital Inc
-LPL,LG Display Co Ltd ADR
-UWMC,UWM Holdings Corp
-HRB,H & R Block Inc
-LPX,Louisiana-Pacific Corp
-GBTG,Global Business Travel Group Inc
-ALH,Alliance Laundry Holdings Inc
-OTF,Blue Owl Technology Finance Corp
-AX,Axos Financial Inc
-SON,Sonoco Products Co
-MIAX,Miami International Holdings Inc
-SXT,Sensient Technologies Corp
-WFG,West Fraser Timber Co Ltd
-RLI,RLI Corp
-ACHR,Archer Aviation Inc
-RDN,Radian Group Inc
-UNF,UniFirst Corp
-BMA,Banco Macro SA ADR
-GHC,Graham Holdings Co
-PBF,PBF Energy Inc
-LAZ,Lazard Inc
-BOOT,Boot Barn Holdings Inc
-WFC PR L,Wells Fargo 7.50% Non Cumulative Perpetual Convertible Pref Shs Class A Series L
 ZETA,Zeta Global Holdings Corp
-ASB,Associated Banc-Corp
-FCN,FTI Consulting Inc
-NNI,Nelnet Inc
-MDU,MDU Resources Group Inc
-SPHR,Sphere Entertainment Co
-MAIN,Main Street Capital Corp
-ALK,Alaska Air Group Inc
-MIR,Mirion Technologies Inc
-AQN,Algonquin Power & Utilities Corp
-MRP,Millrose Properties Inc
-CSW,CSW Industrials Inc
-MTN,Vail Resorts Inc
-BF.A,Brown-Forman Corp Class A
-CSTM,Constellium SE
-EPR,EPR Properties
-MTRN,Materion Corp
-TDS,Telephone and Data Systems Inc
-KEN,Kenon Holdings Ltd
-PFSI,PennyMac Financial Services Inc
-KVYO,Klaviyo Inc
-HCC,Warrior Met Coal Inc
-CNO,CNO Financial Group Inc
-POST,Post Holdings Inc
-PAM,Pampa Energia SA ADR
-BBU,Brookfield Business Partners Units
-AD,Array Digital Infrastructure Inc
-CUZ,Cousins Properties Inc
-CRGY,Crescent Energy Co
-REZI,Resideo Technologies Inc
-ANDG,Andersen Group Inc
-LMND,Lemonade Inc
-TBBB,Bbb Foods Inc
-BCO,Brinks Co
-AIR,AAR Corp
-HRI,Herc Holdings Inc
-HAFN,Hafnia Ltd
-MANE,Veradermics Inc
+S,SentinelOne Inc
+AMTM,Amentum Holdings Inc
+G,Genpact Ltd
+M,Macy's Inc
+EPAM,Epam Systems Inc
+BMA,Banco Macro SA ADR
+GGB,Gerdau SA ADR
 BB,BlackBerry Ltd
-FBIN,Fortune Brands Innovations Inc
-CBT,Cabot Corp
-MTH,Meritage Homes Corp
-VVV,Valvoline Inc
-HNGE,Hinge Health Inc
-CVSA,Covista Inc
-KBR,KBR Inc
-CNR,Core Natural Resources Inc
-SFBS,ServisFirst Bancshares Inc
-COLD,Americold Realty Trust Inc
-USAC,USA Compression Partners Common Units
-CIG,Companhia Energetica Minas Gerais ADR Repstg One Pref Shs
-MNSO,MINISO Group Holding Ltd ADR
-VNT,Vontier Corp
+STVN,Stevanato Group SpA
+OBDC,Blue Owl Capital Corp
+TFX,Teleflex Inc
+MATX,Matson Inc
+KOF,Coca-Cola Femsa SAB de CV ADR
+ABCB,Ameris Bancorp
+OUT,Outfront Media Inc
+BXSL,Blackstone Secured Lending Fund
+IFS,Intercorp Financial Services Inc
+CHE,Chemed Corp
+LPL,LG Display Co Ltd ADR
+FND,Floor & Decor Holdings Inc
+ESAB,ESAB Corp
+PIPR,Piper Sandler Companies
+KRG,Kite Realty Group Trust
+BLCO,Bausch + Lomb Corp
+CRC,California Resources Corp
+UGP,Ultrapar Participacoes SA ADR
+NJR,New Jersey Resources Corp
+MCY,Mercury General Corp
+IBP,Installed Building Products  Inc
+LB,LandBridge Co LLC
+MC,Moelis & Co
+BC,Brunswick Corp
+BKH,Black Hills Corp
+MUR,Murphy Oil Corp
+ADT,ADT Inc
+DLB,Dolby Laboratories Inc
+MTG,MGIC Investment Corp
+HOMB,Home BancShares Inc
+AUB,Atlantic Union Bankshares Corp
+WFG,West Fraser Timber Co Ltd
+OTF,Blue Owl Technology Finance Corp
+ESNT,Essent Group Ltd
+PRM,Perimeter Solutions Inc
+WEX,WEX Inc
+GOLF,Acushnet Holdings Corp
+ACHR,Archer Aviation Inc
+LPX,Louisiana-Pacific Corp
+HASI,HA Sustainable Infrastructure Capital Inc
+WTM,White Mountains Insurance Group Ltd
+MGY,Magnolia Oil & Gas Corp
+BOOT,Boot Barn Holdings Inc
+BIPC,Brookfield Infrastructure Corp
+RITM,Rithm Capital Corp
+SEI,Solaris Energy Infrastructure Inc
+TKC,Turkcell Iletisim Hizmetleri AS ADR
+ALH,Alliance Laundry Holdings Inc
+ALK,Alaska Air Group Inc
+BLSH,Bullish
+HCC,Warrior Met Coal Inc
+KVYO,Klaviyo Inc
+SPHR,Sphere Entertainment Co
+CHH,Choice Hotels International Inc
+HRB,H & R Block Inc
+ATH PR A,Athene Holding DS Representing 1 1000 Pref Shs Series A
+PBF,PBF Energy Inc
+CMBT,CMB.TECH NV
+AX,Axos Financial Inc
+GBTG,Global Business Travel Group Inc
+JAN,Janus Living Inc
+LBRT,Liberty Energy Inc
+UWMC,UWM Holdings Corp
+MAIN,Main Street Capital Corp
+UNF,UniFirst Corp
+OGS,ONE Gas Inc
 SMR,Nuscale Power Corp
-VSCO,Victoria's Secret & Co
-FHI,Federated Hermes Inc
-PLNT,Planet Fitness Inc
-INSW,International Seaways Inc
-PSUS,Pershing Square USA Ltd
-BDC,Belden Inc
+PAM,Pampa Energia SA ADR
+LAZ,Lazard Inc
+SON,Sonoco Products Co
+SR,Spire Inc
+GHC,Graham Holdings Co
+MTN,Vail Resorts Inc
+SXT,Sensient Technologies Corp
+CNR,Core Natural Resources Inc
+CSTM,Constellium SE
+SITE,SiteOne Landscape Supply Inc
+CNX,CNX Resources Corp
+FCN,FTI Consulting Inc
+RLI,RLI Corp
+FBIN,Fortune Brands Innovations Inc
+KEN,Kenon Holdings Ltd
+XXI,Twenty One Capital Inc
+WHD,Cactus Inc
+WFC PR L,Wells Fargo 7.50% Non Cumulative Perpetual Convertible Pref Shs Class A Series L
+NNI,Nelnet Inc
+REZI,Resideo Technologies Inc
+MTRN,Materion Corp
+MRP,Millrose Properties Inc
+LMND,Lemonade Inc
+KBR,KBR Inc
+ASB,Associated Banc-Corp
+AQN,Algonquin Power & Utilities Corp
+MIR,Mirion Technologies Inc
+RDN,Radian Group Inc
 CAAP,Corporacion America Airports SA
-BRC,Brady Corp
-AZZ,AZZ Inc
-EE,Excelerate Energy Inc
+TDS,Telephone and Data Systems Inc
+CBT,Cabot Corp
 KNF,Knife River Corp
+MIAX,Miami International Holdings Inc
+AD,Array Digital Infrastructure Inc
+COLD,Americold Realty Trust Inc
+AIR,AAR Corp
+BBU,Brookfield Business Partners Units
+CSW,CSW Industrials Inc
+BF.A,Brown-Forman Corp Class A
+CUZ,Cousins Properties Inc
+MDU,MDU Resources Group Inc
+HRI,Herc Holdings Inc
+RDW,Redwire Corp
+HNGE,Hinge Health Inc
+MTH,Meritage Homes Corp
+RXO,RXO Inc
+AVEX,AEVEX Corp
+VSCO,Victoria's Secret & Co
+ANDG,Andersen Group Inc
 PVH,PVH Corp
+PFSI,PennyMac Financial Services Inc
+EPR,EPR Properties
+CNO,CNO Financial Group Inc
+TNL,Travel + Leisure Co
+MANE,Veradermics Inc
+FHI,Federated Hermes Inc
+BCO,Brinks Co
+TREX,Trex Company Inc
+VVV,Valvoline Inc
+HGV,Hilton Grand Vacations Inc
+TAC,TransAlta Corp
+TBBB,Bbb Foods Inc
+MNSO,MINISO Group Holding Ltd ADR
+BETA,BETA Technologies Inc
+SFBS,ServisFirst Bancshares Inc
+PLNT,Planet Fitness Inc
+CVSA,Covista Inc
+LRN,Stride Inc
+DOCS,Doximity Inc
+WPP,WPP PLC ADR
+ENVA,Enova International Inc
+THO,Thor Industries Inc
+LION,Lionsgate Studios Corp
+OPLN,Openlane Inc
+BRC,Brady Corp
+SKT,Tanger Inc
+USAC,USA Compression Partners Common Units
+VNT,Vontier Corp
+BDC,Belden Inc
+POST,Post Holdings Inc
+CIG,Companhia Energetica Minas Gerais ADR Repstg One Pref Shs
+AZZ,AZZ Inc
+KTB,Kontoor Brands Inc
+DNP,DNP Select Income Fund Inc
+KRC,Kilroy Realty Corp
+PSUS,Pershing Square USA Ltd
+GFF,Griffon Corp
 CRK,Comstock Resources Inc
 PHI,PLDT Inc ADR
-SKT,Tanger Inc
-DNP,DNP Select Income Fund Inc
-TREX,Trex Company Inc
-TNL,Travel + Leisure Co
-THO,Thor Industries Inc
-WPP,WPP PLC ADR
-STNG,Scorpio Tankers Inc
-TAC,TransAlta Corp
-RXO,RXO Inc
-SLGN,Silgan Holdings Inc
-ATMU,Atmus Filtration Technologies Inc
-HP,Helmerich and Payne Inc
-UCB,United Community Banks Inc
-IRT,Independence Realty Trust  Inc
-MWA,Mueller Water Products Inc
-KRC,Kilroy Realty Corp
-TDW,Tidewater Inc
 SKY,Champion Homes Inc
-ENVA,Enova International Inc
-BNL,Broadstone Net Lease Inc
-GFF,Griffon Corp
-GPI,Group 1 Automotive Inc
-OII,Oceaneering International Inc
-KTB,Kontoor Brands Inc
-HGV,Hilton Grand Vacations Inc
-WBI,WaterBridge Infrastructure LLC
-TPC,Tutor Perini Corp
-NVST,Envista Holdings Corp
-HHH,Howard Hughes Holdings Inc
-RNST,Renasant Corp
-LION,Lionsgate Studios Corp
-BETA,BETA Technologies Inc
-PII,Polaris Inc
-NP,Neptune Insurance Holdings Inc
-KAI,Kadant Inc
-LRN,Stride Inc
 YSS,York Space Systems Inc
-ARX,Accelerant Holdings
-BTE,Baytex Energy Corp
-OPLN,Openlane Inc
-STUB,Stubhub Holdings  Inc
-FBP,First BanCorp
-NHI,National Health Investors Inc
-DAN,Dana Inc
-CNS,Cohen & Steers Inc
-BAC PR L,Bank of America 7.25% Non Cumulative Perpetual Conv Pref Series L
-FG,F&G Annuities & Life Inc
-HGTY,Hagerty Inc
-BMI,Badger Meter Inc
-JOE,St Joe Co
-RNG,RingCentral Inc
-SUNC,SunocoCorp Units
-DOCS,Doximity Inc
-CDP,COPT Defense Properties
-GPGI,GPGI Inc
-BILL,BILL Holdings Inc
-BOX,Box Inc
-BBWI,Bath & Body Works Inc
 ZGN,Ermenegildo Zegna NV
-BFAM,Bright Horizons Family Solutions Inc
-ARIS,Aris Mining Corp
-AB,AllianceBernstein Holding Units
-KFY,Korn Ferry
-LEU,Centrus Energy Corp
-OGN,Organon & Co
-BWLP,BW LPG Ltd
-BFH,Bread Financial Holdings Inc
-ABG,Asbury Automotive Group Inc
-AAP,Advance Auto Parts Inc
-GNW,Genworth Financial Inc
-ANF,Abercrombie & Fitch Co
-MANU,Manchester United PLC
-SKE,Skeena Resources Ltd
-SMG,Scotts Miracle-Gro Co
-AAUC,Allied Gold Corp
-FOUR,Shift4 Payments  Inc
-AVA,Avista Corp
-YETI,Yeti Holdings Inc
-APLE,Apple Hospitality REIT Inc
-AGO,Assured Guaranty Ltd
-NEA,Nuveen AMT-Free Quality Municipal Income Fund
-WOLF,Wolfspeed Inc
-BKU,BankUnited Inc
-EFXT,Enerflex Ltd
-CBU,Community Financial System Inc
-NSA,National Storage Affiliates Trust
-NATL,NCR Atleos Corp
-CSAN,Cosan SA ADR
-CGAU,Centerra Gold Inc
-BBAR,Banco BBVA Argentina SA ADR
+HAFN,Hafnia Ltd
+MWA,Mueller Water Products Inc
+SLGN,Silgan Holdings Inc
+PII,Polaris Inc
+UCB,United Community Banks Inc
+BNL,Broadstone Net Lease Inc
+NVST,Envista Holdings Corp
+BBWI,Bath & Body Works Inc
+IRT,Independence Realty Trust  Inc
+DAN,Dana Inc
+NP,Neptune Insurance Holdings Inc
+RNG,RingCentral Inc
+CRGY,Crescent Energy Co
+BOX,Box Inc
+BILL,BILL Holdings Inc
 INFQ,Infleqtion Inc
-RDW,Redwire Corp
-ATS,ATS Corp
-MHO,M/I Homes Inc
-MSGE,Madison Square Garden Entertainment Corp
-CVI,CVR Energy Inc
-CON,Concentra Group Holdings Parent Inc
-SIG,Signet Jewelers Ltd
+INSW,International Seaways Inc
+HP,Helmerich and Payne Inc
+TPC,Tutor Perini Corp
+STNG,Scorpio Tankers Inc
+BBAR,Banco BBVA Argentina SA ADR
+STUB,Stubhub Holdings  Inc
+LEU,Centrus Energy Corp
+MANU,Manchester United PLC
+EE,Excelerate Energy Inc
+KAI,Kadant Inc
+HHH,Howard Hughes Holdings Inc
+KFY,Korn Ferry
+OII,Oceaneering International Inc
+GPI,Group 1 Automotive Inc
+ATMU,Atmus Filtration Technologies Inc
+ARIS,Aris Mining Corp
+TDW,Tidewater Inc
+BAC PR L,Bank of America 7.25% Non Cumulative Perpetual Conv Pref Series L
+SKE,Skeena Resources Ltd
+FBP,First BanCorp
+RNST,Renasant Corp
+CNS,Cohen & Steers Inc
+YETI,Yeti Holdings Inc
+BFH,Bread Financial Holdings Inc
+JOE,St Joe Co
+FOUR,Shift4 Payments  Inc
+BMI,Badger Meter Inc
 SA,Seabridge Gold Inc
+AAP,Advance Auto Parts Inc
+BTE,Baytex Energy Corp
+WBI,WaterBridge Infrastructure LLC
+CDP,COPT Defense Properties
+ARX,Accelerant Holdings
+FG,F&G Annuities & Life Inc
+OGN,Organon & Co
+GPGI,GPGI Inc
+MHO,M/I Homes Inc
+CVI,CVR Energy Inc
+HGTY,Hagerty Inc
+ABG,Asbury Automotive Group Inc
+APLE,Apple Hospitality REIT Inc
+AB,AllianceBernstein Holding Units
 SII,Sprott Inc
-AXIA PR,Axia Energia SA ADR
-MMS,Maximus Inc
-CC,Chemours Co
-GPOR,Gulfport Energy Corp
-SDRL,Seadrill Ltd
-EBR.B,Centrais Eletricas Brasileiras Eletrobras ADR Representing 1 Pref Shs
-BKD,Brookdale Senior Living Inc
-FUL,H.B. Fuller Company
-ALB PR A,Albemarle Dep Shares Each Rep A 1 20Th Interest In A Share Of 7 25 Mandatory
-TDC,Teradata Corp
-AVNT,Avient Corp
-ELF,elf Beauty Inc
-GEO,Geo Group Inc
-KN,Knowles Corp
-HG,Hamilton Insurance Group Ltd
+NHI,National Health Investors Inc
+NEA,Nuveen AMT-Free Quality Municipal Income Fund
 SXI,Standex International Corp
-BKV,BKV Corp
+SMG,Scotts Miracle-Gro Co
+SUNC,SunocoCorp Units
+CGAU,Centerra Gold Inc
+ANF,Abercrombie & Fitch Co
+SIG,Signet Jewelers Ltd
+AVA,Avista Corp
+FUL,H.B. Fuller Company
+BKU,BankUnited Inc
+CBU,Community Financial System Inc
+HPE PR C,Hewlett Packard Enterprise 7 625 Mandatory Convertible Pref Shs Series C
 CNK,Cinemark Holdings Inc
+BTU,Peabody Energy Corp
+BFAM,Bright Horizons Family Solutions Inc
+TDC,Teradata Corp
+MSGE,Madison Square Garden Entertainment Corp
+CC,Chemours Co
+GPK,Graphic Packaging Holding Co
+AGO,Assured Guaranty Ltd
+ERO,Ero Copper Corp
+NATL,NCR Atleos Corp
+QTWO,Q2 Holdings Inc
+MMS,Maximus Inc
+GNW,Genworth Financial Inc
+RCUS,Arcus Biosciences Inc
+CON,Concentra Group Holdings Parent Inc
+AAUC,Allied Gold Corp
+KN,Knowles Corp
+NSA,National Storage Affiliates Trust
+SLG,SL Green Realty Corp
+KBH,KB Home
+RHI,Robert Half Inc
+EBR.B,Centrais Eletricas Brasileiras Eletrobras ADR Representing 1 Pref Shs
+BWLP,BW LPG Ltd
+VGNT,Versigent PLC
+ELF,elf Beauty Inc
+AVNT,Avient Corp
+UNFI,United Natural Foods Inc
+ALB PR A,Albemarle Dep Shares Each Rep A 1 20Th Interest In A Share Of 7 25 Mandatory
+GEO,Geo Group Inc
+ADX,Adams Diversified Equity Fund，Inc.
+ITGR,Integer Holdings Corp
+EFXT,Enerflex Ltd
+VTMX,Vesta Real Estate Corporation SAB de CV ADR
+HAE,Haemonetics Corp
+HAWK,HawkEye 360 Inc
+CTRI,Centuri Holdings Inc
+HAYW,Hayward Holdings Inc
+APAM,Artisan Partners Asset Management Inc
+AXIA PR,Axia Energia SA ADR
+FSK,FS KKR Capital Corp
+BHE,Benchmark Electronics Inc
+FSM,Fortuna Mining Corp
+BXMT,Blackstone Mortgage Trust Inc
+GPOR,Gulfport Energy Corp
+CURB,Curbline Properties Corp.
+WRBY,Warby Parker Inc
+BANC,Banc of California Inc
+AWR,American States Water Co
+MPT,Medical Properties Trust Inc
+BGSI,Boyd Group Services Inc
+UTF,Cohen & Steers Infrastructure Fund Inc
+BNT,Brookfield Wealth Solutions Ltd
 BOH,Bank of Hawaii Corp
 LXP,LXP Industrial Trust
-WRBY,Warby Parker Inc
-SLG,SL Green Realty Corp
-CIG.C,Companhia Energ ADR Reptg One Ord Shs
-ADX,Adams Diversified Equity Fund，Inc.
-APAM,Artisan Partners Asset Management Inc
-AVEX,AEVEX Corp
-CTRI,Centuri Holdings Inc
-KBH,KB Home
-ZIM,ZIM Integrated Shipping Services Ltd
-MPT,Medical Properties Trust Inc
-CPK,Chesapeake Utilities Corp
-ITGR,Integer Holdings Corp
-BXMT,Blackstone Mortgage Trust Inc
-CWK,Cushman & Wakefield Ltd
-BGSI,Boyd Group Services Inc
-FSK,FS KKR Capital Corp
-VTMX,Vesta Real Estate Corporation SAB de CV ADR
-UTF,Cohen & Steers Infrastructure Fund Inc
-NIC,Nicolet Bankshares  Inc
-GPK,Graphic Packaging Holding Co
-HAYW,Hayward Holdings Inc
-AWR,American States Water Co
-UNFI,United Natural Foods Inc
-BANC,Banc of California Inc
-BTU,Peabody Energy Corp
-CURB,Curbline Properties Corp.
-OLN,Olin Corp
-BNT,Brookfield Wealth Solutions Ltd
-RCUS,Arcus Biosciences Inc
-BW,Babcock & Wilcox Enterprises Inc
-CWEN.A,Clearway Energy Inc Class A
-BHE,Benchmark Electronics Inc
-HAE,Haemonetics Corp
-PARR,Par Pacific Holdings Inc
-PAY,Paymentus Holdings Inc
-BSM,Black Stone Minerals Units
-AKR,Acadia Realty Trust
-HPE PR C,Hewlett Packard Enterprise 7 625 Mandatory Convertible Pref Shs Series C
-WT,WisdomTree Inc
-VGNT,Versigent PLC
-HAWK,HawkEye 360 Inc
-JPC,Nuveen Preferred & Income Opportunities Fund
-QTWO,Q2 Holdings Inc
-PFS,Provident Financial Services Inc
-HTGC,Hercules Capital Inc
-DBRG,DigitalBridge Group Inc
-EXG,Eaton Vance Tax-Managed Global Diversified Equity Income Closed Fund
-GRBK,Green Brick Partners Inc
-ATKR,Atkore Inc
-FSM,Fortuna Mining Corp
-HIW,Highwoods Properties Inc
-WK,Workiva Inc
-IHS,IHS Holding Ltd
-ERO,Ero Copper Corp
-UE,Urban Edge Properties
-DHT,DHT Holdings Inc
+BKD,Brookdale Senior Living Inc
 TTAM,Titan America SA
-RHI,Robert Half Inc
-KD,Kyndryl Holdings Inc
-AEO,American Eagle Outfitters Inc
-PHIN,Phinia Inc
-WHR,Whirlpool Corp
-CALY,Callaway Golf Co
-FCPT,Four Corners Property Trust Inc
-KMT,Kennametal Inc
-SPNT,Siriuspoint Ltd
-DX,Dynex Capital Inc
-EXK,Endeavour Silver Corp
-DKL,Delek Logistics Partners Common Units
-WOR,Worthington Enterprises  Inc
-NAD,Nuveen Quality Municipal Income Fund
-FBK,FB Financial Corp
-LCII,LCI Industries
-LEN.B,Lennar Corp Class B
-SHAK,Shake Shack Inc
-TALO,Talos Energy Inc
-DK,Delek US Holdings Inc
-TNK,Teekay Tankers Ltd
-WTTR,Select Water Solutions Inc
-CWT,California Water Service Group
-NVG,Nuveen AMT-Free Municipal Credit Income Fund
-ASH,Ashland Inc
-WU,Western Union Co
-HLIO,Helios Technologies Inc
-C PR N,Citigroup Capital XIII 7.875% Fixed Rate/Floating Rate Trust Preferred
-TRN,Trinity Industries Inc
-RH,RH
-PAGS,PagSeguro Digital Ltd
-AAMI,Acadian Asset Management Inc
-RLX,RLX Technology Inc ADR
-VOYG,Voyager Technologies Inc
+CIG.C,Companhia Energ ADR Reptg One Ord Shs
+ATS,ATS Corp
+NIC,Nicolet Bankshares  Inc
+AMPX,Amprius Technologies Inc
+CWEN.A,Clearway Energy Inc Class A
 VAC,Marriott Vacations Worldwide Corp
+CSAN,Cosan SA ADR
+PAY,Paymentus Holdings Inc
+SDRL,Seadrill Ltd
+ZIM,ZIM Integrated Shipping Services Ltd
+WK,Workiva Inc
+WT,WisdomTree Inc
+GRBK,Green Brick Partners Inc
+JPC,Nuveen Preferred & Income Opportunities Fund
+HIW,Highwoods Properties Inc
+HTGC,Hercules Capital Inc
+OLN,Olin Corp
+BKV,BKV Corp
+EXG,Eaton Vance Tax-Managed Global Diversified Equity Income Closed Fund
+AKR,Acadia Realty Trust
+EXK,Endeavour Silver Corp
+HG,Hamilton Insurance Group Ltd
+CWK,Cushman & Wakefield Ltd
+DBRG,DigitalBridge Group Inc
+CPK,Chesapeake Utilities Corp
+BSM,Black Stone Minerals Units
+PARR,Par Pacific Holdings Inc
+TE,T1 Energy Inc
+PFS,Provident Financial Services Inc
+KD,Kyndryl Holdings Inc
 DBD,Diebold Nixdorf Inc
-GDV,Gabelli Dividend & Income Trust
-IVT,Inventrust Properties Corp
-HUN,Huntsman Corp
-CUBI,Customers Bancorp Inc
-BKE,Buckle Inc
-NIQ,NIQ Global Intelligence PLC
-NOG,Northern Oil and Gas Inc
-CALX,Calix Inc
-PTY,PIMCO Corporate & Income Opportunity Fund
-HOG,Harley-Davidson Inc
-SAH,Sonic Automotive Inc
-FLOC,Flowco Holdings Inc
-KWR,Quaker Chemical Corp
+WOR,Worthington Enterprises  Inc
+VOYG,Voyager Technologies Inc
+DK,Delek US Holdings Inc
+RH,RH
+PHIN,Phinia Inc
+IHS,IHS Holding Ltd
+UE,Urban Edge Properties
+ATKR,Atkore Inc
+DX,Dynex Capital Inc
+NAD,Nuveen Quality Municipal Income Fund
+CALY,Callaway Golf Co
+HLIO,Helios Technologies Inc
+WHR,Whirlpool Corp
+LEN.B,Lennar Corp Class B
+DKL,Delek Logistics Partners Common Units
+AEO,American Eagle Outfitters Inc
+NVG,Nuveen AMT-Free Municipal Credit Income Fund
+DHT,DHT Holdings Inc
+SHAK,Shake Shack Inc
+FBK,FB Financial Corp
 GMRS,GMR Solutions Inc
-LCLN,Lincoln International Inc
-GRDN,Guardian Pharmacy Services Inc
-AMBP,Ardagh Metal Packaging SA
-BBT,Beacon Financial Corp
+FCPT,Four Corners Property Trust Inc
+CWT,California Water Service Group
+PAGS,PagSeguro Digital Ltd
+SAH,Sonic Automotive Inc
+HUN,Huntsman Corp
+ASH,Ashland Inc
+BW,Babcock & Wilcox Enterprises Inc
+LCII,LCI Industries
+VVX,V2X Inc
+WOLF,Wolfspeed Inc
+IVT,Inventrust Properties Corp
+AMR,Alpha Metallurgical Resources Inc
+NIQ,NIQ Global Intelligence PLC
+C PR N,Citigroup Capital XIII 7.875% Fixed Rate/Floating Rate Trust Preferred
+PK,Park Hotels & Resorts Inc
+AAMI,Acadian Asset Management Inc
 ROG,Rogers Corp
-KYN,Kayne Anderson Energy Infrastructure Fund Inc
+HOG,Harley-Davidson Inc
+GDV,Gabelli Dividend & Income Trust
+CALX,Calix Inc
+WU,Western Union Co
+BBAI,BigBear.ai Holdings Inc
+RLX,RLX Technology Inc ADR
+WTTR,Select Water Solutions Inc
+TRN,Trinity Industries Inc
+PTY,PIMCO Corporate & Income Opportunity Fund
+TALO,Talos Energy Inc
+GRDN,Guardian Pharmacy Services Inc
+TNK,Teekay Tankers Ltd
+KWR,Quaker Chemical Corp
+SPNT,Siriuspoint Ltd
+CUBI,Customers Bancorp Inc
+CEPU,Central Puerto SA ADR
 NZF,Nuveen Municipal Credit Income Fund
-DNOW,DNOW Inc
-AESI,Atlas Energy Solutions Inc
-DAC,Danaos Corp
-MTX,Minerals Technologies Inc
-CXT,Crane NXT Co
-MNR,Mach Natural Resources Units
+KMT,Kennametal Inc
+LCLN,Lincoln International Inc
+MH,McGraw Hill Inc
+AKO.B,Embotelladora Andina SA ADR Series B
+BBT,Beacon Financial Corp
 BCC,Boise Cascade Co
-HE,Hawaiian Electric Industries Inc
-ABM,ABM Industries Inc
+AMBP,Ardagh Metal Packaging SA
+NOG,Northern Oil and Gas Inc
+MTX,Minerals Technologies Inc
 ETY,Eaton Vance Tax Managed Diversified Equity Income Closed Fund
 GOF,Guggenheim Strategic Opportunities Mutual Fund
+DAC,Danaos Corp
 USB PR R,Us Ban Del Depositary Shs Repstg 1 1000Th Int Pfd Ser M 4 Drc Series M
-CDLR,Cadeler A/S ADR
-AERO,Grupo Aeromexico SAB de CV ADR
+DNOW,DNOW Inc
+KYN,Kayne Anderson Energy Infrastructure Fund Inc
+PBI,Pitney Bowes Inc
+ABM,ABM Industries Inc
 NGVT,Ingevity Corp
-PK,Park Hotels & Resorts Inc
-VVX,V2X Inc
-AMPX,Amprius Technologies Inc
-GRND,Grindr Inc
-MH,McGraw Hill Inc
 WSO.B,Watsco Inc Class B
-AKO.B,Embotelladora Andina SA ADR Series B
-SOC,Sable Offshore Corp
-PBH,Prestige Consumer Healthcare Inc
+AERO,Grupo Aeromexico SAB de CV ADR
+HE,Hawaiian Electric Industries Inc
+CDLR,Cadeler A/S ADR
 RAMP,Liveramp Holdings Inc
-TE,T1 Energy Inc
+DCO,Ducommun Inc
 DRD,DRDGOLD Ltd ADR
 RVT,Royce Small-Cap Trust Inc
+MNR,Mach Natural Resources Units
+GRND,Grindr Inc
 NTB,Bank of NT Butterfield & Son Ltd
-AMR,Alpha Metallurgical Resources Inc
-HNI,HNI Corp
-CPRI,Capri Holdings Ltd
-NEE PR S,Nextera Energy Units
-HTH,Hilltop Holdings Inc
-ECO,Okeanis Eco Tankers Corp
-CEPU,Central Puerto SA ADR
-NGL,NGL Energy Partners Units
-UTI,Universal Technical Institute Inc
-DCO,Ducommun Inc
-THR,Thermon Group Holdings Inc
+BKE,Buckle Inc
 IMAX,Imax Corp
+HNI,HNI Corp
+HTH,Hilltop Holdings Inc
+PBH,Prestige Consumer Healthcare Inc
+CTOS,Custom Truck One Source Inc
+CXT,Crane NXT Co
+SOC,Sable Offshore Corp
+UTI,Universal Technical Institute Inc
+ATEN,A10 Networks Inc
+TNET,TriNet Group Inc
+TGS,Transportadora de Gas del Sur SA ADR
+WS,Worthington Steel Inc
+CCU,Compania Cervecerias Unidas SA ADR
+AESI,Atlas Energy Solutions Inc
+FUN,Six Flags Entertainment Corp
+KKR PR D,KKR And Co Mandatory Convertible Preference Ser D
+NGL,NGL Energy Partners Units
+BRSL,Brightstar Lottery PLC
+CPRI,Capri Holdings Ltd
 CYD,China Yuchai International Ltd
 BPRE,Bluerock Private Real Estate Closed End Fund
-CCU,Compania Cervecerias Unidas SA ADR
-NMM,Navios Maritime Partners Units
-CXW,CoreCivic Inc
-KKR PR D,KKR And Co Mandatory Convertible Preference Ser D
-NWN,Northwest Natural Holding Co
-ATEN,A10 Networks Inc
-CTOS,Custom Truck One Source Inc
-FIGS,Figs Inc
-PUMP,ProPetro Holding Corp
-BRSL,Brightstar Lottery PLC
-INVX,Innovex International Inc
-PBI,Pitney Bowes Inc
-STC,Stewart Information Services Corp
 ARR,ARMOUR Residential REIT Inc
+LC,LendingClub Corp
+ATHM,Autohome Inc ADR
+NEXA,Nexa Resources SA
+BSTZ,BlackRock Science and Technology Term Closed End Fund
+FLOC,Flowco Holdings Inc
+CXW,CoreCivic Inc
+NEE PR S,Nextera Energy Units
 SEM,Select Medical Holdings Corp
+NMM,Navios Maritime Partners Units
+SHO,Sunstone Hotel Investors Inc
+TGLS,Tecnoglass Inc
+EVT,Eaton Vance Tax Advantaged Dividend Income Closed Fund
+NWN,Northwest Natural Holding Co
 BHC,Bausch Health Companies Inc
-ENHA,A Paradise Acquisition Corp
-WS,Worthington Steel Inc
-FUN,Six Flags Entertainment Corp
-TGS,Transportadora de Gas del Sur SA ADR
+FIGS,Figs Inc
+PRKS,United Parks & Resorts Inc
+GNL,Global Net Lease Inc
+GRC,Gorman- Rupp Co
+DEI,Douglas Emmett Inc
 HCI,Hci Group Inc
 GTY,Getty Realty Corp
-BBAI,BigBear.ai Holdings Inc
+ECO,Okeanis Eco Tankers Corp
+STC,Stewart Information Services Corp
 NTST,Netstreit Corp
-LPG,Dorian LPG Ltd
-EVT,Eaton Vance Tax Advantaged Dividend Income Closed Fund
-CMRE,Costamare Inc
-GEL,Genesis Energy Units Class A
-SAM,Boston Beer Company Inc
-SHO,Sunstone Hotel Investors Inc
-GNL,Global Net Lease Inc
-BSTZ,BlackRock Science and Technology Term Closed End Fund
-LTC,LTC Properties Inc
-TNET,TriNet Group Inc
-ATHM,Autohome Inc ADR
-PLGO,Pelagos Insurance Capital Ltd
-BXDC,Blackstone Digital Infrastructure Trust Inc
-DEI,Douglas Emmett Inc
-GRC,Gorman- Rupp Co
-NEXA,Nexa Resources SA
-TGLS,Tecnoglass Inc
-STEL,Stellar Bancorp Inc
-OFG,OFG Bancorp
+PUMP,ProPetro Holding Corp
 APO PR A,Apollo Global Management 6 75 Mandatory Convertible Preferred Stock Series A
-HMN,Horace Mann Educators Corp
+BXDC,Blackstone Digital Infrastructure Trust Inc
 FCF,First Commonwealth Financial Corp
-TIC,TIC Solutions Inc
-NBHC,National Bank Holdings Corp
-VET,Vermilion Energy Inc
-NUV,Nuveen Municipal Value Fund Inc
-AGRO,Adecoagro SA
-ARCO,Arcos Dorados Holdings Inc
-XPRO,Expro Group Holdings NV
-TY,Tri Continental Closed Fund
-JPM PR C,JPMORGAN CHASE Depositary SH Repstg 1 400TH Pfd Ser EE
 NAC,Nuveen California Quality Municipal Income Fund
-ALG,Alamo Group Inc
-SPB,Spectrum Brands Holdings Inc
-PDO,PIMCO Dynamic Income Opportunities Fund
-SOMN,Southern Units
-SFL,Sfl Corporation Ltd
-LC,LendingClub Corp
-WLY,John Wiley & Sons Inc Class A
-KOS,Kosmos Energy Ltd
-RQI,Cohen & Steers Quality Income Realty Fund Inc
-SID,Companhia Siderurgica Nacional SA ADR
-WMK,Weis Markets Inc
-COTY,Coty Inc
-VRE,Veris Residential Inc
+NUV,Nuveen Municipal Value Fund Inc
+OFG,OFG Bancorp
+CMRE,Costamare Inc
+TY,Tri Continental Closed Fund
+STEL,Stellar Bancorp Inc
+JPM PR C,JPMORGAN CHASE Depositary SH Repstg 1 400TH Pfd Ser EE
+PLGO,Pelagos Insurance Capital Ltd
 AKO.A,Embotelladora Andina SA ADR Series A
-CTS,CTS Corp
-EPAC,Enerpac Tool Group Corp
-BKSY,Blacksky Technology Inc
-AIN,Albany International Corp
-SNDA,Sonida Senior Living Inc
-USA,Liberty All Star Equity Closed Fund
-KMPR,Kemper Corp
-MD,Pediatrix Medical Group Inc
-AMBQ,Ambiq Micro Inc
-TPB,Turning Point Brands Inc
-ETG,Eaton Vance Tax Advantaged Global Dividend Income Closed Fund
-PRKS,United Parks & Resorts Inc
-GLOB,Globant SA
-GAB,Gabelli Equity Trust Inc
-WD,Walker & Dunlop Inc
-CBZ,CBIZ Inc
-FLNG,FLEX LNG Ltd
-TR,Tootsie Roll Industries Inc
-LOB,Live Oak Bancshares Inc
-SMA,SmartStop Self Storage REIT Inc
-RITM PR A,Rithm Capital 7 50 Cumulative Redeemable Pref Shs Series A
-LAC,Lithium Americas Corp
-STEW,SRH Total Return Fund，Inc
-GEF.B,Greif Inc Class B
-BLX,Banco Latinoamericano de Comercio Exterior SA
-ETV,Eaton Vance Tax Managed Buy Write Opportunities Closed Fund
-BORR,Borr Drilling Ltd
-PRLB,Proto Labs Inc
-ADNT,Adient PLC
-EFC,Ellington Financial Inc
-GLP,Global Partners Units
-PEB,Pebblebrook Hotel Trust
-SILA,Sila Realty Trust Inc
-AGM,Federal Agricultural Mortgage Corp Class C
-NUVB,Nuvation Bio Inc
-IIPR,Innovative Industrial Properties Inc
-FMC,FMC Corp
-KRP,Kimbell Royalty Partners LP Units
-TSLX,Sixth Street Specialty Lending Inc
-DCOM,Dime Community Bancshares Inc
-BCAT,BlackRock Capital Allocation Term Closed End Fund
-JPM PR D,Jpmorgan Chase Depositary Shares Representing 1/400 Pref Shs Series DD
-NVRI,Enviri Corp
-FLO,Flowers Foods Inc
+PDO,PIMCO Dynamic Income Opportunities Fund
+LTC,LTC Properties Inc
+NBHC,National Bank Holdings Corp
 AMRC,Ameresco Inc
-BDJ,BlackRock Enhanced Equity Dividend Trust
-BST,BlackRock Science and Technology Trust
-REX,REX American Resources Corp
-AVAL,Grupo Aval Acciones y Valores SA ADR
-GEF,Greif Inc Class A
-TFIN,Triumph Financial Inc
-FDP,Fresh Del Monte Produce Inc
-ASAN,Asana Inc
-DAO,Youdao Inc ADR
-CLVT,Clarivate PLC
-RES,RPC Inc
-NBR,Nabors Industries Ltd
-DXC,DXC Technology Co
-PRGO,Perrigo Company PLC
-XHR,Xenia Hotels & Resorts Inc
-VSTS,Vestis Corp
-GAM,General American Investors Closed Fund
-ECAT,BlackRock ESG Capital Allocation Term Closed End Fund
-KW,Kennedy-Wilson Holdings Inc
-EVTC,Evertec Inc
-COUR,Coursera Inc
-DCH,Dauch Corp
-WKC,World Kinect Corp
-SLVM,Sylvamo Corp
-VPG,Vishay Precision Group Inc
-ECVT,Ecovyst Inc
-BOBS,Bob's Discount Furniture  Inc
-DV,Doubleverify Holdings Inc
-BY,Byline Bancorp Inc
-LAR,Lithium Argentina AG
-LZB,La-Z-Boy Inc
-TV,Grupo Televisa SAB ADR
-CCS,Century Communities Inc
+HMN,Horace Mann Educators Corp
 TEO,Telecom Argentina SA ADR
-HLX,Helix Energy Solutions Group Inc
-GBX,Greenbrier Companies Inc
-KSS,Kohls Corp
-OBK,Origin Bancorp Inc
-CBL,CBL & Associates Properties Inc
-RLJ,RLJ Lodging Trust
-ARI,Apollo Commercial Real Estate Finance Inc
-BTT,BlackRock Municipal 2030 Target Term Trust
-PBT,Permian Basin Royalty Units
-NOMD,Nomad Foods Ltd
-ARLO,Arlo Technologies Inc
-TNC,Tennant Co
-NVGS,Navigator Holdings Ltd
+COTY,Coty Inc
+SAM,Boston Beer Company Inc
+ASAN,Asana Inc
+AVAL,Grupo Aval Acciones y Valores SA ADR
+LAC,Lithium Americas Corp
+GLOB,Globant SA
+GEL,Genesis Energy Units Class A
+CBZ,CBIZ Inc
+INVX,Innovex International Inc
+WLY,John Wiley & Sons Inc Class A
+WMK,Weis Markets Inc
+CTS,CTS Corp
+ARCO,Arcos Dorados Holdings Inc
+ALG,Alamo Group Inc
+AIN,Albany International Corp
+TIC,TIC Solutions Inc
+AGRO,Adecoagro SA
+PRLB,Proto Labs Inc
+SPB,Spectrum Brands Holdings Inc
+MD,Pediatrix Medical Group Inc
+VET,Vermilion Energy Inc
+ETG,Eaton Vance Tax Advantaged Global Dividend Income Closed Fund
+PEB,Pebblebrook Hotel Trust
+USA,Liberty All Star Equity Closed Fund
+LPG,Dorian LPG Ltd
+RQI,Cohen & Steers Quality Income Realty Fund Inc
+MBC,Masterbrand Inc
+ADNT,Adient PLC
+KOS,Kosmos Energy Ltd
+GAB,Gabelli Equity Trust Inc
+ETV,Eaton Vance Tax Managed Buy Write Opportunities Closed Fund
+SOMN,Southern Units
+SID,Companhia Siderurgica Nacional SA ADR
+BLX,Banco Latinoamericano de Comercio Exterior SA
+LOB,Live Oak Bancshares Inc
+NUVB,Nuvation Bio Inc
+XPRO,Expro Group Holdings NV
+BST,BlackRock Science and Technology Trust
+RITM PR A,Rithm Capital 7 50 Cumulative Redeemable Pref Shs Series A
+LAR,Lithium Argentina AG
 BHVN,Biohaven Ltd
-LU,Lufax Holding Ltd ADR
-TTI,Tetra Technologies Inc
-ENOV,Enovis Corp
-HYT,BlackRock Corporate High Yield Fund，Inc.
-JPM PR M,Jpmorgan Chase And Co DS Repstg 1 400Th Series MM
-JPM PR L,JPMorgan Chase Depositary Shares Each Rep 1 400th Interest 4 625 Non Cumulative
-DOLE,Dole PLC
-CRI,Carter's Inc
-GSL,Global Ship Lease Inc
-OI,O-i Glass  Inc
-DXYZ,Destiny Tech100 Inc
-AGL,agilon health inc
-GENI,Genius Sports Ltd
-AAT,American Assets Trust Inc
-RYZ,Ryerson Holding Corp
-RVLV,Revolve Group Inc
-MAN,ManpowerGroup Inc
-LEG,Leggett & Platt Inc
-UVV,Universal Corp
-ORC,Orchid Island Capital Inc
-NFJ,Virtus Dividend  Interest & Prem Str Fd
-BIO.B,Bio Rad Laboratories Inc Class B
+SMA,SmartStop Self Storage REIT Inc
+BOBS,Bob's Discount Furniture  Inc
+VSTS,Vestis Corp
+GEF.B,Greif Inc Class B
+EPAC,Enerpac Tool Group Corp
+FMC,FMC Corp
+TFIN,Triumph Financial Inc
+EFC,Ellington Financial Inc
+SILA,Sila Realty Trust Inc
+BCAT,BlackRock Capital Allocation Term Closed End Fund
+STEW,SRH Total Return Fund，Inc
+WD,Walker & Dunlop Inc
+VPG,Vishay Precision Group Inc
+AGM,Federal Agricultural Mortgage Corp Class C
+IIPR,Innovative Industrial Properties Inc
+AMBQ,Ambiq Micro Inc
+BDJ,BlackRock Enhanced Equity Dividend Trust
+DCOM,Dime Community Bancshares Inc
+TPB,Turning Point Brands Inc
+BKSY,Blacksky Technology Inc
+SNDA,Sonida Senior Living Inc
+CLVT,Clarivate PLC
+DXC,DXC Technology Co
+TSLX,Sixth Street Specialty Lending Inc
 AI,C3.ai Inc
-NRP,Natural Resource Partners Units
-SPH,Suburban Propane Partners Common Units
-WWW,Wolverine World Wide Inc
+KSS,Kohls Corp
+COUR,Coursera Inc
+GLP,Global Partners Units
+KRP,Kimbell Royalty Partners LP Units
+BORR,Borr Drilling Ltd
+GENI,Genius Sports Ltd
+JPM PR D,Jpmorgan Chase Depositary Shares Representing 1/400 Pref Shs Series DD
+FLNG,FLEX LNG Ltd
+SFL,Sfl Corporation Ltd
+REX,REX American Resources Corp
+FLO,Flowers Foods Inc
+TR,Tootsie Roll Industries Inc
+XHR,Xenia Hotels & Resorts Inc
+DV,Doubleverify Holdings Inc
+ECAT,BlackRock ESG Capital Allocation Term Closed End Fund
+CCS,Century Communities Inc
+EVTC,Evertec Inc
+SLVM,Sylvamo Corp
+GEF,Greif Inc Class A
+MAN,ManpowerGroup Inc
+BIO.B,Bio Rad Laboratories Inc Class B
+GAM,General American Investors Closed Fund
+KW,Kennedy-Wilson Holdings Inc
+AGL,agilon health inc
+LZB,La-Z-Boy Inc
+WKC,World Kinect Corp
+CBL,CBL & Associates Properties Inc
+ARLO,Arlo Technologies Inc
+RLJ,RLJ Lodging Trust
+DCH,Dauch Corp
+RES,RPC Inc
+DAO,Youdao Inc ADR
+BY,Byline Bancorp Inc
 PRG,PROG Holdings Inc
-DFH,Dream Finders Homes Inc
-BAC PR B,Bank Amer Depositary Shares Representing 1/1000 Non Cumulative Pref Shs Series
-IDT,IDT Corp
-ARDT,Ardent Health Inc
-UAN,CVR Partners Units
-FOR,Forestar Group Inc
-TWO,Two Harbors Investment Corp
-NPKI,NPK International Inc
-WFC PR Z,Wells Fargo 1000 Depositary Shares Representing Pref Shs Class A
-UMH,UMH Properties Inc
-CDRE,Cadre Holdings Inc
-LADR,Ladder Capital Corp
-HLF,Herbalife Ltd
-T PR C,AT&T Depo Sha Rep 1000 Preferred Series C
-TEN,Tsakos Energy Navigation Ltd
-CMP,Compass Minerals International Inc
-MSDL,Morgan Stanley Direct Lending Fund
+PRGO,Perrigo Company PLC
+KMPR,Kemper Corp
+WWW,Wolverine World Wide Inc
+FDP,Fresh Del Monte Produce Inc
+BTT,BlackRock Municipal 2030 Target Term Trust
+TNC,Tennant Co
+OBK,Origin Bancorp Inc
+RYZ,Ryerson Holding Corp
 LOMA,Loma Negra Compania Industrial Argentina SA ADR
-PRA,Proassurance Corp
-TUYA,Tuya Inc ADR
-VTOL,Bristow Group Inc
-INSP,Inspire Medical Systems Inc
-MUX,McEwen Inc
-SVV,Savers Value Village Inc
-ALX,Alexander's Inc
-NBXG,Neuberger Next Gen Connectivity Fund Inc.
-PDS,Precision Drilling Corp(Calgary)
-UAMY,United States Antimony Corp
-DSL,DoubleLine Income Solutions Fd
-ARES PR B,Ares Management 6 75 Mandatory Convertible Prf Shs Series B
-GOLD,Gold.com Inc
+DFH,Dream Finders Homes Inc
+AAT,American Assets Trust Inc
+NOMD,Nomad Foods Ltd
+LU,Lufax Holding Ltd ADR
+ARI,Apollo Commercial Real Estate Finance Inc
+TV,Grupo Televisa SAB ADR
+ECVT,Ecovyst Inc
+GBX,Greenbrier Companies Inc
+CRI,Carter's Inc
+HYT,BlackRock Corporate High Yield Fund，Inc.
+FOR,Forestar Group Inc
+RVLV,Revolve Group Inc
+LEG,Leggett & Platt Inc
+TDOC,Teladoc Health Inc
+NSP,Insperity Inc
+NRP,Natural Resource Partners Units
+HLX,Helix Energy Solutions Group Inc
+CMP,Compass Minerals International Inc
+TTI,Tetra Technologies Inc
 CXM,Sprinklr Inc
+UAMY,United States Antimony Corp
+VIA,Via Transportation Inc
+IDT,IDT Corp
+JPM PR L,JPMorgan Chase Depositary Shares Each Rep 1 400th Interest 4 625 Non Cumulative
+LSPD,Lightspeed Commerce Inc
+NFJ,Virtus Dividend  Interest & Prem Str Fd
+SVV,Savers Value Village Inc
+JPM PR M,Jpmorgan Chase And Co DS Repstg 1 400Th Series MM
+NBR,Nabors Industries Ltd
+PBT,Permian Basin Royalty Units
+GSL,Global Ship Lease Inc
+ORC,Orchid Island Capital Inc
+NVGS,Navigator Holdings Ltd
+BAC PR B,Bank Amer Depositary Shares Representing 1/1000 Non Cumulative Pref Shs Series
+UVV,Universal Corp
+NBXG,Neuberger Next Gen Connectivity Fund Inc.
+DOLE,Dole PLC
+TUYA,Tuya Inc ADR
+MSDL,Morgan Stanley Direct Lending Fund
+ARDT,Ardent Health Inc
+CDRE,Cadre Holdings Inc
+WFC PR Z,Wells Fargo 1000 Depositary Shares Representing Pref Shs Class A
+MUX,McEwen Inc
+XZO,Exzeo Group Inc
+TWO,Two Harbors Investment Corp
+T PR C,AT&T Depo Sha Rep 1000 Preferred Series C
+TROX,Tronox Holdings PLC
+LADR,Ladder Capital Corp
 YELP,Yelp Inc
+ARES PR B,Ares Management 6 75 Mandatory Convertible Prf Shs Series B
+SPH,Suburban Propane Partners Common Units
+ENR,Energizer Holdings Inc
+ENOV,Enovis Corp
+FINV,FinVolution Group ADR
+UAN,CVR Partners Units
+OI,O-i Glass  Inc
+UMH,UMH Properties Inc
+DSL,DoubleLine Income Solutions Fd
+ALX,Alexander's Inc
+IRS,IRSA Inversiones y Representaciones SA ADR
+UAA,Under Armour Inc Class A
+PRA,Proassurance Corp
+VTOL,Bristow Group Inc
 JFR,Nuveen Floating Rate Income Closed Fund
 CCO,Clear Channel Outdoor Holdings Inc
-LUCK,Lucky Strike Entertainment Corp
-BHLB,Berkshire Hills Bancorp Inc
-PRSU,Pursuit Attractions and Hospitality Inc
 EOS,Eaton Vance Enhanced Equity Income II Closed Fund
-TROX,Tronox Holdings PLC
-DQ,Daqo New Energy Corp ADR
+PRSU,Pursuit Attractions and Hospitality Inc
 SBH,Sally Beauty Holdings Inc
-BAC PR M,Bank Amer DS Representing 1/1000 Non Cum Pref Shs Series KK
-ENR,Energizer Holdings Inc
-UAA,Under Armour Inc Class A
-NSP,Insperity Inc
-VIA,Via Transportation Inc
-JKS,JinkoSolar Holding Co Ltd ADR
-LSPD,Lightspeed Commerce Inc
-TDOC,Teladoc Health Inc
-SCL,Stepan Co
+BHLB,Berkshire Hills Bancorp Inc
 NMZ,Nuveen Municipal High Income Opportunity Closed Fund
-XZO,Exzeo Group Inc
-BV,Brightview Holdings Inc
+NPKI,NPK International Inc
+HLF,Herbalife Ltd
+JKS,JinkoSolar Holding Co Ltd ADR
+AMC,AMC Entertainment Holdings Inc
+FUBO,FuboTV Inc
+MOG.B,Moog Inc Class B
 BFLY,Butterfly Network Inc
-SG,Sweetgreen Inc
-TK,Teekay Corp Ltd
-AVNS,Avanos Medical Inc
-PCG PR X,PG And E 6 Conv Pref Series A
-CSR,Centerspace
-NAT,Nordic American Tankers Ltd
-GIC,Global Industrial Co
-AGBK,Agi Inc
-LNN,Lindsay Corp
-MCB,Metropolitan Bank Holding Corp
-PPLC,Ppl Units
-SBR,Sabine Royalty Units
-CNMD,Conmed Corp
-DEC,Diversified Energy Co
+PDS,Precision Drilling Corp(Calgary)
+EVEX,Eve Holding Inc
+BAC PR M,Bank Amer DS Representing 1/1000 Non Cum Pref Shs Series KK
+SCL,Stepan Co
+TDAY,USA TODAY Co Inc
 ASA,ASA Gold And Precious Metals Limited
-UTZ,UTZ Brands Inc
+AVNS,Avanos Medical Inc
+INSP,Inspire Medical Systems Inc
+AGBK,Agi Inc
+TBN,Tamboran Resources Corp
+XIFR,XPLR Infrastructure LP
+NMAX,Newsmax Inc
+GIC,Global Industrial Co
+TEN,Tsakos Energy Navigation Ltd
+LNN,Lindsay Corp
+SG,Sweetgreen Inc
+BV,Brightview Holdings Inc
+AMN,AMN Healthcare Services Inc
+PCG PR X,PG And E 6 Conv Pref Series A
+GHM,Graham Corp
+ACVA,ACV Auctions Inc
+PXED,Phoenix Education Partners Inc
+GOLD,Gold.com Inc
 HQH,abrdn Healthcare Investors
 CIM,Chimera Investment Corp
-TDAY,USA TODAY Co Inc
-GHM,Graham Corp
-XIFR,XPLR Infrastructure LP
-IRS,IRSA Inversiones y Representaciones SA ADR
-DEA,Easterly Government Properties Inc
-JPM PR K,JPMorgan Chase DRC Rep 1 400 4 55 Non Cumul Pref Shs Series JJ
-AOD,abrdn Total Dynamic Dividend Mutual Fund
-COF PR I,Capital One Financial 40 DS Representing Perpetual Pref Shs Series I
-UA,Under Armour Inc Class C
-FPF,First Trust Intermediate Duration Preferred & Inc
-MMI,Marcus & Millichap Inc
-AORT,Artivion Inc
-UVE,Universal Insurance Holdings Inc
 DLX,Deluxe Corp
+NAT,Nordic American Tankers Ltd
 ODC,Oil-Dri Corporation of America
-PXED,Phoenix Education Partners Inc
-ABR,Arbor Realty Trust Inc
-PTA,Cohen & Steers Tax-Adv Pref Secs and Inc Fund
-EVEX,Eve Holding Inc
-FINV,FinVolution Group ADR
-SAFE,Safehold Inc
-BAC PR N,Bank of America 1000 Depositary Shares Representing Pref Series LL
-GS PR D,Goldman Sachs Group Depository Shares Repstg 1/1000th Floating Rate Non
-MOG.B,Moog Inc Class B
-EMO,ClearBridge Energy Midstream Opportunity Closed End Fund
-BTX,BlackRock Technology and Private Equity Term Trust
-ACVA,ACV Auctions Inc
-BRBR,Bellring Brands Inc
-GNK,Genco Shipping & Trading Ltd
-OPY,Oppenheimer Holdings Inc
-AMN,AMN Healthcare Services Inc
-FUBO,FuboTV Inc
-PDM,Piedmont Realty Trust Inc
-MS PR Q,Morgan Stanley Depositary Shares Each Repsng 1 1000th Share of 6 625 Non
-FSCO,FS Credit Opportunities Corp.
-PLOW,Douglas Dynamics Inc
-ETW,Eaton Vance Tax Managed Global Buy Write Opportunities Closed Fund
-CII,BlackRock Enhanced Large Cap Core Closed End Fund
+CSR,Centerspace
+ENHA,A Paradise Acquisition Corp
+DQ,Daqo New Energy Corp ADR
+SBR,Sabine Royalty Units
 UHAL,U-Haul Holding Co
-MS PR P,Morgan Stanley Dep Shs Repstg 1 1000 Sh Non-Cumulative Ser P Pref Shs Series P
-MS PR I,Morgan Stanley DS Representing 1 1000 Fixed Floating Non Cumulative Pref Shs
-MUC,BlackRock MuniHoldings California Quality Fd，Inc.
-RNP,Cohen & Steers REIT & Preferred & Income Fund Inc
+AOD,abrdn Total Dynamic Dividend Mutual Fund
+JPM PR K,JPMorgan Chase DRC Rep 1 400 4 55 Non Cumul Pref Shs Series JJ
+FPF,First Trust Intermediate Duration Preferred & Inc
+UA,Under Armour Inc Class C
+MCB,Metropolitan Bank Holding Corp
+COF PR I,Capital One Financial 40 DS Representing Perpetual Pref Shs Series I
+DEA,Easterly Government Properties Inc
+LUCK,Lucky Strike Entertainment Corp
+PPLC,Ppl Units
+DEC,Diversified Energy Co
+PTA,Cohen & Steers Tax-Adv Pref Secs and Inc Fund
+MMI,Marcus & Millichap Inc
+DXYZ,Destiny Tech100 Inc
+BTX,BlackRock Technology and Private Equity Term Trust
+CNMD,Conmed Corp
+CII,BlackRock Enhanced Large Cap Core Closed End Fund
+ABR,Arbor Realty Trust Inc
+GNK,Genco Shipping & Trading Ltd
+GS PR D,Goldman Sachs Group Depository Shares Repstg 1/1000th Floating Rate Non
+SAFE,Safehold Inc
+UTZ,UTZ Brands Inc
+PDM,Piedmont Realty Trust Inc
+AORT,Artivion Inc
+BRBR,Bellring Brands Inc
+ETW,Eaton Vance Tax Managed Global Buy Write Opportunities Closed Fund
 GSBD,Goldman Sachs BDC Inc
-BUR,Burford Capital Ltd
-ASIC,Ategrity Specialty Insurance Company Holdings
-TBN,Tamboran Resources Corp
-DUK PR A,Duke Energy 1000 Drc Representing Pref Shs Series A
-MBC,Masterbrand Inc
-EEX,Emerald Holding Inc
-SYF PR A,Synchrony Finl 40 Dep Shs Representing Perp Prf Shs Series A
-NMAX,Newsmax Inc
-WSR,Whitestone REIT
-TYG,Tortoise Energy Infrastructure Closed Fund
-DFIN,Donnelley Financial Solutions Inc
-SBSI,Southside Bancshares Inc
-PDX,PIMCO Dynamic Income Strategy Fund
-BBN,BlackRock Taxable Municipal Bond Trust
-USB PR A,U S Bancorp 100 DS Rep Non Cumulative preference Series A
-KBDC,Kayne Anderson BDC Inc
-ESRT,Empire State Realty Trust Inc
-MFA,MFA Financial Inc
-VRTS,Virtus Investment Partners Inc
-KODK,Eastman Kodak Co
-LUXE,LuxExperience BV ADR
-STK,Columbia Seligman Premium Technology Growth Fund
-EQBK,Equity Bancshares Inc
-ACEL,Accel Entertainment Inc
-NPK,National Presto Industries Inc
-USPH,US Physical Therapy Inc
-MS PR K,Morgan Stanley DS Representing 1/1000 Non Cum Pref Shs Series K
-CVLG,Covenant Logistics Group Inc
-YALA,Yalla Group Ltd ADR
-T PR A,AT T Depositary Shares Reprs a 1 1 000th interest in a share of 5.000%
-BTZ,BlackRock Credit Allocation Income Trust
-LXU,LSB Industries Inc
-UTL,Unitil Corp
-RHLD,Resolute Holdings Management  Inc
-BOW,Bowhead Specialty Holdings Inc
-PML,PIMCO Municipal Income Fund II
-AMC,AMC Entertainment Holdings Inc
-INR,Infinity Natural Resources Inc
-ALL PR H,Allstate Depositary Shares Representing 1/1000th Shares Perpetual Preferred
-BCX,BlackRock Resources And Commodities Strategy Trust
-PMT,PennyMac Mortgage Investment Trust
-CPAC,Cementos Pacasmayo SAA ADR
-CPF,Central Pacific Financial Corp
-RPC,Ridgepost Capital Inc
-NRK,Nuveen New York AMT-Free Quality Municipal Inc Fd
-BTGO,BitGo Holdings Inc
-NRGV,Energy Vault Holdings Inc
+BAC PR N,Bank of America 1000 Depositary Shares Representing Pref Series LL
 VYX,NCR Voyix Corp
-EVC,Entravision Communications Corp
-HTD,John Hancock Tax Advantaged Dividend Income Closed Fund
-AIO,Virtus Artificial Intelligence and Technology Opportunities Fund
-BBDC,Barings BDC Inc
-FSSL,FS Specialty Lending Close End Fund
-BMEZ,BlackRock Health Sciences Term Closed End Fund
-AMTB,Amerant Bancorp Inc
-MS PR O,Morgan Stanley Each DS Repstg 1 1000 Shs of 4 250  Non Cum Pref Shs Series O
-AWF,AllianceBernstein Global High Income Closed Fund
-COF PR J,Capital One Finl 40 DS Representing 1 Perp Pfd Series J
-MS PR E,Morgan Stanley Depositary Shares Representing 1/1000th Fixed/Floating Non
-BAC PR Q,Bank Amer DS Repstg 1 1000Th Non Cum Pref Shs Series QQ
-WFC PR A,Wells Fargo And New 1000 DS Repstg Perp Pfd Ser Aa Class A
-ABX,Abacus Global Management Inc
-CAPL,CrossAmerica Partners Common Units
-JMIA,Jumia Technologies AG ADR
-PCN,PIMCO Corporate & Income Strategy Fund
-CODI,Compass Diversified Holdings
-MS PR A,Morgan Stanley Depository Shares Repstg 1/1000th Interest in Floating Rate Non
-MS PR F,Morgan Stanley DS Representing 1/1000th Non-Cumulative Pref Shs Series F
-BCSF,Bain Capital Specialty Finance Inc
-SPIR,Spire Global Inc
-BFS,Saul Centers Inc
-JBGS,JBG SMITH Properties
-SMP,Standard Motor Products Inc
-PHK,PIMCO High Income Fund
-WFC PR D,Wells Fargo And Company Dep Shs Repstg 1 1000Th Int Perp Pfd Class A Ser Dd
-WGO,Winnebago Industries Inc
-MYE,Myers Industries Inc
-BAC PR K,Bank of America DS Rep 1/1000th 5.875% Non Cum PRF Series HH
-BAK,Braskem SA ADR
-EVMN,Evommune Inc
-ODV,Osisko Development Corp
-EPC,Edgewell Personal Care Co
-NX,Quanex Building Products Corp
-EOI,Eaton Vance Enhanced Equity Income Closed Fund
-RVI,Robinhood Ventures Fund I
-PFLT,PennantPark Floating Rate Capital Ltd
-MQY,BlackRock MuniYield Quality Fund，Inc.
-EIG,Employers Holdings Inc
-VLRS,Controladora Vuela Compania de Aviacion SAB de CV ADR
+MS PR Q,Morgan Stanley Depositary Shares Each Repsng 1 1000th Share of 6 625 Non
+RERE,ATRenew Inc ADR
+CVLG,Covenant Logistics Group Inc
+DFIN,Donnelley Financial Solutions Inc
+FSCO,FS Credit Opportunities Corp.
+MUC,BlackRock MuniHoldings California Quality Fd，Inc.
+UVE,Universal Insurance Holdings Inc
+TK,Teekay Corp Ltd
+MS PR P,Morgan Stanley Dep Shs Repstg 1 1000 Sh Non-Cumulative Ser P Pref Shs Series P
+BUR,Burford Capital Ltd
+MS PR I,Morgan Stanley DS Representing 1 1000 Fixed Floating Non Cumulative Pref Shs
+PLOW,Douglas Dynamics Inc
+STK,Columbia Seligman Premium Technology Growth Fund
+OPY,Oppenheimer Holdings Inc
+RNP,Cohen & Steers REIT & Preferred & Income Fund Inc
+DUK PR A,Duke Energy 1000 Drc Representing Pref Shs Series A
+EMO,ClearBridge Energy Midstream Opportunity Closed End Fund
+SYF PR A,Synchrony Finl 40 Dep Shs Representing Perp Prf Shs Series A
+EEX,Emerald Holding Inc
+ESRT,Empire State Realty Trust Inc
+BBN,BlackRock Taxable Municipal Bond Trust
+ACEL,Accel Entertainment Inc
+KBDC,Kayne Anderson BDC Inc
+NRGV,Energy Vault Holdings Inc
+LUXE,LuxExperience BV ADR
+WSR,Whitestone REIT
+PDX,PIMCO Dynamic Income Strategy Fund
+VRTS,Virtus Investment Partners Inc
 EFOR,Everforth Inc
-MEGI,NYLI CBRE Global Infrstrctr Megatrends Term Fd
-C PR R,Citigroup Dep Shs Repstg 1 1000 Int Sh Non Cum Pfd Ser II
-MTUS,Metallus Inc
+USB PR A,U S Bancorp 100 DS Rep Non Cumulative preference Series A
+SBSI,Southside Bancshares Inc
+RHLD,Resolute Holdings Management  Inc
+MS PR K,Morgan Stanley DS Representing 1/1000 Non Cum Pref Shs Series K
+MFA,MFA Financial Inc
+KODK,Eastman Kodak Co
+BTZ,BlackRock Credit Allocation Income Trust
+USPH,US Physical Therapy Inc
+T PR A,AT T Depositary Shares Reprs a 1 1 000th interest in a share of 5.000%
+PML,PIMCO Municipal Income Fund II
+EQBK,Equity Bancshares Inc
+LXU,LSB Industries Inc
+AIO,Virtus Artificial Intelligence and Technology Opportunities Fund
+ASIC,Ategrity Specialty Insurance Company Holdings
+TYG,Tortoise Energy Infrastructure Closed Fund
+ALL PR H,Allstate Depositary Shares Representing 1/1000th Shares Perpetual Preferred
+BBDC,Barings BDC Inc
+NPK,National Presto Industries Inc
+NRK,Nuveen New York AMT-Free Quality Municipal Inc Fd
+RPC,Ridgepost Capital Inc
+BCX,BlackRock Resources And Commodities Strategy Trust
+BMEZ,BlackRock Health Sciences Term Closed End Fund
+HTD,John Hancock Tax Advantaged Dividend Income Closed Fund
+PMT,PennyMac Mortgage Investment Trust
+VLRS,Controladora Vuela Compania de Aviacion SAB de CV ADR
+SPIR,Spire Global Inc
+CPAC,Cementos Pacasmayo SAA ADR
+FSSL,FS Specialty Lending Close End Fund
+AWF,AllianceBernstein Global High Income Closed Fund
+MS PR O,Morgan Stanley Each DS Repstg 1 1000 Shs of 4 250  Non Cum Pref Shs Series O
+JMIA,Jumia Technologies AG ADR
+CPF,Central Pacific Financial Corp
+YALA,Yalla Group Ltd ADR
+MS PR E,Morgan Stanley Depositary Shares Representing 1/1000th Fixed/Floating Non
+COF PR J,Capital One Finl 40 DS Representing 1 Perp Pfd Series J
+BAC PR Q,Bank Amer DS Repstg 1 1000Th Non Cum Pref Shs Series QQ
+UTL,Unitil Corp
+AMTB,Amerant Bancorp Inc
+KFRC,Kforce Inc
+ABX,Abacus Global Management Inc
+PCN,PIMCO Corporate & Income Strategy Fund
+BCSF,Bain Capital Specialty Finance Inc
+MS PR A,Morgan Stanley Depository Shares Repstg 1/1000th Interest in Floating Rate Non
+SUPV,Grupo Supervielle SA ADR
+MS PR F,Morgan Stanley DS Representing 1/1000th Non-Cumulative Pref Shs Series F
+BOW,Bowhead Specialty Holdings Inc
+WFC PR A,Wells Fargo And New 1000 DS Repstg Perp Pfd Ser Aa Class A
+SMP,Standard Motor Products Inc
+INR,Infinity Natural Resources Inc
+EVC,Entravision Communications Corp
+PHK,PIMCO High Income Fund
+MYE,Myers Industries Inc
+BFS,Saul Centers Inc
+CAPL,CrossAmerica Partners Common Units
+WFC PR D,Wells Fargo And Company Dep Shs Repstg 1 1000Th Int Perp Pfd Class A Ser Dd
+BAC PR K,Bank of America DS Rep 1/1000th 5.875% Non Cum PRF Series HH
+ODV,Osisko Development Corp
+JBGS,JBG SMITH Properties
+IBTA,Ibotta Inc
+NX,Quanex Building Products Corp
+PFLT,PennantPark Floating Rate Capital Ltd
+CODI,Compass Diversified Holdings
+MQY,BlackRock MuniYield Quality Fund，Inc.
+WGO,Winnebago Industries Inc
+EOI,Eaton Vance Enhanced Equity Income Closed Fund
 WLKP,Westlake Chemical Partners Units
-HTB,HomeTrust Bancshares Inc
-MTB PR J,M And T Bk Dep Shs Repstg 1 400Th Int Perp Prf Shs Series J
-KOP,Koppers Holdings Inc
-KRO,Kronos Worldwide Inc
 NXDR,Nextdoor Holdings Inc
-ASC,Ardmore Shipping Corp
+PD,PagerDuty Inc
+MTUS,Metallus Inc
+EPC,Edgewell Personal Care Co
+KRO,Kronos Worldwide Inc
+C PR R,Citigroup Dep Shs Repstg 1 1000 Int Sh Non Cum Pfd Ser II
+SXC,SunCoke Energy Inc
+EIG,Employers Holdings Inc
+KOP,Koppers Holdings Inc
+MEGI,NYLI CBRE Global Infrstrctr Megatrends Term Fd
+EVMN,Evommune Inc
+MTB PR J,M And T Bk Dep Shs Repstg 1 400Th Int Perp Prf Shs Series J
+HTB,HomeTrust Bancshares Inc
+FFC,Flaherty Crumrine Preferred and Income Securities Mutual Fund  Incorporated
 CWH,Camping World Holdings Inc
 THQ,abrdn Healthcare Opportunities Fund
-ASGI,abrdn Global Infrastructure Income Fund
-FFC,Flaherty Crumrine Preferred and Income Securities Mutual Fund  Incorporated
 USB PR H,US Depository Shares Repstg 1/1000th Non Cum Perp Pref Shs Series B
-TXO,TXO Partners Units
 HZO,MarineMax Inc
-NXRT,NexPoint Residential Trust Inc
-VTS,Vitesse Energy Inc
-GFR,Greenfire Resources Ltd
-IBTA,Ibotta Inc
-NLY PR F,Annaly Capital Mgt 6.95% Fixed to Floating Rate Cum Redeemable Pref Shs Series F
-MET PR F,Metlife 1000 DS Rep Prf Series F
-ANRO,Alto Neuroscience Inc
 BAC PR O,Bank of America Depositary shares Representing 1 1000 Non Cumulative Pref Shs
-KFRC,Kforce Inc
-BRSP,Brightspire Capital Inc
-NXP,Nuveen Select Tax-Free Income Portfolio
-NIE,Virtus Equity And Convertible Income Fund
-IVR,Invesco Mortgage Capital Inc
-MET PR E,Metlife DS 1 1000 representing Pref Shs Series E
-GRNT,Granite Ridge Resources Inc
-PEO,Adams Natural Resources Fund，Inc.
-SCHW PR D,Charles Schwab DS Representing 1 40 interest 5.95 Non Cum Perpetual Pref Shs
-BTO,John Hancock Financial Opportunities Fund
-GDOT,Green Dot Corp
-RMT,Royce Micro Cap Closed Fund
-FTK,Flotek Industries Inc
-SXC,SunCoke Energy Inc
-MKC.V,Mccormick & Co Voting Ord Shs
-SMBK,SmartFinancial Inc
-IGR,CBRE Global Real Estate Income Fund
-MYI,BlackRock MuniYield Quality Fund III，Inc.
-BIT,BlackRock Multi-Sector Income Trust
-JBI,Janus International Group Inc
-RA,Brookfield Real Assets Income Closed Fund
-JQC,Nuveen Credit Strategies Income Closed Fund
-WDI,Western Asset Diversified Income Fund
-AHRT,AH Realty Trust  Inc
-OPFI,OppFi Inc
-HRTG,Heritage Insurance Holdings Inc
-SUPV,Grupo Supervielle SA ADR
-CSV,Carriage Services Inc
-WFC PR C,Wells Fargo 1000 Depositary Shares representing Non-Cumulative Perpetual Class
-JPM PR J,JP Morgan Chase DS Representing 1 400 Non Cumulaive Series GG Pref Shs
+ASGI,abrdn Global Infrastructure Income Fund
 NABL,N-Able Inc
-CTO,CTO Realty Growth Inc
-RSKD,Riskified Ltd
-SKYH,Sky Harbour Group Corp
-HIPO,Hippo Holdings Inc
-BUI,BlackRock Utilities Infrastructure & Power Oppty
-DLY,DoubleLine Yield Opportunities Fund
-PFN,Pimco Income Strategy II Closed Fund
-NOAH,Noah Holdings Ltd ADR
-VEL,Velocity Financial Inc
-TFC PR R,Truist Financial DS Rep 1 1000th Non Cum Perp Pfd Series R
-SB,Safe Bulkers Inc
-HSHP,Himalaya Shipping Ltd
-NKX,Nuveen California AMT-Free Quality Municipal In Fd
-ACP,abrdn Income Credit Strategies Mutual Fund
-NGVC,Natural Grocers by Vitamin Cottage Inc
-RWT,Redwood Trust Inc
-PAXS,PIMCO Access Income Fund
-CLB,Core Laboratories Inc
-FBRT,Franklin BSP Realty Trust Inc
-FET,Forum Energy Technologies Inc
-PKE,Park Aerospace Corp
-BZH,Beazer Homes USA Inc
-OFRM,Once Upon A Farm PBC
-WTI,W&T Offshore Inc
-BOE,BlackRock Enhanced Global Dividend Closed End Fund
-BWMX,Betterware de Mexico SAPI de CV
-PSTL,Postal Realty Trust Inc
-WFC PR Y,Wells Fargo DS Repstg 1000 Int Non Cumulative Perp Series Y Pref shs Class A
+MNTN,MNTN Inc
 MEC,Mayville Engineering Company Inc
+RMT,Royce Micro Cap Closed Fund
+NIE,Virtus Equity And Convertible Income Fund
+NXP,Nuveen Select Tax-Free Income Portfolio
+VTS,Vitesse Energy Inc
+MET PR F,Metlife 1000 DS Rep Prf Series F
+NLY PR F,Annaly Capital Mgt 6.95% Fixed to Floating Rate Cum Redeemable Pref Shs Series F
+GFR,Greenfire Resources Ltd
+SCHW PR D,Charles Schwab DS Representing 1 40 interest 5.95 Non Cum Perpetual Pref Shs
+NXRT,NexPoint Residential Trust Inc
+BRSP,Brightspire Capital Inc
+IVR,Invesco Mortgage Capital Inc
+RSKD,Riskified Ltd
+RVI,Robinhood Ventures Fund I
+MYI,BlackRock MuniYield Quality Fund III，Inc.
+MET PR E,Metlife DS 1 1000 representing Pref Shs Series E
+GDOT,Green Dot Corp
+FTK,Flotek Industries Inc
+BTO,John Hancock Financial Opportunities Fund
+BIT,BlackRock Multi-Sector Income Trust
+TXO,TXO Partners Units
+NOAH,Noah Holdings Ltd ADR
+JQC,Nuveen Credit Strategies Income Closed Fund
+JBI,Janus International Group Inc
+OPFI,OppFi Inc
+SKYH,Sky Harbour Group Corp
+BZH,Beazer Homes USA Inc
+WDI,Western Asset Diversified Income Fund
+BAK,Braskem SA ADR
+PEO,Adams Natural Resources Fund，Inc.
+RA,Brookfield Real Assets Income Closed Fund
+HSHP,Himalaya Shipping Ltd
+BTGO,BitGo Holdings Inc
+BWMX,Betterware de Mexico SAPI de CV
+SMBK,SmartFinancial Inc
+PKE,Park Aerospace Corp
+ANRO,Alto Neuroscience Inc
+JPM PR J,JP Morgan Chase DS Representing 1 400 Non Cumulaive Series GG Pref Shs
 BALY,Bally's Corp
-MUJ,BlackRock MuniHoldings New Jersey Quality Fd，Inc.
-EROK,EagleRock Land LLC
-VMO,Invesco Municipal Opportunity Trust
-TRTX,TPG RE Finance Trust Inc
-BHK,BlackRock Core Bond Closed Fund
-RGR,Sturm Ruger & Company Inc
-RNR PR F,Renaissancere Holdings Depositary Shares Rep 1/1000 Int Pref Shs Series F
-PDT,John Hancock Premium Dividend Fund
+IGR,CBRE Global Real Estate Income Fund
+MKC.V,Mccormick & Co Voting Ord Shs
+WFC PR C,Wells Fargo 1000 Depositary Shares representing Non-Cumulative Perpetual Class
+AHRT,AH Realty Trust  Inc
+CTO,CTO Realty Growth Inc
+PFN,Pimco Income Strategy II Closed Fund
+DLY,DoubleLine Yield Opportunities Fund
+TFC PR R,Truist Financial DS Rep 1 1000th Non Cum Perp Pfd Series R
+VEL,Velocity Financial Inc
+PAXS,PIMCO Access Income Fund
+NKX,Nuveen California AMT-Free Quality Municipal In Fd
+OXM,Oxford Industries Inc
+HIPO,Hippo Holdings Inc
+BOE,BlackRock Enhanced Global Dividend Closed End Fund
+ACP,abrdn Income Credit Strategies Mutual Fund
+RWT,Redwood Trust Inc
+BUI,BlackRock Utilities Infrastructure & Power Oppty
+NGVC,Natural Grocers by Vitamin Cottage Inc
+FBRT,Franklin BSP Realty Trust Inc
+VTEX,VTEX
+SB,Safe Bulkers Inc
+ASC,Ardmore Shipping Corp
+HPP,Hudson Pacific Properties Inc
+GRNT,Granite Ridge Resources Inc
 NCDL,Nuveen Churchill Direct Lending Corp
+PAR,PAR Technology Corp
+HRTG,Heritage Insurance Holdings Inc
+VMO,Invesco Municipal Opportunity Trust
+PHR,Phreesia Inc
+BHK,BlackRock Core Bond Closed Fund
+MUJ,BlackRock MuniHoldings New Jersey Quality Fd，Inc.
+CNNE,Cannae Holdings Inc
+CSV,Carriage Services Inc
+WFC PR Y,Wells Fargo DS Repstg 1000 Int Non Cumulative Perp Series Y Pref shs Class A
+SDHC,Smith Douglas Homes Corp
+TRTX,TPG RE Finance Trust Inc
+CLB,Core Laboratories Inc
+RNR PR F,Renaissancere Holdings Depositary Shares Rep 1/1000 Int Pref Shs Series F
+INN,Summit Hotel Properties Inc
+ALL PR J,Allstate Dep Shs Repstg 1 1000Th Non Cum Perp Pfd Series J
+EQH PR A,Equitable Hldngs 1000 DRC Representing Pref Shs Series A
+PDT,John Hancock Premium Dividend Fund
 NMG,Nouveau Monde Graphite Inc
 TCBX,Third Coast Bancshares Inc
-SMC,Summit Midstream Corp
-EQH PR A,Equitable Hldngs 1000 DRC Representing Pref Shs Series A
-ALL PR J,Allstate Dep Shs Repstg 1 1000Th Non Cum Perp Pfd Series J
-OXM,Oxford Industries Inc
-MNTN,MNTN Inc
-DSU,BlackRock Debt Strategies Fund，Inc.
-RERE,ATRenew Inc ADR
-PAR,PAR Technology Corp
-VTEX,VTEX
-AIV,Apartment Investment and Management Co
-HPP,Hudson Pacific Properties Inc
-CNNE,Cannae Holdings Inc
+EDN,Empresa Distribuidora y Comercializadora Norte SA ADR
+RGR,Sturm Ruger & Company Inc
 HY,Hyster-Yale Inc
+OFRM,Once Upon A Farm PBC
+PSTL,Postal Realty Trust Inc
 NDMO,Nuveen Dynamic Municipal Opportunities Fund
-INN,Summit Hotel Properties Inc
-EMD,Western Asset Emerging Markets Debt Fund
-KEY PR L,KeyCorp Depositary Shares Reprstg A 1 40th interest Fixed Rate Perpetual Non
-DDL,Dingdong (Cayman) Ltd ADR
-ONT,Onterris Inc
-BAC PR P,Bank of America 1000 DS Representing Non-Cumulative Pref Shs Series PP
-ASIX,AdvanSix Inc
-NPB,Northpointe Bancshares Inc
-BCSS.U,Bain Capital GSS Investment Units
-EGY,VAALCO Energy Inc
-SSTK,Shutterstock Inc
-BCSS,Bain Capital GSS Investment Corp
-EVAC,EQV Ventures Acquisition Corp II
-MHD,BlackRock MuniHoldings Fund，Inc.
-SDHC,Smith Douglas Homes Corp
-LDP,Cohen & Steers Ltd Dur Pref and Income Fund Inc
-RYAM,Rayonier Advanced Materials Inc
-NMCO,Nuveen Municipal Credit Opportunities Fund
-UHT,Universal Health Realty Income Trust
-GS PR A,Goldman Sachs Depository Shares Repstg 1/1000 Floating Rate Non Cumulative
-HUYA,HUYA Inc ADR
-BH,Biglari Holdings Inc Class B
-JXN PR A,Jackson Financial Depositary Shr each representg a 1 1000th int shr Fxd Rt Rst
-AEXA,American Exceptionalism Acquisition Corp A
-HOV,Hovnanian Enterprises Inc
-ORN,Orion Group Holdings Inc
-IIM,Invesco Value Municipal Income Closed Fund
-ETJ,Eaton Vance Risk Managed Diversified Equity Income Closed Fund
-SD,SandRidge Energy Inc
-FOUR PR A,Shift4 Pmts Mandatory Pfd Stk Conv Prf Shs Ser A
-NEE PR N,NextEra Energy Capital Holdings Junior Subordinated  Debentures Series N Exp 1
-AVK,Advent Convertible and Income Fund
-GUT,Gabelli Utility Trust
 MCS,Marcus Corp
-PD,PagerDuty Inc
-PHR,Phreesia Inc
-MG,Mistras Group Inc
-SCE PR M,SCE Trust VII 7 50 Pref Shs
+BH,Biglari Holdings Inc Class B
+DSU,BlackRock Debt Strategies Fund，Inc.
+AIV,Apartment Investment and Management Co
+HUYA,HUYA Inc ADR
+EMD,Western Asset Emerging Markets Debt Fund
+EROK,EagleRock Land LLC
+MHD,BlackRock MuniHoldings Fund，Inc.
+BAC PR P,Bank of America 1000 DS Representing Non-Cumulative Pref Shs Series PP
+HKD,AMTD Digital Inc ADR
+RYAM,Rayonier Advanced Materials Inc
+ASIX,AdvanSix Inc
+LDP,Cohen & Steers Ltd Dur Pref and Income Fund Inc
+KEY PR L,KeyCorp Depositary Shares Reprstg A 1 40th interest Fixed Rate Perpetual Non
+BCSS.U,Bain Capital GSS Investment Units
+BCSS,Bain Capital GSS Investment Corp
+NMCO,Nuveen Municipal Credit Opportunities Fund
+MOV,Movado Group Inc
+EVAC,EQV Ventures Acquisition Corp II
+ONT,Onterris Inc
+NPB,Northpointe Bancshares Inc
+GS PR A,Goldman Sachs Depository Shares Repstg 1/1000 Floating Rate Non Cumulative
+IIM,Invesco Value Municipal Income Closed Fund
+PACK,Ranpak Holdings Corp
+AVK,Advent Convertible and Income Fund
+ETJ,Eaton Vance Risk Managed Diversified Equity Income Closed Fund
+DNA,Ginkgo Bioworks Holdings Inc
+UHT,Universal Health Realty Income Trust
+CARS,Cars.com Inc
+GPRK,GeoPark Ltd
+SMC,Summit Midstream Corp
+WTI,W&T Offshore Inc
+TWN,Taiwan Fund Inc.
+FOUR PR A,Shift4 Pmts Mandatory Pfd Stk Conv Prf Shs Ser A
+HOV,Hovnanian Enterprises Inc
+MAX,Mediaalpha Inc
+EGY,VAALCO Energy Inc
+AEXA,American Exceptionalism Acquisition Corp A
+SD,SandRidge Energy Inc
+JXN PR A,Jackson Financial Depositary Shr each representg a 1 1000th int shr Fxd Rt Rst
+FET,Forum Energy Technologies Inc
+MSIF,MSC Income Fund Inc
+GUT,Gabelli Utility Trust
+NEE PR N,NextEra Energy Capital Holdings Junior Subordinated  Debentures Series N Exp 1
 MMU,Western Asset Managed Municipals Fund
 VGM,Invesco Trust For Inv Grade Munis
-TDS PR V,Telephone And Data Sys Dep Shs Repstg 1 1000Th Perp Pref Shs Series VV
-CARS,Cars.com Inc
-TWN,Taiwan Fund Inc.
-MET PR A,MetLife Floating Rate Non Cumulative Pref Shs Series A
-PACK,Ranpak Holdings Corp
-NGS,Natural Gas Services Group Inc
-DPG,Duff & Phelps Utility and Infrastructure Fund Inc
-MSIF,MSC Income Fund Inc
+MG,Mistras Group Inc
+ORN,Orion Group Holdings Inc
+SCE PR M,SCE Trust VII 7 50 Pref Shs
 ECC,Eagle Point Credit Company Inc
-EDN,Empresa Distribuidora y Comercializadora Norte SA ADR
-OIS,Oil States International Inc
-IPI,Intrepid Potash Inc
-MLR,Miller Industries Inc
-VKQ,Invesco Municipal Trust
-BKKT,Bakkt Inc
-MAX,Mediaalpha Inc
-GUG,Guggenheim Active Allocation CEF
-OOMA,Ooma Inc
-HKD,AMTD Digital Inc ADR
-HQL,abrdn Life Sciences Investors
-LNC PR D,Lincoln Natl Depositary Shs Representing 1/1000Th Class D Non Cumulative Pref
-BDN,Brandywine Realty Trust
-GPRK,GeoPark Ltd
-TRC,Tejon Ranch Co
-ALL PR B,Allstate 5.100% Fixed-To-Floating Rate Subordinated Debenture Exp 2053
-THW,abrdn World Healthcare Fund
-BGY,BlackRock Enhanced International Dividend Closed End Fund
-IIIN,Insteel Industries Inc
-WIW,Western Asset Inflation Linked Opportunities Income Closed End Fund
-BANC PR F,Banc of California Depositary Shs Each Repsntg 1 40th Interest 7 75 Non
-BAC PR S,Bank Amer Dep Shs Repstg 1 1000 Interest Share of 4 750 Non Cum Prf Shs Series
-BNY PR K,Bank New York Mellon Depositary Shs Repstg 1 4000Th Prf Shs Ser K
-SYF PR B,Synchrony Finl Depositary Shs Each Rep 1 40Th Int In A Sh Of Fxd Rate Non Cum
-EBF,Ennis Inc
-BK PR K,Bank New York Mellon Depositary Shs Repstg 1 4000Th Prf Shs Ser K
-BME,BlackRock Health Sciences Trust
-IQI,Invesco Quality Municipal Income Closed Fund
-OLP,One Liberty Properties Inc
-ATH PR E,Athene Holding Ltd DRC
-VCV,Invesco California Value Muni Inc Tr
-RF PR F,Regions Financial Depositary Shares Representing a 1 40th Interest in a Share
-BGB,Blackstone Strategic Credit 2027 Term Fund
-KEY PR I,Keycorp DS Representing 1 40 Non Cumulative Pref Shs Series E
-MSC,Studio City International Holdings Ltd ADR
-CHCT,Community Healthcare Trust Inc
-ANGX,Angel Studios Inc
-DNA,Ginkgo Bioworks Holdings Inc
-CPS,Cooper-Standard Holdings Inc
-NWAX,New America Acquisition I Corp
-USB PR P,US DS Representing 1/1000 Perp Pref Shs Series K
-ETD,Ethan Allen Interiors Inc
-FTHY,First Trust High Yield Opportunities 2027 Term Closed End Fd
-CLDT,Chatham Lodging Trust
-IGD,Voya Global Equity Dividend & Premium Opportunity Closed Fund
-XRN,Chiron Real Estate Inc
-ETO,Eaton Vance Tax Advantaged Global Dividend Opportunities Closed Fund
-GHY,PGIM Global High Yield Fund，Inc
-BLW,BlackRock Limited Duration Income Trust
-PCQ,PIMCO California Municipal Income Fund
-RF PR C,Regions Financial DS Representing 1/40th 5.7% Fixed to Floating Rate Non Cum
-EVAC.U,EQV Ventures Acquisition II Units
-MATV,Mativ Holdings Inc
-ET PR I,Energy Transfer Prf Shs Series I
-KRSP,Rice Acquisition Corp 3
-IFN,Aberdeen India Fund
-ASPN,Aspen Aerogels Inc
-TFC PR O,Truist Financial 1000 Depositary Shares Representing Perp Pref Shs Series O
-FLG PR A,Flagstar Bank National Association DS Representing 1 40 Noncumulative Perp Pref
-QXO PR B,Qxo Depositary Shares Repstg 1 20Th Int Conv Pfd Ser B
-TWI,Titan International Inc
-NMAI,Nuveen Multi-Asset Income Fund
-BBW,Build-A-Bear Workshop Inc
-HPS,John Hancock Preferred Income III Closed Fund
-RITM PR D,Rithm Capital 7 00 Fixed Rate Reset Cumulative Redeemable Pref Shs Series D
+TDS PR V,Telephone And Data Sys Dep Shs Repstg 1 1000Th Perp Pref Shs Series VV
 DDD,3D Systems Corp
+VKQ,Invesco Municipal Trust
+MLR,Miller Industries Inc
+HQL,abrdn Life Sciences Investors
+BDN,Brandywine Realty Trust
+MET PR A,MetLife Floating Rate Non Cumulative Pref Shs Series A
+IIIN,Insteel Industries Inc
+GUG,Guggenheim Active Allocation CEF
+CPS,Cooper-Standard Holdings Inc
+ETD,Ethan Allen Interiors Inc
+ANGX,Angel Studios Inc
+LNC PR D,Lincoln Natl Depositary Shs Representing 1/1000Th Class D Non Cumulative Pref
+IQI,Invesco Quality Municipal Income Closed Fund
+SSTK,Shutterstock Inc
+SYF PR B,Synchrony Finl Depositary Shs Each Rep 1 40Th Int In A Sh Of Fxd Rate Non Cum
+WIW,Western Asset Inflation Linked Opportunities Income Closed End Fund
+BGY,BlackRock Enhanced International Dividend Closed End Fund
+ASPN,Aspen Aerogels Inc
+ALIT,Alight Inc
+ALL PR B,Allstate 5.100% Fixed-To-Floating Rate Subordinated Debenture Exp 2053
+BAC PR S,Bank Amer Dep Shs Repstg 1 1000 Interest Share of 4 750 Non Cum Prf Shs Series
+BME,BlackRock Health Sciences Trust
+BANC PR F,Banc of California Depositary Shs Each Repsntg 1 40th Interest 7 75 Non
+EBF,Ennis Inc
+THW,abrdn World Healthcare Fund
+DPG,Duff & Phelps Utility and Infrastructure Fund Inc
+VCV,Invesco California Value Muni Inc Tr
+TRC,Tejon Ranch Co
+BNY PR K,Bank New York Mellon Depositary Shs Repstg 1 4000Th Prf Shs Ser K
+IPI,Intrepid Potash Inc
+ATH PR E,Athene Holding Ltd DRC
+BK PR K,Bank New York Mellon Depositary Shs Repstg 1 4000Th Prf Shs Ser K
+NWAX,New America Acquisition I Corp
+OLP,One Liberty Properties Inc
+BGB,Blackstone Strategic Credit 2027 Term Fund
+ETO,Eaton Vance Tax Advantaged Global Dividend Opportunities Closed Fund
+CLDT,Chatham Lodging Trust
+OIS,Oil States International Inc
+CINT,Ci&T Inc
+WEAV,Weave Communications Inc
+RF PR F,Regions Financial Depositary Shares Representing a 1 40th Interest in a Share
+USB PR P,US DS Representing 1/1000 Perp Pref Shs Series K
+MSC,Studio City International Holdings Ltd ADR
+KEY PR I,Keycorp DS Representing 1 40 Non Cumulative Pref Shs Series E
+OOMA,Ooma Inc
+FTHY,First Trust High Yield Opportunities 2027 Term Closed End Fd
+PCQ,PIMCO California Municipal Income Fund
+NGS,Natural Gas Services Group Inc
+CHCT,Community Healthcare Trust Inc
+GHY,PGIM Global High Yield Fund，Inc
+IGD,Voya Global Equity Dividend & Premium Opportunity Closed Fund
+RF PR C,Regions Financial DS Representing 1/40th 5.7% Fixed to Floating Rate Non Cum
+BLW,BlackRock Limited Duration Income Trust
+SES,SES AI Corp
+TFC PR O,Truist Financial 1000 Depositary Shares Representing Perp Pref Shs Series O
+KRSP,Rice Acquisition Corp 3
+EVAC.U,EQV Ventures Acquisition II Units
+LZM,Lifezone Metals Ltd
+FLG PR A,Flagstar Bank National Association DS Representing 1 40 Noncumulative Perp Pref
+KLC,Kindercare Learning Companies Inc
+CAL,Caleres Inc
+QXO PR B,Qxo Depositary Shares Repstg 1 20Th Int Conv Pfd Ser B
+ET PR I,Energy Transfer Prf Shs Series I
+NMAI,Nuveen Multi-Asset Income Fund
+IFN,Aberdeen India Fund
+VVR,Invesco Senior Income Trust
+BKKT,Bakkt Inc
+BBBY,Bed Bath & Beyond Inc
+EVH,Evolent Health Inc
+HPS,John Hancock Preferred Income III Closed Fund
+TWI,Titan International Inc
+NPWR,NET Power Inc
 KIO,KKR Income Opportunities Fund
 NBB,Nuveen Taxable Municipal Income Fund
-FFA,First Trust Enhanced Equity Income Closed Fund
-VVR,Invesco Senior Income Trust
-CAL,Caleres Inc
-FPI,Farmland Partners Inc
-WEAV,Weave Communications Inc
-NPFD,Nuveen Variable Rate Preferred Income Closed End Fund
-GOOS,Canada Goose Holdings Inc
-ETB,Eaton Vance Tax Managed Buy Write Income Closed Fund
-MOV,Movado Group Inc
-GETY,Getty Images Holdings Inc
-MTB PR K,M T Bk Dep Shs Repstg 1 400Th Int Perp Non Cum Pfd Ser K
-EVH,Evolent Health Inc
-ALIT,Alight Inc
+XRN,Chiron Real Estate Inc
+HTT,High Templar Tech Ltd ADR
+RITM PR D,Rithm Capital 7 00 Fixed Rate Reset Cumulative Redeemable Pref Shs Series D
 LXFR,Luxfer Holdings PLC
-NLY PR I,Annaly Capital Management Pref Shs Series I
+FFA,First Trust Enhanced Equity Income Closed Fund
+BBW,Build-A-Bear Workshop Inc
+GOOS,Canada Goose Holdings Inc
+ZKH,ZKH Group Ltd ADR
+DDL,Dingdong (Cayman) Ltd ADR
+NPFD,Nuveen Variable Rate Preferred Income Closed End Fund
+ETB,Eaton Vance Tax Managed Buy Write Income Closed Fund
+FPI,Farmland Partners Inc
+MTB PR K,M T Bk Dep Shs Repstg 1 400Th Int Perp Non Cum Pfd Ser K
 EBS,Emergent BioSolutions Inc
+MATV,Mativ Holdings Inc
+ISD,PGIM High Yield Bond Fund，Inc
+GETY,Getty Images Holdings Inc
+HPI,John Hancock Preferred Income Closed Fund
 STT PR G,State Street DS Representing 1/4000th Perpetual Non Cumulative Pref Shs Series G
 COF PR L,Capital One FINL DRC Rep 1 40TH INT Pref Shs Series L
-ISD,PGIM High Yield Bond Fund，Inc
-AXS PR E,Axis Cap 100 DS Representing 1 Pref Shs Series E
 ADCT,ADC Therapeutics SA
-CMDB,Costamare Bulkers Holdings Ltd
-CINT,Ci&T Inc
-BRCC,BRC Inc
-KLC,Kindercare Learning Companies Inc
-ZKH,ZKH Group Ltd ADR
-GOTU,Gaotu Techedu Inc ADR
-WDH,Waterdrop Inc ADR
-LZM,Lifezone Metals Ltd
-SES,SES AI Corp
-NPWR,NET Power Inc
-NLY PR G,Annaly Capital Management Pref Shs Series G
-HPI,John Hancock Preferred Income Closed Fund
 FINS,Angel Oak Financial Strategies Income Term Trust
 LDI,loanDepot Inc
+BLND,Blend Labs Inc
+CTEV,Claritev Corp
+GOTU,Gaotu Techedu Inc ADR
+YEXT,Yext Inc
+AXS PR E,Axis Cap 100 DS Representing 1 Pref Shs Series E
 EVN,Eaton Vance Municipal Income Trust
-CBAN,Colony Bankcorp Inc
+NLY PR I,Annaly Capital Management Pref Shs Series I
+KREF,KKR Real Estate Finance Trust Inc
+NLY PR G,Annaly Capital Management Pref Shs Series G
 SCHW PR J,Charles Schwab DS Each Rep 1 40 Intrst of 4 450 Non Cumulative Perpetual Pref
 DFP,Flaherty & Crumrine Dynamic Pfd and Inc Fd
-BGR,BlackRock Energy and Resources Closed Fund
-KREF,KKR Real Estate Finance Trust Inc
-MTW,Manitowoc Company Inc
-BBBY,Bed Bath & Beyond Inc
-CFG PR H,Citizens Finl Group Dep Shs Repstg 1 40Th Perp Pfd Series H
+WDH,Waterdrop Inc ADR
+PSFE,Paysafe Ltd
 SGU,Star Group Units
-CFG PR I,Citizens Finl Group Dep Shs Repstg 1 40Th Perp Pfd Ser I Depositary Share
-CLBR,Colombier Acquisition Corp III
+DBI,Designer Brands Inc
+CFG PR H,Citizens Finl Group Dep Shs Repstg 1 40Th Perp Pfd Series H
+CBAN,Colony Bankcorp Inc
 MUA,BlackRock MuniAssets Fund，Inc.
-MVF,BlackRock MuniVest Fund，Inc.
+MTW,Manitowoc Company Inc
 PSA PR L,Public Storage 1000 Depositary Shares Representing 4 625 Cumulative Pref Shs
+FVRR,Fiverr International Ltd
+CLBR,Colombier Acquisition Corp III
+VHI,Valhi Inc
+MAGN,Magnera Corp
+CFG PR I,Citizens Finl Group Dep Shs Repstg 1 40Th Perp Pfd Ser I Depositary Share
+MEI,Methode Electronics Inc
+OEC,Orion SA
+MVF,BlackRock MuniVest Fund，Inc.
 FVR,FrontView REIT Inc
 GCO,Genesco Inc
-NOA,North American Construction Group Ltd
-FVRR,Fiverr International Ltd
-MEI,Methode Electronics Inc
+BGR,BlackRock Energy and Resources Closed Fund
+CMDB,Costamare Bulkers Holdings Ltd
 FHN PR H,First Horizon Depositary Sh Repstg 1 4000 Int Sh Non Cum Perp Pfd Stk Ser H
-OEC,Orion SA
-MS PR L,Morgan Stanley 1000 Depositary Share Representing Pref Shs Series L
-CYH,Community Health Systems Inc
-SDHY,PGIM Short Duration High Yield Opportunities Fund
-LEO,BNY Mellon Strategic Municipals Inc
-FRA,BlackRock Floating Rate Income Strategies Fd，Inc.
-RITM PR C,Rithm Capital 6 375 Cumulative Redeemable Pref Shs Series C
-NCV,Virtus Convertible And Income Fund
-ATH PR D,Athene Holding DS Representing a 1 1 000 Non Cum Pref Shs Series D
-EQV.U,EQV Ventures Acquisition Units
-KNOP,KNOT Offshore Partners Common Units
-FOF,Cohen & Steers Closed End Opportunity Closed Fund
 DIN,Dine Brands Global Inc
-RNGR,Ranger Energy Services Inc
-WHR PR A,Whirlpool Dep Shs Repstg 1 20th Int Mandatory Conv Prf Series A
-GBAB,Guggenheim Taxable Muni Bd & Inv Grade Dbt Trust
-AVBC,Avidia Bancorp Inc
-PFL,Pimco Income Strategy Closed Fund
-PSFE,Paysafe Ltd
+LEO,BNY Mellon Strategic Municipals Inc
+SDHY,PGIM Short Duration High Yield Opportunities Fund
+MS PR L,Morgan Stanley 1000 Depositary Share Representing Pref Shs Series L
 BOC,Boston Omaha Corp
+NCV,Virtus Convertible And Income Fund
+BRCC,BRC Inc
+FRA,BlackRock Floating Rate Income Strategies Fd，Inc.
 BXC,Bluelinx Holdings Inc
-LND,BrasilAgro - Companhia Brasileira de Propriedades Agricolas ADR
-GTN,Gray Media Inc
-KEY PR K,Keycorp New Depository Shares Representing 1 40th Ownership Fixed Rate
-PSA PR P,PUBLIC STORAGE DS Representing 1 1000TH BEN Pref Shs Series P
+CYH,Community Health Systems Inc
+ATH PR D,Athene Holding DS Representing a 1 1 000 Non Cum Pref Shs Series D
+RITM PR C,Rithm Capital 6 375 Cumulative Redeemable Pref Shs Series C
+PFL,Pimco Income Strategy Closed Fund
+FOF,Cohen & Steers Closed End Opportunity Closed Fund
+GBAB,Guggenheim Taxable Muni Bd & Inv Grade Dbt Trust
+QUAD,Quad/Graphics Inc
+EQV.U,EQV Ventures Acquisition Units
+WHR PR A,Whirlpool Dep Shs Repstg 1 20th Int Mandatory Conv Prf Series A
 MYN,BlackRock MuniYield New York Quality Fund，Inc.
-MAGN,Magnera Corp
-SOR,Source Capital Beneficial Interest
-PNFP PR B,Pinnacle Financial Partners Non Cumulative Prf Shs Series B
-CTEV,Claritev Corp
+AVBC,Avidia Bancorp Inc
+PSA PR P,PUBLIC STORAGE DS Representing 1 1000TH BEN Pref Shs Series P
 NC,NACCO Industries Inc
 CVEO,Civeo Corp
-HTT,High Templar Tech Ltd ADR
+LND,BrasilAgro - Companhia Brasileira de Propriedades Agricolas ADR
+SOR,Source Capital Beneficial Interest
 XPER,Xperi Inc
-QUAD,Quad/Graphics Inc
-MZYX,Mozayyx Acquisition Corp
-TDS PR U,TELEPHONE DATA SYS 1000 DRC Representing 6 625 Cumulative Redeemable Perp Pref
-YEXT,Yext Inc
-GNE,Genie Energy Ltd
-FCRS,FutureCrest Acquisition Corp
-KRSP.U,Rice Acquisition Redeemable Units
-NWAX.U,New America Acquisition I Units
+NOA,North American Construction Group Ltd
+PNFP PR B,Pinnacle Financial Partners Non Cumulative Prf Shs Series B
 SMWB,Similarweb Ltd
-SAR,Saratoga Investment Corp
-WLYB,John Wiley & Sons Inc Class B
-DBI,Designer Brands Inc
+GTN,Gray Media Inc
+TDS PR U,TELEPHONE DATA SYS 1000 DRC Representing 6 625 Cumulative Redeemable Perp Pref
+MZYX,Mozayyx Acquisition Corp
 NAN,Nuveen New York Quality Municipal Income Fund
-ALUB,Alussa Energy Acquisition Corp II
-KEY PR J,KeyCorp DS Rep 1/40th Fixed Rate Perpetual Non Cumulative PRF Shs Series F
-FTW,Presidio Production Co
-AWP,abrdn Global Premier Properties Mutual Fund
+SAR,Saratoga Investment Corp
+RNGR,Ranger Energy Services Inc
+KEY PR K,Keycorp New Depository Shares Representing 1 40th Ownership Fixed Rate
+FCRS,FutureCrest Acquisition Corp
+NWAX.U,New America Acquisition I Units
+KRSP.U,Rice Acquisition Redeemable Units
 MCI,Barings Corporate Investors
-BLND,Blend Labs Inc
-JGH,Nuveen Global High Income Fund
+HFRO,Highland Opportunities and Income Fund
+GNE,Genie Energy Ltd
 FPH,Five Point Holdings LLC
+KNOP,KNOT Offshore Partners Common Units
+EMF,Templeton Emerging Markets Closed Fund
+JGH,Nuveen Global High Income Fund
+ALUB,Alussa Energy Acquisition Corp II
+WLYB,John Wiley & Sons Inc Class B
+BNED,Barnes & Noble Education Inc
 HIX,Western Asset High Income Fund II Inc
-EDD,Morgan Stanley Emerging Mrkt Domestic Debt Fd Inc
-JRI,Nuveen Real Asset Income and Growth Fund
-VHI,Valhi Inc
+VLN,Valens Semiconductor Ltd
+KTF,DWS Municipal Income Trust
+FTW,Presidio Production Co
 ACCO,ACCO Brands Corp
 SCD,LMP Capital & Income Fund
+EDD,Morgan Stanley Emerging Mrkt Domestic Debt Fd Inc
 SOUL,Soulpower Acquisition Corp
-KTF,DWS Municipal Income Trust
 MIY,BlackRock MuniYield Michigan Quality Fund，Inc.
-HFRO,Highland Opportunities and Income Fund
-USNA,USANA Health Sciences Inc
-HIO,Western Asset High Income Opportunity Closed Fund
-NL,NL Industries Inc
-SBXE,SilverBox Corp V
+AWP,abrdn Global Premier Properties Mutual Fund
+KEY PR J,KeyCorp DS Rep 1/40th Fixed Rate Perpetual Non Cumulative PRF Shs Series F
 HPF,John Hancock Preferred Income II Closed Fund
-MLP,Maui Land & Pineapple Company Inc
+JRI,Nuveen Real Asset Income and Growth Fund
+HIO,Western Asset High Income Opportunity Closed Fund
+EVTL,Vertical Aerospace Ltd
+SBXE,SilverBox Corp V
 HIG PR G,Hartford Insurance Group Depositary Shares Representing  1 1000Th 6 000 Non
-BGS,B&G Foods Inc
-PSBD,Palmer Square Capital BDC Inc
-ZTR,Virtus Total Return Fund Inc.
-CFG PR E,Citizens Financial Group DR Representing 1/40th Perpetual Preferred Series E
+UIS,Unisys Corp
 NXG,NXG NextGen Infrastructure Income Fund
 MSB,Mesabi Trust
-EVTL,Vertical Aerospace Ltd
-AII,American Integrity Insurance Group Inc
-HVT,Haverty Furniture Companies Inc
-SCE PR N,Sce Trust Viii Prf Shs Series N
-SCE PR L,SCE Trust VI Tr Pref Shs
-ASG,Liberty All Star Growth Closed Fund
-PPT,Putnam Premier Income Trust
-EMF,Templeton Emerging Markets Closed Fund
 CION,Cion Investment Corp
-JOF,Japan Smaller Capitalization Closed Fund
 RM,Regional Management Corp
-AGD,abrdn Global Dynamic Dividend Mutual Fund
-DSX,Diana Shipping Inc
-OPTU,Optimum Communications Inc
-VLN,Valens Semiconductor Ltd
-UP,Wheels Up Experience Inc
-BNED,Barnes & Noble Education Inc
-RLJ PR A,RLJ Lodging 1.95 Cumulative Convertible Pref Shs Series A
+HVT,Haverty Furniture Companies Inc
+ASG,Liberty All Star Growth Closed Fund
+PSBD,Palmer Square Capital BDC Inc
+JOF,Japan Smaller Capitalization Closed Fund
+SCE PR N,Sce Trust Viii Prf Shs Series N
+TCI,Transcontinental Realty Investors Inc
+MLP,Maui Land & Pineapple Company Inc
+PPT,Putnam Premier Income Trust
+CFG PR E,Citizens Financial Group DR Representing 1/40th Perpetual Preferred Series E
+USNA,USANA Health Sciences Inc
 SPXX,Nuveen S&P 500 Dynamic Overwrite Closed End Fund
-VACI,Viking Acquisition Corp I
-BGT,BlackRock Floating Rate Income Closed Fund
-NGL PR B,NGL Energy Partners 9 Cumulative Redeemable Perpetual Pref Shs Unit Class B
+ZTR,Virtus Total Return Fund Inc.
+SCE PR L,SCE Trust VI Tr Pref Shs
+AGD,abrdn Global Dynamic Dividend Mutual Fund
+CMTG,Claros Mortgage Trust Inc
+BGS,B&G Foods Inc
+HLLY,Holley Inc
+OPTU,Optimum Communications Inc
+UP,Wheels Up Experience Inc
 AUNA,Auna SA
+KF,Korea Closed Fund
+RLJ PR A,RLJ Lodging 1.95 Cumulative Convertible Pref Shs Series A
+VACI,Viking Acquisition Corp I
+AII,American Integrity Insurance Group Inc
+YSG,Yatsen Holding Ltd ADR
+RIV,RiverNorth Opportunities Fund Inc
+NGL PR B,NGL Energy Partners 9 Cumulative Redeemable Perpetual Pref Shs Unit Class B
+BGT,BlackRock Floating Rate Income Closed Fund
+RFMZ,RiverNorth Flexible Municipal Income Fund II Inc.
+AFB,AllianceBernstein National Municipal Income Fund
+BH.A,Biglari Holdings Inc Class A
+USB PR S,US Bancorp Del DS Representing 1 1000Th Int Non Cum Perp Pref Shs Series O
+MXF,Mexico Closed Fund
+SEG,Seaport Entertainment Group Inc
 PINE,Alpine Income Property Trust Inc
 CIM PR B,Chimera Investment 8 00 Cumulative Redeemable Pref Shs Series B
-RFMZ,RiverNorth Flexible Municipal Income Fund II Inc.
-WNC,Wabash National Corp
 SAC,Safeguard Acquisition Corp
-AFB,AllianceBernstein National Municipal Income Fund
-RIV,RiverNorth Opportunities Fund Inc
-BML PR L,Bank of America Depository Shares Repstng 1/1200th of Floating Rate Non Cum
-USB PR S,US Bancorp Del DS Representing 1 1000Th Int Non Cum Perp Pref Shs Series O
 JACS,Jackson Acquisition Co II
-MXF,Mexico Closed Fund
-MBI,MBIA Inc
-TCI,Transcontinental Realty Investors Inc
-EFR,Eaton Vance Senior Floating Rate Closed Fund
-MTAL,Metals Acquisition Corp II
-COSO,CoastalSouth Bancshares Inc
+BML PR L,Bank of America Depository Shares Repstng 1/1200th of Floating Rate Non Cum
 CRD.A,Crawford & Co Class A
-NCA,Nuveen California Municipal Value Fund
-SEG,Seaport Entertainment Group Inc
-SRV,NXG Cushing Midstream Energy Closed End Fund
+MTAL,Metals Acquisition Corp II
+WNC,Wabash National Corp
 CLBR.U,Colombier Acquisition III Units
-BH.A,Biglari Holdings Inc Class A
-HLLY,Holley Inc
-RNR PR G,RenaissanceRe Holdings DRC Rep 1 1000th Interest 4 20 Pref Shs Series G
-SI,Shoulder Innovations Inc
+EFR,Eaton Vance Senior Floating Rate Closed Fund
+NCA,Nuveen California Municipal Value Fund
 ARDC,Ares Dynamic Credit Allocation Fund Inc
-CMTG,Claros Mortgage Trust Inc
-RFI,Cohen Steers Total Return Realty Closed Fund
+COSO,CoastalSouth Bancshares Inc
+RNR PR G,RenaissanceRe Holdings DRC Rep 1 1000th Interest 4 20 Pref Shs Series G
 MZYX.U,MOZAYYX Acquisition Redeemable Units
-RC,Ready Capital Corp
+NCZ,Virtus Convertible and Income Fund II
+DSM,BNY Mellon Strategic Municipal Bond Fund Inc
+DSX,Diana Shipping Inc
+TEI,Templeton Emerging Markets Income Closed Fund
 FCRS.U,FutureCrest Acquisition Units
 JENA,Jena Acquisition Corp II
-DSM,BNY Mellon Strategic Municipal Bond Fund Inc
-ANG PR D,American Natl Group Inc New Depositary Shs Repstg 1/1000Th Int Pfd Ser D
-TEI,Templeton Emerging Markets Income Closed Fund
-NCZ,Virtus Convertible and Income Fund II
+RFI,Cohen Steers Total Return Realty Closed Fund
 USB PR Q,US Bancorp Del 1000 DS Repstg Perp Pref Shs Series L
+ACV,Virtus Diversified Income And Convertible Fund
+ANG PR D,American Natl Group Inc New Depositary Shs Repstg 1/1000Th Int Pfd Ser D
+SRV,NXG Cushing Midstream Energy Closed End Fund
+SI,Shoulder Innovations Inc
 ALUB.U,Alussa Energy Acquisition Redeemable Units
-JPI,Nuveen Preferred Securities and Income Opptys Fund
-KWY,Kingsway Corp
-ONIT,Onity Group Inc
-WAL PR A,Western Alliance Ban Oration 400 Dep Shs Repst Perpetual Pref Shs Series A
-EFT,Eaton Vance Floating Rate Income Closed Fund
-KPET,KPET Ultra Paceline Corp
-VOYA PR B,Voya Financial 40 DRC Representing Pref Shs Series B
-NUS,NU Skin Enterprises Inc
+BRW,Saba Capital Income & Opportunities Fund
 OIA,Invesco Muni Income Opportunities Trust
 NREF,Nexpoint Real Estate Finance Inc
-BRW,Saba Capital Income & Opportunities Fund
-XFLT,XAI Octagon Floating Rate & Alternative Income Tr
-LVWR,LiveWire Group Inc
-SPCE,Virgin Galactic Holdings Inc
+JPI,Nuveen Preferred Securities and Income Opptys Fund
+KPET,KPET Ultra Paceline Corp
+WAL PR A,Western Alliance Ban Oration 400 Dep Shs Repst Perpetual Pref Shs Series A
+KWY,Kingsway Corp
 CABO,Cable One Inc
+MBI,MBIA Inc
 NPCT,Nuveen Core Plus Impact Fund
-RITM PR B,Rithm Capital 7 125 Cumulative Redeemable Pref Shs Series B
-NLY PR J,Annaly Cap Mgmt Cum Red Fixed Pref Shs Ser J
-DBL,DoubleLine Opportunistic Credit Fund
-MMD,NYLI MacKay DefinedTerm Muni Opport Fd
-ACV,Virtus Diversified Income And Convertible Fund
-GCTS,GCT Semiconductor Holding Inc
-BGH,Barings Global Short Duration High Yield Fund
-PMO,Putnam Municipal Opportunities Trust
-XPOF,Xponential Fitness Inc
-SITC,Site Centers Corp
-RMM,RiverNorth Managed Duration Muni Income Fd Inc
-UMH PR D,Umh Pptys  Cumulative Redeemable  Pref Shs Series D
-JCE,Nuveen Core Equity Alpha Closed Fund
+EFT,Eaton Vance Floating Rate Income Closed Fund
+MX,Magnachip Semiconductor Corp
+ONIT,Onity Group Inc
+NL,NLI Holdings Inc
+RC,Ready Capital Corp
+ZIP,Ziprecruiter Inc
+LVWR,LiveWire Group Inc
+VOYA PR B,Voya Financial 40 DRC Representing Pref Shs Series B
 EOD,Allspring Global Dividend Opportunity Mutual Fund
-MIN,MFS Intermediate Income Trust
-PAII,Pyrophyte Acquisition Corp II
+PMO,Putnam Municipal Opportunities Trust
+MMD,NYLI MacKay DefinedTerm Muni Opport Fd
+LAW,CS Disco Inc
+GCTS,GCT Semiconductor Holding Inc
+UMH PR D,Umh Pptys  Cumulative Redeemable  Pref Shs Series D
+RMM,RiverNorth Managed Duration Muni Income Fd Inc
+DBL,DoubleLine Opportunistic Credit Fund
+JCE,Nuveen Core Equity Alpha Closed Fund
+RITM PR B,Rithm Capital 7 125 Cumulative Redeemable Pref Shs Series B
+BGH,Barings Global Short Duration High Yield Fund
 DLR PR L,Digital Realty Pref Shs Series L
 TDF,Templeton Dragon Closed Fund
-KF,Korea Closed Fund
-SBXD,SilverBox Corp IV
-TG,Tredegar Corp
-BRT,BRT Apartments Corp
+NLY PR J,Annaly Cap Mgmt Cum Red Fixed Pref Shs Ser J
+XFLT,XAI Octagon Floating Rate & Alternative Income Tr
+XPOF,Xponential Fitness Inc
+MIN,MFS Intermediate Income Trust
+PAII,Pyrophyte Acquisition Corp II
 ZH,Zhihu Inc ADR
-PSA PR R,Public Storage DS  Repstg 1 1000  of a 4 00 Cumulative Pref Shs Series R
-SOUL.U,Soulpower Acquisition Units
-COF PR N,Capital One Finl DRC Repstg 1 40Th Prf Shs Series N
 FC,Franklin Covey Co
-CAF,Morgan Stanley China A Share Closed Fund
-HBB,Hamilton Beach Brands Holding Co
+SBXD,SilverBox Corp IV
+PSA PR R,Public Storage DS  Repstg 1 1000  of a 4 00 Cumulative Pref Shs Series R
 ACRE,Ares Commercial Real Estate Corp
-ABR PR F,Arbor Realty Trust 6.25 Cumulative Pref Shs Series F
+EAF,GrafTech International Ltd
+NUS,NU Skin Enterprises Inc
+CAF,Morgan Stanley China A Share Closed Fund
+BRT,BRT Apartments Corp
+TG,Tredegar Corp
+SOUL.U,Soulpower Acquisition Units
+NXDT,NexPoint Diversified Real Estate Trust
+CLW,Clearwater Paper Corp
 PMM,Putnam Managed Municipal Income Closed Fund
-RLTY,Cohen & Steers Real Estate Opps and Income Fund
-SCM,Stellus Capital Investment Corp
-RF PR E,Regions Finl Drc Series E
-TVC,Tennessee Valley Authority Power Bonds 1998 Series D due 01 June 2028
+CIA,Citizens Inc
+HBB,Hamilton Beach Brands Holding Co
+COF PR N,Capital One Finl DRC Repstg 1 40Th Prf Shs Series N
 EOT,Eaton Vance National Municipal Opportunities Closed Fund
-ATH PR B,Athene Hldg Depository Shares Repstg 1 1000 Perp Non Cum Prf Series B
-MFA PR C,Mfa Finl Pref Shs Series C
-VACI.U,Viking Acquisition Units
-TVE,Tennessee Valley Authority Power Bonds 1999 Series A due May 1 2029 (Putable
-ZIP,Ziprecruiter Inc
 RCS,PIMCO Strategic Income Fund Inc
+TVC,Tennessee Valley Authority Power Bonds 1998 Series D due 01 June 2028
+MFA PR C,Mfa Finl Pref Shs Series C
+SCM,Stellus Capital Investment Corp
+ATH PR B,Athene Hldg Depository Shares Repstg 1 1000 Perp Non Cum Prf Series B
+ABR PR F,Arbor Realty Trust 6.25 Cumulative Pref Shs Series F
+RLTY,Cohen & Steers Real Estate Opps and Income Fund
+TVE,Tennessee Valley Authority Power Bonds 1999 Series A due May 1 2029 (Putable
+RF PR E,Regions Finl Drc Series E
+VACI.U,Viking Acquisition Units
+PNNT,Pennantpark Investment Corp
 BKT,BlackRock Income Trust，Inc.
-PSA PR H,Public Storage DS Representing 1/1000 Cumulative Pref Shs Class H
-MTB PR H,M and T Bank Perpetual Fixed to Floating Rate Non Cumulative Prf Shs Series H
-OSG,Octave Specialty Group Inc
-FCT,First Trust Senior Floating Rate Income Fund II
+SITC,Site Centers Corp
 RAC.U,Rithm Acquisition Units
 NUW,Nuveen AMT-Free Municipal Value Fund
-CIA,Citizens Inc
+PSA PR H,Public Storage DS Representing 1/1000 Cumulative Pref Shs Class H
 JENA.U,Jena Acquisition II Units
+MTB PR H,M and T Bank Perpetual Fixed to Floating Rate Non Cumulative Prf Shs Series H
 TWO PR B,Two Harbors Invest 7.625 Fixed to Floating Rate Cumulative Redeemable Pref Shs
-MCR,MFS Charter Income Trust
 MMT,MFS Multimarket Income Trust
-RAC,Rithm Acquisition Corp
-NXDT,NexPoint Diversified Real Estate Trust
-PNNT,Pennantpark Investment Corp
-SMRT,SmartRent Inc
-COPL,Copley Acquisition Corp
-JACS.U,Jackson Acquisition II Units
-LAW,CS Disco Inc
 HPP PR C,Hudson Pacific Properties 4 750 Cumulative Redeemable Pref Shs Series C
+JACS.U,Jackson Acquisition II Units
+MCR,MFS Charter Income Trust
+FCT,First Trust Senior Floating Rate Income Fund II
+COPL,Copley Acquisition Corp
 EIC,Eagle Point Income Company Closed End Fund
+RAC,Rithm Acquisition Corp
+ARL,American Realty Investors Inc
 PHT,Pioneer High Income Fund，Inc.
-CIM PR C,Chimera Investment Cumulative Redeemable Pref Shs Series C
-YSG,Yatsen Holding Ltd ADR
+SMRT,SmartRent Inc
 SAC.U,Safeguard Acquisition Units
+PSA PR I,Public Storage 1000 DS Repstg Ben Int Cum Pfd Series I
 MITT,TPG Mortgage Investment Trust Inc
 SBXE.U,SilverBox V Units
-PSA PR I,Public Storage 1000 DS Repstg Ben Int Cum Pfd Series I
 MTAL.U,Metals Acquisition II Units
 PSA PR G,Public Storage DS Representing 1/1000 Cum Pref Shs Series G
-CBNA,Chain Bridge Bancorp Inc
 TWO PR C,Two Harbors Investment Cum Redeemable Fixed to Fltg Rate Pref Shs Series C
-EAF,GrafTech International Ltd
+CBNA,Chain Bridge Bancorp Inc
+SABA,Saba Capital Income & Opportunities Fund II
+LGI,Lazard Global Total Return & Income Closed Fund
+OSG,Octave Specialty Group Inc
+CIM PR C,Chimera Investment Cumulative Redeemable Pref Shs Series C
+PSF,Cohen & Steers Select Preferred and Income Fd Inc
+SPMC,Sound Point Meridian Capital Inc
+KCAC.U,Kensington Capital Acquisition VI Units
 BAC PR E,Bank of America Depositary Shares Representing 1/1000th of Floating Rate Non
 JRS,Nuveen Real Estate Income Closed Fund
-KREF PR A,KKR Real Estate Finance Trust 6.50% Cumulative Redeem Pref Shs Series A
-KCAC.U,Kensington Capital Acquisition VI Units
-PSF,Cohen & Steers Select Preferred and Income Fd Inc
-LGI,Lazard Global Total Return & Income Closed Fund
-SABA,Saba Capital Income & Opportunities Fund II
 BML PR H,Bank of America Depository Shares Repstg 1/1200th Floating Rate Non Cumulative
+KREF PR A,KKR Real Estate Finance Trust 6.50% Cumulative Redeem Pref Shs Series A
+AP,Ampco-Pittsburgh Corp
 KPET.U,KPET Ultra Paceline Units
 BIII,Black Spade Acquisition III Co
 IRAB,Iris Acquisition II Corp
-CLW,Clearwater Paper Corp
-ARL,American Realty Investors Inc
-EP PR C,El Paso Energy Capital 4.75% Conv Pref
-PSA PR F,Public Storage 1000 DS Representing Pref Shs Series F
 TPVG,Triplepoint Venture Growth BDC Corp
-SPMC,Sound Point Meridian Capital Inc
-PNFP PR C,Pinnacle Financial Partners Inc ADR
-MTNE.U,CH4 Natural Solutions Units
+PSA PR F,Public Storage 1000 DS Representing Pref Shs Series F
 ALL PR I,Allstate 1000 DS Represnting Perp Pref Shs Series I
-SBXD.U,SilverBox IV Units
-AHL PR F,Aspen Insurance Holdings Depositary Shs Repstg 1 1000 Int In Sh Of Perpetual
 VNO PR M,Vornado Rlty Cumulative Redeemable Pref Shs Series M
+MTNE.U,CH4 Natural Solutions Units
+EP PR C,El Paso Energy Capital 4.75% Conv Pref
+PNFP PR C,Pinnacle Financial Partners Inc ADR
 MFM,MFS Municipal Income Trust
-LANV,Lanvin Group Holdings Ltd
-ACH,Accendra Health Inc
-TSI,TCW Strategic Income Closed Fund
+VATE,Innovate Corp
+AHL PR F,Aspen Insurance Holdings Depositary Shs Repstg 1 1000 Int In Sh Of Perpetual
+SBXD.U,SilverBox IV Units
 NPV,Nuveen Virginia Quality Municipal Income Fund
-UIS,Unisys Corp
+TSI,TCW Strategic Income Closed Fund
 VNO PR L,Vornado Realty 5.40% Cumulative Redeemable Pref Shs Series L
-QLEP.U,Quantum Leap Acquisition Units
-DDT,Dillards Capital Trust I 7.50% Capital Securities Exp 01 Aug 2038
-NSA PR A,National Storage Affiliates Redeemable Pref Shs Series A
-IDE,Voya Infrastructure Industrials & Materials Fund
-PAII.U,Pyrophyte Acquisition II Units
-ETX,Eaton Vance Municipal Income 2028 Term Trust
-KIM PR M,Kimco Rlty DS Representing 1/1000 5.25 Cumulative Redeemable Pref Shs Class M
-AMPY,Amplify Energy Corp
 AGM.A,Federal Agricultural Mortgage Corp Class A
-MX,Magnachip Semiconductor Corp
-CANG,Cango Inc
+ACH,Accendra Health Inc
+KIM PR M,Kimco Rlty DS Representing 1/1000 5.25 Cumulative Redeemable Pref Shs Class M
+IDE,Voya Infrastructure Industrials & Materials Fund
 SRI,Stoneridge Inc
 VNO PR N,Vornado Rlty 5.25 Cumulative Redeemable Pref Shs Series N
+QLEP.U,Quantum Leap Acquisition Units
+NSA PR A,National Storage Affiliates Redeemable Pref Shs Series A
+DDT,Dillards Capital Trust I 7.50% Capital Securities Exp 01 Aug 2038
+ETX,Eaton Vance Municipal Income 2028 Term Trust
+PAII.U,Pyrophyte Acquisition II Units
 FBRT PR E,Franklin BSP Realty Trust 7 50 Cumulative Redeemable Pref Shs Series E
-AP,Ampco-Pittsburgh Corp
-PNFP PR A,Pinnacle Financial Partners Non Cumulative Prf Shs Series A
 IIF,Morgan Stanley India Investment Closed Fund
-SF PR C,Stifel Financial 6 125 Dep Shs Rep 1000 Non Cum Pref Shs Series C
-MHI,Pioneer Municipal High Income Fund，Inc.
 AOMR,Angel Oak Mortgage REIT Inc
-FT,Franklin Universal Closed Fund
-AHL PR E,Aspen Insurance Holdings 1000 DS Representing Perp Pref Shs
-DLNG,Dynagas LNG Partners Common Units
-KCA.U,Kensington Capital Acquisition VI Units
-RMAX,Re/Max Holdings Inc
-DMB,BNY Mellon Municipal Bond Infrastructure Fund In
-BEBE,TGE Value Creative Solutions Corp
-SF PR D,Stifel Financial 4 50 Dep Shs Rep 1000th Pref Shs Series D
-CRD.B,Crawford & Co Class B
-CIM PR D,Chimera Invt 8 Cumulative Redeemable Pref Shs Series D
-AIIA,AI Infrastructure Acquisition Corp
+ALTG,Alta Equipment Group Inc
 SMHI,SEACOR Marine Holdings Inc
-VPV,Invesco Pennsylvania Value Municipal Income Trust
+RMAX,Re/Max Holdings Inc
+PNFP PR A,Pinnacle Financial Partners Non Cumulative Prf Shs Series A
+CHPT,ChargePoint Holdings Inc
+MHI,Pioneer Municipal High Income Fund，Inc.
+TBI,TrueBlue Inc
+SF PR C,Stifel Financial 6 125 Dep Shs Rep 1000 Non Cum Pref Shs Series C
+AHL PR E,Aspen Insurance Holdings 1000 DS Representing Perp Pref Shs
+DMB,BNY Mellon Municipal Bond Infrastructure Fund In
+COOK,Traeger Inc
+FT,Franklin Universal Closed Fund
+KCA.U,Kensington Capital Acquisition VI Units
+BEBE,TGE Value Creative Solutions Corp
+DLNG,Dynagas LNG Partners Common Units
+GF,New Germany Fund Inc.
+SF PR D,Stifel Financial 4 50 Dep Shs Rep 1000th Pref Shs Series D
+DBRG PR I,DigitalBridge Group 7.15 Cumulative Redeemable Perpetual Pref Shs Series I
+AMPY,Amplify Energy Corp
 EQH PR C,Equitable Hldgs Drc Series C
+OAK PR B,Brookfield Oaktree Holdings Units Pref Shs Series B
+VPV,Invesco Pennsylvania Value Municipal Income Trust
+AIIA,AI Infrastructure Acquisition Corp
+CIM PR D,Chimera Invt 8 Cumulative Redeemable Pref Shs Series D
+XYF,X Financial ADR
 MAV,Pioneer Municipal High Income Advantage Fund，Inc.
 SLG PR I,SL Green Realty 6.50 Per Cumulative Redeemable Pref Shs Series I
-OAK PR B,Brookfield Oaktree Holdings Units Pref Shs Series B
 MIO,Pioneer Municipal High Income Opportnts Fund，Inc.
-DBRG PR I,DigitalBridge Group 7.15 Cumulative Redeemable Perpetual Pref Shs Series I
-GF,New Germany Fund Inc.
-OPP,RiverNorth/DoubleLine Strategic Opportunity Fund
-SJT,San Juan Basin Royalty Units
-HGLB,Highland Global Allocation Fund
-GAM PR B,General American Investors 5.95% Series B Cumulative Pref Shs
 DLR PR K,Digital Rlty Red Pfd Series K
+OPP,RiverNorth/DoubleLine Strategic Opportunity Fund
+CRD.B,Crawford & Co Class B
+GAM PR B,General American Investors 5.95% Series B Cumulative Pref Shs
+TRAK,ReposiTrak Inc
+JILL,JJill Inc
 WIA,Western Asset Inflation Linked Income Closed End Fund
-MDV,Modiv Industrial Inc
 PSA PR J,Public Storage 1000 DS Repstg Cumulative Pref Shs
+HGLB,Highland Global Allocation Fund
 GNL PR D,Global Net Lease 7 50 Cumulative Redeemable Perpetual Prf Shs Series D
 COPL.U,Copley Acquisition Units
-JILL,JJill Inc
-TEN PR F,Tsakos Energy Navigation Cum Red Perp Fixed to Fltg Pref Shs Series F
-RITM PR E,Rithm Cap Fxd Rate Cumulative Redeemable Pref Shs Ser E
-PMT PR C,PennyMac Mortgage Investment 6 75 Cumulative Red Pref Shs Series C
+MDV,Modiv Industrial Inc
 ENO,Entergy New Orleans First Mortgage Bonds 5 50 Series Pref Shs Exp 1 April 2066
-TRAK,ReposiTrak Inc
-MPV,Barings Participation Investors
-PEB PR G,Pebblebrook Hotel Tr Cum Red Pfd Pref Shs Series G
-EARN,Ellington Credit Closed End Fund
+TEN PR F,Tsakos Energy Navigation Cum Red Perp Fixed to Fltg Pref Shs Series F
 FF,FutureFuel Corp
-BWIV,Blue Water Acquisition Corp IV
+MPV,Barings Participation Investors
 ELME,Elme Communities
-EHI,Western Asset Global High Income Fund
+RITM PR E,Rithm Cap Fxd Rate Cumulative Redeemable Pref Shs Ser E
 VNO PR O,Vornado Realty 4 45 Cumulative Redeemable Pref Shs Series O
-PMT PR B,Pennymac Mtg Invt 8 Fxd To Fltng Rte Cum Redeemable Pref Shs Series B
-VATE,Innovate Corp
+EHI,Western Asset Global High Income Fund
+PMT PR C,PennyMac Mortgage Investment 6 75 Cumulative Red Pref Shs Series C
+PEB PR G,Pebblebrook Hotel Tr Cum Red Pfd Pref Shs Series G
+BWIV,Blue Water Acquisition Corp IV
+DBRG PR J,DigitalBridge Group 7.125 Cumulative Redeemable Perpetual Pref Shs Series J
 GGT,Gabelli Multimedia Trust Inc
 DHF,BNY Mellon High Yield Strategies Fund
-SLQT,SelectQuote Inc
-XYF,X Financial ADR
 NLOP,Net Lease Office Properties
-ALTG,Alta Equipment Group Inc
+SJT,San Juan Basin Royalty Units
 FLC,Flaherty Crumrine Total Return Mutual Fund  Incorporated
+EARN,Ellington Credit Closed End Fund
+JELD,JELD-WEN Holding Inc
+CANG,Cango Inc
+DAVA,Endava PLC ADR
+LANV,Lanvin Group Holdings Ltd
+SLQT,SelectQuote Inc
 PERF,Perfect Corp
-CHN,China Closed Fund
-BIII.U,Black Spade Acquisition III Units
-BOH PR B,Bank Hawaii Dep Shs Repstg 1 40Th Int Sh Non Cum Perpetual Pfd Class B
-CHGG,Chegg Inc
-CODI PR C,Compass Diversified Hldgs Ser C Pref Shs Series C
-TRTN PR C,Triton International Cumulative Redeemable Perpetual Preferred Series C
-IRAB.U,Iris Acquisition II Units
-DBRG PR J,DigitalBridge Group 7.125 Cumulative Redeemable Perpetual Pref Shs Series J
-FOA,Finance of America Companies Inc
-KIM PR L,Kimco Realty DS Representing 1/1000 5.125% Cum Redm Pref Shs Class L
+PMT PR B,Pennymac Mtg Invt 8 Fxd To Fltng Rte Cum Redeemable Pref Shs Series B
 BW PR A,BABCOCK WILCOX ENTERPRISES Perpetual Pref Shs
-CHPT,ChargePoint Holdings Inc
-PSA PR K,Public Storage Ds Repstg 1 1000 Cum Ben Int Series K Prf Shs Series K
-BHR,Braemar Hotels & Resorts Inc
-VBF,Invesco Bond Fd
-ONL,Orion Properties Inc
-AUB PR A,Atlantic Un Bankshares 400 Dep Shs Repstg 1 Perp Prf  Shs Series A
-CODI PR B,Compass Diversified Holdings 7.875 Fixed Floating Rate Cumulative Pref Shs
-SEAL PR B,Seapeak 8 50 Fixed to Floating Rate Cumulative Redeemable Perpetual Pref Shs
-PSA PR N,Public Storage Dep Shs Repstg 1 1000 Pfd Sh Ben Int Ser N Drc Series N
+KIM PR L,Kimco Realty DS Representing 1/1000 5.125% Cum Redm Pref Shs Class L
+CHN,China Closed Fund
+FOA,Finance of America Companies Inc
+TRTN PR C,Triton International Cumulative Redeemable Perpetual Preferred Series C
+BIII.U,Black Spade Acquisition III Units
 EDF,Virtus Stone Harbor Emerging Markets Income Fund
-TBI,TrueBlue Inc
+BOH PR B,Bank Hawaii Dep Shs Repstg 1 40Th Int Sh Non Cum Perpetual Pfd Class B
+IRAB.U,Iris Acquisition II Units
+CODI PR C,Compass Diversified Hldgs Ser C Pref Shs Series C
+PSA PR K,Public Storage Ds Repstg 1 1000 Cum Ben Int Series K Prf Shs Series K
+VBF,Invesco Bond Fd
+AUB PR A,Atlantic Un Bankshares 400 Dep Shs Repstg 1 Perp Prf  Shs Series A
+PSA PR N,Public Storage Dep Shs Repstg 1 1000 Pfd Sh Ben Int Ser N Drc Series N
+ONL,Orion Properties Inc
+SEAL PR B,Seapeak 8 50 Fixed to Floating Rate Cumulative Redeemable Perpetual Pref Shs
+BHR,Braemar Hotels & Resorts Inc
 BML PR J,Bank of America Depository Shares Repstg 1/1200th of Floating Rate Non Cum Pref
-BSL,Blackstone Senior Floating Rate 2027 Term Fund
-ASB PR E,Associated Banc 40 Depositary Shares Representing Pref Shs Series E
-MFA PR B,MFA Financial 7.50% Cumulative Redeemable Pref Shs Series B
-OWLT,Owlet Inc
 TRTN PR G,Triton Intl Cum Red Perp Pref Shs Ser G
-DOUG,Douglas Elliman Inc
+BSL,Blackstone Senior Floating Rate 2027 Term Fund
+MFA PR B,MFA Financial 7.50% Cumulative Redeemable Pref Shs Series B
+CODI PR B,Compass Diversified Holdings 7.875 Fixed Floating Rate Cumulative Pref Shs
 PNI,PIMCO New York Municipal Income Fund II
-IVR PR C,Invesco Mortgage Capital 7 5 Fixd to Floating Cum Redem Pref Shs Series C
-NSA PR B,National Storage Affiliates 6 000  Cumulative Redeemable Preferred Shares of
-NAZ,Nuveen Arizona Quality Municipal Income Fund
-GPMT PR A,Granite Point Mortgage Trust 7 00  Fixed to Floating Rate Cumulative Redeemable
-WRB PR G,W R Berkley 425 Subordinated Debenture due 2060
-ASB PR F,Associated Banc 40 DS Representing 5 625 Non Cumulative Pref Shs Series F
-KORE,KORE Group Holdings Inc
 DLR PR J,Digital Rlty 5.250% Cum Redeemable Pref Shs Series J
-AXIA PR C,Axia Energia SA ADR
-VTN,Invesco Trust For Inv Grade NY Munis
-GLED,GalaxyEdge Acquisition Corp
+IVR PR C,Invesco Mortgage Capital 7 5 Fixd to Floating Cum Redem Pref Shs Series C
+ASB PR E,Associated Banc 40 Depositary Shares Representing Pref Shs Series E
+NAZ,Nuveen Arizona Quality Municipal Income Fund
+SAGU,Shreya Acquisition Group
+WRB PR G,W R Berkley 425 Subordinated Debenture due 2060
 NNY,Nuveen New York Municipal Value Fund
-GS PR C,Goldman Sachs Group Depository Shares Repstg 1/1000th Floating Rate Non
+DHX,DHI Group Inc
+DOUG,Douglas Elliman Inc
+KORE,KORE Group Holdings Inc
+VTN,Invesco Trust For Inv Grade NY Munis
+GPMT PR A,Granite Point Mortgage Trust 7 00  Fixed to Floating Rate Cumulative Redeemable
 PSA PR S,Public Storage Depositary Shs Each Repstg 1 1000 Of of a  4 100 Cumulative Pfd
-COOK,Traeger Inc
+GS PR C,Goldman Sachs Group Depository Shares Repstg 1/1000th Floating Rate Non
+OWLT,Owlet Inc
+ASB PR F,Associated Banc 40 DS Representing 5 625 Non Cumulative Pref Shs Series F
+GLED,GalaxyEdge Acquisition Corp
 BMN,BlackRock 2037 Municipal Target Term Trust
-WPAC,White Pearl Acquisition Corp
-SCE PR G,SCE 5.10% TRUPS
 CMS PR C,CMS Energy DRC representing a 1 1000th interest 4 200 Cumulative Pref Shs
+WPAC,White Pearl Acquisition Corp
+NRDY,Nerdy Inc
+SCE PR G,SCE 5.10% TRUPS
 ARR PR C,ARMOUR Residential REIT 7 00 Cumulative Redeemable Prf Shs Series C
 GNL PR A,Global Net Lease 7.25 Cumulative Redeemable Pref Shs Series A
-TRTX PR C,TPG RE Finance Trust 6 25 Cumulative Red Pref Shs Series C
+DGAC.U,Disciplined Growth Acquisition Units
 MHF,Western Asset Municipal High Income Fund
+TRTX PR C,TPG RE Finance Trust 6 25 Cumulative Red Pref Shs Series C
+PIM,Putnam Master Intermediate Income Trust
+AMWL,American Well Corp
+AXIA PR C,Axia Energia SA ADR
+WHG,Westwood Holdings Group Inc
+CURV,Torrid Holdings Inc
+SKLZ,Skillz Inc
+NSA PR B,National Storage Affiliates 6 000  Cumulative Redeemable Preferred Shares of
+CHGG,Chegg Inc
 AIIA.U,AI Infrastructure Acquisition Units
 ABR PR D,Arbor Realty Trust 6 375 Cumulative Redeemable Pref Shs Series D
-WHG,Westwood Holdings Group Inc
-YRD,Yiren Digital Ltd ADR
-DHX,DHI Group Inc
-NRDY,Nerdy Inc
-AHRT PR A,AH Realty 6 75 Cumulative Redeemable Perpetual Prf Shs Series A
-PIM,Putnam Master Intermediate Income Trust
-IGA,Voya Global Advantage & Premium Opportunity Fund
-SF PR B,Stifel Financial 6 25 Non Cum Dep Shs Rep 1000th Pref Shs Series B
 AHH PR A,Armada Hoffler Properties Pref Shs Series A
 BEBE.U,TGE Value Creative Solutions Units
-JELD,JELD-WEN Holding Inc
-OAK PR A,Brookfield Oaktree Holdings 6 625 Pref Shs Series A
+IGA,Voya Global Advantage & Premium Opportunity Fund
+AHRT PR A,AH Realty 6 75 Cumulative Redeemable Perpetual Prf Shs Series A
+SF PR B,Stifel Financial 6 25 Non Cum Dep Shs Rep 1000th Pref Shs Series B
 ETSS.U,Energy Transition Special Opportunities Redeemable Units
-MSD,Morgan Stanley Emerging Markets Debt Closed Fund
-TRTN PR F,Triton International 7 625 Cumulative Redeemable Perpetual Prf Shs Series F
+SRG,Seritage Growth Properties
 SPE,Special Opportunities Fund，Inc.
-TRTN PR B,TRITON INTL Perpetual Pref Shs Series B
+OAK PR A,Brookfield Oaktree Holdings 6 625 Pref Shs Series A
+TRTN PR F,Triton International 7 625 Cumulative Redeemable Perpetual Prf Shs Series F
+MSD,Morgan Stanley Emerging Markets Debt Closed Fund
 PFD,Flaherty Crumrine Preferred and Income Mutual Fund  Incorporated
 PSA PR M,Public Storage DS Repstg 1 1000 Int Cum Pref Shs Series M
-CMCM,Cheetah Mobile Inc ADR
-FHN PR E,First Horizon 4000 Depositary Shs Representing Perp Pref Shs Series E
 MPA,BlackRock MuniYield Pennsylvania Quality Closed Fund
-TRAD,APEX Tech Acquisition Inc
-BEP PR A,Brookfield Renewable Red Perp Class A Pref Shs Series 17
-TRAD.U,APEX Tech Acquisition Units
+TRTN PR B,TRITON INTL Perpetual Pref Shs Series B
 EVG,Eaton Vance Short Duration Diversified Income Closed Fund
-XFLH,XFLH Capital Corp
-EPR PR C,EPR Properties 5.75% Cumulative Conv Pref Shs Series C
-HEQ,John Hancock Diversified Income Fund
-MED,Medifast Inc
+FHN PR E,First Horizon 4000 Depositary Shs Representing Perp Pref Shs Series E
+TRAD,APEX Tech Acquisition Inc
 ACR,Acres Commercial Realty Corp
-PEB PR H,Pebblebrook Hotel 5 700 Cumulative Redeemable Pref Shs Series H
-WENC,West Enclave Merger Corp
-SRG,Seritage Growth Properties
-TRTN PR D,Triton International 6.875% Cumulative Redeemable Perpetual Prf Shs Series D
+TRAD.U,APEX Tech Acquisition Units
+BEP PR A,Brookfield Renewable Red Perp Class A Pref Shs Series 17
 AXR,AMREP Corp
+HEQ,John Hancock Diversified Income Fund
+PEB PR H,Pebblebrook Hotel 5 700 Cumulative Redeemable Pref Shs Series H
+MED,Medifast Inc
+CMCM,Cheetah Mobile Inc ADR
+WENC,West Enclave Merger Corp
+XFLH,XFLH Capital Corp
 BGX,Blackstone Long Short Credit Income Fund
+TRTN PR D,Triton International 6.875% Cumulative Redeemable Perpetual Prf Shs Series D
 BIP PR A,Brookfield Infrastructure 5 125 Class A Limited Partnership Pref Units Series 13
-CURV,Torrid Holdings Inc
-CEE,Central and Eastern Europe Fund Inc
-DAVA,Endava PLC ADR
 HYI,Western Asset High Yield Opportunity Fund Inc.
-BWIV.U,Blue Water Acquisition IV Redeemable Units
-TRTN PR E,Triton International 5 75 Cumulative Redeemable Perpetual Pref Shs Series E
-SKLZ,Skillz Inc
-BIP PR B,Brookfield Infrastructure Partners PFD Units
-GRX,Gabelli Healthcare & WellnessRx Trust
+EPR PR C,EPR Properties 5.75% Cumulative Conv Pref Shs Series C
 TFC PR I,Truist Financial Ds Representing 1 4000Th Interest Non-Cumulative Perpetual
-AMWL,American Well Corp
-TLYS,Tillys Inc
-GNT,GAMCO Natural Resources Gold & Income Trust
+IHD,Voya Emerging Markets High Dividend Equity Fund
+BWIV.U,Blue Water Acquisition IV Redeemable Units
+CEE,Central and Eastern Europe Fund Inc
 BWG,BrandywineGLOBAL Global Income Opptys Fd Inc
-GLOP PR A,Gaslog Partners 8 625 Cumulative Redeemable Perpetual Pref Shs Series A
+GRX,Gabelli Healthcare & WellnessRx Trust
+TRTN PR E,Triton International 5 75 Cumulative Redeemable Perpetual Pref Shs Series E
 WBS PR G,Webster Financial Depositary Shs Each Rep 1 40th Interest of 6 50 Pref Shs
 VECA,Vernal Capital Acquisition Corp
-IHD,Voya Emerging Markets High Dividend Equity Fund
+GLOP PR A,Gaslog Partners 8 625 Cumulative Redeemable Perpetual Pref Shs Series A
+GNT,GAMCO Natural Resources Gold & Income Trust
 BTA,BlackRock Long Term Municipal Advantage Trust
-CIM PR A,Chimera Investment Pref Shs Series A
-JHS,John Hancock Income Securities Closed Fund
-DMO,Western Asset Mortgage Opportunity Fund
-ZEPP,Zepp Health Corp ADR
-WBS PR F,Webster Financial Ds Representing 1 1000 Series F Non Cumulative Perpetual Pref
-ZVIA,Zevia PBC
-SEAL PR A,Seapeak 9 00 Cumulative Redeemable Perpetual Prf Shs Series A
 DBRG PR H,DigitalBridge Group 7.125 Cumulative Redeemable Perpetual Pref Shs Series H
-TWO PR A,Two Harbors Investment 8.125 Cum Red Pref Shs Series A
-SRFM,Surf Air Mobility Inc
+TLYS,Tillys Inc
+JHS,John Hancock Income Securities Closed Fund
+BIP PR B,Brookfield Infrastructure Partners PFD Units
+GHI,Greystone Housing Impact Investors Units
+SEAL PR A,Seapeak 9 00 Cumulative Redeemable Perpetual Prf Shs Series A
 NMT,Nuveen Massachusetts Quality Municipal Income Fund
-EPR PR G,Epr Properties 5 750 Cumulative Redeemable Pref Shs Series G
-TEN PR E,Tsakos Energy Navigation Fixed Fltg Perpetual Pref Shs Series E
 WEA,Western Asset Premier Bond Closed Fund
+DMO,Western Asset Mortgage Opportunity Fund
 RMMZ,RiverNorth Managed Duration Muni Income Fd II Inc.
+CIM PR A,Chimera Investment Pref Shs Series A
+TWO PR A,Two Harbors Investment 8.125 Cum Red Pref Shs Series A
+TEN PR E,Tsakos Energy Navigation Fixed Fltg Perpetual Pref Shs Series E
+WBS PR F,Webster Financial Ds Representing 1 1000 Series F Non Cumulative Perpetual Pref
 PHD,Pioneer Floating Rate Fund，Inc.
 MCN,XAI Madison Equity Premium Income Fund
+EPR PR G,Epr Properties 5 750 Cumulative Redeemable Pref Shs Series G
 NMI,Nuveen Municipal Income Fund Inc
 ACR PR C,ACRES Commercial Realty 8 625 Fixed to Floating Cumulative Redeemable Pref Shs
+GGZ,Gabelli Global Small and Mid Cap Value Closed Fund
 WPAC.U,White Pearl Acquisition Units
-BFH PR B,Bread Financial Hlds Depositary Shares representing 1 40th interest a share of
-YCY.U,AA Mission Acquisition II Units
-GHI,Greystone Housing Impact Investors Units
 YCY,AA Mission Acquisition Corp II
-EFC PR B,Ellington Financial 6 250 Fixed Rate Reset Cumulative Redeemable Pref Shs
+YCY.U,AA Mission Acquisition II Units
+BFH PR B,Bread Financial Hlds Depositary Shares representing 1 40th interest a share of
+TSQ,Townsquare Media Inc
+YRD,Yiren Digital Ltd ADR
+PFO,Flaherty Crumrine Preferred and Income Opportunity Mutual Fund  Incorporated
 ADC PR A,Agree Rlty 1000 Dep shs Rep of a 4 250 Cumulative Redeemable Pref Shs Series A
 GLED.U,GalaxyEdge Acquisition Units
-PFO,Flaherty Crumrine Preferred and Income Opportunity Mutual Fund  Incorporated
-GSL PR B,Global Ship Lease  Representing 8.75 Cumulative Redeemable Perpetual Pref Shs
-GGZ,Gabelli Global Small and Mid Cap Value Closed Fund
-QRED,QuasarEdge Acquisition Corp
-PEB PR F,Pebblebrook Hotel 6.3 Cumulative Redeemable Pref Shs Series F
-QRED.U,QuasarEdge Acquisition Units
-DX PR C,Dynex Cap Pref Shs Series C
+EFC PR B,Ellington Financial 6 250 Fixed Rate Reset Cumulative Redeemable Pref Shs
+SRFM,Surf Air Mobility Inc
 FRT PR C,Federal Realty Investment Depositary Shares representing 1 1000th 5 Cumulative
+QRED,QuasarEdge Acquisition Corp
 JHI,John Hancock Investors Closed Fund
-BOH PR A,Bank of Hawaii DRC Each Representing 1/40th Interest 4 375 Fixed Rate Non
-TSQ,Townsquare Media Inc
+QRED.U,QuasarEdge Acquisition Units
+PEB PR F,Pebblebrook Hotel 6.3 Cumulative Redeemable Pref Shs Series F
+GSL PR B,Global Ship Lease  Representing 8.75 Cumulative Redeemable Perpetual Pref Shs
 NIM,Nuveen Select Maturities Municipal Fund
+DX PR C,Dynex Cap Pref Shs Series C
+TAP.A,Molson Coors Beverage Co Class A
 PAI,Western Asset Investment Grade Income Closed End Fund Inc
 CXE,MFS High Income Municipal Trust
-AMH PR H,American Homes 4 Rent Series H Pref Shs
-INN PR E,Summit Hotel Pptys Cum Red Pref Shs Series E
-IIPR PR A,Innovative Industrial Properties 9.00% Cumulative Redeemable Pref Shs Series A
-RPT,Rithm Property Trust Inc
+BOH PR A,Bank of Hawaii DRC Each Representing 1/40th Interest 4 375 Fixed Rate Non
 SAGU.U,Shreya Acquisition Group Units
+IIPR PR A,Innovative Industrial Properties 9.00% Cumulative Redeemable Pref Shs Series A
 CTA PR B,EIDP INC USD3.50 CUM PFD NPV
-EPR PR E,EPR Properties 9.00% Cumulative Conv Pref Shs Series E
 KIM PR N,Kimco Realty Oration Depositary Shares Representing 1000Th 7 25 Cum Convertible
+ZVIA,Zevia PBC
+INN PR E,Summit Hotel Pptys Cum Red Pref Shs Series E
+ZEPP,Zepp Health Corp ADR
+RPT,Rithm Property Trust Inc
+AMH PR H,American Homes 4 Rent Series H Pref Shs
 CMRE PR D,Costamare 8.75 Cumulative Redeemable Perpetual Pref Shs Series D
 SBI,Western Asset Intermediate Muni Fund
+EPR PR E,EPR Properties 9.00% Cumulative Conv Pref Shs Series E
 PLUN.U,Plutonian Acquisition II Units
 AMH PR G,American Homes 4 Rent Series G Cumulative Redeemable Perpetual Prf Shs
-AKA,AKA Brands Holding Corp
-PMT PR A,PennyMac Mortgage Investment 8.125 Cum Red Preferred Shs Series A
-TAP.A,Molson Coors Beverage Co Class A
 CMRE PR C,Costamare 8.50% Cumulative Redeemable Perpetual Pref Shs Series C
-GNL PR E,Global Net Lease 7 375 Cumulative Redeemable Perpetual Prf Shs Series E
-WENC.U,West Enclave Merger Units
-FHN PR F,First Horizon DRC Rep 1 4000th Perp Pref Shs Series F
 PCF,High Income Securities Fund
+WENC.U,West Enclave Merger Units
+GNL PR E,Global Net Lease 7 375 Cumulative Redeemable Perpetual Prf Shs Series E
+FHN PR F,First Horizon DRC Rep 1 4000th Perp Pref Shs Series F
 VECA.U,Vernal Capital Acquisition Units
-OTAI.U,Starlink AI Acquisition Units
+PMT PR A,PennyMac Mortgage Investment 8.125 Cum Red Preferred Shs Series A
 PSA PR O,PUBLIC STORAGE 1000 DEPOSITARY SHS REPSTG PFD BEN INT SER O
-CTO PR A,CTO Realty Growth 6 375 Cumulative Redeemable Pref Shs Series A
-XFLH.U,XFLH Capital Units
-EFC PR C,Ellington Finl Cumulative Pfd Redeemable Fxd Rate Reset Series C
-CFR PR B,Cullen Frost Bankers 40 Depositary Shares Representing Ord Shs Series B
-GNL PR B,GLOBAL NET LEASE Perpetual Pref Shs Series B
-LOB PR A,Live Oak Bancshares Depositary Shs Repstg 1 40Th Int Non Cumulative Perpetual
-BFS PR E,Saul Ctrs 100 DS Repstg Pref Series E
+OTAI.U,Starlink AI Acquisition Units
+AKA,AKA Brands Holding Corp
 PGP,PIMCO Global StocksPLUS & Income Fund
-JLS,Nuveen Mortgage and Income Fund
+EFC PR C,Ellington Finl Cumulative Pfd Redeemable Fxd Rate Reset Series C
+XFLH.U,XFLH Capital Units
+LOB PR A,Live Oak Bancshares Depositary Shs Repstg 1 40Th Int Non Cumulative Perpetual
 ACR PR D,ACRES Commercial Realty 7 875 Cumulative Red Pref Shs Series D
+GNL PR B,GLOBAL NET LEASE Perpetual Pref Shs Series B
+CFR PR B,Cullen Frost Bankers 40 Depositary Shares Representing Ord Shs Series B
 SOL,Emeren Group Ltd ADR
-DCOM PR,Dime Community Bancshares Pref Shs Series A
-AGM PR I,Federal Agricultural Mtg Non Cumulative Preferred Shs Series I
-AGM PR H,Federal Agric Mtg Non Cumulative Prf Shs Series H
-CODI PR A,Compass Diversified Hldgs 7.25 Pref Shs Series A
+JLS,Nuveen Mortgage and Income Fund
+CTO PR A,CTO Realty Growth 6 375 Cumulative Redeemable Pref Shs Series A
 RMI,RiverNorth Opportunistic Municipal Income Fund Inc
-GDV PR K,Gabelli Dividend and Income 4 250 Cumulative Pref Shs Series K
-IGI,Western Asset Investment Grade Opps Trust Inc.
-HFRO PR A,Highland Opportunities and Income Fund 5 375 Series A Cumulative Pref Shs
+AGM PR I,Federal Agricultural Mortgage 6 875 Non Cumulative Preferred Shs Series I
+BFS PR E,Saul Ctrs 100 DS Repstg Pref Series E
+DCOM PR,Dime Community Bancshares Pref Shs Series A
 CLDT PR A,Chatham Lodging 6 625 Cumulative Redeemable Pref Shs Series A
-MITT PR C,Mortgage Investment Trust Pref Shs Series C
-ABR PR E,ARBOR RLTY Pref Shs Series E
-MGF,MFS Government Markets Income Closed Fund
-RGT,Royce Global Trust Inc
-GDL,GDL Fund
+IGI,Western Asset Investment Grade Opps Trust Inc.
+GDV PR K,Gabelli Dividend and Income 4 250 Cumulative Pref Shs Series K
+AGM PR H,Federal Agric Mtg Non Cumulative Prf Shs Series H
+HFRO PR A,Highland Opportunities and Income Fund 5 375 Series A Cumulative Pref Shs
+CODI PR A,Compass Diversified Hldgs 7.25 Pref Shs Series A
 GCV,Gabelli Convertible and Income Securities Mutual Fund
-SHO PR H,Sunstone Hotel Investors 6 125 Cumulative Redeemable Pref Shs Series H
-EVF,Eaton Vance Senior Income Closed Fund
-AGM PR F,FEDERAL AGRIC MTG 5 250 Non Cumulative Pref Shs Series F
-PSEC PR A,Prospect Capital 5 35 Fixed Rate Cumulative Perpetual Pref Shs Series A
-GLOP PR B,Gaslog Partners Perp Fixed Fltg Unit Pref Shs Series B
-TRTN PR A,Triton Intl Red Per Pref Shs Series A
-CHMI,Cherry Hill Mortgage Investment Corp
-LXP PR C,LXP Industrial 6 5 Cumulative Convertible Pref Shs Series C
+RGT,Royce Global Trust Inc
+ABR PR E,ARBOR RLTY Pref Shs Series E
 IAE,Voya Asia Pacific High Dividend Equity Income Fund
-AGM PR G,Federal Agricultural Mortgage 4 875 Non Cumulative Pref Shs Series G
-RIV PR A,Rivernorth Opportunities Fd Perpetual Pref Shs Series A
+MITT PR C,Mortgage Investment Trust Pref Shs Series C
+MGF,MFS Government Markets Income Closed Fund
+GDL,GDL Fund
+SHO PR H,Sunstone Hotel Investors 6 125 Cumulative Redeemable Pref Shs Series H
+STEM,Stem Inc
+AGM PR F,FEDERAL AGRIC MTG 5 250 Non Cumulative Pref Shs Series F
+EVF,Eaton Vance Senior Income Closed Fund
+TRTN PR A,Triton Intl Red Per Pref Shs Series A
+GLOP PR B,Gaslog Partners Perp Fixed Fltg Unit Pref Shs Series B
+ICR PR A,InPoint Commercial Real Estate Income 6 75 Cumulative Redeemable Pref Shs
 RFM,RiverNorth Flexible Municipal Income Fund Inc.
+LXP PR C,LXP Industrial 6 5 Cumulative Convertible Pref Shs Series C
+PSEC PR A,Prospect Capital 5 35 Fixed Rate Cumulative Perpetual Pref Shs Series A
+CHMI,Cherry Hill Mortgage Investment Corp
+AGM PR G,Federal Agricultural Mortgage 4 875 Non Cumulative Pref Shs Series G
 PSA PR Q,Public Storage Depositary Shares Each Representing 1 1000 of 3 950 Cumulative
 NCZ PR A,Virtus Convertible And Income Fund II 5 50 Cumulative Prf Shs Series A
+RIV PR A,Rivernorth Opportunities Fd Perpetual Pref Shs Series A
 FMN,Federated Hermes Premier Municipal Income Closed End Fund
-ICR PR A,InPoint Commercial Real Estate Income 6 75 Cumulative Redeemable Pref Shs
-STEM,Stem Inc
-COF PR K,Capital One Financial DS Rep 1 40th Perp Prf Series K
-MITT PR B,AG Mortgage Investment 8% Per Cumulative Redeemable Pref Shs Series B
-PEB PR E,Pebblebrook Hotel 6.375 Cumulative Redeemable Pref Shs Series E
-CMU,MFS High Yield Municipal Trust
-SB PR D,Safe Bulkers 8 Cum Redeemable Perpetual Pref Shs Series D
-VGI,Virtus Global Multi-Sector Income Fund
-GTN.A,Gray Media Inc Class A
-AGM PR D,Federal Agricultural Mortgage 5 700 Non Cumulative Prf Shs Series D
-NCV PR A,Virtus Convertible And Income Fund 5 625 Cumulative Prf Shs Series A
 IH,iHuman Inc ADR
-PEW,GrabAGun Digital Holdings Inc
-SHO PR I,Sunstone Hotel Investors 5 70 Cumulative Pref Shs Series I
-AVD,American Vanguard Corp
+CMU,MFS High Yield Municipal Trust
+PEB PR E,Pebblebrook Hotel 6.375 Cumulative Redeemable Pref Shs Series E
+VGI,Virtus Global Multi-Sector Income Fund
+COF PR K,Capital One Financial DS Rep 1 40th Perp Prf Series K
+BARK,Bark Inc
+NCV PR A,Virtus Convertible And Income Fund 5 625 Cumulative Prf Shs Series A
+SB PR D,Safe Bulkers 8 Cum Redeemable Perpetual Pref Shs Series D
+AGM PR D,Federal Agricultural Mortgage 5 700 Non Cumulative Prf Shs Series D
+MITT PR B,AG Mortgage Investment 8% Per Cumulative Redeemable Pref Shs Series B
 GDO,Western Asset Global Corporate Opportunity Fd Inc.
+SHO PR I,Sunstone Hotel Investors 5 70 Cumulative Pref Shs Series I
 DTF,DTF Tax-Free Income 2028 Term Fund Inc.
 DLNG PR A,Dynagas LNG Partners 9 Cumulative Redeemable Pref Units Series A
-ECC PR D,Eagle Point Credit Company 6 75 Pref Shs Series D
 GLOP PR C,Gaslog Partners Perpetual Unit Pref Shs Series C
+ECC PR D,Eagle Point Credit Company 6 75 Pref Shs Series D
 SWZ,Total Return Securities Fund
-ANVS,Annovis Bio Inc
 GMRE PR A,Global Med REIT Cumulative Redeemable Pref Shs Series A
+PEW,GrabAGun Digital Holdings Inc
+STG,Sunlands Technology Group ADR
+GTN.A,Gray Media Inc Class A
 GLP PR B,Global Partners 9 50 Fixed Rate Cumulative Perpetual Pref Shs Series B
-TISI,Team Inc
-GAB PR H,Gabelli Equity Trust 5.00% Cumulative Pref Shs Series H
 NMS,Nuveen Minnesota Quality Municipal Income Fund
-BFH PR A,Bread Finl Hldgs Depositary Shs Repstg 1 40Th Perp Pfd Ser A
-UFI,Unifi Inc
-BARK,Bark Inc
-XRN PR A,Chiron Real Estate Cumulative Redeemable Pref Shs Series A
-BML PR G,Bank of America Depository Shares Repstg 1/1200th Floating Rate Non Cumulative
-REXR PR C,Rexford Individual Realty Pref Shs Series C
-GAB PR K,GABELLI EQUITY Pref Shs Series K
-EEA,The European Equity Fund Inc
+GAB PR H,Gabelli Equity Trust 5.00% Cumulative Pref Shs Series H
 NRT,North European Oil Royalty Units
-PDCC,Pearl Diver Credit Company Inc
+UFI,Unifi Inc
+BFH PR A,Bread Finl Hldgs Depositary Shs Repstg 1 40Th Perp Pfd Ser A
+AVD,American Vanguard Corp
+XRN PR A,Chiron Real Estate Cumulative Redeemable Pref Shs Series A
+REXR PR C,Rexford Individual Realty Pref Shs Series C
+BML PR G,Bank of America Depository Shares Repstg 1/1200th Floating Rate Non Cumulative
+EEA,The European Equity Fund Inc
+GAB PR K,GABELLI EQUITY Pref Shs Series K
+GPMT,Granite Point Mortgage Trust Inc
+SKIL,Skillsoft Corp
+RFL,Rafael Holdings Inc
 DSX PR B,Diana Shipping 8.875% Cumulative Redeemable Perpetual Pref Shs Series B
 PCM,PCM Fund Inc
-RFL,Rafael Holdings Inc
-VLT,Invesco High Income Trust II
-CCIF,Carlyle Credit Income Fund
+TISI,Team Inc
 REXR PR B,Rexford Indl Rlty Pref Shs Series B
+PDCC,Pearl Diver Credit Company Inc
+VLT,Invesco High Income Trust II
+DMA,Destra Multi-Alternative Fund
 INN PR F,Summit Hotel Pptys Cum Red Pref Shs Series F
-GPMT,Granite Point Mortgage Trust Inc
 AGM PR E,Federal Agricultural Mortgage 5 750 Non Cumulative Pref Shs Series E
+CCIF,Carlyle Credit Income Fund
 PGZ,Principal Real Estate Income Fund
 HFRO PR B,Highland Opportunities and Income Fund 5 375 Cumulative Prf Shs Series B
-PVL,Permianville Royalty Unit
-CATO,Cato Corp
 RWT PR A,Redwood Tr Prf Shs Series A
-SKIL,Skillsoft Corp
+PVL,Permianville Royalty Unit
 CRT,Cross Timbers Royalty Units
-DMA,Destra Multi-Alternative Fund
-SQNS,Sequans Communications SA ADR
 CXH,MFS Investment Grade Municipal Trust
-RC PR E,Ready Capital 6.5 Pref Shs Series E
+LITB,LightInTheBox Holding Co Ltd ADR
+ANVS,Annovis Bio Inc
+CATO,Cato Corp
+SQNS,Sequans Communications SA ADR
+CHMI PR A,Cherry Hill Mortgage Invstmnt 8 20 Cumulative Redeemable Pref Shs Series A
 MXE,Mexico Equity and Income Closed Fund
 RSF,RiverNorth Capital and Income Interval Fund
-LFT,Lument Finance Trust Inc
-CHMI PR A,Cherry Hill Mortgage Invstmnt 8 20 Cumulative Redeemable Pref Shs Series A
-SPMA,Sound Point Meridian Capital 8 00 Pref Shs Series A
-SPME,Sound Point Meridian Capital 7 875 Prf Shs Series B Due 2030
-GMRE PR B,Global Medical REIT 8 00 Cumulative Redeemable Prf Shs Series B
-FHN PR C,First Horizon 400 Depositary Shs Representing Non Cumulative Pref Shs Series C
-PINE PR A,Alpine Income Ppty Tr Redeemable Pref Shs Series A
-BGSF,BGSF Inc
+RC PR E,Ready Capital 6.5 Pref Shs Series E
 SRG PR A,Seritage Growth Pptys Cum Red 7 00 Pref Shs Series A
+SPME,Sound Point Meridian Capital 7 875 Prf Shs Series B Due 2030
+SPMA,Sound Point Meridian Capital 8 00 Pref Shs Series A
+GMRE PR B,Global Medical REIT 8 00 Cumulative Redeemable Prf Shs Series B
+PINE PR A,Alpine Income Ppty Tr Redeemable Pref Shs Series A
+FHN PR C,First Horizon 400 Depositary Shs Representing Non Cumulative Pref Shs Series C
 SPE PR C,Special Opportunities Fund 2 75 Convertible Pref Shs Series C
-SPRU,Spruce Power Holding Corp
 MAA PR I,Mid America Apartment Communities 8.50% Cumulative Redeemable Pref Shs Series I
+BGSF,BGSF Inc
+LFT,Lument Finance Trust Inc
 JMM,Nuveen Multi-Market Income Fund
+SPRU,Spruce Power Holding Corp
 ECCC,Eagle Point Credit Company 6 50 Term Pref Shs Series C
-VOC,VOC Energy Units
 TGE,Generation Essentials Group
-CMRE PR B,Costamare 7.625% Cumulative Redeemable Perpetual Pref Shs Series B
-GROV,Grove Collaborative Holdings Inc
-RPT PR C,Rithm Ppty Tr Prf Shs Ser C
-XRN PR B,Chiron Real Estate 8 00 Cumulative Redeemable Prf Shs Series B
 CLPR,Clipper Realty Inc
+RPT PR C,Rithm Ppty Tr Prf Shs Ser C
+CMRE PR B,Costamare 7.625% Cumulative Redeemable Perpetual Pref Shs Series B
+XRN PR B,Chiron Real Estate 8 00 Cumulative Redeemable Prf Shs Series B
+WBX,Wallbox NV
+GROV,Grove Collaborative Holdings Inc
+VOC,VOC Energy Units
 FMY,First Trust Mortgage Income Fund
 GAB PR G,Gabelli Equity Trust Cumulative Pref Shs Series G
-WBX,Wallbox NV
+NGL PR C,NGL Energy Partners 9.625 Fixed to Floating Rate Cumulative Redeemable
+BHR PR B,Braemar Hotels Resorts 5 50 Cumulative Convertible Pref Shs Series B
 LFT PR A,LUMENT FIN Pref Shs
 GRBK PR A,Green Brick Partners Dep Shs Repstg 1 1000Th Perp Pfd Ser A
-BHR PR B,Braemar Hotels Resorts 5 50 Cumulative Convertible Pref Shs Series B
-NGL PR C,NGL Energy Partners 9.625 Fixed to Floating Rate Cumulative Redeemable
-LITB,LightInTheBox Holding Co Ltd ADR
 NXDT PR A,NexPoint Diversified Real Estate 5.50 Cumulative Pref Shs Series A
 OPP PR B,Rivernorth Doubleline Strategic Opportunity Pref Shs Series B
 SPG PR J,Simon Property 8.375% Cumulative Redeemable Pref Shs Series J
-LOCL,Local Bounti Corp
 GDV PR H,Gabelli Dividend And Income 5.375% Cumulative Preferred Shs Series H
-KTN,Structured Products 8.205% Credit-Enhanced Corporate-Backed Trust Securities
-MDV PR A,MODIV 7 375 Cumulative Redeemable Perpetual Pref Shs Series A
-GUT PR C,Gabelli Utility 5.375 Cumulative Pref Shs Series C
 AMTD,AMTD IDEA Group ADR
+MDV PR A,MODIV 7 375 Cumulative Redeemable Perpetual Pref Shs Series A
+KTN,Structured Products 8.205% Credit-Enhanced Corporate-Backed Trust Securities
+GUT PR C,Gabelli Utility 5.375 Cumulative Pref Shs Series C
 OPP PR A,Rivernorth Doubleline Strategic Opportunity Fd Pref Shs Series A
-PRIF PR J,PRIORITY INCOME FD Term Pref Shs Series J
 NREF PR A,Nexpoint Real Estate Fin Pref Series A
-MITT PR A,AG Mortgage Investment Trust 8.25% Cumulative Redeemable Pref Shs Series A
+PRIF PR J,PRIORITY INCOME FD Term Pref Shs Series J
+GHG,GreenTree Hospitality Group Ltd ADR
+OPAD,Offerpad Solutions Inc
 EICA,Eagle Point Income Company 5 00 Term Pref Shs Series A
 CHMI PR B,Cherry Hill Mtg Invt Pref Shs Series B
 CTA PR A,EIDP INC USD4.50 CUM PFD NPV
 CDR PR C,Cedar Realty 6 5 Cumulative Redeemable Pref Shs Series C
-STG,Sunlands Technology Group ADR
-GHG,GreenTree Hospitality Group Ltd ADR
+MITT PR A,AG Mortgage Investment Trust 8.25% Cumulative Redeemable Pref Shs Series A
+LOCL,Local Bounti Corp
 PRIF PR K,Priority Income Fund 7 000 Cumulative Pref Shs Series K
 EIIA,Eagle Point Institutional Income 8 125 Term Prf Shs Series A
+SST,System1 Inc
 ETI PR,Entergy Tex Pref Shs Series A
-OPAD,Offerpad Solutions Inc
 TY PR,Tri Continental 2.5% Cumulative Pref Shs
 PYT,Merrill Lynch Depositor PPLUS Floating Rate TRUPS Series GSC-2
-ACP PR A,Abrdn Income Credit Strategies 5 250 Perpetual Prf Shs Series A
 GGT PR E,Gabelli Multimedia 5 125 Cumulative Pref Shs Series E
-CCID,Carlyle Credit Income 7 375 Preferred Shares Series D
-PDPA,Pearl Diver Credit 8 00 PRF Series A
-ALTG PR A,Alta Equip Group 1000 DS Representing Prf Shs Series A
-SST,System1 Inc
-CMS PR B,Consumers Energy Cumulative Pref Shs Class B
-CIF,MFS Intermediate High Income Fund
+ACP PR A,Abrdn Income Credit Strategies 5 250 Perpetual Prf Shs Series A
 PSQH,PSQ Holdings Inc
-HVT.A,Haverty Furniture Companies Inc Class A
-KTH,Structured Products 8% Corporate-Backed Trust Securities Certificates by PECO
+ALTG PR A,Alta Equip Group 1000 DS Representing Prf Shs Series A
+PDPA,Pearl Diver Credit 8 00 PRF Series A
+CCID,Carlyle Credit Income 7 375 Preferred Shares Series D
 GWH,ESS Tech Inc
-NTZ,Natuzzi SpA ADR
-NYC,American Strategic Investment Co
+CIF,MFS Intermediate High Income Fund
+CMS PR B,Consumers Energy Cumulative Pref Shs Class B
+KTH,Structured Products 8% Corporate-Backed Trust Securities Certificates by PECO
+HVT.A,Haverty Furniture Companies Inc Class A
 PRIF PR D,Priority Income 7.00% Prf Shs Exp 2029 Series D
 PRIF PR L,Priority Income Fund 6 375 Prf Shs Series L
 BHR PR D,Braemar Hotels Resorts Pref Shs Series D
 JBK,Lehman 3.50% Adjustable Corporate Backed Trust Certificates Goldman Sachs
-PRT,PermRock Royalty Units
 NOM,Nuveen Missouri Quality Municipal Income Fund
-CNF,CNFinance Holdings Ltd ADR
-GGT PR G,Gabelli Multimedia Trust Pref Shs Series G
-CFND,C1 Fund Inc
+PRT,PermRock Royalty Units
+NYC,American Strategic Investment Co
 FEDU,Four Seasons Education Cayman Inc ADR
-SB PR C,Safe Bulkers 8.00% Cumulative Redeemable Perpetual Pref Shs Series C
-MVO,MV Oil Trust Units
-FENG,Phoenix New Media Ltd ADR
-EQS,Equus Total Return，Inc.
+GGT PR G,Gabelli Multimedia Trust Pref Shs Series G
+CNF,CNFinance Holdings Ltd ADR
+NTZ,Natuzzi SpA ADR
 CCM,Concord Medical Services Holdings Ltd ADR
+MVO,MV Oil Trust Units
+CFND,C1 Fund Inc
+SB PR C,Safe Bulkers 8.00% Cumulative Redeemable Perpetual Pref Shs Series C
 CFTR PR A,Cantor Fitzgerald Income 9 50 Cumulative Redeemable Prf Shs Series A
-GNT PR A,GAMCO Natural Resources Gold 5 2 Cumulative Pref Shs Series A
 AHT,Ashford Hospitality Trust Inc
+EQS,Equus Total Return，Inc.
+GNT PR A,GAMCO Natural Resources Gold 5 2 Cumulative Pref Shs Series A
+FENG,Phoenix New Media Ltd ADR
 BHV,BlackRock Virginia Municipal Bond Closed Fund
-SOS,Sos Ltd
-GJP,STRATS SM Trust for Dominion Resources Securities Certificate Series 2005-6
 CDR PR B,Cedar Realty 7 25 Cumulative Redeemable Pref Shs Series B
+SOS,Sos Ltd
 MOGU,Mogu Inc ADR
+GJP,STRATS SM Trust for Dominion Resources Securities Certificate Series 2005-6
 SLAI,SOLAI Ltd ADR
 GJH,STRATS SM Untd States Cell 6.375 Structured Repackaged Aset Backed Securits
 HL PR B,Hecla Mining Cumulative Conv Pref Series B
 EFC PR D,Ellington Financial 7 00 Cumulative Perpetual Redeemable Prf Shs Series D
-AHT PR G,Ashford Hospitality 7.375 Cumulative Pref Shs Series G
 MTR,Mesa Royalty Trust
+AHT PR G,Ashford Hospitality 7.375 Cumulative Pref Shs Series G
 AHT PR D,Ashford Hospitality 8.45% Cumulative Pref Shs Series D
-AHT PR I,Ashford Hospitality 7.50% Pref Shs Series I
-AHT PR F,Ashford Hospitality 7.375 Cumulative Pref Shs Series F
 AHT PR H,Ashford Hospitality 7 5 Cumulative Pref Shs Series H
+AHT PR F,Ashford Hospitality 7.375 Cumulative Pref Shs Series F
+AHT PR I,Ashford Hospitality 7.50% Pref Shs Series I
 RC PR C,Ready Capital 6 25 Cumul Convertible Prf Shs Series C
 BFS PR D,Saul Ctrs 1 100 Cum DS Representing Pref Shs Series D
 AHL PR D,Aspen Insurance 5 625 Perpetual Non Cumulative Pref Shs
@@ -2672,6 +2670,7 @@ DUKB,Duke Energy Corporation 5.625% Junior Subordinated Debentures Exp 15 Sep 20
 ELC,Entergy Louisiana Collateral Mortgage Bonds 4.875 Series Exp 01 Sept 2066
 EAI,Entergy Arkansas First Mortgage Bonds 4.875 Series Exp 01 Sept 2066
 ENJ,Entergy Orleans 5% Mortgage Bonds Series Exp 01 Dec 2052
+KMPB,Kemper 5 875 Fixed Rate Reset Junior Subordinated Debentures due 2062
 EMP,Entergy Mississippi 4.90 First Mortgage Bonds Exp 1 Oct 2066
 DTW,Dte Energy Company 5 25 Junior Subordinated Debentures due 2077 Series E
 GJS,Strats Sm Trust For Goldman Sachs Group Securities Certificates Series 2006-2
@@ -2686,21 +2685,20 @@ WRB PR E,WR Berkley 5.70 Subordinated Debentures Due 2058
 WRB PR F,W R Berkley 5.10% Subordinated Debentures Exp 2059
 UZD,Array Digital Infrtre 6 250 Senior Notes due 2069
 AFGE,American Financial Group 4 500 Subordinated Debentures due 2060
-DTB,DTE Energy 4 375 Junior Subordinated Debentures Series G due 2080
-MFAN,MFA Financial 8 875 Senior Notes due 2029
-FGN,F&G Annuities And Life 7 950 Senior Notes due 2053
-PMTU,PennyMac Mortgage Investment 8 50 Senior Notes due 2028
 RZC,Reinsurance Group of America 7 125 Fixed Rate Reset Subordinated Debentures due
-KMPB,Kemper 5 875 Fixed Rate Reset Junior Subordinated Debentures due 2062
-BWNB,Babcock And Wilcox Enterprises 6 50 Senior Notes due 2026
 DTG,DTE Energy 2021 4 375 Junior Subordinated Debentures Series E
+GL PR D,Globe Life 4 25 Junior Subordinated Debentures due 2061
+DTB,DTE Energy 4 375 Junior Subordinated Debentures Series G due 2080
 CNO PR A,CNO Financial Group 5 125 Subordinated Debentures
 UZE,Array Digital Infrtre 5 500 Senior Notes due 2070
 WRB PR H,W.R. Berkley 4.125% Subordinated Debentures due 2061
 UZF,Array Digital Infrtre 5 500 Senior Notes Due 2070
-GL PR D,Globe Life 4 25 Junior Subordinated Debentures due 2061
-CTRA,Coterra Energy Inc
+MFAN,MFA Financial 8 875 Senior Notes due 2029
+FGN,F&G Annuities And Life 7 950 Senior Notes due 2053
+PMTU,PennyMac Mortgage Investment 8 50 Senior Notes due 2028
+MITN,TPG Mortgage Investment Trust 9 500 Senior Notes Due 2029
 RWTN,Redwood Trust 9 125 Senior Notes Due 2029
+BWNB,Babcock And Wilcox Enterprises 6 50 Senior Notes due 2026
 MITN,TPG Mortgage Investment Trust 9 500 Senior Notes Due 2029
 ATHS,Athene Holding 7 250 Fixed Rate Reset Junior Subordinated Debentures Due 2064
 MFAO,MFA Financial 9 00 Senior Notes due 2029
@@ -2748,20 +2746,27 @@ BUI RT WI,BlackRock Utilities Infrastructure Power Opportunities Rights Exp 2 Ap
 XFLH RT,XFLH Capital Rights
 NEE PR W,NextEra Energy Capital Holdings Junior Subordinated Debentures Series Z due
 VGNT WI,Versigent Ltd
-NXG RT WI,NXG NextGen Infrastructure Income Rights When Issued
-SAGU RT,Shreya Acquisition Group Rights
-SAGU,Shreya Acquisition Group
 TYG RT,Tortoise Energy Infrastructure Rights Expiry 17th June 2026
-TYG RT WI,Tortoise Energy Infrastructure Rights When Issued Expiry 17th June 2026
 VECA RT,Vernal Capital Acquisition Rights
 WENC RT,West Enclave Merger Rights
+QRED RT,QuasarEdge Acquisition Rights
+NXG RT WI,NXG NextGen Infrastructure Income Rights When Issued
 NXG RT,NXG Nextgen Infrastructure Income Rights
 GLED RT,GalaxyEdge Acquisition Rights
 TRAD RT,Apex Tech Acquisition Rights
-QRED RT,QuasarEdge Acquisition Rights
+RWTS,Redwood 9 75 Senior Notes Due 2031
+FDX WI,FedEx Corp
+FDXF WI,FedEx Freight Holding Company Inc
+NVRI WI,Enviri II Corp
+SAGU RT,Shreya Acquisition Group Rights
+CTRA,Coterra Energy Inc
+THR,Thermon Group Holdings Inc
 SEMR,SEMrush Holdings Inc
+NVRI,Enviri Corp
 PRO,Pros Holdings Inc
 KUKE,Kuke Music Holding Ltd ADR
+SPCE,Virgin Galactic Holdings Inc
 SRL,Scully Royalty Ltd
+FDXF,FedEx Freight Holding Company Inc
 QVCD,QVC 6.375% Senior Secured Notes Exp 13 Sep 2067
 QVCC,QVC 6.250 Senior Secured Notes due 2068
