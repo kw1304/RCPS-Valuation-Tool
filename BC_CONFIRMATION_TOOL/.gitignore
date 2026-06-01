@@ -8,3 +8,6 @@ configs/companies/
 _*.xlsx
 _*.log
 *.egg-info/
+
+_server.log
+_autodeploy.log
