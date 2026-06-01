@@ -137,3 +137,57 @@ def test_parse_rate_limit_ignored():
 def test_parse_garbage_ignored():
     assert accounting.parse_stream_line("not json") is None
     assert accounting.parse_stream_line("") is None
+
+
+def _fake_runner(lines):
+    """build_command를 무시하고 미리 준비한 stream-json 라인들을 yield."""
+    def runner(cmd):
+        for ln in lines:
+            yield ln
+    return runner
+
+
+def test_ask_stream_happy_path(tmp_db):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    lines = [
+        json.dumps({"type": "system", "subtype": "init", "session_id": "newsess"}),
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "WebSearch", "input": {"query": "x"}}]}}),
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "답변 본문"}]}}),
+        json.dumps({"type": "result", "subtype": "success",
+                    "result": "답변 본문", "session_id": "newsess"}),
+    ]
+    events = list(accounting.ask_stream(
+        tmp_db, cid, "리스 질문", runner=_fake_runner(lines)))
+    types = [e["type"] for e in events]
+    assert "tool" in types
+    assert "token" in types
+    assert types[-1] == "done"
+    # 세션 저장 확인
+    assert accounting.get_session_id(tmp_db, cid) == "newsess"
+
+
+def test_ask_stream_resumes_existing(tmp_db):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    accounting.upsert_session(tmp_db, cid, "oldsess")
+    captured = {}
+
+    def runner(cmd):
+        captured["cmd"] = cmd
+        yield json.dumps({"type": "result", "subtype": "success",
+                          "result": "ok", "session_id": "oldsess"})
+
+    list(accounting.ask_stream(tmp_db, cid, "후속질문", runner=runner))
+    assert "--resume" in captured["cmd"]
+    assert captured["cmd"][captured["cmd"].index("--resume") + 1] == "oldsess"
+
+
+def test_ask_stream_bad_question_yields_error(tmp_db):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    events = list(accounting.ask_stream(
+        tmp_db, cid, "   ", runner=_fake_runner([])))
+    assert events[0]["type"] == "error"

@@ -155,3 +155,74 @@ def parse_stream_line(line):
         return {"type": "session", "sessionId": obj.get("session_id")}
 
     return None
+
+
+import os
+import subprocess
+import tempfile
+import threading
+
+_SEM = threading.Semaphore(3)        # 동시 claude 프로세스 최대 3
+SUBPROC_TIMEOUT = 90
+
+
+def _default_runner(cmd):
+    """실제 claude 실행. stdout 라인을 순차 yield. timeout 시 kill."""
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        text=True, encoding="utf-8", bufsize=1,
+    )
+    timer = threading.Timer(SUBPROC_TIMEOUT, proc.kill)
+    timer.start()
+    try:
+        for line in proc.stdout:
+            yield line
+    finally:
+        timer.cancel()
+        try:
+            proc.stdout.close()
+        except Exception:
+            pass
+        proc.wait()
+
+
+def ask_stream(db_path, conv_id, question, runner=None):
+    """검증→세션조회→실행→파싱→이벤트 yield→세션저장.
+
+    yield하는 각 항목은 SSE로 보낼 dict. runner는 테스트 주입용.
+    """
+    runner = runner or _default_runner
+    try:
+        conv_id = validate_conversation_id(conv_id)
+        question = validate_question(question)
+    except ValueError as e:
+        yield {"type": "error", "message": str(e)}
+        return
+
+    session_id = get_session_id(db_path, conv_id)
+    workdir = tempfile.mkdtemp(prefix="wat_acct_")
+    cmd = build_command(question, session_id, workdir)
+
+    final_session = session_id
+    acquired = _SEM.acquire(timeout=SUBPROC_TIMEOUT)
+    if not acquired:
+        yield {"type": "error", "message": "서버 혼잡 — 잠시 후 재시도"}
+        return
+    try:
+        for line in runner(cmd):
+            ev = parse_stream_line(line)
+            if ev is None:
+                continue
+            if ev["type"] in ("session", "done") and ev.get("sessionId"):
+                final_session = ev["sessionId"]
+            if ev["type"] == "session":
+                continue  # 내부용, 프론트로는 안 보냄
+            yield ev
+    finally:
+        _SEM.release()
+        try:
+            os.rmdir(workdir)
+        except OSError:
+            pass
+        if final_session:
+            upsert_session(db_path, conv_id, final_session)
