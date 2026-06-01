@@ -60,3 +60,32 @@ K-IFRS↔K-GAAP 분리(환입한도 차이), 재고 NRV·품목별·환입한도
 
 **검증:** 부정위험 재프로빙 → disclaimer까지 완결(53s)·preamble 제거([결론] 시작).
 리스변경 grounded → 검색 4회(cap 작동)·URL 포함·disclaimer+Sources 완결(88s). 43 tests 통과.
+
+---
+
+## Iteration 3 — 02:13~02:40
+
+**프로빙 6+1건:** 이연법인세자산 실현가능성(K-IFRS) · 영업권손상 CGU배분(K-IFRS) ·
+금융자산 분류 SPPI/사업모형(K-IFRS) · 주식기준보상 주식결제vs현금결제(auto) ·
+사업결합 PPA(K-GAAP) · 감사 표본설계 KSA530(auto, 정밀검색) + 사업결합 재검증.
+
+**전반 품질:** 6건 전부 고품질, **중대 회계오류 없음**. iter1·2 수정 전부 정상 작동
+확인(URL환각 없음·[결론] 바로 시작·grounded 검색 4회 cap·완결·무결성 배지).
+이연법인세 positive/negative evidence·3개년연속손실, 영업권 배분순서(영업권먼저→비례)·
+환입불가, SPPI 2기준·재분류금지, 사업결합 **영업권 상각(K-GAAP)↔손상(K-IFRS) 차이 정확**,
+표본설계 통제테스트/실증절차 결정요소·MUS·층화 정확. KSA530은 KICPA 소관 메타주석까지 정확.
+
+**발견된 핵심 UX 결함:** 답변이 풍부한 마크다운(##·**·표·코드·일부 LaTeX `$$`)인데
+프론트가 **plain text로 표시** → 사용자가 `## [결론]`·`**부채**`·`$$\text{}$$` 원본 기호를
+그대로 봄. 감사인 가독성 큰 손해.
+
+**조치(최고가치 개선):**
+- 프론트 **마크다운 렌더링** 도입 — marked@12 + DOMPurify@3(XSS-safe) CDN.
+  done 시 `DOMPurify.sanitize(marked.parse())`로 렌더(.bubble.md), 스트리밍 중엔 평문.
+  링크 새 탭 처리. 라이브러리 로드 실패 시 escape 평문 fallback(크래시 방지).
+- .bubble.md CSS: 제목·표(가로스크롤·줄무늬)·코드블록·인용·구분선·리스트 스타일.
+- 백엔드 프롬프트: 마크다운 구조화 명시 + **LaTeX($$,\text) 금지**(일반텍스트 수식).
+
+**검증:** 서빙본에 marked/purify/bubble.md 18곳 확인, 사업결합 재프로빙 시
+LaTeX 제거(False)·마크다운표 유지. 43 tests 통과. (브라우저 시각렌더는 fallback 안전장치
+있어 아침 육안확인 예정.)
