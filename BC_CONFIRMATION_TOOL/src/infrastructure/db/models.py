@@ -55,9 +55,9 @@ class ExtractedRecord(SQLModel, table=True):
     """AC1~AC8 추출 record. ac_section으로 시트 구분."""
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id", index=True)
-    # 매칭 안 된 회신본은 0(미배정). FK 강제(PRAGMA)는 기존 테이블 NOT NULL 재구축이
-    # 필요해 보류 — nullable 전환은 별도 마이그레이션 작업으로 분리.
-    counterparty_id: int = Field(foreign_key="counterparty.id", index=True)
+    # 매칭 안 된 회신본은 None(미배정). FK 무결성 위해 0 sentinel 폐기 → nullable.
+    # (기존 NOT NULL 테이블은 repository._migrate_fk_nullable 가 재구축하며 0→NULL 정정)
+    counterparty_id: Optional[int] = Field(default=None, foreign_key="counterparty.id", index=True)
     ac_section: str                              # AC1 | AC2 | ... | AC8
     payload_json: str                            # 도메인 모델 직렬화
     confidence: str = "high"                     # high | medium | low

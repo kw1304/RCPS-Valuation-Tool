@@ -1,6 +1,6 @@
 from pathlib import Path
 from sqlmodel import Session, SQLModel, create_engine, select, delete
-from sqlalchemy import text
+from sqlalchemy import text, event
 from .models import Project, Counterparty, FileAsset, ExtractedRecord
 
 DB_PATH = Path(__file__).resolve().parents[3] / "data" / "projects.db"
@@ -15,6 +15,30 @@ _MIGRATIONS = {
 }
 
 
+def _migrate_fk_nullable(conn) -> None:
+    """기존 extractedrecord.counterparty_id 가 NOT NULL 이면 nullable 로 재구축.
+
+    과거 sentinel(0, 존재하지 않는 counterparty)을 NULL 로 정정하며 복사한다.
+    이래야 PRAGMA foreign_keys=ON 에서 미매칭 회신(counterparty 없음)을 무결성
+    위반 없이 저장할 수 있다. notnull 이 이미 0(또는 테이블 없음)이면 no-op."""
+    info = list(conn.execute(text("PRAGMA table_info(extractedrecord)")))
+    if not info:
+        return  # 테이블 없음 → create_all 이 최신(nullable) 스키마로 생성
+    cp = next((r for r in info if r[1] == "counterparty_id"), None)
+    if cp is None or cp[3] == 0:   # r[3] = notnull 플래그
+        return  # 이미 nullable
+    cols = [r[1] for r in info]
+    collist = ", ".join(cols)
+    selcols = ", ".join("NULLIF(counterparty_id, 0)" if c == "counterparty_id" else c
+                        for c in cols)
+    conn.execute(text("PRAGMA foreign_keys=OFF"))  # 재구축 중 FK 검사 비활성
+    conn.execute(text("ALTER TABLE extractedrecord RENAME TO _er_old"))
+    SQLModel.metadata.tables["extractedrecord"].create(bind=conn)  # nullable 신스키마
+    conn.execute(text(
+        f"INSERT INTO extractedrecord ({collist}) SELECT {selcols} FROM _er_old"))
+    conn.execute(text("DROP TABLE _er_old"))
+
+
 def _apply_migrations(eng) -> None:
     with eng.connect() as conn:
         for table, cols in _MIGRATIONS.items():
@@ -24,6 +48,8 @@ def _apply_migrations(eng) -> None:
             for col, ddl in cols.items():
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+        # extractedrecord.counterparty_id NOT NULL → nullable 재구축(0→NULL 정정).
+        _migrate_fk_nullable(conn)
         # Counterparty 중복 방지 unique index (기존 테이블엔 create_all 이 제약 추가 못함).
         # 기존 DB에 이미 중복이 있으면 인덱스 생성이 실패하므로 — 서버 기동을 막지 않도록
         # 보류(신규 DB·중복 없는 DB만 적용). upsert_counterparty 가 1차 방어.
@@ -38,10 +64,20 @@ def _apply_migrations(eng) -> None:
         conn.commit()
 
 
+def _enable_sqlite_fk(eng) -> None:
+    """연결마다 PRAGMA foreign_keys=ON — SQLite 는 기본 FK 미강제(고아행 방지)."""
+    @event.listens_for(eng, "connect")
+    def _set_fk(dbapi_conn, _rec):  # noqa: ANN001
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
+
+
 def get_engine(db_path: Path | None = None):
     p = db_path or DB_PATH
     p.parent.mkdir(parents=True, exist_ok=True)
     eng = create_engine(f"sqlite:///{p}")
+    _enable_sqlite_fk(eng)
     SQLModel.metadata.create_all(eng)
     _apply_migrations(eng)
     return eng

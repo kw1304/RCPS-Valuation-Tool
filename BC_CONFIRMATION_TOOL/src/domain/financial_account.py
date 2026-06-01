@@ -1,6 +1,13 @@
 from pathlib import Path
 import yaml
 
+# 짧은 키워드(주식·채권 등)가 비금융 계정과목에 부분일치하는 오분류 차단.
+# 예: '매출채권'(채권)·'주식발행초과금'·'자기주식'(주식)은 금융상품 계정이 아니다.
+_NONFIN_ACCOUNT_MARKERS: tuple[str, ...] = (
+    "매출채권", "받을채권", "미수채권", "공사미수금",
+    "주식발행초과금", "자기주식", "주식매수선택권", "주식보상",
+)
+
 
 class FinancialAccountClassifier:
     def __init__(self, direct_accounts: dict[str, list[str]]):
@@ -25,6 +32,10 @@ class FinancialAccountClassifier:
         2. Substring match (긴 keyword 우선 - longest first)
         """
         if not account_name:
+            return None
+
+        # 비금융 계정 제외(짧은 키워드 오분류 방지): 매출채권→채권, 주식발행초과금→주식 등.
+        if any(m in account_name for m in _NONFIN_ACCOUNT_MARKERS):
             return None
 
         # exact match first

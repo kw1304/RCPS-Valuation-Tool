@@ -329,7 +329,7 @@ def parse_responses(session: Session, project_id: int) -> dict:
         payload = json.dumps(payload_obj, default=str, ensure_ascii=False) \
             if isinstance(payload_obj, dict) else payload_obj.model_dump_json()
         er = ExtractedRecord(
-            project_id=project_id, counterparty_id=cp.id if cp else 0,
+            project_id=project_id, counterparty_id=cp.id if cp else None,
             ac_section=rec["ac_section"], payload_json=payload,
             confidence=rec["confidence"], source_file=rec["source_file"],
             needs_manual_review=rec["manual"], form_family=rec["family"],
