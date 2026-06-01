@@ -50,3 +50,35 @@ def test_upsert_updates_session(tmp_db):
     accounting.upsert_session(tmp_db, cid, "sess-1")
     accounting.upsert_session(tmp_db, cid, "sess-2")
     assert accounting.get_session_id(tmp_db, cid) == "sess-2"
+
+
+def test_build_command_new_session():
+    cmd = accounting.build_command("질문", session_id=None, workdir="/tmp/x")
+    assert cmd[0] == "claude"
+    assert "-p" in cmd
+    assert "질문" in cmd
+    assert "--bare" in cmd
+    assert "WebSearch" in cmd
+    # 도구 화이트리스트는 WebSearch만
+    i = cmd.index("--allowedTools")
+    assert cmd[i + 1] == "WebSearch"
+    assert "--dangerously-skip-permissions" not in cmd
+    assert "--resume" not in cmd
+    assert "stream-json" in cmd
+    assert "--verbose" in cmd
+    # 시스템 프롬프트 주입
+    assert "--system-prompt" in cmd
+    sp = cmd[cmd.index("--system-prompt") + 1]
+    assert "회계감사기준" in sp
+
+
+def test_build_command_resume():
+    cmd = accounting.build_command("질문", session_id="sess-9", workdir="/tmp/x")
+    assert "--resume" in cmd
+    assert cmd[cmd.index("--resume") + 1] == "sess-9"
+
+
+def test_build_command_adddir():
+    cmd = accounting.build_command("질문", session_id=None, workdir="/tmp/iso")
+    assert "--add-dir" in cmd
+    assert cmd[cmd.index("--add-dir") + 1] == "/tmp/iso"

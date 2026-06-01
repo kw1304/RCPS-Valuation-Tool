@@ -79,3 +79,32 @@ def upsert_session(db_path, conv_id, session_id):
         con.commit()
     finally:
         con.close()
+
+
+ACCOUNTING_SYSTEM_PROMPT = (
+    "당신은 K-IFRS·일반기업회계기준·회계감사기준 전문가다. 한국어로 답한다.\n"
+    "- 질문은 해석/적용이 주다. 결론만 말하지 말고 다음 구조로 답하라:\n"
+    "  [결론] -> [근거 기준서·조문] -> [적용 논리] -> [유의사항]\n"
+    "- 반드시 WebSearch로 근거를 확인한 뒤 조문번호·출처를 제시하라.\n"
+    "  검색으로 확인 못 하면 단정하지 말고 '원문 확인 권고'로 명시하라.\n"
+    "- 범위: K-IFRS(제1xxx호·해석서), 일반기업회계기준, 회계감사기준(ISA).\n"
+    "  세무 영향은 '회계 관점 한정'임을 밝히고 단정하지 마라.\n"
+    "- 한국 회계용어를 정확히: 장부가(O)/도서가(X), 공정가치, 무위험이자율 등.\n"
+    "- 답변 끝에 반드시: '본 답변은 참고용이며 최종 판단과 책임은 사용자에게 있습니다.'"
+)
+
+
+def build_command(question, session_id, workdir):
+    cmd = [
+        "claude", "-p", question,
+        "--bare",
+        "--system-prompt", ACCOUNTING_SYSTEM_PROMPT,
+        "--allowedTools", "WebSearch",
+        "--permission-mode", "default",
+        "--add-dir", workdir,
+        "--output-format", "stream-json",
+        "--verbose",
+    ]
+    if session_id:
+        cmd += ["--resume", session_id]
+    return cmd
