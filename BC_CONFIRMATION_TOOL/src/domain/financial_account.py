@@ -8,6 +8,11 @@ _NONFIN_ACCOUNT_MARKERS: tuple[str, ...] = (
     "주식발행초과금", "자기주식", "주식매수선택권", "주식보상",
 )
 
+# P/L 손익 계정 접미사 — B/S 키워드에 부분일치해도 B/S 버킷으로 오귀속 금지.
+_PL_SUFFIXES: tuple[str, ...] = (
+    "손실", "손익", "이익", "차익", "차손", "환입", "환급",
+)
+
 
 class FinancialAccountClassifier:
     def __init__(self, direct_accounts: dict[str, list[str]]):
@@ -45,7 +50,12 @@ class FinancialAccountClassifier:
         # substring match (긴 keyword 우선)
         for kw in sorted(self.buckets.keys(), key=len, reverse=True):
             if kw in account_name:
-                return self.buckets[kw]
+                bucket = self.buckets[kw]
+                # P/L 손익 계정이 B/S 키워드에 부분일치하면(현금성자산처분손실→예금) B/S로
+                # 오귀속 금지 — 손익 접미사면 그 B/S 매칭은 무시하고 다음(손익) 키워드 탐색.
+                if self.is_balance_sheet(bucket) and account_name.endswith(_PL_SUFFIXES):
+                    continue
+                return bucket
 
         return None
 

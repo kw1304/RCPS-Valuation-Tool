@@ -94,14 +94,26 @@ def _won_amounts(line: str) -> list[Decimal]:
     '1800000000', (c) 통화 접두/접미가 붙은 '(KRW)…'/'KRW…'/'…KRW'.
     번지(622)·설정순위(3/6)·면적(386.15)은 100만 임계 미만 → 제외(단편 garbage 방지).
     """
-    out: list[Decimal] = []
+    # 1차 수집: (값, 콤마그룹여부, 소수여부) 순서 보존.
+    cand: list[tuple[Decimal, bool, bool]] = []
+    has_grouped = False
     for tok in line.split():
         bare = _strip_ccy(tok)
         if not _is_amount(bare):
             continue
         v = _to_dec(bare)
-        if v is not None and v >= _MIN_AMOUNT:
-            out.append(v)
+        if v is None or v < _MIN_AMOUNT:
+            continue
+        grouped = bool(_GROUPED_AMOUNT.match(bare))
+        has_grouped = has_grouped or grouped
+        cand.append((v, grouped, "." in bare))
+    # 콤마그룹 금액이 한 줄에 있으면, 무콤마·무소수 큰 정수(20215243773 등)는 약정/계좌
+    # ref 이지 금액이 아니다 → 제외. 콤마그룹이 전혀 없으면(국민식 무콤마 표) 전부 금액.
+    out: list[Decimal] = []
+    for v, grouped, has_dec in cand:
+        if has_grouped and not grouped and not has_dec:
+            continue
+        out.append(v)
     return out
 
 

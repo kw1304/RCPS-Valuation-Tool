@@ -18,10 +18,12 @@ def parse_ac6(block: str, bc_no: str, bank: str,
         count = 0
         balance = Decimal("0")
         if t.amounts:
-            ints = [a for a in t.amounts if a == a.to_integral_value() and a < 1000]
-            count = int(ints[0]) if ints else 0
-            big = [a for a in t.amounts if a >= 1000]
-            balance = big[0] if big else (t.amounts[-1] if t.amounts else Decimal("0"))
+            # 잔액(원) = 최대 금액. 건수는 항상 잔액보다 작은 정수 — 과거 `<1000` 임계는
+            # 어음 1,000건 이상에서 건수가 잔액 컬럼을 덮어쓰는 결함(8.5억→1,200원).
+            balance = max(t.amounts)
+            cnt_candidates = [a for a in t.amounts
+                              if a != balance and a == a.to_integral_value() and 0 <= a < balance]
+            count = int(min(cnt_candidates)) if cnt_candidates else 0
         # sentinel/placeholder 행 제외: 실제 양수 잔액도 양수 건수도 없으면 skip
         # (예: "대표이사명 99991231 000000000 00000000" → count 0, balance 0)
         if count <= 0 and balance <= 0:

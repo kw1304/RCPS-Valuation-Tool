@@ -47,11 +47,18 @@ def _upsert_from_cs(session: Session, project_id: int, cs_rows: list[dict],
       - G/L에만 있고 CS 없는 항목 → BC-GL-N 부여 (예외 케이스)
     """
     added = []
-    # CS bc_no → 이미 사용 중인지 추적
-    cs_used_bcs: set[str] = set()
+    # CS bc_no → 이미 사용 중인지 추적. 명시 bc_no 를 먼저 수집해 자동부여가 이를 피하도록.
+    # (과거 `BC-CS-{len+1}` 은 명시 bc_no 누적으로 연번 구멍·중복 부여 결함)
+    cs_used_bcs: set[str] = {csr["bc_no"] for csr in cs_rows if csr.get("bc_no")}
+    _auto_n = 0
     for csr in cs_rows:
         key = (csr["canonical"], csr["branch"])
-        cs_bc = csr.get("bc_no") or f"BC-CS-{len(cs_used_bcs)+1}"
+        cs_bc = csr.get("bc_no")
+        if not cs_bc:
+            _auto_n += 1
+            while f"BC-CS-{_auto_n}" in cs_used_bcs:
+                _auto_n += 1
+            cs_bc = f"BC-CS-{_auto_n}"
         cs_used_bcs.add(cs_bc)
         if key in existing_by_key:
             # 기존 G/L counterparty — CS의 BC-N으로 renumber + 채널·주소 보강

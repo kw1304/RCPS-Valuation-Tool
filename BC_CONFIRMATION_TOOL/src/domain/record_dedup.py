@@ -30,23 +30,21 @@ from typing import Any
 
 
 def _norm_amount(v: Any) -> str | None:
-    """금액을 정규화된 정수 문자열로. 0·None·비금액 → None(=dedup 비대상)."""
+    """금액을 정규화된 canonical 문자열로. 0·None·비금액 → None(=dedup 비대상).
+
+    표기차(510000 / 510,000 / 510000.0)는 같은 키로 흡수하되, 실제 다른 잔액
+    (250.6 vs 250.4)은 구분한다. 과거 int() 버림은 250.6·250.4를 250으로 충돌시켜
+    별개 holding 을 합본 복제로 오판·삭제했다(표본 누락). Decimal.normalize 로 정밀도 보존."""
     if v is None:
         return None
-    if isinstance(v, (int, float, Decimal)):
-        try:
-            iv = int(Decimal(str(v)))
-        except (InvalidOperation, ValueError):
-            return None
-        return str(iv) if iv != 0 else None
-    s = str(v).strip().replace(",", "")
-    if not s:
-        return None
     try:
-        iv = int(Decimal(s))
+        d = v if isinstance(v, Decimal) else Decimal(str(v).strip().replace(",", ""))
     except (InvalidOperation, ValueError):
         return None
-    return str(iv) if iv != 0 else None
+    if d == 0:
+        return None
+    # normalize: 후행 0·표기차 제거(510000 == 510000.0), 값 자체는 보존.
+    return str(d.normalize())
 
 
 def _as_dict(rec: Any) -> dict:
