@@ -81,15 +81,16 @@ def upsert_session(db_path, conv_id, session_id):
         con.close()
 
 
-ACCOUNTING_SYSTEM_PROMPT = (
+_BASE_PROMPT = (
     "당신은 K-IFRS·일반기업회계기준·회계감사기준 전문가다. 한국어로 답한다.\n"
     "- 질문은 해석/적용이 주다. 결론만 말하지 말고 다음 구조로 답하라:\n"
     "  [결론] -> [근거 기준서·조문] -> [적용 논리] -> [유의사항]\n"
-    "- 반드시 WebSearch로 근거를 확인한 뒤 조문번호·출처를 제시하라.\n"
-    "  검색으로 확인 못 하면 단정하지 말고 '원문 확인 권고'로 명시하라.\n"
-    "- 근거 검색 우선순위: ① 한국회계기준원(KASB) 질의회신(Q&A) 사례,\n"
+    "- 조문번호·기준서 번호를 정확히 제시하고, 확실치 않으면 단정하지 말고\n"
+    "  '원문 확인 권고'로 명시하라.\n"
+    "- WebSearch 사용 시 우선순위: ① 한국회계기준원(KASB) 질의회신(Q&A) 사례,\n"
     "  ② kifrs.or.kr 기준서·해석서 원문, ③ 금융감독원 회계포털·감리지적사례.\n"
-    "  관련 질의회신이 있으면 질의회신 번호·제목·출처 링크를 함께 인용하라.\n"
+    "  관련 질의회신이 있으면 질의회신 번호·제목과 직접 접속 가능한 출처 URL을\n"
+    "  답변에 그대로(전체 https URL) 포함하라.\n"
     "- 적용 회계기준 구분(중요):\n"
     "  · 질문 앞에 '[적용 회계기준: …]' 지시가 있으면 그 기준으로만 답하라.\n"
     "  · 지시가 없으면(자동) 먼저 적용 기준을 판단해 밝히고, K-IFRS와\n"
@@ -100,6 +101,31 @@ ACCOUNTING_SYSTEM_PROMPT = (
     "- 한국 회계용어를 정확히: 장부가(O)/도서가(X), 공정가치, 무위험이자율 등.\n"
     "- 답변 끝에 반드시: '본 답변은 참고용이며 최종 판단과 책임은 사용자에게 있습니다.'"
 )
+
+# 응답 모드 — 속도 vs 검색근거 트레이드오프
+_MODE_SUFFIX = {
+    # 빠른답변: 지식 기반 즉답(~수초). 핵심 불확실할 때만 검색.
+    "fast": (
+        "\n- [응답 모드: 빠른답변] 보유 지식으로 즉시 답하되 기준서·조문 번호를"
+        " 정확히 제시하라. 핵심이 불확실할 때만 WebSearch를 1회 사용하고"
+        " 과도한 재검색은 금지한다."
+    ),
+    # 정밀검색: 반드시 검색해 질의회신·원문 URL 확보(~수십초).
+    "grounded": (
+        "\n- [응답 모드: 정밀검색] 반드시 WebSearch로 한국회계기준원 질의회신·"
+        "기준 원문을 확인하고, 관련 질의회신 번호·제목과 직접 접속 가능한"
+        " 출처 URL(전체 https)을 답변에 명시하라."
+    ),
+}
+ANSWER_MODES = set(_MODE_SUFFIX)
+
+
+def validate_mode(mode):
+    return mode if mode in _MODE_SUFFIX else "fast"
+
+
+def accounting_system_prompt(mode):
+    return _BASE_PROMPT + _MODE_SUFFIX[validate_mode(mode)]
 
 
 # 적용 회계기준 체계 — 질문에 prefix로 주입(매 턴 적용, --resume 무관)
@@ -122,19 +148,23 @@ def apply_framework(question, framework):
     return FRAMEWORKS[validate_framework(framework)] + question
 
 
-def build_command(question, session_id, workdir, framework="auto"):
+def build_command(question, session_id, workdir, framework="auto", mode="fast"):
     question = apply_framework(question, framework)
     cmd = [
         "claude", "-p", question,
         # user 설정/플러그인 훅(예: 외부 환경의 caveman 등) 미로드 → 답변 오염 차단.
         # 구독 인증은 keychain에서 별도 로드되므로 영향 없음(--bare는 keychain까지 끊어 사용 불가).
         "--setting-sources", "project,local",
-        "--system-prompt", ACCOUNTING_SYSTEM_PROMPT,
+        "--system-prompt", accounting_system_prompt(mode),
         "--allowedTools", "WebSearch",
         "--permission-mode", "default",
         "--add-dir", workdir,
         # Sonnet = Opus 대비 2~3배 빠름. 회계기준 검색·요약엔 충분.
         "--model", "claude-sonnet-4-6",
+        # effort low = 과도한 내부 추론(thinking) 제거 → 첫 토큰 45s→수초.
+        "--effort", "low",
+        # cwd/env/git/memory 등 머신별 섹션 제외 → 프롬프트·콜드스타트 축소.
+        "--exclude-dynamic-system-prompt-sections",
         "--output-format", "stream-json",
         "--verbose",
         # 토큰 단위 실시간 스트리밍 → 대기 체감 급감(첫 토큰까지만 기다림).
@@ -255,10 +285,11 @@ def _default_runner(cmd):
         proc.wait()
 
 
-def ask_stream(db_path, conv_id, question, framework="auto", runner=None):
+def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner=None):
     """검증→세션조회→실행→파싱→이벤트 yield→세션저장.
 
     framework: 'auto'|'kifrs'|'kgaap' — 적용 회계기준 체계.
+    mode: 'fast'(지식 즉답)|'grounded'(검색·출처 URL) — 속도/근거 트레이드오프.
     yield하는 각 항목은 SSE로 보낼 dict. runner는 테스트 주입용.
     """
     runner = runner or _default_runner
@@ -281,7 +312,7 @@ def ask_stream(db_path, conv_id, question, framework="auto", runner=None):
     try:
         # acquire와 try 사이에서 예외 나도 세마포어 누수 없도록 try 안에서 생성
         workdir = tempfile.mkdtemp(prefix="wat_acct_")
-        cmd = build_command(question, session_id, workdir, framework)
+        cmd = build_command(question, session_id, workdir, framework, mode)
         for line in runner(cmd):
             ev = parse_stream_line(line)
             if ev is None:

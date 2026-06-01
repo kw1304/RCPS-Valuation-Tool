@@ -127,11 +127,12 @@ def api_accounting_ask():
     conv_id = body.get("conversationId")
     question = body.get("question")
     framework = body.get("framework", "auto")
+    mode = body.get("mode", "fast")
     if not conv_id or not question:
         return jsonify({"error": "conversationId와 question 필수"}), 400
 
     def generate():
-        for ev in accounting.ask_stream(ACCOUNTING_DB, conv_id, question, framework):
+        for ev in accounting.ask_stream(ACCOUNTING_DB, conv_id, question, framework, mode):
             yield f"event: {ev['type']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
 
     return app.response_class(generate(), mimetype="text/event-stream")

@@ -335,3 +335,47 @@ def test_ask_stream_passes_framework(tmp_db):
     list(accounting.ask_stream(tmp_db, cid, "질문", framework="kgaap", runner=runner))
     q = captured["cmd"][captured["cmd"].index("-p") + 1]
     assert "일반기업회계기준" in q
+
+
+def test_validate_mode():
+    assert accounting.validate_mode("fast") == "fast"
+    assert accounting.validate_mode("grounded") == "grounded"
+    assert accounting.validate_mode("zzz") == "fast"
+    assert accounting.validate_mode(None) == "fast"
+
+
+def test_system_prompt_mode_variants():
+    fast = accounting.accounting_system_prompt("fast")
+    grounded = accounting.accounting_system_prompt("grounded")
+    assert "빠른답변" in fast
+    assert "정밀검색" in grounded
+    assert "회계감사기준" in fast and "회계감사기준" in grounded  # 공통 base
+
+
+def test_build_command_mode_and_effort():
+    cmd = accounting.build_command("질문", session_id=None, workdir="/tmp/x",
+                                   framework="auto", mode="grounded")
+    assert "--effort" in cmd
+    assert cmd[cmd.index("--effort") + 1] == "low"
+    assert "--exclude-dynamic-system-prompt-sections" in cmd
+    sp = cmd[cmd.index("--system-prompt") + 1]
+    assert "정밀검색" in sp
+    cmd2 = accounting.build_command("질문", session_id=None, workdir="/tmp/x",
+                                    mode="fast")
+    assert "빠른답변" in cmd2[cmd2.index("--system-prompt") + 1]
+
+
+def test_ask_stream_passes_mode(tmp_db):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    captured = {}
+
+    def runner(cmd):
+        captured["cmd"] = cmd
+        yield json.dumps({"type": "result", "subtype": "success",
+                          "result": "ok", "session_id": "s"})
+
+    list(accounting.ask_stream(tmp_db, cid, "질문", framework="auto",
+                               mode="grounded", runner=runner))
+    sp = captured["cmd"][captured["cmd"].index("--system-prompt") + 1]
+    assert "정밀검색" in sp

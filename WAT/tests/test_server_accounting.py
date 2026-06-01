@@ -19,7 +19,7 @@ def test_ask_rejects_bad_json(client):
 
 
 def test_ask_streams_sse(client, monkeypatch):
-    def fake_ask_stream(db, cid, q, runner=None):
+    def fake_ask_stream(db, cid, q, framework="auto", mode="fast", runner=None):
         yield {"type": "tool", "label": "WebSearch 실행 중…"}
         yield {"type": "token", "text": "답변"}
         yield {"type": "done", "sessionId": "s1", "text": "답변"}
