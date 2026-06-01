@@ -2,3 +2,4 @@ WAT/build/node_modules/
 data/
 __pycache__/
 .pytest_cache/
+*.log
