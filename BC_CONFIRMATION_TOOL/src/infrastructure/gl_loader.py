@@ -55,14 +55,14 @@ class GLLoader:
                 # 현지통화만 있고 비KRW면 단위 혼합 위험 — 카운트해 경고(환산 불가시 가시화).
                 if local_only and ccy and ccy not in _KRW_LIKE:
                     nonkrw += 1
-                # 표준 포맷으로 정규화하여 yield (통화 표기 보존)
+                # 표준 포맷으로 정규화하여 yield (원본 필드 먼저, 정규화 키가 우선)
                 yield {
+                    # 원본 필드 보존 — 정규화 키(아래)가 동명 컬럼을 덮어쓰도록 먼저 전개
+                    **{k: v for k, v in d.items()},
                     "계정 과목": acc_nm,
                     "거래처": acc_nm,   # 금융계정에서 거래처=계정명 (은행명 포함)
                     "금액": amount,
-                    "통화": ccy or None,
-                    # 원본 필드도 보존
-                    **{k: v for k, v in d.items()},
+                    "통화": ccy or None,   # 정규화(대문자) 통화가 원본 '통화' 컬럼보다 우선
                 }
             else:
                 if not d.get("계정 과목"):
