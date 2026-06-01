@@ -11,8 +11,9 @@ const root = resolve(__dirname, '..');
 
 // [읽기용 원본, 난독화 출력(서빙)]
 const TARGETS = [
-  { src: resolve(root, 'src/index.html'),      out: resolve(root, 'index.html') },
-  { src: resolve(root, 'src/irs/index.html'),  out: resolve(root, 'irs/index.html') },
+  { src: resolve(root, 'src/index.html'),            out: resolve(root, 'index.html') },
+  { src: resolve(root, 'src/irs/index.html'),        out: resolve(root, 'irs/index.html') },
+  { src: resolve(root, 'src/accounting/index.html'), out: resolve(root, 'accounting/index.html') },
 ];
 
 // renameGlobals:false → HTML onclick="fn()" 등에서 부르는 전역 함수명 보존 (깨짐 방지)
