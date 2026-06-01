@@ -356,12 +356,13 @@ def test_build_command_mode_and_effort():
     cmd = accounting.build_command("질문", session_id=None, workdir="/tmp/x",
                                    framework="auto", mode="grounded")
     assert "--effort" in cmd
-    assert cmd[cmd.index("--effort") + 1] == "low"
+    assert cmd[cmd.index("--effort") + 1] == "medium"  # grounded는 검색신뢰성 위해 medium
     assert "--exclude-dynamic-system-prompt-sections" in cmd
     sp = cmd[cmd.index("--system-prompt") + 1]
     assert "정밀검색" in sp
     cmd2 = accounting.build_command("질문", session_id=None, workdir="/tmp/x",
                                     mode="fast")
+    assert cmd2[cmd2.index("--effort") + 1] == "low"  # fast는 속도 위해 low
     assert "빠른답변" in cmd2[cmd2.index("--system-prompt") + 1]
 
 

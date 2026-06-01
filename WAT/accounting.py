@@ -170,6 +170,9 @@ def apply_framework(question, framework):
 
 def build_command(question, session_id, workdir, framework="auto", mode="fast"):
     question = apply_framework(question, framework)
+    # fast=low(추론 최소화→빠름). grounded=medium(effort low면 검색을 건너뛰어
+    # URL 미확보 → tool 사용 신뢰성 위해 medium).
+    effort = "low" if validate_mode(mode) == "fast" else "medium"
     cmd = [
         "claude", "-p", question,
         # user 설정/플러그인 훅(예: 외부 환경의 caveman 등) 미로드 → 답변 오염 차단.
@@ -181,8 +184,8 @@ def build_command(question, session_id, workdir, framework="auto", mode="fast"):
         "--add-dir", workdir,
         # Sonnet = Opus 대비 2~3배 빠름. 회계기준 검색·요약엔 충분.
         "--model", "claude-sonnet-4-6",
-        # effort low = 과도한 내부 추론(thinking) 제거 → 첫 토큰 45s→수초.
-        "--effort", "low",
+        # 모드별 effort: fast=low(속도), grounded=medium(검색 신뢰성).
+        "--effort", effort,
         # cwd/env/git/memory 등 머신별 섹션 제외 → 프롬프트·콜드스타트 축소.
         "--exclude-dynamic-system-prompt-sections",
         "--output-format", "stream-json",
