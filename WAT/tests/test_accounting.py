@@ -191,3 +191,40 @@ def test_ask_stream_bad_question_yields_error(tmp_db):
     events = list(accounting.ask_stream(
         tmp_db, cid, "   ", runner=_fake_runner([])))
     assert events[0]["type"] == "error"
+
+
+def test_parse_non_dict_json_ignored():
+    assert accounting.parse_stream_line(json.dumps([1, 2, 3])) is None
+    assert accounting.parse_stream_line(json.dumps(42)) is None
+    assert accounting.parse_stream_line(json.dumps(None)) is None
+    assert accounting.parse_stream_line(json.dumps("hi")) is None
+
+
+def test_parse_mixed_text_and_tool_use_prefers_tool():
+    line = json.dumps({
+        "type": "assistant",
+        "message": {"content": [
+            {"type": "text", "text": "검색하겠습니다"},
+            {"type": "tool_use", "name": "WebSearch", "input": {"query": "q"}},
+        ]},
+    })
+    ev = accounting.parse_stream_line(line)
+    assert ev["type"] == "tool"
+
+
+def test_ask_stream_semaphore_timeout_yields_error(tmp_db, monkeypatch):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    monkeypatch.setattr(accounting, "SUBPROC_TIMEOUT", 0.1)
+    # 3개 슬롯 모두 점유 → acquire 실패 경로
+    for _ in range(3):
+        accounting._SEM.acquire()
+    try:
+        def runner(cmd):
+            raise AssertionError("runner must not be called on timeout")
+            yield  # pragma: no cover
+        events = list(accounting.ask_stream(tmp_db, cid, "질문", runner=runner))
+        assert events == [{"type": "error", "message": "서버 혼잡 — 잠시 후 재시도"}]
+    finally:
+        for _ in range(3):
+            accounting._SEM.release()

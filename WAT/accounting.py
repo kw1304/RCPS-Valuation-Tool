@@ -125,20 +125,22 @@ def parse_stream_line(line):
         obj = _json.loads(line)
     except (ValueError, TypeError):
         return None
+    if not isinstance(obj, dict):
+        return None
 
     t = obj.get("type")
 
     if t == "assistant":
         content = (obj.get("message") or {}).get("content") or []
-        texts = []
         for block in content:
-            if not isinstance(block, dict):
-                continue
-            if block.get("type") == "text":
-                texts.append(block.get("text", ""))
-            elif block.get("type") == "tool_use":
+            if isinstance(block, dict) and block.get("type") == "tool_use":
                 name = block.get("name", "tool")
                 return {"type": "tool", "label": f"{name} 실행 중…"}
+        texts = [
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
         joined = "".join(texts).strip()
         if joined:
             return {"type": "token", "text": joined}
@@ -200,14 +202,15 @@ def ask_stream(db_path, conv_id, question, runner=None):
         return
 
     session_id = get_session_id(db_path, conv_id)
-    workdir = tempfile.mkdtemp(prefix="wat_acct_")
-    cmd = build_command(question, session_id, workdir)
-
     final_session = session_id
+
     acquired = _SEM.acquire(timeout=SUBPROC_TIMEOUT)
     if not acquired:
         yield {"type": "error", "message": "서버 혼잡 — 잠시 후 재시도"}
         return
+
+    workdir = tempfile.mkdtemp(prefix="wat_acct_")
+    cmd = build_command(question, session_id, workdir)
     try:
         for line in runner(cmd):
             ev = parse_stream_line(line)
