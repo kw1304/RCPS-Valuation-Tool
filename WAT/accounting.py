@@ -183,7 +183,13 @@ def resolve_claude():
     Windows에서 PATH의 `claude`는 npm 셸 래퍼(claude.CMD)라
     subprocess가 shell 없이는 못 띄운다(WinError 2). 래퍼가 호출하는
     실제 bin\\claude.exe로 풀어 shell 없이 안전하게 실행한다.
+
+    PATH에 claude가 없는 환경(서비스 계정 등)을 위해 WAT_CLAUDE_PATH
+    환경변수로 실행파일 절대경로를 직접 지정할 수 있다(최우선).
     """
+    override = os.environ.get("WAT_CLAUDE_PATH", "").strip()
+    if override and os.path.exists(override):
+        return override
     p = shutil.which("claude")
     if not p:
         return None

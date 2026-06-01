@@ -276,3 +276,18 @@ def test_resolve_claude_passthrough_posix(monkeypatch):
     monkeypatch.setattr(accounting.shutil, "which", lambda _: "/usr/bin/claude")
     monkeypatch.setattr(accounting.os, "name", "posix")
     assert accounting.resolve_claude() == "/usr/bin/claude"
+
+
+def test_resolve_claude_env_override(monkeypatch, tmp_path):
+    exe = tmp_path / "myclaude.exe"
+    exe.write_text("")
+    monkeypatch.setenv("WAT_CLAUDE_PATH", str(exe))
+    monkeypatch.setattr(accounting.shutil, "which", lambda _: None)
+    assert accounting.resolve_claude() == str(exe)
+
+
+def test_resolve_claude_env_override_missing_falls_back(monkeypatch):
+    monkeypatch.setenv("WAT_CLAUDE_PATH", "C:/nope/missing.exe")
+    monkeypatch.setattr(accounting.shutil, "which", lambda _: "/usr/bin/claude")
+    monkeypatch.setattr(accounting.os, "name", "posix")
+    assert accounting.resolve_claude() == "/usr/bin/claude"
