@@ -37,6 +37,8 @@ header button:hover{color:var(--accent);border-color:#BFDBFE;background:#EFF6FF}
 .msg.ai .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:14px 14px 14px 4px}
 .bubble{padding:.85rem 1.1rem;line-height:1.65;white-space:pre-wrap;word-break:break-word}
 .bubble a{color:var(--accent)}
+.note{max-width:780px;width:100%;margin:.1rem auto 0;font-size:.68rem;color:#B45309;
+  font-weight:600;line-height:1.4}
 .chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:600;
   color:var(--accent);background:#EFF6FF;border:1px solid #BFDBFE;border-radius:100px;
   padding:.3rem .7rem;align-self:flex-start}
@@ -145,6 +147,7 @@ form.addEventListener('submit', async e => {
   addMsg('나', 'user').textContent = question;
   qEl.value = ''; qEl.style.height = 'auto';
   sendBtn.disabled = true;
+  const usedMode = mode;  // 응답 도중 토글 바뀌어도 이 답변의 모드 고정
 
   const aiBubble = addMsg('회계기준 AI', 'ai');
   let chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = '🔍 분석 준비 중…';
@@ -170,7 +173,13 @@ form.addEventListener('submit', async e => {
         if(ev.type === 'tool'){ chip.textContent = '🔍 ' + ev.label; }
         else if(ev.type === 'token'){ chip.remove(); acc += ev.text; aiBubble.textContent = acc; }
         else if(ev.type === 'done'){ chip.remove(); if(ev.text) acc = ev.text;
-          aiBubble.innerHTML = linkify(acc); }  // 스트리밍 종료 후 URL 클릭화
+          aiBubble.innerHTML = linkify(acc);   // 스트리밍 종료 후 URL 클릭화
+          if(usedMode === 'fast'){             // 빠른답변 무결성 배지(결정적)
+            const n = document.createElement('div'); n.className = 'note';
+            n.textContent = '⚡ 빠른답변 · 지식 기반(미검증). 조문·결론 확정 전 🔍정밀검색으로 교차확인 권고.';
+            aiBubble.parentElement.appendChild(n);
+          }
+        }
         else if(ev.type === 'error'){ chip.remove(); aiBubble.textContent = '⚠ ' + ev.message; }
         streamEl.scrollTop = streamEl.scrollHeight;
       }
