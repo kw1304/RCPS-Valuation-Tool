@@ -87,6 +87,14 @@ ACCOUNTING_SYSTEM_PROMPT = (
     "  [결론] -> [근거 기준서·조문] -> [적용 논리] -> [유의사항]\n"
     "- 반드시 WebSearch로 근거를 확인한 뒤 조문번호·출처를 제시하라.\n"
     "  검색으로 확인 못 하면 단정하지 말고 '원문 확인 권고'로 명시하라.\n"
+    "- 근거 검색 우선순위: ① 한국회계기준원(KASB) 질의회신(Q&A) 사례,\n"
+    "  ② kifrs.or.kr 기준서·해석서 원문, ③ 금융감독원 회계포털·감리지적사례.\n"
+    "  관련 질의회신이 있으면 질의회신 번호·제목·출처 링크를 함께 인용하라.\n"
+    "- 적용 회계기준 구분(중요):\n"
+    "  · 질문 앞에 '[적용 회계기준: …]' 지시가 있으면 그 기준으로만 답하라.\n"
+    "  · 지시가 없으면(자동) 먼저 적용 기준을 판단해 밝히고, K-IFRS와\n"
+    "    일반기업회계기준의 처리가 다르면 두 기준을 [K-IFRS]·[일반기업회계기준]\n"
+    "    소제목으로 나눠 각각 제시하라(상장·외감은 K-IFRS, 비상장 중소기업은 일반).\n"
     "- 범위: K-IFRS(제1xxx호·해석서), 일반기업회계기준, 회계감사기준(ISA).\n"
     "  세무 영향은 '회계 관점 한정'임을 밝히고 단정하지 마라.\n"
     "- 한국 회계용어를 정확히: 장부가(O)/도서가(X), 공정가치, 무위험이자율 등.\n"
@@ -94,7 +102,28 @@ ACCOUNTING_SYSTEM_PROMPT = (
 )
 
 
-def build_command(question, session_id, workdir):
+# 적용 회계기준 체계 — 질문에 prefix로 주입(매 턴 적용, --resume 무관)
+FRAMEWORKS = {
+    "auto": "",
+    "kifrs": "[적용 회계기준: K-IFRS(한국채택국제회계기준) — 상장·외감 대상. "
+             "이 기준으로만 답하라.] ",
+    "kgaap": "[적용 회계기준: 일반기업회계기준 — 비상장 중소기업 대상. "
+             "이 기준으로만 답하라.] ",
+}
+
+
+def validate_framework(framework):
+    """알 수 없는 값은 'auto'로 관대 처리(차단보다 기본동작 우선)."""
+    return framework if framework in FRAMEWORKS else "auto"
+
+
+def apply_framework(question, framework):
+    """검증된 질문에 적용기준 지시를 prefix. auto면 원문 그대로."""
+    return FRAMEWORKS[validate_framework(framework)] + question
+
+
+def build_command(question, session_id, workdir, framework="auto"):
+    question = apply_framework(question, framework)
     cmd = [
         "claude", "-p", question,
         # user 설정/플러그인 훅(예: 외부 환경의 caveman 등) 미로드 → 답변 오염 차단.
@@ -226,9 +255,10 @@ def _default_runner(cmd):
         proc.wait()
 
 
-def ask_stream(db_path, conv_id, question, runner=None):
+def ask_stream(db_path, conv_id, question, framework="auto", runner=None):
     """검증→세션조회→실행→파싱→이벤트 yield→세션저장.
 
+    framework: 'auto'|'kifrs'|'kgaap' — 적용 회계기준 체계.
     yield하는 각 항목은 SSE로 보낼 dict. runner는 테스트 주입용.
     """
     runner = runner or _default_runner
@@ -251,7 +281,7 @@ def ask_stream(db_path, conv_id, question, runner=None):
     try:
         # acquire와 try 사이에서 예외 나도 세마포어 누수 없도록 try 안에서 생성
         workdir = tempfile.mkdtemp(prefix="wat_acct_")
-        cmd = build_command(question, session_id, workdir)
+        cmd = build_command(question, session_id, workdir, framework)
         for line in runner(cmd):
             ev = parse_stream_line(line)
             if ev is None:

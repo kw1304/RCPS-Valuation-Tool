@@ -291,3 +291,47 @@ def test_resolve_claude_env_override_missing_falls_back(monkeypatch):
     monkeypatch.setattr(accounting.shutil, "which", lambda _: "/usr/bin/claude")
     monkeypatch.setattr(accounting.os, "name", "posix")
     assert accounting.resolve_claude() == "/usr/bin/claude"
+
+
+def test_validate_framework_known_and_unknown():
+    assert accounting.validate_framework("kifrs") == "kifrs"
+    assert accounting.validate_framework("kgaap") == "kgaap"
+    assert accounting.validate_framework("auto") == "auto"
+    assert accounting.validate_framework("garbage") == "auto"
+    assert accounting.validate_framework(None) == "auto"
+
+
+def test_apply_framework_prefix():
+    assert accounting.apply_framework("질문", "auto") == "질문"
+    assert accounting.apply_framework("질문", "kifrs").endswith("질문")
+    assert "K-IFRS" in accounting.apply_framework("질문", "kifrs")
+    assert "일반기업회계기준" in accounting.apply_framework("질문", "kgaap")
+    # 알 수 없는 값 → auto(prefix 없음)
+    assert accounting.apply_framework("질문", "x") == "질문"
+
+
+def test_build_command_framework_prefix_in_question():
+    cmd = accounting.build_command("리스질문", session_id=None, workdir="/tmp/x",
+                                   framework="kifrs")
+    q = cmd[cmd.index("-p") + 1]
+    assert q.endswith("리스질문")
+    assert "K-IFRS" in q
+    # auto는 원문 그대로
+    cmd2 = accounting.build_command("리스질문", session_id=None, workdir="/tmp/x",
+                                    framework="auto")
+    assert cmd2[cmd2.index("-p") + 1] == "리스질문"
+
+
+def test_ask_stream_passes_framework(tmp_db):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    captured = {}
+
+    def runner(cmd):
+        captured["cmd"] = cmd
+        yield json.dumps({"type": "result", "subtype": "success",
+                          "result": "ok", "session_id": "s"})
+
+    list(accounting.ask_stream(tmp_db, cid, "질문", framework="kgaap", runner=runner))
+    q = captured["cmd"][captured["cmd"].index("-p") + 1]
+    assert "일반기업회계기준" in q
