@@ -235,9 +235,11 @@ def ask_stream(db_path, conv_id, question, runner=None):
         yield {"type": "error", "message": "서버 혼잡 — 잠시 후 재시도"}
         return
 
-    workdir = tempfile.mkdtemp(prefix="wat_acct_")
-    cmd = build_command(question, session_id, workdir)
+    workdir = None
     try:
+        # acquire와 try 사이에서 예외 나도 세마포어 누수 없도록 try 안에서 생성
+        workdir = tempfile.mkdtemp(prefix="wat_acct_")
+        cmd = build_command(question, session_id, workdir)
         for line in runner(cmd):
             ev = parse_stream_line(line)
             if ev is None:
@@ -249,9 +251,7 @@ def ask_stream(db_path, conv_id, question, runner=None):
             yield ev
     finally:
         _SEM.release()
-        try:
-            os.rmdir(workdir)
-        except OSError:
-            pass
+        if workdir:
+            shutil.rmtree(workdir, ignore_errors=True)  # 비어있지 않아도 정리
         if final_session:
             upsert_session(db_path, conv_id, final_session)

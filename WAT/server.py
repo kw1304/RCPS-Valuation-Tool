@@ -4,7 +4,6 @@
 """
 import json
 import os
-import shutil
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -143,7 +142,7 @@ def healthz():
         "status": "ok",
         "ecos_local": bool(ECOS_KEY),
         "source": "ECOS-local" if ECOS_KEY else "Render-fallback",
-        "claude_cli": "present" if shutil.which("claude") else "absent",
+        "claude_cli": "present" if accounting.resolve_claude() else "absent",
     })
 
 
