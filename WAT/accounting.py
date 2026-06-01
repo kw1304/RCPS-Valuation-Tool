@@ -104,8 +104,12 @@ def build_command(question, session_id, workdir):
         "--allowedTools", "WebSearch",
         "--permission-mode", "default",
         "--add-dir", workdir,
+        # Sonnet = Opus 대비 2~3배 빠름. 회계기준 검색·요약엔 충분.
+        "--model", "claude-sonnet-4-6",
         "--output-format", "stream-json",
         "--verbose",
+        # 토큰 단위 실시간 스트리밍 → 대기 체감 급감(첫 토큰까지만 기다림).
+        "--include-partial-messages",
     ]
     if session_id:
         cmd += ["--resume", session_id]
@@ -132,20 +136,22 @@ def parse_stream_line(line):
 
     t = obj.get("type")
 
+    # 부분 메시지(--include-partial-messages): 토큰 단위 실시간 스트리밍
+    if t == "stream_event":
+        delta = (obj.get("event") or {}).get("delta") or {}
+        if delta.get("type") == "text_delta":
+            txt = delta.get("text", "")
+            if txt:
+                return {"type": "token", "text": txt}
+        return None  # thinking_delta 등은 무시
+
     if t == "assistant":
         content = (obj.get("message") or {}).get("content") or []
         for block in content:
             if isinstance(block, dict) and block.get("type") == "tool_use":
                 name = block.get("name", "tool")
                 return {"type": "tool", "label": f"{name} 실행 중…"}
-        texts = [
-            block.get("text", "")
-            for block in content
-            if isinstance(block, dict) and block.get("type") == "text"
-        ]
-        joined = "".join(texts).strip()
-        if joined:
-            return {"type": "token", "text": joined}
+        # 본문 텍스트는 stream_event 델타로 이미 전달됨(중복 방지) → 무시
         return None
 
     if t == "result":

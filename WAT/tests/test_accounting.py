@@ -73,6 +73,10 @@ def test_build_command_new_session():
     assert "--system-prompt" in cmd
     sp = cmd[cmd.index("--system-prompt") + 1]
     assert "회계감사기준" in sp
+    # 속도: Sonnet 고정 + 토큰 실시간 스트리밍
+    assert "--model" in cmd
+    assert cmd[cmd.index("--model") + 1] == "claude-sonnet-4-6"
+    assert "--include-partial-messages" in cmd
 
 
 def test_build_command_resume():
@@ -90,14 +94,32 @@ def test_build_command_adddir():
 import json
 
 
-def test_parse_assistant_text():
+def test_parse_assistant_text_ignored_uses_deltas():
+    # 본문은 stream_event 델타로 전달되므로 assistant 텍스트는 무시(중복 방지)
     line = json.dumps({
         "type": "assistant",
         "message": {"content": [{"type": "text", "text": "리스는 K-IFRS 1116"}]},
         "session_id": "s1",
     })
-    ev = accounting.parse_stream_line(line)
-    assert ev == {"type": "token", "text": "리스는 K-IFRS 1116"}
+    assert accounting.parse_stream_line(line) is None
+
+
+def test_parse_text_delta_token():
+    line = json.dumps({
+        "type": "stream_event",
+        "event": {"type": "content_block_delta", "index": 0,
+                  "delta": {"type": "text_delta", "text": "리스는"}},
+    })
+    assert accounting.parse_stream_line(line) == {"type": "token", "text": "리스는"}
+
+
+def test_parse_thinking_delta_ignored():
+    line = json.dumps({
+        "type": "stream_event",
+        "event": {"type": "content_block_delta",
+                  "delta": {"type": "thinking_delta", "thinking": "..."}},
+    })
+    assert accounting.parse_stream_line(line) is None
 
 
 def test_parse_assistant_tool_use():
@@ -157,8 +179,9 @@ def test_ask_stream_happy_path(tmp_db):
         json.dumps({"type": "system", "subtype": "init", "session_id": "newsess"}),
         json.dumps({"type": "assistant", "message": {"content": [
             {"type": "tool_use", "name": "WebSearch", "input": {"query": "x"}}]}}),
-        json.dumps({"type": "assistant", "message": {"content": [
-            {"type": "text", "text": "답변 본문"}]}}),
+        json.dumps({"type": "stream_event", "event": {
+            "type": "content_block_delta",
+            "delta": {"type": "text_delta", "text": "답변 본문"}}}),
         json.dumps({"type": "result", "subtype": "success",
                     "result": "답변 본문", "session_id": "newsess"}),
     ]
