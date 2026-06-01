@@ -30,6 +30,25 @@ _ECOS_ITEMS = [
 app = Flask(__name__, static_folder=None)
 
 
+_ALLOWED_ORIGINS = {o.strip() for o in os.environ.get("WAT_ALLOWED_ORIGINS", "").split(",") if o.strip()}
+
+
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    resp.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    # /api/* 만 CORS 허용 — 화이트리스트 origin 또는 *(키 없으면 default *)
+    if request.path.startswith("/api/"):
+        origin = request.headers.get("Origin", "")
+        # 화이트리스트에 있는 origin만 허용. 미설정(_ALLOWED_ORIGINS 비어있음) 시 헤더 미부착 = 차단
+        if _ALLOWED_ORIGINS and origin in _ALLOWED_ORIGINS:
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Vary"] = "Origin"
+    return resp
+
+
 def _ecos_get(path, timeout=12):
     with urllib.request.urlopen(f"{ECOS_BASE}/{path}", timeout=timeout) as r:
         return json.loads(r.read())
@@ -69,17 +88,20 @@ def _fetch_render_fallback(date_str):
         return json.loads(r.read())
 
 
+_DATE_RE = __import__("re").compile(r"^\d{8}$")
+
+
 @app.route("/api/rates")
 def api_rates():
     date_str = request.args.get("date", "").strip() or datetime.now().strftime("%Y%m%d")
+    if not _DATE_RE.match(date_str):
+        return jsonify({"success": False, "error": "invalid date"}), 400
 
     if ECOS_KEY:
         try:
             rates = _fetch_ecos_rates(date_str)
             if rates:
-                resp = jsonify({"success": True, "date": date_str, "rates": rates, "source": "ECOS-local"})
-                resp.headers["Access-Control-Allow-Origin"] = "*"
-                return resp
+                return jsonify({"success": True, "date": date_str, "rates": rates, "source": "ECOS-local"})
         except Exception as e:
             print(f"[api/rates] local ECOS 실패 → Render fallback: {e}", flush=True)
 
@@ -88,11 +110,10 @@ def api_rates():
         data = _fetch_render_fallback(date_str)
         if "source" not in data:
             data["source"] = "Render-fallback"
-        resp = jsonify(data)
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        return resp
+        return jsonify(data)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 502
+        print(f"[api/rates] Render fallback 실패: {e}", flush=True)
+        return jsonify({"success": False, "error": "upstream unavailable"}), 502
 
 
 @app.route("/healthz")

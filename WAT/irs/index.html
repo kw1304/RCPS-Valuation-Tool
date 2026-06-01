@@ -1066,7 +1066,7 @@ input[type="range"]:focus { border: none; box-shadow: none; }
           </div>
           <div class="form-group" style="margin:0">
             <div class="form-label">회수율 (Recovery Rate) <span>%</span></div>
-            <input type="number" id="recovery_rate" value="40" step="1" min="0" max="100">
+            <input type="number" id="recovery_rate" value="40" step="1" min="0" max="99">
           </div>
         </div>
 
@@ -1403,8 +1403,8 @@ input[type="range"]:focus { border: none; box-shadow: none; }
 
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha384-DhxhYObIMeMNGyAG7iK11OHzBIKyEIeRL0ad1iFPAOwZB8iirUlTT0O/WJJUk8+o" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 let chartInstance = null;
 
@@ -1481,8 +1481,6 @@ function calculateIRS(params, spotRates, shift=0) {
   const lastRegular = fullPeriods * dt;
   if (maturity - lastRegular > 1e-9) schedule.push(maturity); // stub 기간 추가
 
-  console.log('만기(년):', maturity, '기간수:', schedule.length,
-              '스케줄:', schedule.map(t => t.toFixed(4)));
 
   for (let i = 0; i < schedule.length; i++) {
     const t      = schedule[i];
@@ -1745,7 +1743,7 @@ function calculateCVA() {
   const recoveryRate = parseFloat(document.getElementById('recovery_rate').value) / 100;
   const eeMethod = document.getElementById('ee_method').value;
   const csaPct = parseInt(document.getElementById('csa_slider').value);
-  const lgd = 1 - recoveryRate;
+  const lgd = Math.max(1 - recoveryRate, 1e-6); // 회수율 100% 입력 시 0除算(CVA NaN) 방지
 
   // CSA 담보 조정 (슬라이더 0%=무담보, 100%=완전담보)
   const csaFactor = 1 - csaPct / 100;
