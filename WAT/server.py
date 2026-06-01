@@ -4,14 +4,18 @@
 """
 import json
 import os
+import shutil
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 
+import accounting
+
 ROOT = Path(__file__).parent
 PORT = int(os.environ.get("WAT_PORT", "8765"))
+ACCOUNTING_DB = str(ROOT / "data" / "accounting.db")
 ECOS_KEY = os.environ.get("ECOS_API_KEY", "").strip()
 ECOS_BASE = "https://ecos.bok.or.kr/api"
 RENDER_FALLBACK = "https://irs-tool.onrender.com/api/rates"
@@ -29,6 +33,8 @@ _ECOS_ITEMS = [
 
 app = Flask(__name__, static_folder=None)
 
+(ROOT / "data").mkdir(exist_ok=True)
+accounting.init_db(ACCOUNTING_DB)
 
 _ALLOWED_ORIGINS = {o.strip() for o in os.environ.get("WAT_ALLOWED_ORIGINS", "").split(",") if o.strip()}
 
@@ -116,12 +122,28 @@ def api_rates():
         return jsonify({"success": False, "error": "upstream unavailable"}), 502
 
 
+@app.route("/api/accounting/ask", methods=["POST"])
+def api_accounting_ask():
+    body = request.get_json(silent=True) or {}
+    conv_id = body.get("conversationId")
+    question = body.get("question")
+    if not conv_id or not question:
+        return jsonify({"error": "conversationId와 question 필수"}), 400
+
+    def generate():
+        for ev in accounting.ask_stream(ACCOUNTING_DB, conv_id, question):
+            yield f"event: {ev['type']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+
+    return app.response_class(generate(), mimetype="text/event-stream")
+
+
 @app.route("/healthz")
 def healthz():
     return jsonify({
         "status": "ok",
         "ecos_local": bool(ECOS_KEY),
         "source": "ECOS-local" if ECOS_KEY else "Render-fallback",
+        "claude_cli": "present" if shutil.which("claude") else "absent",
     })
 
 
