@@ -98,8 +98,10 @@ class Sampler:
             sp.pl_accounts.add(acc)
             sp.pl_amount += amount
         else:
-            sp.pl_accounts.add(acc) if amount else sp.bs_accounts.add(acc)
-            sp.bs_amount += amount if not amount else 0
+            # 일반계정(기타) sweep — 거래량 성격이므로 P/L 거래액으로 누적
+            # (기존 `amount if not amount else 0`은 항상 +0이라 금액 손실 버그였음)
+            sp.pl_accounts.add(acc)
+            sp.pl_amount += amount
         sp.row_count += 1
         sp.confidence = min(sp.confidence, conf)
         agg[key] = sp
