@@ -1,0 +1,9 @@
+{
+  "name": "wat-obfuscate-build",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "javascript-obfuscator": "^4.1.1"
+  }
+}

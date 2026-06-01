@@ -1405,7 +1405,1009 @@ input[type="range"]:focus { border: none; box-shadow: none; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha384-DhxhYObIMeMNGyAG7iK11OHzBIKyEIeRL0ad1iFPAOwZB8iirUlTT0O/WJJUk8+o" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script>const al=b;(function(c,d){const M=b,e=c();while(!![]){try{const f=parseInt(M(0x21b))/(0x9dc+-0x119+-0x76*0x13)*(-parseInt(M(0x272))/(-0x1*-0x165b+0x235d+-0x39b6))+-parseInt(M(0x249))/(0x3*-0x56d+0x46*0x2e+0x3b6)*(parseInt(M(0x187))/(0x7*0x336+-0xb*0x83+-0x1f*0x8b))+parseInt(M(0x16b))/(0x11fb+-0x20a*-0xe+-0x2e82)*(parseInt(M(0x265))/(-0x385*-0xb+-0x65b+-0x1*0x2056))+parseInt(M(0x23f))/(-0x28d*0xb+0x1*0xd8b+0x11*0xdb)*(-parseInt(M(0x20b))/(-0x93b+-0x4*0x602+0x214b))+parseInt(M(0x1f5))/(0xecf*-0x1+-0xdd5+0x1cad)+-parseInt(M(0x235))/(0xd1*-0x9+0x1211*-0x1+0x1974)*(parseInt(M(0x160))/(-0x12ef+-0x10b2+0x23ac))+parseInt(M(0x256))/(0xac2+0x8*0x43a+-0x2c86);if(f===d)break;else e['push'](e['shift']());}catch(g){e['push'](e['shift']());}}}(a,0x1*0x100ab3+-0x1*-0xbc671+-0x10ee2a));let chartInstance=null;function fmt(c){const N=b;return Math[N(0x190)](c)[N(0x224)]('ko-KR')+'원';}function fmtPct(c){return(c*(0x1*0xcd3+0x493+-0x1*0x1102))['toFixed'](-0x392+-0x8f*0x22+0x1694)+'%';}function interpolateRate(c,d){const O=b,e=Object[O(0x177)](d)[O(0x288)](Number)['sort']((f,g)=>f-g);if(c<=e[0x2186+0x331*-0x3+-0x17f3])return d[e[0x7*0x3b+-0x9*0x119+0x844]];if(c>=e[e[O(0x171)]-(-0x2a*0xb2+-0x8e1*-0x2+0xb73)])return d[e[e[O(0x171)]-(-0x123+-0x1085*-0x1+-0xf61)]];for(let f=-0x6bf+-0x1171+0x1830;f<e[O(0x171)]-(-0x5*0x137+0x17af+-0x119b);f++){if(c>=e[f]&&c<=e[f+(0xe1e+-0x368+-0xab5)]){const g=(c-e[f])/(e[f+(-0x229*-0x9+-0x7*0x17b+-0x913)]-e[f]);return d[e[f]]*(0x1fc3+0x1f7d*0x1+-0x3f3f-g)+d[e[f+(0x2402+-0x948+-0x1*0x1ab9)]]*g;}}}function bootstrap(c){const P=b,d=Object['keys'](c)[P(0x288)](Number)[P(0x286)]((f,g)=>f-g),e={};for(const f of d){const g=c[f];if(f===0xad0+-0xb*0x27f+0x10a6)e[f]=g;else{let h=0x7ed+0x747+-0x4*0x3cd;for(let i=-0x2*0xf09+0x2*-0x920+0x59*0x8b;i<f;i++){const j=interpolateSpot(i,e);h+=g/Math['pow'](-0x2049+-0x25d9+-0x1*-0x4623+j,i);}e[f]=Math[P(0x1e2)]((-0x13df*0x1+0x1029+0x3b7+g)/(-0x95*0xf+0x1999*0x1+-0x10dd*0x1-h),(-0xc47+0x1af5+-0xead)/f)-(0x5*0x6a7+0x3c0+-0x3*0xc56);}}return e;}function interpolateSpot(c,d){const Q=b,e=Object['keys'](d)[Q(0x288)](Number)[Q(0x286)]((f,g)=>f-g);if(e[Q(0x171)]===0x1dd2+-0x21be+0x3ec)return-0x2061+0x22ce+0x3*-0xcf;if(c<=e[0x2*0xfb8+-0xcdd+-0x1293])return d[e[-0x7f6+0x12af+-0x225*0x5]];if(c>=e[e[Q(0x171)]-(0xca4+-0xdec+-0x149*-0x1)])return d[e[e[Q(0x171)]-(-0x196f*-0x1+0x123f+-0xe8f*0x3)]];for(let f=-0x14ea+0x423*-0x4+-0x2*-0x12bb;f<e['length']-(0x1055+0x1*-0xfb7+-0x9d);f++){if(c>=e[f]&&c<=e[f+(0x2630+0x3b*0x39+0x2*-0x19a9)]){const g=(c-e[f])/(e[f+(-0x17b+0x2*-0x838+0x1f*0x94)]-e[f]);return d[e[f]]*(-0x1700+0x107b+0x686*0x1-g)+d[e[f+(-0x1159+0x23a3+0x1*-0x1249)]]*g;}}return d[e[e[Q(0x171)]-(0xa97*-0x1+0x1*0x511+0x587)]];}function getForwardRate(c,d,e){const R=b,f=interpolateSpot(c,e),g=interpolateSpot(d,e);return Math[R(0x1e2)](Math[R(0x1e2)](-0x2632+-0x101a+0x1*0x364d+g,d)/Math['pow'](-0x11ca+-0xca*-0x7+-0x15d*-0x9+f,c),(-0x1d*-0x137+0x29c+-0x1*0x25d6)/(d-c))-(0xc87*0x3+0x204d*0x1+-0x45e1);}function calculateIRS(c,d,e=0x278+-0x1d*-0x119+-0x224d){const S=b,{notional:f,maturity:g,frequency:h,fixed_rate:j,position:k}=c,l=(0xc9c+-0x22*0xfa+-0x1*-0x1499)/h,m=[];let n=-0x558+-0x2120+0x2678,o=0x1d58+0x1989*0x1+0x36e1*-0x1;const p=Math[S(0x1f2)](g*h+(-0xf47*0x1+-0x7ab*0x1+0x10b*0x16+1e-9)),q=[];for(let w=0x97d+-0x175e+0x2*0x6f1;w<=p;w++)q[S(0x167)](w*l);const r=p*l;if(g-r>-0x286+0x1285+0x2d*-0x5b+1e-9)q[S(0x167)](g);for(let x=0x4*-0x2d6+-0x2f*-0x2d+0x315;x<q['length'];x++){const y=q[x],z=x===0xb*-0x206+0xa3*-0x9+0x1bfd?-0x1a*-0x45+0x2094+-0x2796:q[x-(0x1fa9+0x139c+-0x3344)],A=y-z,B=interpolateSpot(y,d)+e,C=(0x1394+-0x267f+0x1c*0xad)/Math[S(0x1e2)](-0x1e07*0x1+0x74*-0x43+0x3c64+B,y),D=z>0x12e*-0x10+-0x2bd*0x9+-0x1*-0x2b85?interpolateSpot(z,d)+e:e,E=z>0x158a+-0xecf+-0x6bb?Math[S(0x1e2)](Math[S(0x1e2)](-0x289*-0x7+-0x12b+-0x1*0x1093+B,y)/Math[S(0x1e2)](-0x7af+-0x13ca+0x1*0x1b7a+D,z),(-0x9d*0xb+-0x13*-0x206+0x1*-0x1fb2)/A)-(0x2c8*-0xe+0x1*0x195f+0xd92):B,F=f*j/(-0x1b35+-0x332*-0x3+0x1203)*A,G=f*E*A;n+=F*C,o+=G*C,m[S(0x167)]({'t':y,'t_prev':z,'periodDt':A,'spot':B,'fwd':E,'df':C,'fixedCF':F,'floatCF':G,'netCF':G-F,'netPV':(G-F)*C});}const s=m[S(0x1f6)]((H,I)=>H+I['df']*I['periodDt'],0xd0f+0x9f4+-0x2b*0x89),u=(-0x1*-0x2f9+0x9bd+-0xcb5-m[m[S(0x171)]-(0x6*0x23d+-0x1ece+0x1*0x1161)]['df'])/s,v=k===S(0x1a0)?o-n:n-o;return{'fv':v,'fixedPV':n,'floatPV':o,'parRate':u,'cashflows':m};}function switchTab(c){const T=b,d=[T(0x1c6),T(0x169),T(0x1b4),T(0x27d),T(0x1e1),T(0x217)];document[T(0x1cb)](T(0x1cf))[T(0x172)]((e,f)=>e[T(0x1ac)][T(0x16f)](T(0x185),d[f]===c)),document[T(0x1cb)]('.tab-content')['forEach'](e=>e[T(0x1ac)][T(0x258)](T(0x185))),document[T(0x26a)](T(0x19f)+c)['classList']['add'](T(0x185));if(c===T(0x217))updateHedgeBanner();}function b(c,d){c=c-(0xe49+0x191*-0x6+0x8*-0x73);const e=a();let f=e[c];if(b['xeAAqS']===undefined){var g=function(l){const m='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=';let n='',o='';for(let p=0x3*-0x6ad+-0x7*-0x1d5+-0x1*-0x734,q,r,s=-0x392+-0x8f*0x22+0x1690;r=l['charAt'](s++);~r&&(q=p%(0x2186+0x331*-0x3+-0x17ef)?q*(0x7*0x3b+-0x9*0x119+0x884)+r:r,p++%(-0x2a*0xb2+-0x8e1*-0x2+0xb76))?n+=String['fromCharCode'](-0x123+-0x1085*-0x1+-0xe63&q>>(-(-0x6bf+-0x1171+0x1832)*p&-0x5*0x137+0x17af+-0x1196)):0xe1e+-0x368+-0xab6){r=m['indexOf'](r);}for(let t=-0x229*-0x9+-0x7*0x17b+-0x914,u=n['length'];t<u;t++){o+='%'+('00'+n['charCodeAt'](t)['toString'](0x1fc3+0x1f7d*0x1+-0x3f30))['slice'](-(0x2402+-0x948+-0x3c*0x72));}return decodeURIComponent(o);};b['NQNRQG']=g,b['DIWZBZ']={},b['xeAAqS']=!![];}const h=e[0xad0+-0xb*0x27f+0x10a5],i=c+h,j=b['DIWZBZ'][i];return!j?(f=b['NQNRQG'](f),b['DIWZBZ'][i]=f):f=j,f;}function calculate(){const U=b,c={0x1:parseFloat(document[U(0x26a)]('r1')[U(0x25d)])/(-0x235+-0x25cd*-0x1+-0x2334),0x2:parseFloat(document[U(0x26a)]('r2')['value'])/(0xc7f+0x2686+-0x32a1),0x3:parseFloat(document[U(0x26a)]('r3')['value'])/(0x85*-0xf+0x1*-0x63e+0xe6d),0x5:parseFloat(document[U(0x26a)]('r5')['value'])/(0x1aca+-0x15a7+-0x4bf),0x7:parseFloat(document[U(0x26a)]('r7')[U(0x25d)])/(-0x1*0x1749+0x1416+0x397),0xa:parseFloat(document['getElementById'](U(0x1be))[U(0x25d)])/(-0xd3*0x2+0x1edb+0x1*-0x1cd1)},d={'notional':parseFloat(document['getElementById'](U(0x270))[U(0x25d)][U(0x1d4)](/,/g,'')),'maturity':computeMaturityYears('eval-date','maturity-date'),'frequency':parseInt(document['getElementById']('frequency')[U(0x25d)]),'fixed_rate':parseFloat(document[U(0x26a)](U(0x21d))['value']),'position':document[U(0x26a)]('position')[U(0x25d)]},e=bootstrap(c),f=calculateIRS(d,e),g=calculateIRS(d,e,-0x236+0x1dd6+-0x1ba0+0.01),h=calculateIRS(d,e,-(0xa3e*-0x1+-0x2*-0x26b+0x1*0x568+0.01));document[U(0x26a)]('empty-state')[U(0x1c4)][U(0x213)]='none',document[U(0x26a)]('summary-content')[U(0x1c4)][U(0x213)]=U(0x1cc);const i=document[U(0x26a)]('fv-value');i[U(0x197)]=fmt(f['fv']),i['className']=U(0x1e5)+(f['fv']>=-0x98*0x20+0x16a*0xe+-0x33*0x4?'positive':'negative'),document[U(0x26a)](U(0x211))[U(0x197)]=f['fv']>=0x1d4+-0x6*-0x3b3+-0x1806?'자산\x20(Asset)':U(0x24b),document[U(0x26a)](U(0x1da))[U(0x197)]=fmt(f['fixedPV']),document[U(0x26a)]('float-pv')[U(0x197)]=fmt(f['floatPV']);const j=(f[U(0x20c)]*(-0xe81*0x1+0x149d+-0x5b8))[U(0x14c)](0x8e*0x23+-0x147*-0x1e+-0x737*0x8)+'%';document[U(0x26a)](U(0x25c))[U(0x197)]=j;const k=(d['fixed_rate']/(-0x6*-0x2fe+-0x15fd+0x46d)-f[U(0x20c)])*(-0x24*-0x10f+-0x213+-0x23a5),l=document[U(0x26a)](U(0x1c0));l['textContent']=(k>=-0x89*0x1+-0xfbe+-0x9*-0x1cf?'+':'')+k[U(0x14c)](0x223e+0x7*0x248+-0x3232)+'%',l[U(0x14b)]=U(0x1e5)+(Math[U(0x282)](k)>-0xe*0x1cd+-0x25*0x19+-0x9d*-0x2f+0.5?U(0x1e9):U(0x1ca));const m=document[U(0x26a)](U(0x18e));m[U(0x173)]='';let n=-0x2146+0x7*-0x413+-0x3dcb*-0x1,o=-0x1b10+-0x232a+0x3e3a;f['cashflows']['forEach'](A=>{const V=U,B=document[V(0x189)]('tr'),C=A[V(0x1fd)]>=-0xe35*-0x1+0x57*-0x1+-0xdde?V(0x1d3):V(0x284);B['innerHTML']='\x0a\x20\x20\x20\x20\x20\x20<td>'+A['t']['toFixed'](0x521+-0x24*-0xf6+-0x27b7*0x1)+V(0x161)+fmtPct(A[V(0x1a5)])+V(0x1f8)+fmtPct(A[V(0x240)])+V(0x17b)+fmt(A[V(0x19c)])+V(0x17b)+fmt(A[V(0x1b9)])+V(0x14f)+C+'\x22>'+fmt(A[V(0x1ab)])+V(0x1f8)+A['df']['toFixed'](0x1701+0x227f+-0x397a)+'</td>\x0a\x20\x20\x20\x20\x20\x20<td\x20style=\x22color:'+C+V(0x1f4)+fmt(A['netPV'])+'</td>\x0a\x20\x20\x20\x20',m['appendChild'](B),n+=A[V(0x1ab)],o+=A[V(0x1fd)];});const p=document[U(0x189)]('tr');p['className']=U(0x1c7);const q=o>=0x26f7+-0xaa4+0x1c53*-0x1?U(0x1d3):U(0x284);p[U(0x173)]='\x0a\x20\x20\x20\x20<td>합계</td><td>—</td><td>—</td><td>—</td><td>—</td>\x0a\x20\x20\x20\x20<td\x20style=\x22color:'+q+'\x22>'+fmt(n)+'</td>\x0a\x20\x20\x20\x20<td>—</td>\x0a\x20\x20\x20\x20<td\x20style=\x22color:'+q+'\x22>'+fmt(o)+U(0x1ec),m[U(0x17e)](p);const r=document['getElementById']('rate-tbody');r[U(0x173)]='';const s=[0x2057+0x2565+-0x1*0x45bb,0x13e4+-0x8b4+-0xb2e,-0x344*0x6+-0x10db+0x2476*0x1,0x19ab*-0x1+-0x1432+0x2de2,0xd78+-0x91f*-0x3+-0x28ce,-0xfc7*0x1+-0x6e6*-0x4+-0xbc7];s[U(0x172)]((A,B)=>{const W=U,C=c[A],D=e[A],E=A>-0x29b*0xb+0xd9c+0xf0e?getForwardRate(s[B-(-0x240b+0x1ef9+0x1b1*0x3)],A,e):D,F=document[W(0x189)]('tr');F[W(0x173)]=W(0x218)+A+W(0x161)+fmtPct(C)+W(0x179)+fmtPct(D)+W(0x198)+fmtPct(E)+W(0x280),r[W(0x17e)](F);});const u=document[U(0x26a)](U(0x18c))[U(0x237)]('2d');if(chartInstance)chartInstance[U(0x1c5)]();const v=[];for(let A=-0x19a9+0x303*-0x1+0x14*0x16f+0.5;A<=0xbc2+0x43c*-0x7+0x94*0x1f;A+=0x537+0x1625+-0x4*0x6d7+0.25)v[U(0x167)](A);chartInstance=new Chart(u,{'type':U(0x219),'data':{'labels':v[U(0x288)](B=>B[U(0x14c)](-0x24bb*0x1+-0x437*0x7+0x8b*0x7a)+'Y'),'datasets':[{'label':U(0x1eb),'data':v['map'](B=>(interpolateSpot(B,e)*(0x223c+-0x13d5*0x1+-0xd3*0x11))[U(0x14c)](0x1a*0x4f+0x1*0x25ee+-0x2df0)),'borderColor':'#3182F6','backgroundColor':U(0x254),'borderWidth':0x2,'pointRadius':0x0,'tension':0.4,'fill':!![]},{'label':'시장금리\x20(입력)','data':v['map'](B=>(interpolateRate(B,c)*(-0x6f*-0x4f+-0x2*-0x295+0x1*-0x2707))[U(0x14c)](0xe*0x4c+-0x1*-0xc51+-0x17f*0xb)),'borderColor':U(0x214),'borderWidth':1.5,'borderDash':[-0x97*-0x2b+0x1126+-0x2a7f,-0x5d1+0x338+0x29d*0x1],'pointRadius':0x0,'tension':0.4}]},'options':{'responsive':!![],'plugins':{'legend':{'labels':{'color':'#8B95A1','font':{'family':U(0x287),'size':0xc}}}},'scales':{'x':{'ticks':{'color':'#8B95A1','font':{'family':'Pretendard','size':0xb},'maxTicksLimit':0xa},'grid':{'color':U(0x266)}},'y':{'ticks':{'color':U(0x1ae),'font':{'family':'Pretendard','size':0xb},'callback':B=>B+'%'},'grid':{'color':U(0x266)}}}}}),document[U(0x26a)]('audit-date')[U(0x197)]=getEvalDateStr(),document['getElementById']('audit-fixed')['textContent']=d[U(0x21d)][U(0x14c)](-0x1*0x176f+-0x1280*0x2+0x1*0x3c71)+'%',document[U(0x26a)]('audit-par')['textContent']=(f['parRate']*(-0x176c+0x95d+0xe73))['toFixed'](0x6*-0x71+-0x23c2+0x266c)+'%';const w=document[U(0x26a)](U(0x1a7));w[U(0x197)]=(k>=-0x9fc*-0x3+0x2609+-0x43fd?'+':'')+k[U(0x14c)](-0x6a9*0x2+0x46f+0x8e7)+'%',w[U(0x1c4)][U(0x23b)]=Math[U(0x282)](k)>-0x1*0x1849+-0x981*0x1+0x21cb?'#f43f5e':U(0x1d3);const x=document[U(0x26a)](U(0x25e)),y=[{'label':U(0x1d1),'fv':g['fv']},{'label':U(0x1ce),'fv':f['fv']},{'label':U(0x1d8),'fv':h['fv']}];x[U(0x173)]=y['map'](B=>'\x0a\x20\x20\x20\x20<div\x20class=\x22audit-item\x22>\x0a\x20\x20\x20\x20\x20\x20<span\x20class=\x22audit-item-label\x22>'+B[U(0x16a)]+U(0x23a)+(B['fv']>=0x9d3+0x1b81+-0x2554?U(0x1d3):U(0x284))+'\x22>'+fmt(B['fv'])+U(0x26b))[U(0x26e)](''),lastResult=f,lastSpotRates=e,lastParams=d,lastCVA=null,updateHedgeBanner();const z=document[U(0x26a)](U(0x184));z&&(z[U(0x197)]=U(0x27e),z[U(0x14b)]='',z[U(0x1c4)][U(0x250)]=U(0x194));}let lastResult=null,lastSpotRates=null,lastParams=null,lastCVA=null;function calculateCVA(){const X=b;if(!lastResult||!lastSpotRates||!lastParams){alert(X(0x17c));return;}const c=parseFloat(document[X(0x26a)](X(0x153))[X(0x25d)])/(0x4966+0x343f+-0x5695),d=parseFloat(document[X(0x26a)](X(0x268))[X(0x25d)])/(-0x2f4*0x8+-0x13*0x27+0x1ae9*0x1),e=document[X(0x26a)](X(0x202))[X(0x25d)],f=parseInt(document[X(0x26a)](X(0x20a))[X(0x25d)]),g=Math[X(0x215)](0x5b1*0x3+0x409*0x1+-0x151b-d,0x1*0x22b2+0x21ab+-0x445d+0.000001),h=-0x110a+0x847+0x8c4-f/(-0x2347+0x1*-0x865+-0x3*-0xeb0),i=c/g,j=[];let k=-0x10fd*-0x1+-0x76*0x19+0x577*-0x1;lastResult['cashflows'][X(0x172)]((A,B)=>{const Y=X,C=A['t'],D=B===-0xa2d*0x3+0x20c7+-0x18*0x18?0x2206+0x1702+-0x3908:lastResult[Y(0x275)][B-(-0x1938+-0x11bf+0x2c*0xfa)]['t'];let E=Math['max'](A[Y(0x1fd)],0x31c+0xd*-0x35+-0x6b);if(e===Y(0x1de))E=E*(-0x2557+0xc5*0x1f+-0x47f*-0x3+0.30000000000000004);E*=h;const F=Math[Y(0x23c)](-i*D)-Math[Y(0x23c)](-i*C),G=interpolateSpot(C,lastSpotRates),H=(0x1*0x1c5+-0x17*0x27+0x1bd)/Math[Y(0x1e2)](-0x19bc+0x42d+0x1590+G,C),I=g*E*F*H;k+=I,j['push']({'t':C,'tPrev':D,'ee':E,'pdMarginal':F,'lgd':g,'df':H,'cvaTerm':I});});const l=lastParams['maturity'],m=0xbb1+-0x2*-0xe48+-0x2840-Math[X(0x23c)](-i*l),n=lastResult['fv']-k;lastCVA={'breakdown':j,'totalCVA':k,'adjFV':n,'cumPD':m,'bp':parseFloat(document[X(0x26a)](X(0x153))[X(0x25d)]),'creditSpread':c,'recoveryRate':d},document[X(0x26a)](X(0x158))[X(0x1c4)][X(0x213)]=X(0x15f),document['getElementById'](X(0x246))[X(0x1c4)][X(0x213)]='block';const o=document[X(0x26a)]('cva-value');o[X(0x197)]=fmt(k),o['className']=X(0x24f);const p=document['getElementById'](X(0x24e));p[X(0x197)]=fmt(n),p[X(0x14b)]=X(0x1e5)+(n>=-0x88b+0x1*-0x2053+0x28de*0x1?X(0x1ca):X(0x1e9));const q=document['getElementById']('summary-cva-fv');q&&(q['textContent']=fmt(n),q[X(0x14b)]=X(0x1e5)+(n>=-0x67*-0x5a+-0x37b*0x8+-0x66*0x15?'positive':X(0x1e9)),q[X(0x1c4)][X(0x250)]='');document[X(0x26a)](X(0x221))[X(0x197)]=(k/lastParams[X(0x270)]*(0x1b2d+0x118d+0x19*-0x1c6))[X(0x14c)](-0x1595+0x911+0xc88)+'%',document['getElementById'](X(0x14d))['textContent']=(m*(0x142a+-0x47*0x11+-0xf0f))[X(0x14c)](-0x1666+-0x202b+0x3695)+'%';const r=document[X(0x26a)](X(0x188));r[X(0x173)]='';let s=0x1b3b+0x1cbf+0x37fa*-0x1;j[X(0x172)](A=>{const Z=X;s+=A[Z(0x242)];const B=document['createElement']('tr'),C=k>-0x1e82+-0x9c1+0x2843*0x1?(A[Z(0x242)]/k*(-0x239*0x6+-0x2*-0xdb7+0x1*-0xdb4))[Z(0x14c)](-0x9*-0x3e3+0x653*-0x3+-0x1001):Z(0x1fb);B[Z(0x173)]=Z(0x218)+A['t'][Z(0x14c)](-0x1*-0x4b7+0x137*-0x1+0x2*-0x1bf)+Z(0x161)+(A['ee']>-0x467*0x1+0x5bd+-0x156?fmt(A['ee']):'<span\x20style=\x22color:var(--text3)\x22>—</span>')+Z(0x234)+(A[Z(0x175)]*(0x45*-0x24+0x138+0x47*0x20))['toFixed'](0x1e87+0x3a3*0x5+-0x30b2)+'%</td>\x0a\x20\x20\x20\x20\x20\x20<td\x20style=\x22color:var(--text3)\x22>'+(A['lgd']*(-0xd*0x28f+0x2*-0x4f0+0x2b87))[Z(0x14c)](-0x1242+-0xf7c+0x21be)+Z(0x24d)+A['df'][Z(0x14c)](0x2302+0x12e5*-0x1+-0x1017)+Z(0x20f)+fmt(A['cvaTerm'])+Z(0x1c9)+C+Z(0x27b),r[Z(0x17e)](B);});const t=[{'label':X(0x1d2),'spread':Math['max'](c-(0x241a+0x177e+-0x3b98+0.005),0x2520+0x2644+0x3c5*-0x14+0.001)},{'label':X(0x1ce),'spread':c},{'label':X(0x241),'spread':c+(0xc76+0x197*0x13+-0xb*0x3e1+0.005)},{'label':X(0x199),'spread':c+(0x4e4+0x19*0x9f+-0x146b+0.01)}],u=document[X(0x26a)]('cva-sensitivity');u[X(0x173)]=t['map'](A=>{const a0=X,B=A[a0(0x1fc)]/g;let C=0xb62+0x1a3*0x17+-0x3107;lastResult[a0(0x275)][a0(0x172)]((E,F)=>{const a1=a0,G=E['t'],H=F===-0x1f9*0xb+0x56d*0x6+-0xadb?0x485*-0x6+-0x2505+-0x3*-0x1561:lastResult['cashflows'][F-(-0x1ecb*0x1+-0x1f76+-0x1a*-0x265)]['t'];let I=Math[a1(0x215)](E['netPV'],0x4ff*0x3+0x998*-0x1+-0x565);if(e===a1(0x1de))I*=-0x2e2*0xb+0x87e*0x4+-0x241+0.30000000000000004;I*=h;const J=Math[a1(0x23c)](-B*H)-Math[a1(0x23c)](-B*G),K=interpolateSpot(G,lastSpotRates),L=(0x1*0x1273+0xb28*-0x3+0xf06)/Math[a1(0x1e2)](0x25c7*-0x1+-0xd60+-0x3328*-0x1+K,G);C+=g*I*J*L;});const D=C-k;return a0(0x1b2)+A[a0(0x16a)]+'\x20('+(A['spread']*(-0x2*0x55b+-0x4f+0xb69))[a0(0x14c)](0xdd2+-0x203e+-0x151*-0xe)+a0(0x150)+fmt(C)+a0(0x1dd)+(D>=0xc97+0x129e+0x3*-0xa67?'+':'')+fmt(D)+a0(0x1a1);})[X(0x26e)]('');const v=document['getElementById']('cva-audit-items'),w=k/lastParams[X(0x270)]*(-0xb*-0xef+0x24b*-0xc+-0x285*-0x7),x=w>0x7c0+-0x1b1*-0x15+-0x2b45+0.1,y=Math[X(0x282)](k)/Math['abs'](lastResult['fv']||-0x80+-0x1223+-0x1*-0x12a4)>-0x23c6+0xda*-0x1f+0x3e2c+0.05,z=[{'label':X(0x1ed),'value':x?X(0x164)+w[X(0x14c)](0x23b2+0x15c4+0x56*-0xab)+'%\x20—\x20중요성\x20검토\x20필요':'✓\x20명목원금\x20대비\x20'+w['toFixed'](0x8e7*0x2+0x1b9b+-0x2d65)+X(0x1b1),'color':x?X(0x1e7):'var(--green)'},{'label':X(0x1f9),'value':X(0x192),'color':X(0x182)},{'label':X(0x1b8),'value':f===0x2028+-0x9*-0x4f+-0x228b?'✓\x20완전\x20담보\x20—\x20CVA\x20무시\x20가능':f===-0x1920+0x234*-0xc+-0x2*-0x19c8?X(0x19d):X(0x152)+f+X(0x222),'color':f===0x11d1+-0x1cf7+-0x1*-0xb26?X(0x17d):X(0x183)},{'label':X(0x166),'value':X(0x259)+(c*(0x315d+-0x3943*0x1+0x2ef6))['toFixed'](-0x7a0+-0x1*0x2174+0x2914)+'bp)\x20—\x20Bloomberg\x20CDS\x20호가\x20또는\x20평가보고서\x20기준\x20확인\x20필요','color':X(0x1e7)},{'label':X(0x262),'value':X(0x15c),'color':X(0x182)},{'label':X(0x209),'value':y?X(0x243)+(k/Math[X(0x282)](lastResult['fv'])*(0x25c3+0x36+-0x2595))['toFixed'](0x1*-0x1875+-0x2*-0x54f+-0x1*-0xdd9)+'%\x20—\x20재무제표\x20영향\x20유의적':X(0x1e8)+(k/Math[X(0x282)](lastResult['fv']||0x176c+0x81*0x7+-0x1af2)*(0x15*0x1a1+0x2e2*-0xa+0x1*-0x4fd))[X(0x14c)](-0xe1b+0x658+0x7c5)+X(0x277),'color':y?X(0x17d):'var(--green)'}];v[X(0x173)]=z[X(0x288)](A=>X(0x212)+A[X(0x16a)]+X(0x23a)+A[X(0x23b)]+X(0x23e)+A['value']+'</span>\x0a\x20\x20\x20\x20</div>\x0a\x20\x20')[X(0x26e)]('');}function exportPDF(){const a2=b;window[a2(0x255)]();}function exportExcel(){const a3=b;if(!lastResult){alert('먼저\x20공정가치를\x20산출하세요');return;}const c=XLSX[a3(0x26d)][a3(0x180)](),d=getEvalDateStr(),e=lastParams,f=e[a3(0x223)]==='pay_fixed'?'고정금리\x20지급\x20(변동\x20수취)':a3(0x1b5),g={0x1:'연\x201회',0x2:a3(0x1d6),0x4:a3(0x174)}[e[a3(0x274)]],h=(e[a3(0x21d)]/(-0x8f9+-0xa*-0x241+-0xd2d*0x1)-lastResult[a3(0x20c)])*(-0x1201+-0x1aef+0x2d54),i=[[a3(0x196)],[a3(0x1e0),d],[],['[계약\x20조건]'],[a3(0x18f),e[a3(0x270)]],[a3(0x1fa),e[a3(0x1df)]],[a3(0x17a),g],[a3(0x1ea),e[a3(0x21d)]],[a3(0x1f3),f],[],[a3(0x159)],[a3(0x21c),Math[a3(0x190)](lastResult['fv'])],[a3(0x151),Math[a3(0x190)](lastResult[a3(0x15a)])],['변동\x20레그\x20PV\x20(원)',Math['round'](lastResult[a3(0x1af)])],[a3(0x195),parseFloat((lastResult[a3(0x20c)]*(-0x1905+-0x1*-0x1f3a+-0x5d1))[a3(0x14c)](0x1956+0x5*0x65+-0x1b4b))],['금리\x20괴리\x20(bp)',parseFloat((h*(0x47*0x1f+0x115+-0x94a))['toFixed'](0x1*0x1605+-0x6*-0x1bf+-0x207d*0x1))],[a3(0x205),lastResult['fv']>=-0x7cc+0x45*-0x37+0x169f?a3(0x248):a3(0x24b)]];lastCVA&&i[a3(0x167)]([],[a3(0x238)],[a3(0x21f),lastCVA['bp']],[a3(0x227),parseFloat((lastCVA[a3(0x1bd)]*(-0x737+-0x751*0x3+0x1d8e))[a3(0x14c)](-0x570+0x1ffa+0x2b*-0x9e))],['CVA\x20(원)',Math[a3(0x190)](lastCVA[a3(0x17f)])],['CVA\x20조정\x20공정가치\x20(원)',Math['round'](lastCVA[a3(0x260)])],['누적\x20부도확률\x20(%)',parseFloat((lastCVA['cumPD']*(0x6*-0x32a+0x9b*-0x2c+0x2e04))[a3(0x14c)](-0x1aa0+0x22a*-0x7+-0x14e5*-0x2))]);i[a3(0x167)]([],[a3(0x26c)],[a3(0x1e6)],['실무\x20IRS\x20공정가치\x20평가의\x20표준은\x20CD\x2091일물\x20기반\x20원화\x20스왑\x20곡선이며,\x20Bloomberg\x20또는\x20Reuters에서\x20제공하는\x20IRS\x20호가\x20데이터를\x20사용해야\x20합니다.']);const j=XLSX[a3(0x26d)][a3(0x24c)](i);j[a3(0x162)]=[{'wch':0x1c},{'wch':0x3c}],XLSX[a3(0x26d)][a3(0x165)](c,j,'요약');const k=['시점',a3(0x278),a3(0x1e3),a3(0x22b),'변동\x20CF(원)','순\x20CF(원)',a3(0x1f0),a3(0x201)],l=lastResult[a3(0x275)]['map'](q=>[q['t'][a3(0x14c)](0xf65+0x15f4+-0x2557)+'Y',parseFloat((q[a3(0x1a5)]*(-0x9*0xc7+-0x55*0x32+-0x17fd*-0x1))['toFixed'](0x1bf2+-0x19*0x164+0x6d6*0x1)),parseFloat((q[a3(0x240)]*(-0xd*0x257+0xeee+0xfe1))['toFixed'](0x65*0x10+0x412+0x52f*-0x2)),Math[a3(0x190)](q[a3(0x19c)]),Math[a3(0x190)](q[a3(0x1b9)]),Math[a3(0x190)](q['netCF']),parseFloat(q['df'][a3(0x14c)](-0x1eab+0x13fa+-0xab7*-0x1)),Math[a3(0x190)](q[a3(0x1fd)])]),m=lastResult[a3(0x275)]['reduce']((q,r)=>q+r[a3(0x1ab)],0x3*-0x6ab+-0xe*-0x209+0x1*-0x87d);l[a3(0x167)](['합계','','','','',Math['round'](m),'',Math['round'](lastResult['fv'])]);const n=XLSX['utils']['aoa_to_sheet']([k,...l]);n[a3(0x162)]=[{'wch':0x8},{'wch':0xe},{'wch':0xc},{'wch':0x10},{'wch':0x10},{'wch':0x10},{'wch':0xc},{'wch':0x10}],XLSX['utils'][a3(0x165)](c,n,a3(0x206));if(lastCVA){const q=['시점','기대익스포저EE(원)','한계부도확률%','LGD%',a3(0x1f0),a3(0x208),a3(0x279)];let r=-0x17f0+0x1b19+-0x329;const s=lastCVA[a3(0x232)][a3(0x288)](u=>{const a4=a3;r+=u[a4(0x242)];const v=lastCVA[a4(0x17f)]>-0x1868+0x22ec+-0xa84?parseFloat((u[a4(0x242)]/lastCVA[a4(0x17f)]*(-0x21f1*0x1+0x2*-0xbc+-0x2c1*-0xd))['toFixed'](0x202e+0xf60+-0x25*0x149)):0x16d*0xf+-0xb*-0xf7+-0x2000;return[u['t']['toFixed'](0x85a*0x1+-0x1ffd+-0x1*-0x17a5)+'Y',Math[a4(0x190)](u['ee']),parseFloat((u[a4(0x175)]*(-0x1a3+0x235b+-0x3*0xb1c))[a4(0x14c)](0x43*0xd+-0x1573+-0x88*-0x22)),parseFloat((u[a4(0x20d)]*(0x2*0x80+-0x819+0x3*0x27f))['toFixed'](-0x760+0x18d5+-0x1175)),parseFloat(u['df'][a4(0x14c)](0x19dd+-0x18ef*0x1+-0x3a*0x4)),Math[a4(0x190)](u[a4(0x242)]),v];});s['push'](['합계','','','','',Math[a3(0x190)](lastCVA[a3(0x17f)]),0x11f*-0x13+0x2279+-0xcc8]);const t=XLSX[a3(0x26d)][a3(0x24c)]([q,...s]);t[a3(0x162)]=[{'wch':0x8},{'wch':0x12},{'wch':0x10},{'wch':0x8},{'wch':0xc},{'wch':0x10},{'wch':0xa}],XLSX[a3(0x26d)][a3(0x165)](c,t,'CVA분해');}const o=document['getElementById']('eval-date')[a3(0x25d)]||a3(0x289);XLSX[a3(0x14e)](c,a3(0x27a)+o+a3(0x25f));}function updateHedgeBanner(){const a5=b;if(!lastParams)return;const c=lastParams[a5(0x223)],d=document[a5(0x26a)]('hedge-type-banner'),e=document[a5(0x26a)](a5(0x276)),f=document['getElementById']('hedge-loan-rate-group');c===a5(0x1a0)?(d[a5(0x1c4)]['borderLeftColor']=a5(0x267),e['textContent']=a5(0x19b),f[a5(0x1c4)][a5(0x213)]=a5(0x15f)):(d['style'][a5(0x1b6)]='var(--green)',e[a5(0x197)]=a5(0x1a9),f[a5(0x1c4)][a5(0x213)]=a5(0x1cc));}function fmtMaturity(c){const a6=b,d=Math[a6(0x1f2)](c),e=Math[a6(0x190)]((c-d)*(-0x1*-0x7b1+0x1*-0x1a14+0x79*0x27));return d+'년'+(e>-0x1*-0x1198+0x1*-0x1979+0x7e1*0x1?'\x20'+e+'개월':'');}function runQualitativeTest(){const a7=b;if(!lastParams){alert(a7(0x17c));return;}const c=lastParams,d={0x1:a7(0x191),0x2:a7(0x1d6),0x4:a7(0x174)},e=parseFloat((document[a7(0x26a)](a7(0x269))[a7(0x25d)]||'')[a7(0x1d4)](/,/g,'')),f=computeMaturityYears(a7(0x21e),a7(0x253)),g=parseInt(document[a7(0x26a)](a7(0x1bf))[a7(0x25d)]),h=[{'name':a7(0x229),'irs':c['notional']['toLocaleString'](a7(0x19a))+'원','hedge':isNaN(e)?a7(0x19e):e[a7(0x224)](a7(0x19a))+'원','match':!isNaN(e)&&Math[a7(0x282)](e-c[a7(0x270)])<0x124*0x1+-0x1aac+-0x1989*-0x1},{'name':'만기','irs':fmtMaturity(c[a7(0x1df)]),'hedge':fmtMaturity(f),'match':Math[a7(0x282)](f-c[a7(0x1df)])<0x26*0xdf+-0x1*0x2392+0x278+0.01},{'name':a7(0x1db),'irs':a7(0x281),'hedge':a7(0x281),'match':!![]},{'name':'이자\x20지급\x20주기','irs':d[c[a7(0x274)]],'hedge':d[g],'match':g===c[a7(0x274)]}],i=document[a7(0x26a)]('qualitative-tbody');i['innerHTML']=h['map'](l=>a7(0x22f)+l[a7(0x273)]+a7(0x181)+l[a7(0x1bb)]+a7(0x261)+l[a7(0x217)]+a7(0x263)+(l['match']?a7(0x183):a7(0x17d))+'\x22>'+(l[a7(0x18a)]?'✓':'✗')+a7(0x251))[a7(0x26e)]('');const j=h[a7(0x244)](l=>l[a7(0x18a)]),k=document[a7(0x26a)](a7(0x25a));j?(k[a7(0x1c4)][a7(0x250)]=a7(0x18b),k['textContent']='✓\x20정성적\x20테스트\x20통과\x20—\x20완전\x20효과적\x20추정\x20(핵심\x20조건\x20전체\x20일치)'):(k[a7(0x1c4)][a7(0x250)]=a7(0x1f7),k[a7(0x197)]=a7(0x210)),document[a7(0x26a)](a7(0x16c))[a7(0x1c4)][a7(0x213)]=a7(0x1cc);}function calcFixedLoanPV(c,d,e,f){const a8=b,{notional:g,maturity:h,frequency:j}=d,k=(-0x1*0x4c+0x172d*0x1+-0x16e0)/j,l=Math[a8(0x1f2)](h*j+(-0x40b*-0x5+-0x3f*-0x4d+-0x3*0xd0e+1e-9)),m=[];for(let o=0x1a*0xd5+-0x1*0x5a8+-0xff9;o<=l;o++)m[a8(0x167)](o*k);if(h-l*k>0x7d8*0x4+0xc02+-0x2b62+1e-9)m['push'](h);let n=0x15*0x110+0x35*-0x35+-0xb57;for(let p=-0x56c*-0x2+0x11*-0x139+0x9f1;p<m[a8(0x171)];p++){const q=m[p],r=p===0x1dab+0x8f*0x1d+-0x2dde?0x1c87+-0x327+-0x1960:m[p-(-0x194d+-0x16a1+-0x2fef*-0x1)],s=q-r,u=interpolateSpot(q,e)+f,v=(-0x21c2+0x1185+-0x9a*-0x1b)/Math[a8(0x1e2)](-0x15b2+0x1*0x2348+-0x39*0x3d+u,q);n+=g*c*s*v;if(p===m[a8(0x171)]-(-0x6d*-0x51+-0xfdb+-0x12a1))n+=g*v;}return n;}function runQuantitativeTest(){const a9=b;if(!lastResult||!lastSpotRates||!lastParams){alert('먼저\x20공정가치를\x20산출하세요');return;}const c=lastParams[a9(0x223)];let d=null,e=null;if(c===a9(0x1c1)){d=parseFloat(document['getElementById'](a9(0x16d))['value'])/(0xb53+0xec+-0xbdb);if(isNaN(d)){alert(a9(0x1d0));return;}e=calcFixedLoanPV(d,lastParams,lastSpotRates,-0xfc5+-0x8*-0x2b8+-0x5fb);}const f=[{'label':a9(0x225),'shift':0.01},{'label':a9(0x245),'shift':0.005},{'label':a9(0x1a6),'shift':-(-0x1ca5+0x1544+0x761*0x1+0.005)},{'label':a9(0x16e),'shift':-(0x22*-0x6a+0x1*-0x2522+0x3336+0.01)}],g=f[a9(0x288)](o=>{const aa=a9,p=calculateIRS(lastParams,lastSpotRates,o[aa(0x1aa)]),q=p['fv']-lastResult['fv'];let r;if(c==='pay_fixed')r=-(p[aa(0x1af)]-lastResult[aa(0x1af)]);else{const v=calcFixedLoanPV(d,lastParams,lastSpotRates,o[aa(0x1aa)]);r=-(v-e);}const t=r!==-0xf74+-0x521*0x3+0x1ed7?q/r*(0x250d+-0x1*-0x984+-0x2e2d*0x1):null,u=t!==null&&t>=-(-0xe7d+0xd32+0xc*0x26)&&t<=-(-0x1529*-0x1+0x722+0x1bfb*-0x1);return{...o,'irs_delta':q,'hedged_delta':r,'ratio':t,'effective':u};}),h=document[a9(0x26a)](a9(0x1e4));h[a9(0x173)]=g[a9(0x288)](o=>{const ab=a9,p=o['ratio']!==null?o['ratio'][ab(0x14c)](0x7*0x163+0xb1b*-0x1+-0x167*-0x1)+'%':'—',q=o[ab(0x1a3)]?ab(0x183):ab(0x17d),s=o[ab(0x1a3)]?ab(0x228):ab(0x15b);return ab(0x15d)+o[ab(0x16a)]+'</td>\x0a\x20\x20\x20\x20\x20\x20\x20\x20<td\x20style=\x22color:'+(o[ab(0x26f)]>=-0x4d7+-0x7e*0xc+0x3*0x395?ab(0x183):ab(0x17d))+'\x22>'+fmt(o[ab(0x26f)])+ab(0x239)+(o[ab(0x1dc)]>=0x966+-0x6e3*-0x3+-0x357*0x9?'var(--green)':ab(0x17d))+'\x22>'+fmt(o['hedged_delta'])+ab(0x176)+q+'\x22>'+p+ab(0x1bc)+s+ab(0x1f1);})[a9(0x26e)](''),document[a9(0x26a)](a9(0x207))[a9(0x1c4)][a9(0x213)]='block';const i=g['every'](o=>o['effective']),j=g['some'](o=>o[a9(0x1a3)]),k=document['getElementById']('hedge-verdict-box');if(i)k['style']['cssText']='padding:1.1rem\x201.25rem;border-radius:12px;font-size:0.88rem;font-weight:600;line-height:1.75;letter-spacing:-0.02em;background:#ECFDF5;color:#065F46;border-left:4px\x20solid\x20var(--green)',k['innerHTML']=a9(0x283);else j?(k[a9(0x1c4)][a9(0x250)]='padding:1.1rem\x201.25rem;border-radius:12px;font-size:0.88rem;font-weight:600;line-height:1.75;letter-spacing:-0.02em;background:#FFF7ED;color:#92400E;border-left:4px\x20solid\x20var(--amber)',k['innerHTML']=a9(0x1d5)):(k[a9(0x1c4)][a9(0x250)]=a9(0x22e),k['innerHTML']=a9(0x264));document[a9(0x26a)](a9(0x271))['style']['display']='block';const l=c==='pay_fixed'?a9(0x1b7):a9(0x1a2),m=document['getElementById'](a9(0x16c))[a9(0x1c4)][a9(0x213)]!==a9(0x15f)&&document[a9(0x26a)](a9(0x25a))['textContent']['includes']('통과'),n=[{'label':'위험회피\x20지정\x20문서\x20구비\x20여부','value':a9(0x186),'color':a9(0x1e7)},{'label':'핵심\x20조건\x20일치\x20여부','value':document[a9(0x26a)](a9(0x16c))[a9(0x1c4)][a9(0x213)]!=='none'?m?a9(0x203):a9(0x21a):'⚠\x20정성적\x20테스트\x20미실행','color':m?a9(0x183):'var(--amber)'},{'label':a9(0x23d),'value':i?a9(0x22d):j?'⚠\x20일부\x20이탈:\x20'+g[a9(0x1a8)](o=>!o[a9(0x1a3)])[a9(0x288)](o=>o[a9(0x16a)])[a9(0x26e)](',\x20'):a9(0x22c),'color':i?a9(0x183):j?a9(0x1e7):a9(0x17d)},{'label':a9(0x27c),'value':i?'✓\x20'+l+a9(0x216):a9(0x285),'color':i?a9(0x183):'var(--red)'}];document[a9(0x26a)]('hedge-audit-items')['innerHTML']=n['map'](o=>a9(0x212)+o[a9(0x16a)]+a9(0x23a)+o[a9(0x23b)]+a9(0x230)+o[a9(0x25d)]+'</span>\x0a\x20\x20\x20\x20</div>\x0a\x20\x20')[a9(0x26e)](''),document[a9(0x26a)](a9(0x1ff))[a9(0x1c4)][a9(0x213)]='block';}function toggleNotes(){const ac=b;if(window['innerWidth']>0x2349*-0x1+0x2*-0x110b+-0x485f*-0x1)return;const c=document['getElementById']('notes-panel-body'),d=document[ac(0x26a)]('notes-toggle-arrow'),e=c[ac(0x1ac)][ac(0x16f)](ac(0x193));d[ac(0x1ac)][ac(0x16f)]('open',e);}function updateCsaSlider(c){const ad=b,d=parseInt(c['value']),e=d+'%';c[ad(0x1c4)]['background']=ad(0x1c8)+e+ad(0x1d7)+e+')',document[ad(0x26a)](ad(0x1cd))['textContent']=e;}function updateEeDesc(){const ae=b,c=document[ae(0x26a)](ae(0x202))['value'];document['getElementById'](ae(0x154))[ae(0x197)]=c===ae(0x24a)?ae(0x163):ae(0x1ee);}function todayString(){const af=b;return new Date()[af(0x168)]()[af(0x257)](0x14*0x171+0x1*-0x2d3+-0x1a01,0x2466+0x1677+-0x3ad3);}function getEvalDateStr(){const ag=b,c=document[ag(0x26a)](ag(0x21e))['value'];if(!c)return new Date()[ag(0x1ba)](ag(0x19a));const [e,f,g]=c['split']('-');return e+'년\x20'+parseInt(f)+'월\x20'+parseInt(g)+'일';}async function loadRates(c){const ah=b,d=document['getElementById'](ah(0x236)),e=document[ah(0x26a)](ah(0x1ad)),f=['r1','r2','r3','r5','r7',ah(0x1be)];d['style'][ah(0x213)]='block',e[ah(0x197)]=ah(0x155),e[ah(0x14b)]=ah(0x1ef),f['forEach'](g=>{const ai=ah;document[ai(0x26a)](g)['disabled']=!![];});try{const g=c['replace'](/-/g,''),h=await fetch(ah(0x27f)+g),i=await h['json']();if(!h['ok']||!i[ah(0x178)])throw new Error(i['error']||'데이터\x20없음');const j=i[ah(0x200)],k=j['5Y']?.['mid']??null,l=j[ah(0x226)]?.['mid']??null,m=k!=null&&l!=null?k+(l-k)*(0x530*0x5+-0x4f*0x33+-0xa33+0.4):null,n={'r1':j['1Y']?.[ah(0x204)],'r2':j['2Y']?.[ah(0x204)],'r3':j['3Y']?.[ah(0x204)],'r5':k,'r7':m,'r10':l};f[ah(0x172)](o=>{const aj=ah,p=n[o];if(p!=null){const q=document[aj(0x26a)](o);q['value']=p[aj(0x14c)](-0x1a34+0x2185+-0x74e),q['classList'][aj(0x258)](aj(0x1b0)),void q['offsetWidth'],q[aj(0x1ac)][aj(0x247)](aj(0x1b0));}}),e['textContent']=ah(0x252)+c+ah(0x1fe),e[ah(0x14b)]=ah(0x18d),calculate();}catch(o){e[ah(0x197)]='⚠\x20'+o[ah(0x1d9)]+ah(0x220),e[ah(0x14b)]=ah(0x1b3),calculate();}finally{d['style']['display']='none',f['forEach'](p=>{const ak=ah;document[ak(0x26a)](p)['disabled']=![];});}}window[al(0x1c2)]=()=>{const am=al,c=document[am(0x26a)](am(0x21e));c[am(0x25d)]=todayString(),c[am(0x231)](am(0x1c3),j=>loadRates(j[am(0x20e)][am(0x25d)]));const d=document[am(0x26a)](am(0x270));d[am(0x231)](am(0x156),()=>{const an=am,j=d[an(0x25d)][an(0x1d4)](/,/g,'')[an(0x1d4)](/[^0-9]/g,'');if(j)d['value']=parseInt(j,-0x356+-0x27*-0xca+-0x1b66)[an(0x224)](an(0x19a));});const e=document[am(0x26a)](am(0x269));e[am(0x231)](am(0x156),()=>{const ao=am,j=e[ao(0x25d)]['replace'](/,/g,'')[ao(0x1d4)](/[^0-9]/g,'');if(j)e[ao(0x25d)]=parseInt(j,-0x7*0x79+-0x17*0x175+-0x7*-0x544)[ao(0x224)](ao(0x19a));});function f(j,k){const ap=am,l=new Date(j);l['setFullYear'](l[ap(0x233)]()+k);const n=l['getFullYear'](),o=String(l[ap(0x1a4)]()+(0x1eda+-0x3*0xc6f+0x674))[ap(0x170)](-0x2202+0x66e+-0x2*-0xdcb,'0'),p=String(l[ap(0x15e)]())[ap(0x170)](-0x1a+-0x1*-0x21b+0x7*-0x49,'0');return n+'-'+o+'-'+p;}function g(){const ar=am,j=n=>{const aq=b;if(!isFinite(n)||n<=-0x4*0x397+-0x31*0x4e+-0x1d4a*-0x1)return aq(0x157);const o=Math[aq(0x1f2)](n),p=Math[aq(0x190)]((n-o)*(-0x1458+-0x1*-0x13e5+0x7f));if(p===0x427*-0x1+-0x3a*-0x81+0x1*-0x1913)return'잔존\x20'+o+'년';if(o===-0x1*-0x17a9+-0x1a51*0x1+0x2a8)return aq(0x22a)+p+'개월';return aq(0x22a)+o+'년\x20'+p+'개월';},k=document[ar(0x26a)]('maturity-years-display');if(k)k['textContent']=j(computeMaturityYears(ar(0x21e),'maturity-date'));const l=document[ar(0x26a)](ar(0x25b));if(l)l['textContent']=j(computeMaturityYears(ar(0x21e),ar(0x253)));}const h=document['getElementById']('maturity-date'),i=document[am(0x26a)]('hedge-date');if(!h[am(0x25d)])h[am(0x25d)]=f(c['value'],-0x15f8+0x262+0x1399);h[am(0x231)](am(0x1c3),g),i[am(0x231)](am(0x1c3),g),c['addEventListener']('change',g),g(),updateCsaSlider(document[am(0x26a)](am(0x20a))),updateEeDesc(),loadRates(todayString());};function a(){const at=['Dg9gAxHLza','y3zHlxbK','D3jPDgvgAwXL','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJO','jsK8l3nWyw4+cIaGicaGicaGphnWyw4Gy2XHC3m9iMf1zgL0lwL0zw0TDMfSDwuIpGOGicaGicaGicaGphnWyw4GC3r5Bgu9iMnVBg9YoNzHCIGTlxjLzcKIpG','6RoG7kcvioUGIoQ3UcbqvIaO7jUqkq','67Aa67AeioUlToUZTca','y3jLzgL0x3nWCMvHza','zwuTzgvZyW','7iUC7j6L6RIi66ASioU2IoUFRoYyPoUkLcdSPjhIGky','Aw5WDxq','7j6u7kg0iokaLcdRHyq','y3zHlwvTChr5','w+2pIEQWGcdQSRdQS7XD','zML4zwrqvG','phnWyw4GC3r5Bgu9iMnVBg9YoNzHCIGTlxjLzcK7zM9UDc13zwLNAhq6nZaWiJ7INjCG67Me7zQO6Ro87kcbpc9ZCgfUpG','6RgW656y7iob64Ya67cPioYlOoYAQEQZVcdQUldSTiJSNPdSGRaG6RceioYxREYdGEQ0GcdSL6ZRTOaG67oe64+eioQYGo2gOa','cIaGicaGidX0CJ4kicaGicaGica8Dgq+','z2v0rgf0zq','BM9Uzq','mtaXmJu4nZrbBhLVzwu','wtWVDgq+cIaGicaGidX0zd4','iwnVBhm','6RcbioYlNoYGKoYDMcdSIjZTMitSNQZQSidSUzGG7ksrioYwKEYiMoUNJcdRSjJSMieUioYDJoYiMoUkLcaWioYYMoUMRcaO7iAq7iUKioYxHUYDJcK','4PQGioUQHEUQQEYBKoQ4IcdRJidRUyqG','yM9VA19HChbLBMrFC2HLzxq','7iUG7jQP7iQK7zse66ci65oCioY2NoYYMa','ChvZAa','Dg9ju09tDhjPBMC','y2fZAgzSB3C','BgfIzwW','otC5ndy1zNvwDMj3','CxvHBgL0yxrPDMuTCMvZDwX0','AgvKz2uTBg9HBI1YyxrL','lteWmgjW','Dg9Nz2XL','CgfKu3rHCNq','BgvUz3rO','zM9YrwfJAa','Aw5Uzxjive1m','67Ae6RIWidhTMOW','CgrnyxjNAw5HBa','pc90zd4kicaGicaGica8DgqGC3r5Bgu9iMzVBNqTD2vPz2H0oJyWmdTJB2XVCJO','A2v5CW','C3vJy2vZCW','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJOJmZHIzgy4iJ4','7j207j6q7kEa6RIj7ko86RIW','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJOJotrHm2i4iJ4','66I87kcaioQZTEYGLEQWGoY5MoULVcdSGRdSTPZTLzJSHlJSMPq','DMfYkc0TCMvKkq','yxbWzw5Kq2HPBgq','Dg90ywXdvKe','yM9VA19UzxC','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJP2yxiOls1Hy2nLBNqPiJ4','DMfYkc0TDgv4DdiP','DMfYkc0Tz3jLzw4P','C3vTBwfYEs1JDMeTzNy','ywn0AxzL','4PQGioYCHo2xMo2AJo2uVcdSP4dSOjxSNBWSioYCHo2xMo2AJo2uVcdSOitRNRuSio2AQoQZVoYeSsdTJ4NQSiaG67cP67kvioQ4SoYiOcdRRlJSHjWG7zwe7jQuicHlluLguLmGmteWos42lJqUmsHIksK','mtu5ndqWnff2z29Uva','y3zHlxrIB2r5','y3jLyxrLrwXLBwvUDa','Bwf0y2G','BwfYz2LUlxrVCdOWlJG1CMvTo3bHzgrPBMC6mc44nxjLBsaXlJfYzw07yM9YzgvYlxjHzgL1CZOXmhb4o2zVBNqTC2L6ztOWlJGYCMvTo2zVBNqTD2vPz2H0oJyWmdTSzxr0zxiTC3bHy2LUzZOTmc4WmMvTo2XPBMuTAgvPz2H0oJeUntu7yMfJA2DYB3vUzdOJrungrey1o2nVBg9YoImWnJvgndy7yM9YzgvYlwXLzNq6nhb4ihnVBgLKihzHCIGTlwDYzwvUkq','y3vYDMuTy2HHCNq','CMf0zs1ZDgf0DxmGB2S','y2yTDgjVzhK','66Qf66QP7jUq6RIiicJSM5aP','CM91BMq','7jEWidhTMOW','q1zb64QuioQZTEYGLEQWGoY5McdSUkhSOjuG7iUCioYlOoYAQEYCHo2xMcdRSjJSMieG7j2y66Y0icHjrLjtideZlJqYkq','B3bLBG','zM9UDc1ZAxPLoJaUnZHYzw07zM9UDc13zwLNAhq6ntaWo2nVBg9YoNzHCIGTlxrLEhqZktTTyxjNAw4TyM90Dg9ToJaUm3jLBtTSzxr0zxiTC3bHy2LUzZOTmc4WmwvT','7iUC7j6LifbHCIbsyxrLicGLkq','svjtioQZTEYGLEQWGoY5McdTJ4NQSiaG67o06RoG7isC','Dgv4DenVBNrLBNq','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJOJzJu5ztbIiJ4','7iUG7jQP7iQK7zse66ci65oCicSXmdbICa','A28Ts1i','7jYe7zEy7zQm7zs864Ya7ioboIdRS4dRJ5NQUiJRPQWG7lcO7j6f6RIiicJTMitQUiJTNzdRPOtSNitTL5JTMOZTLlWP','zML4zwrdrG','64U067o0ioYxHUYDJcdIGjqGq1zbioYGHoYvOsdRSjJSMieG7zwe7jQu','66+47j6f66cL','DgfIlq','Cgf5x2zPEgvK','ktWVC3bHBJ4kicaGicaGica8l3nWyw4+cIaGicaGidWVzgL2pG','6Ro17kcv6Rca7lMy7jYe7zEy7zQm7zs8','zwzMzwn0AxzL','z2v0tw9UDgG','C3bVDa','ltuWyNa','yxvKAxqTC3bYzwfK','zMLSDgvY','7jYe7zEy7zQm7zs864Ya7ioboIdQS6dSOjxQUiJRPQWG7lcO7j6f6RIiicJQS7xSOjxQSidSUzJSNitTL5JTMOZTLlWP','C2HPzNq','BMv0q0y','y2XHC3nmAxn0','CMf0zs1ZDgf0Dxm','iZHcotvbmq','zMXVyxrqvG','yxv0BY1MAwXSzwq','jsdIGjqG7ksr7jQu7isXioUcRUYDJa','cIaGicaGidXKAxyGy2XHC3m9iMf1zgL0lwL0zw0IpGOGicaGicaGidXZCgfUignSyxnZpsjHDwrPDc1PDgvTlwXHyMvSiJ4','CMf0zs1ZDgf0DxmGzxjY','y3vYDMu','6RoG7kcv6RIi66ASioYiMoY3QcaO67oa64+zioYNGoQ4IsK','yM9YzgvYtgvMDenVBg9Y','7zIe6RIi7z2q66Ae7jYe7zEy7zQm7zs8','64U067o0ioYvVEYGLsHdu0ePio2AQoQZVa','zMXVyxrdrG','Dg9mB2nHBgveyxrLu3rYAw5N','AxjZ','pc90zd4kicaGicaGica8DgqGC3r5Bgu9iNrLEhqTywXPz246y2vUDgvYiJ4','CMvJB3zLCNLsyxrL','CJeW','AgvKz2uTzNjLCxvLBMn5','CMf0zs1ZChjLywq','CMvJzwL2zv9MAxHLza','B25SB2fK','y2HHBMDL','C3r5Bgu','zgvZDhjVEq','C3vTBwfYEq','Dg90ywWTCM93','BgLUzwfYlwDYywrPzw50khrVihjPz2H0lcb2yxiOls1Hy2nLBNqPia','idXZCgfUihn0EwXLpsjJB2XVCJP2yxiOls10zxH0mYK7zM9UDc1ZAxPLoJaUnJvYzw0IpIG','Cg9ZAxrPDMu','CxvLCNLtzwXLy3rVCKfSBa','yMXVy2S','y3nHx3zHBa','qMfZzsbdyxnL','lNrHyG','6RoG7kcv6RIi66ASioYWQoYEHEQ4IcdQUiJRPQZRPBWG7j6f66cL7zwy7is47jQu','kZeWmgjWicJQUiJRPQWG7iob7iQ5kq','7iUG7jQP7iQK7zse66ci65oCic01mgjW','iZeWyJK4mq','CMvWBgfJzq','4PQGidXZDhjVBMC+7j2867AaioYlNoUcMoUMRoYyPoYxKoYeNcdTMQJQS7ZSHleG6RIW7ksaioYDTo2dIdWVC3rYB25NpJXICJ48C3bHBIbZDhLSzt0IzM9UDc13zwLNAhq6ndaWo2zVBNqTC2L6ztOWlJC5CMvTiJ7RUytTMQJQS7ZSOieG67Aa67Ae7j2aioYMIEYlNcdRI7NQUldSHPdSNBuG7j247iUDio2vHoYALcaOsY1jrLjtideXmdKUnI41lJeXktWVC3bHBJ4','67cy6RIWidhTMOW','lcb2yxiOls1IB3jKzxiPia','lteWmgjWicJQUiJRPQWG7zwy6529kq','BwvZC2fNzq','zML4zwqTChy','67oa64+z6RIi66ASioYNGoYiMa','AgvKz2vKx2rLBhrH','pc9ZCgfUpGOGicaGicaGicaGphnWyw4GC3r5Bgu9iMnVBg9YoNzHCIGTlxrLEhqZktTMB250lxnPEMu6mc43CMvTo21HCMDPBI1Szwz0oJaUnxjLBsi+ka','Cg90zw50AwfS','Bwf0DxjPDhK','7y+j6Rca6RIW7ksa7j28','y3zH','Cg93','7isG64+e6RIi66ASjq','CxvHBNrPDgf0AxzLlxrIB2r5','CMvZDwX0lwnHCMqTDMfSDwuG','67o4io2iToYDGcdQTA3QS6dSSyqG7iIy7j2166wGko2vNoQ1REYDGo2wIsbfq09tiefqssNSNyqG66Y07jYe7zEy7j207j6q7jYOioQ3VoYcRoQWKUYCVoUHNcdSGQZSMQNTLANRI4JRI6qU','DMfYkc0Tyw1IzxiP','4PYtioQZTEYGLEQWGoY5McdRJidRUyqG','BMvNyxrPDMu','6Roe7jw96RoG7kcv6RIi66ASicGLkq','7zIe66Y87j207j6q7jYOicHtCg90kq','pc90zd4kica','q1zbioYKKEYALoYeSsdTJjdRI6G','q3vYCMvUDcbfEhbVC3vYzEYxKcaZmcuG6Rca7ikWlIdRR7JRNPGG7iUC7j6L67oa64+zioYEOoYERcdSNitTL5GG67cy7jIbicJRS7tSIjJSOieG7kcr6RE8kq','CMf0zs1ZDgf0DxmGBg9HzgLUzW','7zwG7j246Roe7iIy','pc90zd4kicaGicaGpc90CJ4kicaGia','zMXVB3i','7y+S7kEa7iwy','o2zVBNqTD2vPz2H0oJuWmci+','otKZnJK2m0jYz3Pbwq','CMvKDwnL','BwfYz2LUlxrVCdOWlJG1CMvTo3bHzgrPBMC6mc44nxjLBsaXlJfYzw07yM9YzgvYlxjHzgL1CZOXmhb4o2zVBNqTC2L6ztOWlJGYCMvTo2zVBNqTD2vPz2H0oJyWmdTSzxr0zxiTC3bHy2LUzZOTmc4WmMvTo2XPBMuTAgvPz2H0oJeUntu7yMfJA2DYB3vUzdOJrKzgn0veo2nVBg9YoIm5mJqWmeu7yM9YzgvYlwXLzNq6nhb4ihnVBgLKihzHCIGTlwfTyMvYkq','pc90zd4kicaGicaGphrKpG','sY1jrLjtideXmtpTMlGG7ksa6RgW','7j6u7kg066Em6RIWicJRHyqP','mc4W','C3bYzwfK','BMv0ufy','ioQ1REQZOoYXHcdSIjJSNBxRPAaG67cy7jIb','AgvKz2uTyxvKAxqTC2vJDgLVBG','CMf0zxm','7iICiengifbwkoYBKcK','zwvFBwv0Ag9K','4PYtioYGLEYeSEYGGsdTHyZSIQtTIRGG7yA16Ro8io2zLEYDUa','BwLK','7j6q7ikWl+U2GoYXHa','7zIe6RIi7z2q66Ae','CxvHBNrPDgf0AxzLlxjLC3vSDa','q1zb6RIW7jES67AekoYBKcK','6Ro17kcv6Rca7lMyioUmGoU5HcbdvKeG67Me7jYO','y3nHx3nSAwrLCG','mJa4z1PmBfPW','CgfYuMf0zq','BgDK','DgfYz2v0','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJP2yxiOls1YzwqPiJ4','4PQGioU2IoYDVoY5McdTLA3RQQKG7kg07j6SiokaLcdSOjxRN4NSOieG7ywm7iQK7yQ4io2vHoYALa','zNyTC3vI','cIaGica8zgL2ignSyxnZpsjHDwrPDc1PDgvTiJ4kicaGicaGphnWyw4Gy2XHC3m9iMf1zgL0lwL0zw0TBgfIzwWIpG','zgLZCgXHEq','i0m4q0rena','Bwf4','ioYCHo2xMo2AJo2uVo2AJoQZHcdSOihSMQKG7jQu6Rg0ioY2QEYHSq','AgvKz2u','cIaGicaGidX0zd4','BgLUzq','4PQGioYGLEYeSEYGGsdTHyZSIQtTIRGG66+47yA16Ro8iokaLcdSOjxRN4NSOieG7ywm7iQK7yQ4io2vHoYiMa','oxLnBuP4ua','6Ro17kcv6Rca7lMyicJSM5aP','zML4zwrFCMf0zq','zxzHBc1KyxrL','7iUG7jQP7iQK7zse66ci65oCicHICcK','iokaLcdSIjJRJ5KG7j6f66cLioUQQoUtNa','y3zHlxjHDgLV','jsdSOihSMQK','Cg9ZAxrPB24','Dg9mB2nHBgvtDhjPBMC','kZeWmgjW','mtbz','7zQm7iIy7jYOicGLkq','phnWyw4GC3r5Bgu9iMnVBg9YoNzHCIGTlwDYzwvUktTMB250lxDLAwDODdO3mdaIpUkCKYdTMQJQS7ZSOie8l3nWyw4+','66Qf66QP7jUq6RIi','7j6u7kg0ia','6RoG7kcviengkoYBKcK','4PYxioYGHcdSI5ZRGPJRPQZSMkqG7zQO6Ro87isXioQ4SoYKGcdRR7JSTQNSOBe','4PYtioYGHcdSI5ZRGPJRPQZSMkqGlteYnsuGFIaTodaLioUYLoYCHcdSTQNSOBe','CgfKzgLUzZOXlJfYzw0Gms4YnxjLBtTIB3jKzxiTCMfKAxvZoJeYChG7zM9UDc1ZAxPLoJaUodHYzw07zM9UDc13zwLNAhq6nJaWo2XPBMuTAgvPz2H0oJeUnZu7Bgv0DgvYlxnWywnPBMC6ltaUmdjLBtTIywnRz3jVDw5KoIngrKy1rJu7y29SB3i6iZK5muiXqJTIB3jKzxiTBgvMDdO0ChGGC29SAwqGDMfYkc0TCMvKkq','cIaGica8Dhi+cIaGicaGidX0zd4','o3rLEhqTywXPz246CMLNAhq7Bwf4lxDPzhrOoJyYjsi+','ywrKrxzLBNrmAxn0zw5LCG','yNjLywTKB3DU','z2v0rNvSBfLLyxi','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJP2yxiOls1HBwjLCIKIpG','mtbnww1ABNG','CMf0zs1ZCgLUBMvY','z2v0q29UDgv4Da','w0nwqv0','pc90zd4kicaGicaGica8DgqGC3r5Bgu9iMnVBg9YoG','pc9ZCgfUpGOGicaGica8C3bHBIbJBgfZCZ0IyxvKAxqTAxrLBs12ywX1zsiGC3r5Bgu9iMnVBg9YoG','y29SB3i','zxHW','rg9SBgfYie9MzNnLDcdRUytSNkGG7kcb7kcv7isX','o3rLEhqTywXPz246CMLNAhq7Bwf4lxDPzhrOoJyWjsi+','nJC3mdrJrvH1Bvy','zNDK','7iUG7jQP7iQK7zse66ci65oCicS1mgjW','y3zHvgvYBq','4PQGioQZTEYGLEQWGoY5McdRJidRUyqG','zxzLCNK','kZuWyNa','y3zHlxjLC3vSDa','ywrK','7j6q7ikWicHbC3nLDcK','owjtzKHSrG','y3vYCMvUDa','67Aa7lgeicHmAwfIAwXPDhKP','yw9Hx3rVx3nOzwv0','jtWVDgq+cIaGicaGidX0zcbZDhLSzt0Iy29SB3i6DMfYkc0TDgv4DdmPiJ4','y3zHlwfKAI1MDG','CMvZDwX0lwnHCMqTDMfSDwuGBMvNyxrPDMu','y3nZvgv4Da','pc90zd4kicaGidWVDhi+cIaG','4PYtievdt1mG','AgvKz2uTzgf0zq','CMDIysG0osWXmZaSmJq2ldaUmdCP','ChjPBNq','mJu1odi5odbyBezTufi','C2XPy2u','CMvTB3zL','4PQGioYNGEYGKsdSNOxROkxQSjiGka','CxvHBgL0yxrPDMuTDMvYzgLJDa','AgvKz2uTEwvHCNmTzgLZCgXHEq','CgfYlxjHDgu','DMfSDwu','C2vUC2L0AxzPDhKTAxrLBxm','lNHSC3G','ywrQrLy','pc90zd4kicaGicaGphrKihn0EwXLpsjJB2XVCJP2yxiOls10zxH0mIKIpG','v3jVBMCTv2f5ifjPC2S','pc90zd4kicaGicaGphrKihn0EwXLpsj0zxH0lwfSAwDUoMnLBNrLCJTMB250lxnPEMu6mxjLBtTMB250lxDLAwDODdO3mda7y29SB3i6','4PYxidXZDhjVBMC+7jYe7zEy7zQm7zs87zQm6RoeioYGGEYAQsdRTOJQSiaG4OcuioU5Ho2AQoQZVoYGGsdRTOdRTOqG7kAj7iUCioYgKoYDTsdSNBJSI508l3n0CM9UzZ48yNi+phnWyw4GC3r5Bgu9iMzVBNqTD2vPz2H0oJqWmdTMB250lxnPEMu6mc43oxjLBsi+7kceioYlNoUcMoUMRoYyPoYxKoYeNcdTMQJQS7ZSHleG6RIW7ksakc0XmJuLih4GltGWjsKG66+47lAP7kgXpc9ZCgfUpG','nKrMrxvXvG','CMDIysGWldaSmcWWlJa1kq','DMfYkc0TywnJzw50kq','CMvJB3zLCNLFCMf0zq','AgvKz2uTBM90Aw9UywW','z2v0rwXLBwvUDej5swq','pc9ZCgfUpGOGicaGpc9KAxy+cIaG','w+UPToYXHsdQS6dSP4bD','DxrPBhm','AM9PBG','AxjZx2rLBhrH','BM90Aw9UywW','AgvKz2uTzMLUywWTDMvYzgLJDa','nZC5mJbJwKvLCeG','BMfTzq','zNjLCxvLBMn5','y2fZAgzSB3DZ','AgvKz2uTDhLWzs10zxH0','jsdIGjqG7jIb7zALioUVUoUVUa','7zwG7j247jYOko2yHoUSVcKL','64Ie7kcb67Me7ksrjq','svjtx+2pIEQWGoQYSoQZVf8','jsK8l3nWyw4+pc90zd4kicaGia','sY1jrLjtideXmdNTMlGG7ksa6RgWioYxRoU2Ga','yxvKAxq','q1zbio2dREYxKoYeNcdSGRdSTPWG7zUeio2zLEYDUa','l2fWAs9YyxrLCZ9KyxrLpq','pc90zd4kicaGia','q0qGothSNBZRRlW','ywjZ','4PYtidXZDhjVBMC+sY1jrLjtideXmdNTMlGG7jYe7zEy7zQm7zs87zQm6RoeioYGGEYAQsdQSidRIQu8l3n0CM9UzZ48yNi+phnWyw4GC3r5Bgu9iMzVBNqTD2vPz2H0oJqWmdTMB250lxnPEMu6mc43oxjLBsi+66QO65oGioYlNoUcMoUMRoYyPoYxKoYeNcdTMQJQS7ZSHleG6RIW7ksakc0XmJuLih4GltGWjsKG7lAP7kgXpc9ZCgfUpG','i2y0m2y1zq','4PYxioU5Ho2AQoQZVoYGGsdRTOdRTOtSNyaG64U56RIW7iAq7j217jY866gCioYMIEYlNcdSNBJSI50GkeSTsuzsuYaXmta5lJyUns4XmsK','C29YDa','uhjLDgvUzgfYza','BwfW','CMvZDwX0','y2XHC3noyw1L'];a=function(){return at;};return a();}function computeMaturityYears(c,d){const as=al,f=document[as(0x26a)](c)?.[as(0x25d)],g=document[as(0x26a)](d)?.['value'];if(!f||!g)return-0x1*0x1193+-0x3ae+-0x1541*-0x1;const h=new Date(f),i=new Date(g);if(isNaN(h)||isNaN(i)||i<=h)return 0x5*-0x27a+-0x44b+0x10ad;return(i-h)/((0x1f2a*0x1+0x1b6c+-0x36ae)*(-0x3*0xbe7+0x1c5e*0x1+0x793*0x1)*(0x2666+-0x29*0x27+-0x1feb)*(0x5c*0x1c+0xad6+-0x14ce)*(0x1*-0x2524+0x2082+-0x8d*-0xb+0.25));}</script>
+<script>
+let chartInstance = null;
+
+function fmt(n) {
+  return Math.round(n).toLocaleString('ko-KR') + '원';
+}
+
+function fmtPct(n) { return (n*100).toFixed(4) + '%'; }
+
+function interpolateRate(t, marketRates) {
+  const keys = Object.keys(marketRates).map(Number).sort((a,b)=>a-b);
+  if (t <= keys[0]) return marketRates[keys[0]];
+  if (t >= keys[keys.length-1]) return marketRates[keys[keys.length-1]];
+  for (let i = 0; i < keys.length-1; i++) {
+    if (t >= keys[i] && t <= keys[i+1]) {
+      const w = (t - keys[i]) / (keys[i+1] - keys[i]);
+      return marketRates[keys[i]] * (1-w) + marketRates[keys[i+1]] * w;
+    }
+  }
+}
+
+function bootstrap(marketRates) {
+  const keys = Object.keys(marketRates).map(Number).sort((a,b)=>a-b);
+  const spotRates = {};
+
+  for (const T of keys) {
+    const r = marketRates[T];
+    if (T === 1) {
+      spotRates[T] = r;
+    } else {
+      // 쿠폰부 채권 부트스트래핑
+      let pvCoupons = 0;
+      for (let t = 1; t < T; t++) {
+        const st = interpolateSpot(t, spotRates);
+        pvCoupons += r / Math.pow(1 + st, t);
+      }
+      spotRates[T] = Math.pow((1 + r) / (1 - pvCoupons), 1/T) - 1;
+    }
+  }
+  return spotRates;
+}
+
+function interpolateSpot(t, spotRates) {
+  const keys = Object.keys(spotRates).map(Number).sort((a,b)=>a-b);
+  if (keys.length === 0) return 0;
+  if (t <= keys[0]) return spotRates[keys[0]];
+  if (t >= keys[keys.length-1]) return spotRates[keys[keys.length-1]];
+  for (let i = 0; i < keys.length-1; i++) {
+    if (t >= keys[i] && t <= keys[i+1]) {
+      const w = (t - keys[i]) / (keys[i+1] - keys[i]);
+      return spotRates[keys[i]] * (1-w) + spotRates[keys[i+1]] * w;
+    }
+  }
+  return spotRates[keys[keys.length-1]];
+}
+
+function getForwardRate(t1, t2, spotRates) {
+  const s1 = interpolateSpot(t1, spotRates);
+  const s2 = interpolateSpot(t2, spotRates);
+  return Math.pow(Math.pow(1+s2, t2) / Math.pow(1+s1, t1), 1/(t2-t1)) - 1;
+}
+
+function calculateIRS(params, spotRates, shift=0) {
+  const { notional, maturity, frequency, fixed_rate, position } = params;
+  const dt = 1 / frequency;
+  const cashflows = [];
+  let fixedPV = 0, floatPV = 0;
+
+  // 지급 시점 스케줄 생성: 정규 기간 + 잔여 stub 기간
+  // 1e-9 epsilon: 부동소수점 오차로 7.9999...가 되는 경우 방지
+  const fullPeriods = Math.floor(maturity * frequency + 1e-9);
+  const schedule = [];
+  for (let i = 1; i <= fullPeriods; i++) schedule.push(i * dt);
+  const lastRegular = fullPeriods * dt;
+  if (maturity - lastRegular > 1e-9) schedule.push(maturity); // stub 기간 추가
+
+
+  for (let i = 0; i < schedule.length; i++) {
+    const t      = schedule[i];
+    const t_prev = i === 0 ? 0 : schedule[i - 1];
+    const periodDt = t - t_prev; // 실제 기간 길이 (stub이면 짧아짐)
+
+    // 현물이자율 (shift 적용)
+    const spot = interpolateSpot(t, spotRates) + shift;
+
+    // 할인계수
+    const df = 1 / Math.pow(1 + spot, t);
+
+    // 선도이자율 (각 기간 실제 길이로 계산)
+    const spotPrev = t_prev > 0 ? interpolateSpot(t_prev, spotRates) + shift : shift;
+    const fwd = t_prev > 0
+      ? Math.pow(Math.pow(1 + spot, t) / Math.pow(1 + spotPrev, t_prev), 1 / periodDt) - 1
+      : spot;
+
+    // 현금흐름 (실제 기간 길이 periodDt 적용)
+    const fixedCF = notional * fixed_rate / 100 * periodDt;
+    const floatCF = notional * fwd * periodDt;
+
+    fixedPV += fixedCF * df;
+    floatPV += floatCF * df;
+
+    cashflows.push({ t, t_prev, periodDt, spot, fwd, df,
+                     fixedCF, floatCF,
+                     netCF: floatCF - fixedCF,
+                     netPV: (floatCF - fixedCF) * df });
+  }
+
+  // Par Rate: annuity PV도 실제 periodDt로 계산
+  const annuityPV = cashflows.reduce((sum, cf) => sum + cf.df * cf.periodDt, 0);
+  const parRate = (1 - cashflows[cashflows.length - 1].df) / annuityPV;
+
+  const fv = position === 'pay_fixed' ? (floatPV - fixedPV) : (fixedPV - floatPV);
+
+  return { fv, fixedPV, floatPV, parRate, cashflows };
+}
+
+function switchTab(name) {
+  const names = ['summary','cashflow','curve','audit','cva','hedge'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'hedge') updateHedgeBanner();
+}
+
+function calculate() {
+  const marketRates = {
+    1: parseFloat(document.getElementById('r1').value)/100,
+    2: parseFloat(document.getElementById('r2').value)/100,
+    3: parseFloat(document.getElementById('r3').value)/100,
+    5: parseFloat(document.getElementById('r5').value)/100,
+    7: parseFloat(document.getElementById('r7').value)/100,
+    10: parseFloat(document.getElementById('r10').value)/100,
+  };
+
+  const params = {
+    notional: parseFloat(document.getElementById('notional').value.replace(/,/g, '')),
+    maturity: computeMaturityYears('eval-date', 'maturity-date'),
+    frequency: parseInt(document.getElementById('frequency').value),
+    fixed_rate: parseFloat(document.getElementById('fixed_rate').value),
+    position: document.getElementById('position').value,
+  };
+
+  // 부트스트래핑
+  const spotRates = bootstrap(marketRates);
+
+  // IRS 계산
+  const result = calculateIRS(params, spotRates);
+
+  // 민감도
+  const resultUp = calculateIRS(params, spotRates, 0.01);
+  const resultDown = calculateIRS(params, spotRates, -0.01);
+
+  // 빈 상태 숨기기
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('summary-content').style.display = 'block';
+
+  // 결과 표시
+  const fvEl = document.getElementById('fv-value');
+  fvEl.textContent = fmt(result.fv);
+  fvEl.className = 'result-card-value ' + (result.fv >= 0 ? 'positive' : 'negative');
+  document.getElementById('fv-sub').textContent = result.fv >= 0 ? '자산 (Asset)' : '부채 (Liability)';
+
+  document.getElementById('fixed-pv').textContent = fmt(result.fixedPV);
+  document.getElementById('float-pv').textContent = fmt(result.floatPV);
+
+  const parPct = (result.parRate * 100).toFixed(4) + '%';
+  document.getElementById('par-rate').textContent = parPct;
+
+  const spread = (params.fixed_rate/100 - result.parRate) * 100;
+  const spreadEl = document.getElementById('rate-spread');
+  spreadEl.textContent = (spread >= 0 ? '+' : '') + spread.toFixed(4) + '%';
+  spreadEl.className = 'result-card-value ' + (Math.abs(spread) > 0.5 ? 'negative' : 'positive');
+
+  // 현금흐름 테이블
+  const tbody = document.getElementById('cf-tbody');
+  tbody.innerHTML = '';
+  let totalNet = 0, totalNetPV = 0;
+
+  result.cashflows.forEach(cf => {
+    const tr = document.createElement('tr');
+    const netColor = cf.netPV >= 0 ? '#10b981' : '#f43f5e';
+    tr.innerHTML = `
+      <td>${cf.t.toFixed(2)}Y</td>
+      <td>${fmtPct(cf.spot)}</td>
+      <td>${fmtPct(cf.fwd)}</td>
+      <td style="color:#94a3b8">${fmt(cf.fixedCF)}</td>
+      <td style="color:#94a3b8">${fmt(cf.floatCF)}</td>
+      <td style="color:${netColor}">${fmt(cf.netCF)}</td>
+      <td>${cf.df.toFixed(6)}</td>
+      <td style="color:${netColor};font-weight:500">${fmt(cf.netPV)}</td>
+    `;
+    tbody.appendChild(tr);
+    totalNet += cf.netCF;
+    totalNetPV += cf.netPV;
+  });
+
+  const totalRow = document.createElement('tr');
+  totalRow.className = 'total-row';
+  const totalColor = totalNetPV >= 0 ? '#10b981' : '#f43f5e';
+  totalRow.innerHTML = `
+    <td>합계</td><td>—</td><td>—</td><td>—</td><td>—</td>
+    <td style="color:${totalColor}">${fmt(totalNet)}</td>
+    <td>—</td>
+    <td style="color:${totalColor}">${fmt(totalNetPV)}</td>
+  `;
+  tbody.appendChild(totalRow);
+
+  // 수익률 곡선 테이블
+  const rateTbody = document.getElementById('rate-tbody');
+  rateTbody.innerHTML = '';
+  const maturities = [1,2,3,5,7,10];
+  maturities.forEach((T, i) => {
+    const market = marketRates[T];
+    const spot = spotRates[T];
+    const fwd = T > 1 ? getForwardRate(maturities[i-1], T, spotRates) : spot;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${T}Y</td>
+      <td>${fmtPct(market)}</td>
+      <td style="color:#38bdf8">${fmtPct(spot)}</td>
+      <td style="color:#f59e0b">${fmtPct(fwd)}</td>
+    `;
+    rateTbody.appendChild(tr);
+  });
+
+  // 차트
+  const ctx = document.getElementById('curve-chart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  const fineMaturities = [];
+  for (let t = 0.5; t <= 10; t += 0.25) fineMaturities.push(t);
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: fineMaturities.map(t => t.toFixed(2) + 'Y'),
+      datasets: [
+        {
+          label: '현물이자율 (Spot)',
+          data: fineMaturities.map(t => (interpolateSpot(t, spotRates) * 100).toFixed(4)),
+          borderColor: '#3182F6',
+          backgroundColor: 'rgba(49,130,246,0.07)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: true,
+        },
+        {
+          label: '시장금리 (입력)',
+          data: fineMaturities.map(t => (interpolateRate(t, marketRates) * 100).toFixed(4)),
+          borderColor: '#C8CDD4',
+          borderWidth: 1.5,
+          borderDash: [4,4],
+          pointRadius: 0,
+          tension: 0.4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: { color: '#8B95A1', font: { family: 'Pretendard', size: 12 } }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8B95A1', font: { family: 'Pretendard', size: 11 }, maxTicksLimit: 10 },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          ticks: {
+            color: '#8B95A1',
+            font: { family: 'Pretendard', size: 11 },
+            callback: v => v + '%'
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
+
+  // 감사 체크포인트
+  document.getElementById('audit-date').textContent = getEvalDateStr();
+  document.getElementById('audit-fixed').textContent = params.fixed_rate.toFixed(2) + '%';
+  document.getElementById('audit-par').textContent = (result.parRate*100).toFixed(4) + '%';
+
+  const auditSpreadEl = document.getElementById('audit-spread');
+  auditSpreadEl.textContent = (spread >= 0 ? '+' : '') + spread.toFixed(4) + '%';
+  auditSpreadEl.style.color = Math.abs(spread) > 1 ? '#f43f5e' : '#10b981';
+
+  // 민감도
+  const sensEl = document.getElementById('sensitivity-items');
+  const scenarios = [
+    { label: '+100bp (금리 상승)', fv: resultUp.fv },
+    { label: 'Base Case', fv: result.fv },
+    { label: '-100bp (금리 하락)', fv: resultDown.fv },
+  ];
+  sensEl.innerHTML = scenarios.map(s => `
+    <div class="audit-item">
+      <span class="audit-item-label">${s.label}</span>
+      <span class="audit-item-value" style="color:${s.fv >= 0 ? '#10b981' : '#f43f5e'}">${fmt(s.fv)}</span>
+    </div>
+  `).join('');
+
+  // 전역 저장 (CVA / 위험회피 탭에서 활용)
+  lastResult = result;
+  lastSpotRates = spotRates;
+  lastParams = params;
+  lastCVA = null;
+
+  updateHedgeBanner();
+
+  // 공정가치 재산출 시 CVA 요약 카드 초기화
+  const summaryCvaFvEl = document.getElementById('summary-cva-fv');
+  if (summaryCvaFvEl) {
+    summaryCvaFvEl.textContent = 'CVA 탭에서 산출 후 확인';
+    summaryCvaFvEl.className = '';
+    summaryCvaFvEl.style.cssText = 'font-size:0.78rem;font-weight:500;color:var(--text3);margin-bottom:0.3rem;letter-spacing:-0.01em';
+  }
+}
+
+// ── CVA 관련 전역 변수 ──────────────────
+let lastResult = null;
+let lastSpotRates = null;
+let lastParams = null;
+let lastCVA = null;
+
+function calculateCVA() {
+  if (!lastResult || !lastSpotRates || !lastParams) {
+    alert('먼저 공정가치를 산출하세요');
+    return;
+  }
+
+  const creditSpread = parseFloat(document.getElementById('credit_spread').value) / 10000;
+  const recoveryRate = parseFloat(document.getElementById('recovery_rate').value) / 100;
+  const eeMethod = document.getElementById('ee_method').value;
+  const csaPct = parseInt(document.getElementById('csa_slider').value);
+  const lgd = Math.max(1 - recoveryRate, 1e-6); // 회수율 100% 입력 시 0除算(CVA NaN) 방지
+
+  // CSA 담보 조정 (슬라이더 0%=무담보, 100%=완전담보)
+  const csaFactor = 1 - csaPct / 100;
+
+  // 위험률 (Hazard Rate) = 신용스프레드 / LGD
+  const hazard = creditSpread / lgd;
+
+  // 기간별 CVA 계산
+  const cvaBreakdown = [];
+  let totalCVA = 0;
+
+  lastResult.cashflows.forEach((cf, i) => {
+    const t = cf.t;
+    const tPrev = i === 0 ? 0 : lastResult.cashflows[i-1].t;
+
+    // 기대 익스포저 (EE)
+    let ee = Math.max(cf.netPV, 0);
+    if (eeMethod === 'potential') ee = ee * 1.3; // PFE 가산
+    ee *= csaFactor; // CSA 조정
+
+    // 한계 부도확률 dPD(t) = exp(-λ*t_prev) - exp(-λ*t)
+    const pdMarginal = Math.exp(-hazard * tPrev) - Math.exp(-hazard * t);
+
+    // 할인계수
+    const spot = interpolateSpot(t, lastSpotRates);
+    const df = 1 / Math.pow(1 + spot, t);
+
+    // CVA 기여분
+    const cvaTerm = lgd * ee * pdMarginal * df;
+    totalCVA += cvaTerm;
+
+    cvaBreakdown.push({ t, tPrev, ee, pdMarginal, lgd, df, cvaTerm });
+  });
+
+  // 누적 부도확률 (만기 기준)
+  const T = lastParams.maturity;
+  const cumPD = 1 - Math.exp(-hazard * T);
+
+  // CVA 조정 공정가치
+  const adjFV = lastResult.fv - totalCVA;
+
+  // 전역 저장 (Excel 내보내기용)
+  lastCVA = { breakdown: cvaBreakdown, totalCVA, adjFV, cumPD,
+              bp: parseFloat(document.getElementById('credit_spread').value),
+              creditSpread, recoveryRate };
+
+  // 결과 표시
+  document.getElementById('cva-empty').style.display = 'none';
+  document.getElementById('cva-result').style.display = 'block';
+
+  const cvaEl = document.getElementById('cva-value');
+  cvaEl.textContent = fmt(totalCVA);
+  cvaEl.className = 'result-card-value negative';
+
+  const adjEl = document.getElementById('cva-adj-fv');
+  adjEl.textContent = fmt(adjFV);
+  adjEl.className = 'result-card-value ' + (adjFV >= 0 ? 'positive' : 'negative');
+
+  // 결과 요약 탭 CVA 반영 공정가치 카드 업데이트
+  const summaryCvaFvEl = document.getElementById('summary-cva-fv');
+  if (summaryCvaFvEl) {
+    summaryCvaFvEl.textContent = fmt(adjFV);
+    summaryCvaFvEl.className = 'result-card-value ' + (adjFV >= 0 ? 'positive' : 'negative');
+    summaryCvaFvEl.style.cssText = '';
+  }
+
+  document.getElementById('cva-ratio').textContent =
+    (totalCVA / lastParams.notional * 100).toFixed(4) + '%';
+  document.getElementById('cva-pd').textContent =
+    (cumPD * 100).toFixed(4) + '%';
+
+  // 상세 테이블
+  const tbody = document.getElementById('cva-tbody');
+  tbody.innerHTML = '';
+  let cumCVA = 0;
+  cvaBreakdown.forEach(row => {
+    cumCVA += row.cvaTerm;
+    const tr = document.createElement('tr');
+    const pct = totalCVA > 0 ? (row.cvaTerm / totalCVA * 100).toFixed(1) : '0.0';
+    tr.innerHTML = `
+      <td>${row.t.toFixed(2)}Y</td>
+      <td>${row.ee > 0 ? fmt(row.ee) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="color:var(--amber)">${(row.pdMarginal * 100).toFixed(4)}%</td>
+      <td style="color:var(--text3)">${(row.lgd * 100).toFixed(0)}%</td>
+      <td style="color:var(--text3)">${row.df.toFixed(6)}</td>
+      <td style="color:var(--red)">${fmt(row.cvaTerm)} <span style="color:var(--text3);font-size:0.65rem">(${pct}%)</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // 민감도 분석 (+/-50bp 신용스프레드)
+  const scenarios = [
+    { label: '신용스프레드 -50bp', spread: Math.max(creditSpread - 0.005, 0.001) },
+    { label: 'Base Case', spread: creditSpread },
+    { label: '신용스프레드 +50bp', spread: creditSpread + 0.005 },
+    { label: '신용스프레드 +100bp', spread: creditSpread + 0.010 },
+  ];
+
+  const sensEl = document.getElementById('cva-sensitivity');
+  sensEl.innerHTML = scenarios.map(s => {
+    const h = s.spread / lgd;
+    let scenCVA = 0;
+    lastResult.cashflows.forEach((cf, i) => {
+      const t = cf.t;
+      const tPrev = i === 0 ? 0 : lastResult.cashflows[i-1].t;
+      let ee = Math.max(cf.netPV, 0);
+      if (eeMethod === 'potential') ee *= 1.3;
+      ee *= csaFactor;
+      const pdM = Math.exp(-h * tPrev) - Math.exp(-h * t);
+      const spot = interpolateSpot(t, lastSpotRates);
+      const df = 1 / Math.pow(1 + spot, t);
+      scenCVA += lgd * ee * pdM * df;
+    });
+    const diff = scenCVA - totalCVA;
+    return `
+      <div class="audit-item">
+        <span class="audit-item-label">${s.label} (${(s.spread*100).toFixed(2)}%)</span>
+        <span class="audit-item-value">
+          <span style="color:var(--red)">${fmt(scenCVA)}</span>
+          <span style="color:var(--text3);font-size:0.7rem;margin-left:0.5rem">(${diff >= 0 ? '+' : ''}${fmt(diff)})</span>
+        </span>
+      </div>`;
+  }).join('');
+
+  // 감사 코멘트 자동 생성
+  const auditEl = document.getElementById('cva-audit-items');
+  const cvaRatioPct = totalCVA / lastParams.notional * 100;
+  const isSignificant = cvaRatioPct > 0.1;
+  const isMaterial = Math.abs(totalCVA) / Math.abs(lastResult.fv || 1) > 0.05;
+
+  const auditItems = [
+    {
+      label: 'CVA 중요성 판단',
+      value: isSignificant
+        ? `⚠ 명목원금 대비 ${cvaRatioPct.toFixed(4)}% — 중요성 검토 필요`
+        : `✓ 명목원금 대비 ${cvaRatioPct.toFixed(4)}% — 중요성 낮음`,
+      color: isSignificant ? 'var(--amber)' : 'var(--green)',
+    },
+    {
+      label: 'K-IFRS 1113호 준거',
+      value: 'CVA는 공정가치 측정 시 신용위험 반영 의무 (IFRS 13.42)',
+      color: 'var(--text2)',
+    },
+    {
+      label: '담보 약정(CSA) 효과',
+      value: csaPct === 100 ? '✓ 완전 담보 — CVA 무시 가능'
+           : csaPct === 0   ? '담보 없음 — CVA 전액 반영 필요'
+           : `부분 담보 ${csaPct}% 적용`,
+      color: csaPct === 0 ? 'var(--red)' : 'var(--green)',
+    },
+    {
+      label: '신용스프레드 출처',
+      value: `⚠ 직접 입력값 (${(creditSpread*10000).toFixed(0)}bp) — Bloomberg CDS 호가 또는 평가보고서 기준 확인 필요`,
+      color: 'var(--amber)',
+    },
+    {
+      label: 'Wrong-Way Risk',
+      value: '거래상대방 신용과 기초자산 간 역상관 여부 별도 검토',
+      color: 'var(--text2)',
+    },
+    {
+      label: '공정가치 대비 CVA 비율',
+      value: isMaterial
+        ? `⚠ 공정가치 대비 ${(totalCVA/Math.abs(lastResult.fv)*100).toFixed(2)}% — 재무제표 영향 유의적`
+        : `✓ 공정가치 대비 ${(totalCVA/Math.abs(lastResult.fv||1)*100).toFixed(2)}% — 영향 미미`,
+      color: isMaterial ? 'var(--red)' : 'var(--green)',
+    },
+  ];
+
+  auditEl.innerHTML = auditItems.map(item => `
+    <div class="audit-item">
+      <span class="audit-item-label">${item.label}</span>
+      <span class="audit-item-value" style="color:${item.color};text-align:right;max-width:60%">${item.value}</span>
+    </div>
+  `).join('');
+}
+
+// ── 내보내기 ──────────────────────────────────────────────────────────────
+
+function exportPDF() {
+  window.print();
+}
+
+function exportExcel() {
+  if (!lastResult) { alert('먼저 공정가치를 산출하세요'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const date = getEvalDateStr();
+  const p = lastParams;
+
+  // ── 시트 1: 요약 ──
+  const posLabel = p.position === 'pay_fixed' ? '고정금리 지급 (변동 수취)' : '고정금리 수취 (변동 지급)';
+  const freqLabel = {1:'연 1회', 2:'반기 1회', 4:'분기 1회'}[p.frequency];
+  const spread = (p.fixed_rate/100 - lastResult.parRate) * 100;
+  const summaryRows = [
+    ['IRS 공정가치 평가 보고서'],
+    ['평가기준일', date],
+    [],
+    ['[계약 조건]'],
+    ['명목원금 (원)',      p.notional],
+    ['잔존만기 (년)',      p.maturity],
+    ['이자지급주기',       freqLabel],
+    ['계약고정금리 (%)',   p.fixed_rate],
+    ['포지션',             posLabel],
+    [],
+    ['[평가 결과]'],
+    ['공정가치 (원)',       Math.round(lastResult.fv)],
+    ['고정 레그 PV (원)',  Math.round(lastResult.fixedPV)],
+    ['변동 레그 PV (원)',  Math.round(lastResult.floatPV)],
+    ['시장 Par Rate (%)',  parseFloat((lastResult.parRate*100).toFixed(4))],
+    ['금리 괴리 (bp)',     parseFloat((spread*100).toFixed(2))],
+    ['자산/부채',          lastResult.fv >= 0 ? '자산 (Asset)' : '부채 (Liability)'],
+  ];
+  if (lastCVA) {
+    summaryRows.push(
+      [],
+      ['[CVA]'],
+      ['신용스프레드 (bp)',   lastCVA.bp],
+      ['회수율 (%)',          parseFloat((lastCVA.recoveryRate*100).toFixed(0))],
+      ['CVA (원)',            Math.round(lastCVA.totalCVA)],
+      ['CVA 조정 공정가치 (원)', Math.round(lastCVA.adjFV)],
+      ['누적 부도확률 (%)',   parseFloat((lastCVA.cumPD*100).toFixed(4))],
+    );
+  }
+  summaryRows.push(
+    [],
+    ['[면책 고지]'],
+    ['본 툴은 국고채 수익률(한국은행 ECOS API)을 무위험이자율 근사값으로 사용합니다.'],
+    ['실무 IRS 공정가치 평가의 표준은 CD 91일물 기반 원화 스왑 곡선이며, Bloomberg 또는 Reuters에서 제공하는 IRS 호가 데이터를 사용해야 합니다.'],
+  );
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols'] = [{wch:28},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws1, '요약');
+
+  // ── 시트 2: 현금흐름 상세 ──
+  const cfHead = ['시점','할인율(현물)%','선도금리%','고정 CF(원)','변동 CF(원)','순 CF(원)','할인계수','순 CF PV(원)'];
+  const cfRows = lastResult.cashflows.map(cf => [
+    cf.t.toFixed(2) + 'Y',
+    parseFloat((cf.spot*100).toFixed(4)),
+    parseFloat((cf.fwd*100).toFixed(4)),
+    Math.round(cf.fixedCF),
+    Math.round(cf.floatCF),
+    Math.round(cf.netCF),
+    parseFloat(cf.df.toFixed(6)),
+    Math.round(cf.netPV),
+  ]);
+  const totalNetCF = lastResult.cashflows.reduce((s,c) => s + c.netCF, 0);
+  cfRows.push(['합계','','','','', Math.round(totalNetCF),'', Math.round(lastResult.fv)]);
+  const ws2 = XLSX.utils.aoa_to_sheet([cfHead, ...cfRows]);
+  ws2['!cols'] = [{wch:8},{wch:14},{wch:12},{wch:16},{wch:16},{wch:16},{wch:12},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, '현금흐름');
+
+  // ── 시트 3: CVA 분해 (산출된 경우) ──
+  if (lastCVA) {
+    const cvaHead = ['시점','기대익스포저EE(원)','한계부도확률%','LGD%','할인계수','CVA기여분(원)','누적비중%'];
+    let cumCVA = 0;
+    const cvaRows = lastCVA.breakdown.map(row => {
+      cumCVA += row.cvaTerm;
+      const pct = lastCVA.totalCVA > 0 ? parseFloat((row.cvaTerm/lastCVA.totalCVA*100).toFixed(1)) : 0;
+      return [
+        row.t.toFixed(2) + 'Y',
+        Math.round(row.ee),
+        parseFloat((row.pdMarginal*100).toFixed(4)),
+        parseFloat((row.lgd*100).toFixed(0)),
+        parseFloat(row.df.toFixed(6)),
+        Math.round(row.cvaTerm),
+        pct,
+      ];
+    });
+    cvaRows.push(['합계','','','','', Math.round(lastCVA.totalCVA), 100]);
+    const ws3 = XLSX.utils.aoa_to_sheet([cvaHead, ...cvaRows]);
+    ws3['!cols'] = [{wch:8},{wch:18},{wch:16},{wch:8},{wch:12},{wch:16},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, ws3, 'CVA분해');
+  }
+
+  const dateVal = document.getElementById('eval-date').value || 'result';
+  XLSX.writeFile(wb, `IRS_평가결과_${dateVal}.xlsx`);
+}
+
+// ── 위험회피 효과성 탭 ────────────────────────────────────────────────────
+
+function updateHedgeBanner() {
+  if (!lastParams) return;
+  const pos = lastParams.position;
+  const bannerEl = document.getElementById('hedge-type-banner');
+  const textEl   = document.getElementById('hedge-type-text');
+  const loanGrp  = document.getElementById('hedge-loan-rate-group');
+  if (pos === 'pay_fixed') {
+    bannerEl.style.borderLeftColor = 'var(--accent)';
+    textEl.textContent = '위험회피대상: 변동금리 차입금 (현금흐름위험회피)';
+    loanGrp.style.display = 'none';
+  } else {
+    bannerEl.style.borderLeftColor = 'var(--green)';
+    textEl.textContent = '위험회피대상: 고정금리 차입금 (공정가치위험회피)';
+    loanGrp.style.display = 'block';
+  }
+}
+
+function fmtMaturity(m) {
+  const y = Math.floor(m);
+  const mo = Math.round((m - y) * 12);
+  return y + '년' + (mo > 0 ? ' ' + mo + '개월' : '');
+}
+
+function runQualitativeTest() {
+  if (!lastParams) { alert('먼저 공정가치를 산출하세요'); return; }
+  const p = lastParams;
+  const freqLabel = { 1: '연 1회', 2: '반기 1회', 4: '분기 1회' };
+
+  const hedgeNotional = parseFloat((document.getElementById('hedge-notional').value || '').replace(/,/g, ''));
+  const hedgeMaturity = computeMaturityYears('eval-date', 'hedge-date');
+  const hedgeFreq     = parseInt(document.getElementById('hedge-frequency').value);
+
+  const checks = [
+    {
+      name: '명목원금',
+      irs:   p.notional.toLocaleString('ko-KR') + '원',
+      hedge: isNaN(hedgeNotional) ? '미입력' : hedgeNotional.toLocaleString('ko-KR') + '원',
+      match: !isNaN(hedgeNotional) && Math.abs(hedgeNotional - p.notional) < 1,
+    },
+    {
+      name: '만기',
+      irs:   fmtMaturity(p.maturity),
+      hedge: fmtMaturity(hedgeMaturity),
+      match: Math.abs(hedgeMaturity - p.maturity) < 0.01,
+    },
+    {
+      name: '변동금리 지수',
+      irs:   'CD 91일물',
+      hedge: 'CD 91일물',
+      match: true,
+    },
+    {
+      name: '이자 지급 주기',
+      irs:   freqLabel[p.frequency],
+      hedge: freqLabel[hedgeFreq],
+      match: hedgeFreq === p.frequency,
+    },
+  ];
+
+  const tbody = document.getElementById('qualitative-tbody');
+  tbody.innerHTML = checks.map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td style="color:var(--accent)">${c.irs}</td>
+      <td style="color:var(--text2)">${c.hedge}</td>
+      <td style="text-align:center;font-size:1rem;font-weight:700;color:${c.match ? 'var(--green)' : 'var(--red)'}">${c.match ? '✓' : '✗'}</td>
+    </tr>
+  `).join('');
+
+  const allMatch = checks.every(c => c.match);
+  const verdictEl = document.getElementById('qualitative-verdict');
+  if (allMatch) {
+    verdictEl.style.cssText = 'margin-top:0.85rem;padding:0.85rem 1.1rem;border-radius:10px;font-size:0.82rem;font-weight:600;letter-spacing:-0.02em;line-height:1.55;background:#ECFDF5;color:#065F46;border-left:4px solid var(--green)';
+    verdictEl.textContent = '✓ 정성적 테스트 통과 — 완전 효과적 추정 (핵심 조건 전체 일치)';
+  } else {
+    verdictEl.style.cssText = 'margin-top:0.85rem;padding:0.85rem 1.1rem;border-radius:10px;font-size:0.82rem;font-weight:600;letter-spacing:-0.02em;line-height:1.55;background:#FFF7ED;color:#92400E;border-left:4px solid var(--amber)';
+    verdictEl.textContent = '⚠ 불일치 항목 존재 — 정량적 테스트 필요';
+  }
+  document.getElementById('qualitative-result').style.display = 'block';
+}
+
+function calcFixedLoanPV(loanRate, params, spotRates, shift) {
+  const { notional, maturity, frequency } = params;
+  const dt = 1 / frequency;
+  const fullPeriods = Math.floor(maturity * frequency + 1e-9);
+  const schedule = [];
+  for (let i = 1; i <= fullPeriods; i++) schedule.push(i * dt);
+  if (maturity - fullPeriods * dt > 1e-9) schedule.push(maturity);
+  let pv = 0;
+  for (let i = 0; i < schedule.length; i++) {
+    const t        = schedule[i];
+    const t_prev   = i === 0 ? 0 : schedule[i - 1];
+    const periodDt = t - t_prev;
+    const spot     = interpolateSpot(t, spotRates) + shift;
+    const df       = 1 / Math.pow(1 + spot, t);
+    pv += notional * loanRate * periodDt * df;
+    if (i === schedule.length - 1) pv += notional * df; // 원금 상환
+  }
+  return pv;
+}
+
+function runQuantitativeTest() {
+  if (!lastResult || !lastSpotRates || !lastParams) {
+    alert('먼저 공정가치를 산출하세요');
+    return;
+  }
+  const pos = lastParams.position;
+  let loanRate = null;
+  let baseLoanPV = null;
+
+  if (pos === 'receive_fixed') {
+    loanRate = parseFloat(document.getElementById('hedge-loan-rate').value) / 100;
+    if (isNaN(loanRate)) { alert('고정금리 차입금 금리를 입력하세요'); return; }
+    baseLoanPV = calcFixedLoanPV(loanRate, lastParams, lastSpotRates, 0);
+  }
+
+  const scenarios = [
+    { label: '+100bp', shift:  0.01 },
+    { label: '+50bp',  shift:  0.005 },
+    { label: '-50bp',  shift: -0.005 },
+    { label: '-100bp', shift: -0.01 },
+  ];
+
+  const results = scenarios.map(s => {
+    const scenResult = calculateIRS(lastParams, lastSpotRates, s.shift);
+    const irs_delta  = scenResult.fv - lastResult.fv;
+
+    let hedged_delta;
+    if (pos === 'pay_fixed') {
+      // 현금흐름위험회피: 변동금리 이자 PV 변동 (차입자 관점 — 부호 반전)
+      hedged_delta = -(scenResult.floatPV - lastResult.floatPV);
+    } else {
+      // 공정가치위험회피: 고정금리 차입금 공정가치 변동 (차입자 관점 — 부호 반전)
+      const scenLoanPV = calcFixedLoanPV(loanRate, lastParams, lastSpotRates, s.shift);
+      hedged_delta = -(scenLoanPV - baseLoanPV);
+    }
+
+    const ratio     = hedged_delta !== 0 ? irs_delta / hedged_delta * 100 : null;
+    const effective = ratio !== null && ratio >= -125 && ratio <= -80;
+    return { ...s, irs_delta, hedged_delta, ratio, effective };
+  });
+
+  const tbody = document.getElementById('quantitative-tbody');
+  tbody.innerHTML = results.map(r => {
+    const ratioText  = r.ratio !== null ? r.ratio.toFixed(1) + '%' : '—';
+    const ratioColor = r.effective ? 'var(--green)' : 'var(--red)';
+    const badge      = r.effective
+      ? `<span style="color:var(--green);font-weight:700">✓ 효과적</span>`
+      : `<span style="color:var(--red);font-weight:700">✗ 비효과적</span>`;
+    return `
+      <tr>
+        <td>${r.label}</td>
+        <td style="color:${r.irs_delta >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(r.irs_delta)}</td>
+        <td style="color:${r.hedged_delta >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(r.hedged_delta)}</td>
+        <td style="font-weight:600;color:${ratioColor}">${ratioText}</td>
+        <td style="text-align:center">${badge}</td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('quantitative-result').style.display = 'block';
+
+  // 최종 판정
+  const allOk  = results.every(r => r.effective);
+  const someOk = results.some(r => r.effective);
+  const verdictBox = document.getElementById('hedge-verdict-box');
+  if (allOk) {
+    verdictBox.style.cssText = 'padding:1.1rem 1.25rem;border-radius:12px;font-size:0.88rem;font-weight:600;line-height:1.75;letter-spacing:-0.02em;background:#ECFDF5;color:#065F46;border-left:4px solid var(--green)';
+    verdictBox.innerHTML = '✓ <strong>K-IFRS 1109호 위험회피회계 적용 가능</strong><br><span style="font-weight:400;font-size:0.79rem">모든 시나리오에서 효과성 기준(-125% ~ -80%) 충족</span>';
+  } else if (someOk) {
+    verdictBox.style.cssText = 'padding:1.1rem 1.25rem;border-radius:12px;font-size:0.88rem;font-weight:600;line-height:1.75;letter-spacing:-0.02em;background:#FFF7ED;color:#92400E;border-left:4px solid var(--amber)';
+    verdictBox.innerHTML = '⚠ <strong>일부 시나리오에서 효과성 기준 이탈</strong><br><span style="font-weight:400;font-size:0.79rem">비효과적 부분은 즉시 당기손익 인식 필요 (K-IFRS 1109.6.5.11)</span>';
+  } else {
+    verdictBox.style.cssText = 'padding:1.1rem 1.25rem;border-radius:12px;font-size:0.88rem;font-weight:600;line-height:1.75;letter-spacing:-0.02em;background:#FFF5F5;color:#991B1B;border-left:4px solid var(--red)';
+    verdictBox.innerHTML = '✗ <strong>위험회피회계 적용 불가 — 비효과적 부분 즉시 손익 인식</strong><br><span style="font-weight:400;font-size:0.79rem">전 시나리오에서 효과성 기준(-125% ~ -80%) 미충족</span>';
+  }
+  document.getElementById('hedge-final-verdict').style.display = 'block';
+
+  // 감사 체크포인트
+  const hedgeType = pos === 'pay_fixed' ? '현금흐름위험회피' : '공정가치위험회피';
+  const qualPassed = document.getElementById('qualitative-result').style.display !== 'none' &&
+                     document.getElementById('qualitative-verdict').textContent.includes('통과');
+
+  const auditItems = [
+    {
+      label: '위험회피 지정 문서 구비 여부',
+      value: '⚠ 위험회피 지정일, 위험회피 전략, 효과성 평가 방법 기술 문서 필요 (K-IFRS 1109.6.4.1(b))',
+      color: 'var(--amber)',
+    },
+    {
+      label: '핵심 조건 일치 여부',
+      value: document.getElementById('qualitative-result').style.display !== 'none'
+        ? (qualPassed ? '✓ 정성적 테스트 통과 확인' : '⚠ 정성적 테스트 미통과 — 정량적 테스트 필수')
+        : '⚠ 정성적 테스트 미실행',
+      color: qualPassed ? 'var(--green)' : 'var(--amber)',
+    },
+    {
+      label: 'Dollar Offset 비율 적정성',
+      value: allOk
+        ? '✓ 전 시나리오 -125% ~ -80% 범위 충족'
+        : someOk
+          ? `⚠ 일부 이탈: ${results.filter(r => !r.effective).map(r => r.label).join(', ')}`
+          : `✗ 전 시나리오 효과성 기준 미충족`,
+      color: allOk ? 'var(--green)' : someOk ? 'var(--amber)' : 'var(--red)',
+    },
+    {
+      label: 'K-IFRS 1109호 준거 여부',
+      value: allOk
+        ? `✓ ${hedgeType} 위험회피회계 적용 요건 충족`
+        : `✗ 비효과적 부분은 당기손익으로 즉시 인식 (K-IFRS 1109.6.5.11)`,
+      color: allOk ? 'var(--green)' : 'var(--red)',
+    },
+  ];
+
+  document.getElementById('hedge-audit-items').innerHTML = auditItems.map(item => `
+    <div class="audit-item">
+      <span class="audit-item-label">${item.label}</span>
+      <span class="audit-item-value" style="color:${item.color};text-align:right;max-width:62%">${item.value}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('hedge-audit-section').style.display = 'block';
+}
+
+// ── 날짜 선택 & 수익률 곡선 자동 로드 ──────────────────────────────────────
+
+function toggleNotes() {
+  if (window.innerWidth > 768) return;
+  const body  = document.getElementById('notes-panel-body');
+  const arrow = document.getElementById('notes-toggle-arrow');
+  const open  = body.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+}
+
+function updateCsaSlider(slider) {
+  const val = parseInt(slider.value);
+  const pct = val + '%';
+  slider.style.background =
+    `linear-gradient(to right, var(--accent) ${pct}, var(--border) ${pct})`;
+  document.getElementById('csa_val').textContent = pct;
+}
+
+function updateEeDesc() {
+  const method = document.getElementById('ee_method').value;
+  document.getElementById('ee-desc').textContent = method === 'current'
+    ? '각 시점의 순현재가치 중 양수만 반영. 음수는 0 처리 (손실 없음)'
+    : 'Current Exposure에 30% 가산. 미래 시장변동 잠재 위험 반영 (보수적 접근)';
+}
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function getEvalDateStr() {
+  const v = document.getElementById('eval-date').value;
+  if (!v) return new Date().toLocaleDateString('ko-KR');
+  const [y, m, d] = v.split('-');
+  return `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
+}
+
+async function loadRates(dateStr) {
+  const spinner  = document.getElementById('rate-spinner');
+  const statusEl = document.getElementById('rate-status');
+  const rateIds  = ['r1','r2','r3','r5','r7','r10'];
+
+  spinner.style.display = 'block';
+  statusEl.textContent  = '시장금리 불러오는 중…';
+  statusEl.className    = 'rate-status loading';
+  rateIds.forEach(id => { document.getElementById(id).disabled = true; });
+
+  try {
+    const apiDate = dateStr.replace(/-/g, '');
+    const res  = await fetch(`/api/rates?date=${apiDate}`);
+    const data = await res.json();
+
+    if (!res.ok || !data.success) throw new Error(data.error || '데이터 없음');
+
+    const r = data.rates;
+
+    // 1Y~10Y mid 값 주입 (7Y는 5Y·10Y 선형 보간)
+    const r5mid  = r['5Y']?.mid  ?? null;
+    const r10mid = r['10Y']?.mid ?? null;
+    const r7mid  = (r5mid != null && r10mid != null)
+      ? r5mid + (r10mid - r5mid) * 0.4   // (7-5)/(10-5) = 0.4
+      : null;
+
+    const fill = { r1: r['1Y']?.mid, r2: r['2Y']?.mid, r3: r['3Y']?.mid,
+                   r5: r5mid, r7: r7mid, r10: r10mid };
+
+    rateIds.forEach(id => {
+      const val = fill[id];
+      if (val != null) {
+        const el = document.getElementById(id);
+        el.value = val.toFixed(3);
+        el.classList.remove('auto-filled');
+        void el.offsetWidth; // reflow → animation 재시작
+        el.classList.add('auto-filled');
+      }
+    });
+
+    statusEl.textContent = `✓ ECOS ${dateStr} 국고채 수익률 반영`;
+    statusEl.className   = 'rate-status ok';
+
+    calculate(); // 자동 계산
+
+  } catch (err) {
+    statusEl.textContent = `⚠ ${err.message} — 수동 입력 모드`;
+    statusEl.className   = 'rate-status err';
+    calculate(); // fallback: 현재 입력값으로 계산
+  } finally {
+    spinner.style.display = 'none';
+    rateIds.forEach(id => { document.getElementById(id).disabled = false; });
+  }
+}
+
+window.onload = () => {
+  const evalDate = document.getElementById('eval-date');
+  evalDate.value = todayString();
+  evalDate.addEventListener('change', e => loadRates(e.target.value));
+
+  // 명목 원금 천 단위 콤마 포맷
+  const notionalEl = document.getElementById('notional');
+  notionalEl.addEventListener('input', () => {
+    const raw = notionalEl.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+    if (raw) notionalEl.value = parseInt(raw, 10).toLocaleString('ko-KR');
+  });
+
+  // hedge-notional 천 단위 콤마
+  const hedgeNotionalEl = document.getElementById('hedge-notional');
+  hedgeNotionalEl.addEventListener('input', () => {
+    const raw = hedgeNotionalEl.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+    if (raw) hedgeNotionalEl.value = parseInt(raw, 10).toLocaleString('ko-KR');
+  });
+
+  // ── 만기일 자동 초기값(평가일 + 3년) + 입력 변경 시 잔존만기 라벨 갱신
+  function addYearsISO(iso, yrs){
+    const d = new Date(iso);
+    d.setFullYear(d.getFullYear() + yrs);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dd}`;
+  }
+  function refreshMaturityLabel(){
+    const fmt = (yrs) => {
+      if (!isFinite(yrs) || yrs <= 0) return '잔존 — 년';
+      const y = Math.floor(yrs);
+      const m = Math.round((yrs - y) * 12);
+      if (m === 0) return `잔존 ${y}년`;
+      if (y === 0) return `잔존 ${m}개월`;
+      return `잔존 ${y}년 ${m}개월`;
+    };
+    const labM = document.getElementById('maturity-years-display');
+    if (labM) labM.textContent = fmt(computeMaturityYears('eval-date', 'maturity-date'));
+    const labH = document.getElementById('hedge-years-display');
+    if (labH) labH.textContent = fmt(computeMaturityYears('eval-date', 'hedge-date'));
+  }
+
+  const matEl = document.getElementById('maturity-date');
+  const hedEl = document.getElementById('hedge-date');
+  if (!matEl.value) matEl.value = addYearsISO(evalDate.value, 3);  // 기본 평가일 + 3년
+  matEl.addEventListener('change', refreshMaturityLabel);
+  hedEl.addEventListener('change', refreshMaturityLabel);
+  evalDate.addEventListener('change', refreshMaturityLabel);
+  refreshMaturityLabel();
+
+  // CSA 슬라이더 & EE 설명 초기화
+  updateCsaSlider(document.getElementById('csa_slider'));
+  updateEeDesc();
+
+  loadRates(todayString()); // 페이지 로드 시 오늘 날짜로 자동 로드
+};
+
+// 평가일 ↔ 만기일 → 잔존 연수 (소수)
+function computeMaturityYears(evalId, matId){
+  const e = document.getElementById(evalId)?.value;
+  const m = document.getElementById(matId)?.value;
+  if (!e || !m) return 0;
+  const ed = new Date(e), md = new Date(m);
+  if (isNaN(ed) || isNaN(md) || md <= ed) return 0;
+  return (md - ed) / (1000 * 60 * 60 * 24 * 365.25);
+}
+</script>
 <style>
 footer.legal{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;line-height:1.4}
 footer.legal b{color:var(--text2);font-weight:600}
