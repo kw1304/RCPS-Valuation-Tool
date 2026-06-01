@@ -82,3 +82,58 @@ def test_build_command_adddir():
     cmd = accounting.build_command("질문", session_id=None, workdir="/tmp/iso")
     assert "--add-dir" in cmd
     assert cmd[cmd.index("--add-dir") + 1] == "/tmp/iso"
+
+
+import json
+
+
+def test_parse_assistant_text():
+    line = json.dumps({
+        "type": "assistant",
+        "message": {"content": [{"type": "text", "text": "리스는 K-IFRS 1116"}]},
+        "session_id": "s1",
+    })
+    ev = accounting.parse_stream_line(line)
+    assert ev == {"type": "token", "text": "리스는 K-IFRS 1116"}
+
+
+def test_parse_assistant_tool_use():
+    line = json.dumps({
+        "type": "assistant",
+        "message": {"content": [
+            {"type": "tool_use", "name": "WebSearch", "input": {"query": "K-IFRS 1116 리스"}}
+        ]},
+        "session_id": "s1",
+    })
+    ev = accounting.parse_stream_line(line)
+    assert ev["type"] == "tool"
+    assert "WebSearch" in ev["label"]
+
+
+def test_parse_result():
+    line = json.dumps({
+        "type": "result", "subtype": "success",
+        "result": "최종답변", "session_id": "s9",
+    })
+    ev = accounting.parse_stream_line(line)
+    assert ev == {"type": "done", "sessionId": "s9", "text": "최종답변"}
+
+
+def test_parse_system_init():
+    line = json.dumps({"type": "system", "subtype": "init", "session_id": "s0"})
+    ev = accounting.parse_stream_line(line)
+    assert ev == {"type": "session", "sessionId": "s0"}
+
+
+def test_parse_hook_noise_ignored():
+    line = json.dumps({"type": "system", "subtype": "hook_started", "session_id": "x"})
+    assert accounting.parse_stream_line(line) is None
+
+
+def test_parse_rate_limit_ignored():
+    assert accounting.parse_stream_line(json.dumps({"type": "rate_limit_event"})) is None
+
+
+def test_parse_garbage_ignored():
+    assert accounting.parse_stream_line("not json") is None
+    assert accounting.parse_stream_line("") is None

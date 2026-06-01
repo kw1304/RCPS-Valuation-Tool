@@ -108,3 +108,50 @@ def build_command(question, session_id, workdir):
     if session_id:
         cmd += ["--resume", session_id]
     return cmd
+
+
+import json as _json
+
+
+def parse_stream_line(line):
+    """stream-json 한 줄 -> SSE 이벤트 dict 또는 None(무시).
+
+    실측 스키마 기준. None이면 호출측이 건너뛴다.
+    """
+    line = (line or "").strip()
+    if not line:
+        return None
+    try:
+        obj = _json.loads(line)
+    except (ValueError, TypeError):
+        return None
+
+    t = obj.get("type")
+
+    if t == "assistant":
+        content = (obj.get("message") or {}).get("content") or []
+        texts = []
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "text":
+                texts.append(block.get("text", ""))
+            elif block.get("type") == "tool_use":
+                name = block.get("name", "tool")
+                return {"type": "tool", "label": f"{name} 실행 중…"}
+        joined = "".join(texts).strip()
+        if joined:
+            return {"type": "token", "text": joined}
+        return None
+
+    if t == "result":
+        return {
+            "type": "done",
+            "sessionId": obj.get("session_id"),
+            "text": obj.get("result", ""),
+        }
+
+    if t == "system" and obj.get("subtype") == "init":
+        return {"type": "session", "sessionId": obj.get("session_id")}
+
+    return None
