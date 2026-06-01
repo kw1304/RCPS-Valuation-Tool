@@ -57,7 +57,10 @@ def test_build_command_new_session():
     assert cmd[0] == "claude"
     assert "-p" in cmd
     assert "질문" in cmd
-    assert "--bare" in cmd
+    # 외부 환경 훅(caveman 등) 차단 — user 설정 미로드, 인증(keychain)은 유지
+    assert "--setting-sources" in cmd
+    assert cmd[cmd.index("--setting-sources") + 1] == "project,local"
+    assert "--bare" not in cmd
     assert "WebSearch" in cmd
     # 도구 화이트리스트는 WebSearch만
     i = cmd.index("--allowedTools")
@@ -228,3 +231,25 @@ def test_ask_stream_semaphore_timeout_yields_error(tmp_db, monkeypatch):
     finally:
         for _ in range(3):
             accounting._SEM.release()
+
+
+def test_resolve_claude_none_when_absent(monkeypatch):
+    monkeypatch.setattr(accounting.shutil, "which", lambda _: None)
+    assert accounting.resolve_claude() is None
+
+
+def test_resolve_claude_unwraps_windows_cmd(monkeypatch, tmp_path):
+    shim = tmp_path / "claude.CMD"
+    shim.write_text("@echo")
+    binexe = tmp_path / "node_modules" / "@anthropic-ai" / "claude-code" / "bin" / "claude.exe"
+    binexe.parent.mkdir(parents=True)
+    binexe.write_text("")
+    monkeypatch.setattr(accounting.shutil, "which", lambda _: str(shim))
+    monkeypatch.setattr(accounting.os, "name", "nt")
+    assert accounting.resolve_claude() == str(binexe)
+
+
+def test_resolve_claude_passthrough_posix(monkeypatch):
+    monkeypatch.setattr(accounting.shutil, "which", lambda _: "/usr/bin/claude")
+    monkeypatch.setattr(accounting.os, "name", "posix")
+    assert accounting.resolve_claude() == "/usr/bin/claude"

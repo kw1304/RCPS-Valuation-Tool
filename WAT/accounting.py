@@ -97,7 +97,9 @@ ACCOUNTING_SYSTEM_PROMPT = (
 def build_command(question, session_id, workdir):
     cmd = [
         "claude", "-p", question,
-        "--bare",
+        # user 설정/플러그인 훅(예: 외부 환경의 caveman 등) 미로드 → 답변 오염 차단.
+        # 구독 인증은 keychain에서 별도 로드되므로 영향 없음(--bare는 keychain까지 끊어 사용 불가).
+        "--setting-sources", "project,local",
         "--system-prompt", ACCOUNTING_SYSTEM_PROMPT,
         "--allowedTools", "WebSearch",
         "--permission-mode", "default",
@@ -160,6 +162,7 @@ def parse_stream_line(line):
 
 
 import os
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -168,8 +171,31 @@ _SEM = threading.Semaphore(3)        # 동시 claude 프로세스 최대 3
 SUBPROC_TIMEOUT = 90
 
 
+def resolve_claude():
+    """직접 실행 가능한 claude 실행파일 경로. 없으면 None.
+
+    Windows에서 PATH의 `claude`는 npm 셸 래퍼(claude.CMD)라
+    subprocess가 shell 없이는 못 띄운다(WinError 2). 래퍼가 호출하는
+    실제 bin\\claude.exe로 풀어 shell 없이 안전하게 실행한다.
+    """
+    p = shutil.which("claude")
+    if not p:
+        return None
+    if os.name == "nt" and p.lower().endswith((".cmd", ".bat")):
+        exe = os.path.join(
+            os.path.dirname(p),
+            "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe",
+        )
+        if os.path.exists(exe):
+            return exe
+    return p
+
+
 def _default_runner(cmd):
     """실제 claude 실행. stdout 라인을 순차 yield. timeout 시 kill."""
+    exe = resolve_claude()
+    if exe:
+        cmd = [exe] + cmd[1:]
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         text=True, encoding="utf-8", bufsize=1,
