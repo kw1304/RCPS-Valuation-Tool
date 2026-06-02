@@ -40,3 +40,37 @@
 - 19 tests 통과.
 
 **커밋:** (아래)
+
+## Iteration 2 — 16:30~17:55
+
+**프로빙 (6건):** 비밀유지·정보전용(ethics_law·fast) · ISQM 1 8구성요소(audit·fast) ·
+표본위험·표본크기(audit·fast) · 위법행위 외부보고의무(ethics_law·grounded) ·
+의견변형 KSA 705(audit·fast) · 내부회계관리제도 감사vs검토(auto·grounded).
+
+**전반 품질:** 우수. 의견변형 2x2 매트릭스(왜곡표시/범위제한 × 전반적 → 한정/부적정/의견거절)
+정확, 위법행위보고 외감법 제22조 제7항 증선위 보고의무 정확(grounded 출처), ICFR 감사=적극적·
+검토=소극적 확신 구분·1천억 기준·단계도입 정확, 비밀유지 예외 4유형 정확.
+
+**발견된 결함 (내용 오류 1 + 인프라 1):**
+1. **(IMPORTANT·내용오류) 표본위험 짝 뒤바꿈(Q3, fast)** — 부당수용위험(incorrect
+   acceptance)을 과소신뢰(under-reliance)와, 부당기각위험(incorrect rejection)을
+   과신(over-reliance)과 **거꾸로** 짝지음. 정답: 부당수용↔과신=효과성, 부당기각↔
+   과소신뢰=효율성(KSA 530). 인용·시행일 가드로 안 잡히는 순수 지식 오류.
+2. **(CRITICAL·인프라) WAT 서버 간헐 하드크래시** — /api/audit/ask 요청 중 traceback
+   없이 프로세스 사망(포트 닫힘 → '안 열린다'). console(python) 모드선 재현 안 됨,
+   **pythonw(무콘솔) 전용** — stdout 파일가드 + werkzeug 스레드/subprocess 상호작용
+   추정. 단일 요청도 간헐 크래시. 사용자가 3회 이상 피해.
+
+**조치:**
+- audit.py: '자주 혼동(확정 사실)' 블록 추가 — 표본위험 짝 고정(부당수용↔과신=효과성,
+  부당기각↔과소신뢰=효율성) + 비표본위험은 표본확대로 안 줆. 테스트 1건 추가(20 pass).
+- **워치독 신설(WAT/watchdog.py)** — 4개 툴 서버(WAT 8765·Risk 8533·BC 8766·RCPS 5000)
+  healthz 20s 폴링, 죽으면 부팅 VBS로 자동 재기동(idempotent). 무콘솔 상주(Startup
+  WAT_Watchdog.vbs). 근본원인 규명 어려운 간헐 크래시를 self-healing으로 차단.
+
+**검증:** 서버 재기동 후 →
+- Q3 재검증: 부당수용↔과신=효과성, 부당기각↔과소신뢰=효율성 **정정 확인**.
+- 워치독: WAT·BC 강제 종료 → 자동 감지·재기동 확인. 5개 서버 전부 200.
+- 20 tests 통과.
+
+**커밋:** (아래)

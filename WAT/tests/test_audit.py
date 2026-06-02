@@ -87,6 +87,14 @@ def test_prompt_effective_date_guard():
     assert "개시" in p and "종료" in p
 
 
+def test_prompt_sampling_risk_pairing_guard():
+    """iter2: 표본위험 짝(부당수용↔과신=효과성, 부당기각↔과소신뢰=효율성) 고정."""
+    p = audit.audit_system_prompt("fast")
+    assert "부당수용위험" in p and "부당기각위험" in p
+    assert "효과성" in p and "효율성" in p
+    assert "KSA 530" in p
+
+
 def test_prompt_domain_accuracy_guards():
     p = audit.audit_system_prompt("fast")
     assert "재편" in p or "R400" in p
