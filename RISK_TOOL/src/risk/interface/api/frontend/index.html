@@ -226,7 +226,12 @@ async function run(){
   stopWait();
   if(d.error){result_.innerHTML='<div class="alert">⚠ '+esc(d.error)+'</div>';return;}
 
-  let html='<div class="grade-bar"><span class="grade '+esc(d.grade.grade)+'">'+esc(d.grade.grade)
+  let html='';
+  if(d.warnings&&d.warnings.length){
+    html+='<div class="alert">⚠ 데이터 품질 주의<ul style="margin:.3rem 0 0 1.1rem;padding:0">'
+      +d.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul></div>';
+  }
+  html+='<div class="grade-bar"><span class="grade '+esc(d.grade.grade)+'">'+esc(d.grade.grade)
     +'</span><span class="grade-meta">적신호 '+d.grade.red+' · 황신호 '+d.grade.yellow
     +(d.materiality?' · 수행중요성(PM) '+fmtKRW(d.materiality.pm)
         +' ['+(BMLABEL[d.materiality.benchmark]||d.materiality.benchmark)

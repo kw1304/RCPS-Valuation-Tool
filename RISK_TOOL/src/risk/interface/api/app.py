@@ -85,6 +85,7 @@ def assess(req: AssessReq):
         "news": [vars(h) for h in res.news],
         "disclosures": res.disclosures,
         "events": res.events,
+        "warnings": res.warnings,
     })
 
 

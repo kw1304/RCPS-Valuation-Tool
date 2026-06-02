@@ -29,6 +29,12 @@ def build_workpaper(res: RiskResult, path: str) -> str:
         ws["A6"] = "중요성 benchmark"; ws["B6"] = res.materiality.benchmark
     if res.error:
         ws["A8"] = "오류"; ws["B8"] = res.error
+    # 데이터 품질 경고
+    warns = getattr(res, "warnings", []) or []
+    if warns:
+        ws["A9"] = "데이터 품질 주의"; ws["A9"].font = Font(bold=True, color="B26A00")
+        for i, w in enumerate(warns):
+            ws.cell(10 + i, 2, w)
 
     # 재무요약
     ws2 = wb.create_sheet("재무요약")

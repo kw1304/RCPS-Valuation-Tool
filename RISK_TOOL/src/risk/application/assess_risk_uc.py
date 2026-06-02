@@ -4,6 +4,7 @@ from risk.domain.financial import FinancialYear
 from risk.domain.materiality import performance_materiality, Materiality
 from risk.domain.thresholds import evaluate_axes, Signal
 from risk.domain.risk_grade import overall_grade, RiskGrade
+from risk.domain.data_quality import check_quality
 
 
 @dataclass
@@ -17,6 +18,7 @@ class RiskResult:
     news: list = field(default_factory=list)
     disclosures: list = field(default_factory=list)
     events: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)  # 데이터 품질 경고(추출 정합성)
     error: str = ""
 
 
@@ -89,5 +91,6 @@ class AssessRiskUseCase:
             events = self.commenter.structure_events(company, news, disclosures)
         except Exception:
             events = []
+        warnings = check_quality(years)
         return RiskResult(company, years, pm, signals, grade, comments,
-                          news, disclosures, events)
+                          news, disclosures, events, warnings=warnings)
