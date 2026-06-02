@@ -213,7 +213,9 @@ def _parse_fs_document(text: str, base_year: int) -> dict:
     put("tax_expense", pick(is_rows, "법인세비용", exclude=("차감전",)))
     put("net_income", pick(is_rows, "당기순이익", "당기순손실", "당기순손익",
                            exclude=("률", "주당")))
-    put("finance_costs", pick(is_rows, "금융원가", "금융비용", exclude=("순",)))
+    # 금융원가는 비용 크기(이자보상배율 분모) → 괄호표기(음수)라도 절대값
+    put("finance_costs", pick(is_rows, "금융원가", "금융비용", "이자비용",
+                              exclude=("순", "수익")), absval=True)
 
     # 재무상태표
     put("total_assets", pick(bs_rows, "자산총계"))
