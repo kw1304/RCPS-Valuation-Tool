@@ -265,6 +265,36 @@ def _write_section_title(ws, row: int, title: str) -> int:
     return row + 1
 
 
+_MONEY_HEADER_KW = ("금액", "잔액", "액", "평가", "balance")
+
+
+def _write_total_row(ws, row: int, records: list, data_start_row: int, headers: list[str]):
+    """합계행 — 금액성 컬럼별 =SUM(). 재무제표·주석 대사용.
+
+    금액(금액·잔액·평가액 등) 헤더의 숫자 컬럼만 합산한다. 이자율·설정순위·수량·기준가
+    등은 합계가 무의미하므로 제외."""
+    n_cols = len(headers)
+    numeric_cols = set()
+    for rec in records:
+        for ci, v in enumerate(rec):
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                numeric_cols.add(ci)
+    sum_cols = {ci for ci in numeric_cols
+                if ci < n_cols and any(k in headers[ci] for k in _MONEY_HEADER_KW)}
+    for i in range(n_cols):
+        c = ws.cell(row=row, column=i + 1)
+        if i == 0:
+            c.value = "합계"
+        elif i in sum_cols and row > data_start_row:
+            col = get_column_letter(i + 1)
+            c.value = f"=SUM({col}{data_start_row}:{col}{row - 1})"
+        c.font = _font(size=10, bold=True, color=COOL_GRAY_900)
+        c.fill = _fill(COOL_GRAY_100)
+        c.alignment = _align(h="left" if i == 0 else "right", v="center")
+        c.border = BORDER_ALL
+    ws.row_dimensions[row].height = 24
+
+
 def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
                        company: str, fiscal_date: str,
                        title: str, purpose: str,
@@ -280,8 +310,12 @@ def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
     ])
     _write_table_header(ws, r, headers, col_widths)
     r += 1
+    data_start = r
     for i, rec in enumerate(records):
         _write_data_row(ws, r, rec, alt=(i % 2 == 1))
+        r += 1
+    if records:
+        _write_total_row(ws, r, records, data_start, headers)
         r += 1
     _write_conclusion(ws, r, conclusion)
     return ws
@@ -307,6 +341,8 @@ def build_ac1_assets(wb, company, fiscal_date, records, detail_records=None):
     _write_table_header(ws, r, bank_headers,
                         col_widths=[10, 16, 28, 20, 8, 16, 10, 14, 14, 18])
     r += 1
+    bank_start = r
+    bank_rows = []
     for i, rec in enumerate(bank_recs):
         values = [
             rec.get("bc_no",""), rec.get("bank",""), rec.get("product",""),
@@ -317,7 +353,11 @@ def build_ac1_assets(wb, company, fiscal_date, records, detail_records=None):
             str(rec.get("maturity","") or ""),
             rec.get("withdrawal_limit","") or "",
         ]
+        bank_rows.append(values)
         _write_data_row(ws, r, values, alt=(i % 2 == 1))
+        r += 1
+    if bank_rows:
+        _write_total_row(ws, r, bank_rows, bank_start, bank_headers)
         r += 1
     r += 1
 
@@ -328,6 +368,8 @@ def build_ac1_assets(wb, company, fiscal_date, records, detail_records=None):
     _write_table_header(ws, r, sec_headers,
                         col_widths=[10, 16, 24, 20, 8, 16, 12, 14, 12, 20])
     r += 1
+    sec_start = r
+    sec_rows = []
     for i, rec in enumerate(sec_recs):
         values = [
             rec.get("bc_no",""), rec.get("bank",""), rec.get("product",""),
@@ -338,7 +380,11 @@ def build_ac1_assets(wb, company, fiscal_date, records, detail_records=None):
             float(rec.get("receivable") or 0) if rec.get("receivable") else "",
             rec.get("collateral_restriction","") or "",
         ]
+        sec_rows.append(values)
         _write_data_row(ws, r, values, alt=(i % 2 == 1))
+        r += 1
+    if sec_rows:
+        _write_total_row(ws, r, sec_rows, sec_start, sec_headers)
         r += 1
 
     # === ③ 유가증권 상세명세 (종목별) ===
@@ -350,6 +396,8 @@ def build_ac1_assets(wb, company, fiscal_date, records, detail_records=None):
         _write_table_header(ws, r, det_headers,
                             col_widths=[10, 14, 20, 20, 14, 14, 18, 14, 20])
         r += 1
+        det_start = r
+        det_rows = []
         for i, rec in enumerate(detail_records):
             values = [
                 rec.get("bc_no",""), rec.get("bank",""),
@@ -361,7 +409,11 @@ def build_ac1_assets(wb, company, fiscal_date, records, detail_records=None):
                 float(rec.get("collateral_qty") or 0) if rec.get("collateral_qty") else "",
                 rec.get("collateral_type","") or "",
             ]
+            det_rows.append(values)
             _write_data_row(ws, r, values, alt=(i % 2 == 1))
+            r += 1
+        if det_rows:
+            _write_total_row(ws, r, det_rows, det_start, det_headers)
             r += 1
 
     # === 결론 ===
@@ -406,9 +458,16 @@ def build_ac3_derivatives(wb, company, fiscal_date, records):
     )
 
 
+_AC4_DIR_LABEL = {"received": "제공받음", "provided": "제공"}
+
+
 def build_ac4_guarantees(wb, company, fiscal_date, records):
+    # 회사가 받은 지급보증(우발자산)과 제공한 연대보증(우발부채)은 회계성격이 반대 →
+    # 구분 컬럼으로 명시(혼재 시 주석 오도 방지).
     rows = [
-        [r.get("bc_no",""), r.get("bank",""), r.get("guarantee_type",""),
+        [r.get("bc_no",""), r.get("bank",""),
+         _AC4_DIR_LABEL.get(r.get("direction"), r.get("direction","")),
+         r.get("guarantee_type",""),
          r.get("limit_ccy","KRW"), float(r.get("limit_amt",0)),
          r.get("balance_ccy","KRW"), float(r.get("balance",0)), str(r.get("maturity",""))]
         for r in records
@@ -417,8 +476,8 @@ def build_ac4_guarantees(wb, company, fiscal_date, records):
         company, fiscal_date,
         "AC4. 금융조회서 요약 — 지급보증",
         "회사의 지급보증 등 약정사항 주석의 적정성 검토",
-        ["조서번호", "금융기관", "보증내용", "한도통화", "한도금액", "잔액통화", "실행금액", "만기일"],
-        [10, 16, 30, 8, 16, 8, 16, 12],
+        ["조서번호", "금융기관", "구분", "보증내용", "한도통화", "한도금액", "잔액통화", "실행금액", "만기일"],
+        [10, 16, 10, 28, 8, 16, 8, 16, 12],
         rows,
         "회사의 지급보증 등 약정사항 주석은 적정하게 공시됨.",
     )
