@@ -43,9 +43,10 @@ _FIELD_IDS = {
                           "ifrs-full_TradeAndOtherCurrentReceivables",
                           "dart_ShortTermTradeReceivable"],
     "inventory": ["ifrs-full_Inventories"],
-    # 매입채무: 삼성 등은 …PayablesToTradeSuppliers, 일부는 TradeAndOther… 또는 dart 태그
+    # 매입채무: 삼성 등은 …PayablesToTradeSuppliers, 두산 등은 dart_ShortTermTradePayables(복수)
     "trade_payables": ["ifrs-full_TradeAndOtherCurrentPayablesToTradeSuppliers",
                        "ifrs-full_TradeAndOtherCurrentPayables",
+                       "dart_ShortTermTradePayables",
                        "dart_ShortTermTradePayable",
                        "dart_TradePayable"],
 }

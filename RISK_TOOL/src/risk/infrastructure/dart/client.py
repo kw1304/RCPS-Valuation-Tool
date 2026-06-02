@@ -105,10 +105,16 @@ class DartClient:
         self._corp_map = out
         return out
 
+    # 한글 통칭 → DART 등록 정식명(영문 등록 상장사). 한↔영 불일치 보정. 확장 가능.
+    _NAME_ALIASES = {
+        "네이버": "NAVER",
+    }
+
     def find_corp_code(self, name: str) -> Optional[dict]:
         """회사명 → {corp_code, corp_name, stock_code}. 상장사(stock_code 보유) 우선."""
         if not name:
             return None
+        name = self._NAME_ALIASES.get(name.strip(), name)
         cmap = self.load_corp_codes()
         target = _normalize_name(name)
         if not target:

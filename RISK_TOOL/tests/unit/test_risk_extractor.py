@@ -66,6 +66,7 @@ def test_trade_payables_account_variants():
     # 매입채무: TradeAndOtherCurrentPayables·dart_ShortTermTradePayable 둘 다 매핑
     for aid in ("ifrs-full_TradeAndOtherCurrentPayablesToTradeSuppliers",
                 "ifrs-full_TradeAndOtherCurrentPayables",
+                "dart_ShortTermTradePayables",
                 "dart_ShortTermTradePayable",
                 "dart_TradePayable"):
         rows = [{"account_id": aid, "bsns_year": "2025",
