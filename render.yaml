@@ -13,25 +13,3 @@ services:
         sync: false
     healthCheckPath: /healthz
     autoDeploy: false
-
-  # WAT 소개·설명서 정적 사이트
-  - type: web
-    name: wat-site
-    runtime: static
-    region: singapore
-    rootDir: WAT_SITE
-    staticPublishPath: .
-    buildCommand: ""
-    pullRequestPreviewsEnabled: true
-    autoDeploy: true
-    headers:
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
