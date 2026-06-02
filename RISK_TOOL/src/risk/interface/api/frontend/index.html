@@ -235,7 +235,9 @@ async function run(){
     +'</span><span class="grade-meta">적신호 '+d.grade.red+' · 황신호 '+d.grade.yellow
     +(d.materiality?' · 수행중요성(PM) '+fmtKRW(d.materiality.pm)
         +' ['+(BMLABEL[d.materiality.benchmark]||d.materiality.benchmark)
-        +(d.materiality.manual?' 직접':' 자동')+']':'')+'</span></div>';
+        +(d.materiality.manual?' 직접':' 자동')+']':'')
+    +(d.years&&d.years.length?' · 최신데이터 '+d.years[d.years.length-1].year+'년':'')
+    +'</span></div>';
 
   html+='<div class="cards">';
   for(const ax of Object.keys(AX)){
