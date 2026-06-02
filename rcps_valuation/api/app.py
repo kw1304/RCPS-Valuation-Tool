@@ -20,6 +20,26 @@ from output.report import generate_workpaper
 from output.exports import generate_dcf_xlsx, generate_wacc_xlsx, generate_bootstrap_xlsx, generate_volatility_xlsx
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+
+
+def _load_dotenv():
+    """경량 .env 로더 (python-dotenv 의존 없이). 이미 설정된 환경변수는 보존."""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+    try:
+        with open(env_path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k, v = k.strip(), v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except OSError:
+        pass
+
+
+_load_dotenv()
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 
 
@@ -168,8 +188,19 @@ def dcf():
             dnwc=float(y.get("dnwc", 0)),
             tax=float(y.get("tax", 25)),
         ) for y in years_raw]
+        # 과거 실적(actual) — 예측가정 검증 앵커 (오래된→최근 순)
+        hist_raw = data.get("historical") or []
+        historical = [DCFYear(
+            revenue=float(y.get("revenue", 0)),
+            ebit=float(y.get("ebit", 0)),
+            da=float(y.get("da", 0)),
+            capex=float(y.get("capex", 0)),
+            dnwc=float(y.get("dnwc", 0)),
+            tax=float(y.get("tax", 25)),
+        ) for y in hist_raw]
         params = DCFParams(
             years=years,
+            historical=historical,
             fcf_projections=[float(x) for x in (data.get("fcf_projections") or [])],
             wacc=float(data["wacc"]),
             terminal_growth=float(data.get("terminal_growth", 0.02)),
@@ -187,6 +218,61 @@ def dcf():
         return jsonify({"status": "ok", "result": result})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/dcf/dart_financials", methods=["POST"])
+def dcf_dart_financials():
+    """DART OPEN API로 대상회사 최근 5개년 실적 자동조회 (예측가정 검증 앵커).
+
+    body: {company_name 또는 corp_code, end_year(선택), max_years(기본 5),
+           fs_div('OFS'별도 기본 / 'CFS'연결)}
+    반환: {status, fs_div, corp, years[...], notes, holding_warning, alt_available}
+
+    별도(OFS) 기본 — RCPS 비상장 평가는 그 법인 단독 실적 기준. 대상이 지주성격
+    (별도 영업수익≈0)이면 holding_warning=True + 연결 재조회 안내.
+    상장·사업보고서 제출 비상장은 구조화 FS, 순수 외감 비상장은 감사보고서 원문 파싱.
+    """
+    try:
+        from inputs.dart_financials import DartFinancials, DartFinancialsError
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"dart 모듈 로드 실패: {e}"}), 200
+    data = request.get_json(force=True) or {}
+    name = (data.get("company_name") or "").strip()
+    corp_code = (data.get("corp_code") or "").strip()
+    end_year = int(data.get("end_year") or 0) or (date.today().year - 1)
+    max_years = int(data.get("max_years") or 5)
+    fs_div = "CFS" if str(data.get("fs_div", "OFS")).upper() == "CFS" else "OFS"
+
+    d = DartFinancials()
+    if not d.enabled:
+        return jsonify({"status": "error",
+                        "message": "DART_API_KEY 미설정 — .env에 키를 추가하세요."}), 200
+    corp = None
+    try:
+        if not corp_code:
+            if not name:
+                return jsonify({"status": "error",
+                                "message": "company_name 또는 corp_code 필요"}), 200
+            corp = d.find_corp_code(name)
+            if not corp:
+                return jsonify({"status": "error",
+                                "message": f"'{name}' DART 등록정보 없음 — 회사명 확인"}), 200
+            corp_code = corp["corp_code"]
+        res = d.fetch_financials(corp_code, end_year=end_year,
+                                 max_years=max_years, prefer=fs_div)
+        return jsonify({
+            "status": "ok",
+            "fs_div": res["fs_div"],
+            "corp": corp or {"corp_code": corp_code},
+            "years": res["years"],
+            "notes": [n for n in res["notes"] if n],
+            "holding_warning": res.get("holding_warning", False),
+            "alt_available": res.get("alt_available", False),
+        })
+    except DartFinancialsError as e:
+        return jsonify({"status": "error", "message": str(e)}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"DART 조회 오류: {e}"}), 200
 
 
 @app.route("/api/evaluate", methods=["POST"])
@@ -336,7 +422,8 @@ def evaluate():
             "result": serialize(result),
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e), "trace": traceback.format_exc()}), 400
+        print(f"[/api/evaluate] {e}\n{traceback.format_exc()}", flush=True)
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 
 @app.route("/api/tree", methods=["POST"])
@@ -545,7 +632,8 @@ def download():
                          download_name="RCPS_감사조서.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e), "trace": traceback.format_exc()}), 400
+        print(f"[/api/download] {e}\n{traceback.format_exc()}", flush=True)
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 
 # ── ECOS 국채/회사채 수익률 ──────────────────────────────────────────
@@ -1225,7 +1313,9 @@ def _llm_summarize(provider: str, api_key: str, model: str, prompt: str,
         try:
             proc = subprocess.run(args, input=prompt, capture_output=True,
                                   text=True, encoding="utf-8", timeout=600,
-                                  cwd=tempfile.gettempdir())
+                                  cwd=tempfile.gettempdir(),
+                                  # Windows: claude.exe 콘솔창 깜빡임 방지(무창)
+                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         except FileNotFoundError:
             raise RuntimeError("claude CLI를 찾을 수 없습니다. 독립형 Claude Code 설치+로그인 후 PATH 등록 "
                                "(또는 환경변수 CLAUDE_CLI_CMD 에 실행파일 경로 지정).")
@@ -2671,5 +2761,8 @@ def volatility_export():
 
 
 if __name__ == "__main__":
-    print("RCPS 평가툴 서버 시작: http://localhost:5000")
-    app.run(debug=True, port=5000, host="0.0.0.0")
+    _DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
+    _HOST = os.environ.get("FLASK_HOST", "127.0.0.1")
+    _PORT = int(os.environ.get("FLASK_PORT", "5000"))
+    print(f"RCPS 평가툴 서버 시작: http://{_HOST}:{_PORT}  (debug={_DEBUG})")
+    app.run(debug=_DEBUG, port=_PORT, host=_HOST, use_reloader=False)

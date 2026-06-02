@@ -71,7 +71,8 @@ def _relaunch(vbs):
         print(f"[watchdog] VBS 없음: {path}", flush=True)
         return False
     try:
-        subprocess.Popen(["wscript.exe", path], close_fds=True)
+        subprocess.Popen(["wscript.exe", path], close_fds=True,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         print(f"[watchdog] 재기동: {vbs}", flush=True)
         return True
     except Exception as e:

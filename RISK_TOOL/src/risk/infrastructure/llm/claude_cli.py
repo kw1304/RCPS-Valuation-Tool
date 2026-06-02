@@ -45,6 +45,8 @@ def claude_complete(prompt: str, model: str = "claude-sonnet-4-6",
             [exe, "-p", prompt, "--model", model],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
             encoding="utf-8", bufsize=1,
+            # Windows: claude.exe 실행마다 콘솔창 깜빡이지 않게(무창).
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except Exception:
         return None
