@@ -143,7 +143,8 @@ def test_parse_result():
         "result": "최종답변", "session_id": "s9",
     })
     ev = accounting.parse_stream_line(line)
-    assert ev == {"type": "done", "sessionId": "s9", "text": "최종답변"}
+    assert ev == {"type": "done", "sessionId": "s9", "text": "최종답변",
+                  "is_error": False}
 
 
 def test_parse_system_init():

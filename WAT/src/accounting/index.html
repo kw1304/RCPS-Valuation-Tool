@@ -73,8 +73,12 @@ textarea:focus{outline:none;border-color:var(--accent)}
 form button{font-family:inherit;font-weight:700;color:#fff;background:var(--accent);
   border:0;border-radius:12px;padding:.7rem 1.3rem;cursor:pointer}
 form button:disabled{background:var(--text3);cursor:not-allowed}
-footer{padding:.5rem 1.4rem;background:var(--bg2);border-top:1px solid var(--border);
-  font-size:.64rem;color:var(--text3);text-align:center}
+footer{padding:.7rem 2rem .7rem 7.25rem;background:var(--bg2);border-top:1px solid var(--border);
+  font-size:.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;
+  gap:12px;flex-wrap:wrap;line-height:1.4;flex-shrink:0}
+footer b{color:var(--text2);font-weight:600}
+footer .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
+@media (max-width:768px){footer{padding:.6rem 1rem;flex-direction:column;gap:.3rem;text-align:center}}
 </style>
 </head>
 <body>
@@ -100,7 +104,7 @@ footer{padding:.5rem 1.4rem;background:var(--bg2);border-top:1px solid var(--bor
   <textarea id="q" rows="1" placeholder="회계기준 해석/적용 질문을 입력하세요 (Shift+Enter 줄바꿈)"></textarea>
   <button id="send" type="submit">질문</button>
 </form>
-<footer>본 답변은 참고용이며 최종 판단과 책임은 사용자에게 있습니다. · 검색 근거 기반 · 조문번호는 원문 확인 권고</footer>
+<footer><span><b>Disclaimer.</b> 본 도구는 회계기준 질의응답 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다. · 조문번호는 원문 확인 권고</span><span class="right">© 2026 Woongcpa</span></footer>
 <script>
 function uuid(){
   return ('10000000-1000-4000-8000-100000000000').replace(/[018]/g, c =>
