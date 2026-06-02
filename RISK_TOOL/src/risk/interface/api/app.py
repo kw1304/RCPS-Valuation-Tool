@@ -47,6 +47,22 @@ def _build_uc():
 class AssessReq(BaseModel):
     company: str
     end_year: int
+    # 수행중요성 — 자동(기본) 또는 직접지정. benchmark 지정 시 직접모드.
+    mat_benchmark: str | None = None        # revenue|total_assets|pretax_income|total_equity
+    mat_ratio_pct: float | None = None      # 중요성 비율(%) 예: 0.5
+    pm_ratio_pct: float | None = None       # 수행중요성 비율(%) 예: 75
+
+
+def _materiality_opts(req: "AssessReq") -> dict | None:
+    """AssessReq → performance_materiality kwargs (%→소수 변환). 직접모드만 dict."""
+    if not req.mat_benchmark:
+        return None
+    opts: dict = {"benchmark": req.mat_benchmark}
+    if req.mat_ratio_pct is not None:
+        opts["materiality_ratio"] = req.mat_ratio_pct / 100.0
+    if req.pm_ratio_pct is not None:
+        opts["pm_ratio"] = req.pm_ratio_pct / 100.0
+    return opts
 
 
 @app.get("/healthz")
@@ -57,7 +73,7 @@ def healthz():
 @app.post("/api/assess")
 def assess(req: AssessReq):
     uc = _build_uc()
-    res = uc.run(req.company, req.end_year)
+    res = uc.run(req.company, req.end_year, materiality_opts=_materiality_opts(req))
     return JSONResponse({
         "company": res.company, "error": res.error,
         "grade": asdict(res.grade) if res.grade else None,
@@ -74,7 +90,7 @@ def assess(req: AssessReq):
 @app.post("/api/export")
 def export(req: AssessReq):
     uc = _build_uc()
-    res = uc.run(req.company, req.end_year)
+    res = uc.run(req.company, req.end_year, materiality_opts=_materiality_opts(req))
     safe = _safe_stem(req.company)
     tmp = pathlib.Path(tempfile.gettempdir()) / f"risk_{safe}_{req.end_year}.xlsx"
     build_workpaper(res, str(tmp))

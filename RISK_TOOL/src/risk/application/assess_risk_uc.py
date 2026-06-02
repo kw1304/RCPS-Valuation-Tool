@@ -33,7 +33,8 @@ class AssessRiskUseCase:
         self.commenter = commenter
         self.disclosure_fetcher = disclosure_fetcher  # corp_code -> list[dict]|None
 
-    def run(self, company: str, end_year: int) -> RiskResult:
+    def run(self, company: str, end_year: int,
+            materiality_opts: dict | None = None) -> RiskResult:
         # 외부 DART I/O — 키 미설정·네트워크 오류는 우아한 에러로 환원(500 금지)
         try:
             corp = self.corp_resolver(company)
@@ -52,7 +53,7 @@ class AssessRiskUseCase:
             return RiskResult(company, [], None,
                               error="DART 재무자료 없음 — 과거실적 수기입력 필요.")
         try:
-            pm = performance_materiality(years[-1])
+            pm = performance_materiality(years[-1], **(materiality_opts or {}))
         except ValueError as e:
             return RiskResult(company, years, None, error=str(e))
         signals = evaluate_axes(years, pm)

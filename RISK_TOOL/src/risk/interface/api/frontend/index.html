@@ -38,10 +38,11 @@ main{flex:1;max-width:1120px;width:100%;margin:0 auto;padding:1.5rem 2rem}
   box-shadow:var(--shadow);padding:1.1rem 1.25rem;display:flex;gap:.9rem;align-items:flex-end;flex-wrap:wrap}
 .field{display:flex;flex-direction:column;gap:.3rem}
 .field label{font-size:.72rem;color:var(--text3);font-weight:600;letter-spacing:-0.01em}
-.field input{padding:.55rem .75rem;border:1px solid var(--border);border-radius:8px;
+.field input,.field select{padding:.55rem .75rem;border:1px solid var(--border);border-radius:8px;
   background:var(--bg2);color:var(--text);font-family:var(--sans);font-size:.9rem;min-width:200px}
-.field input:focus{outline:none;border-color:var(--accent)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
 .field.year input{min-width:110px}
+.field.narrow input,.field.narrow select{min-width:96px}
 .btn{padding:.6rem 1.1rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);
   color:#fff;font-family:var(--sans);font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s}
 .btn:hover{background:var(--accent2);border-color:var(--accent2)}
@@ -133,6 +134,30 @@ footer.legal .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
       <label for="year">기준연도</label>
       <input id="year" type="number" value="2024">
     </div>
+    <div class="field narrow">
+      <label for="matMode">수행중요성</label>
+      <select id="matMode" onchange="toggleMat()">
+        <option value="auto">자동(보수적)</option>
+        <option value="manual">직접 지정</option>
+      </select>
+    </div>
+    <div class="field narrow mat-only" style="display:none">
+      <label for="matBench">기준</label>
+      <select id="matBench">
+        <option value="revenue">매출액</option>
+        <option value="total_assets">자산총계</option>
+        <option value="pretax_income">세전이익</option>
+        <option value="total_equity">자본총계</option>
+      </select>
+    </div>
+    <div class="field narrow mat-only" style="display:none">
+      <label for="matRatio">중요성 %</label>
+      <input id="matRatio" type="number" step="0.1" min="0" value="0.5">
+    </div>
+    <div class="field narrow mat-only" style="display:none">
+      <label for="pmRatio">수행 %</label>
+      <input id="pmRatio" type="number" step="5" min="1" max="100" value="75">
+    </div>
     <button class="btn" onclick="run()">리스크 분석</button>
     <button class="btn ghost" onclick="exp()">조서 내보내기</button>
   </div>
@@ -157,6 +182,17 @@ const EVCOL={'소송':['#FEECEC','#F04452'],'횡령·배임':['#FEECEC','#C81E2E
 function evBadge(t){const c=EVCOL[t]||EVCOL['기타'];
   return '<span class="ev-badge" style="background:'+c[0]+';color:'+c[1]+'">'+esc(t||'기타')+'</span>';}
 function isUrl(s){return /^https?:\/\//i.test(s||'');}
+const BMLABEL={revenue:'매출액',total_assets:'자산총계',pretax_income:'세전이익',total_equity:'자본총계'};
+function toggleMat(){
+  const m=document.getElementById('matMode').value==='manual';
+  document.querySelectorAll('.mat-only').forEach(e=>e.style.display=m?'flex':'none');
+}
+function matPayload(){
+  if(document.getElementById('matMode').value!=='manual')return {};
+  return {mat_benchmark:document.getElementById('matBench').value,
+          mat_ratio_pct:+document.getElementById('matRatio').value,
+          pm_ratio_pct:+document.getElementById('pmRatio').value};
+}
 
 async function run(){
   const company=company_.value.trim(), year=+year_.value;
@@ -166,7 +202,7 @@ async function run(){
   let d;
   try{
     const r=await fetch('/api/assess',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({company,end_year:year})});
+      body:JSON.stringify({company,end_year:year,...matPayload()})});
     d=await r.json();
   }catch(e){status_.textContent='';result_.innerHTML='<div class="alert">서버 응답 오류: '+esc(e.message)+'</div>';return;}
   status_.textContent='';
@@ -174,7 +210,9 @@ async function run(){
 
   let html='<div class="grade-bar"><span class="grade '+esc(d.grade.grade)+'">'+esc(d.grade.grade)
     +'</span><span class="grade-meta">적신호 '+d.grade.red+' · 황신호 '+d.grade.yellow
-    +(d.materiality?' · 수행중요성(PM) '+fmtKRW(d.materiality.pm):'')+'</span></div>';
+    +(d.materiality?' · 수행중요성(PM) '+fmtKRW(d.materiality.pm)
+        +' ['+(BMLABEL[d.materiality.benchmark]||d.materiality.benchmark)
+        +(d.materiality.manual?' 직접':' 자동')+']':'')+'</span></div>';
 
   html+='<div class="cards">';
   for(const ax of Object.keys(AX)){
@@ -239,7 +277,7 @@ async function exp(){
   status_.textContent='조서 생성 중…';
   try{
     const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({company,end_year:+year_.value})});
+      body:JSON.stringify({company,end_year:+year_.value,...matPayload()})});
     const b=await r.blob(),u=URL.createObjectURL(b),a=document.createElement('a');
     a.href=u;a.download='risk_'+company+'_'+year_.value+'.xlsx';a.click();URL.revokeObjectURL(u);
   }finally{status_.textContent='';}

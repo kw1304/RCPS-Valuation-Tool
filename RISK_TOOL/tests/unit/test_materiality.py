@@ -26,3 +26,37 @@ def test_pm_raises_when_no_base():
     import pytest
     with pytest.raises(ValueError):
         performance_materiality(fy)
+
+
+def test_pm_manual_benchmark_with_ratios():
+    # 직접지정: 자산총계 100억 × 중요성 1% × 수행 50% = PM 5천만
+    fy = FinancialYear(year=2025, revenue=10_000_000_000, total_assets=10_000_000_000)
+    pm = performance_materiality(fy, benchmark="total_assets",
+                                 materiality_ratio=0.01, pm_ratio=0.5)
+    assert pm.materiality == 100_000_000
+    assert pm.pm == 50_000_000
+    assert pm.benchmark == "total_assets"
+    assert pm.manual is True
+
+
+def test_pm_manual_uses_default_ratio_when_omitted():
+    # 비율 미지정 → benchmark 기본비율(매출 0.5%, 수행 75%)
+    fy = FinancialYear(year=2025, revenue=20_000_000_000)
+    pm = performance_materiality(fy, benchmark="revenue")
+    assert pm.materiality == 100_000_000      # 0.5%
+    assert pm.pm == 75_000_000                # ×0.75
+    assert pm.manual is True
+
+
+def test_pm_manual_raises_on_missing_base():
+    import pytest
+    fy = FinancialYear(year=2025, revenue=10_000_000_000)  # 세전이익 결측
+    with pytest.raises(ValueError):
+        performance_materiality(fy, benchmark="pretax_income")
+
+
+def test_pm_manual_raises_on_bad_ratio():
+    import pytest
+    fy = FinancialYear(year=2025, revenue=10_000_000_000)
+    with pytest.raises(ValueError):
+        performance_materiality(fy, benchmark="revenue", pm_ratio=1.5)  # >100%
