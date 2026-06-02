@@ -190,7 +190,7 @@ async function run(){
       const col=DOT[s.level]||DOT.na;
       const hint=s.level==='na'?' <span class="na-hint">데이터없음</span>':'';
       html+='<div class="sig"><span class="lab"><span class="dot" style="background:'+col+'"></span>'
-        +esc(s.label)+hint+'</span><span class="val">'+(s.value==null?'—':(+s.value).toFixed(1))+'</span></div>';
+        +esc(s.label)+hint+'</span><span class="val">'+(s.value==null?'—':fmtNum(s.value))+'</span></div>';
       if(d.comments&&d.comments[s.code])html+='<div class="cmt">'+esc(d.comments[s.code])+'</div>';
     }
     html+='</div>';
@@ -247,9 +247,13 @@ async function exp(){
 
 function fmtKRW(v){
   if(v==null)return '—';
-  if(v>=1e8)return (v/1e8).toFixed(1)+'억';
-  if(v>=1e4)return Math.round(v/1e4)+'만';
-  return Math.round(v).toLocaleString();
+  if(v>=1e8)return Math.round(v/1e8).toLocaleString('ko-KR')+'억';
+  if(v>=1e4)return Math.round(v/1e4).toLocaleString('ko-KR')+'만';
+  return Math.round(v).toLocaleString('ko-KR');
+}
+function fmtNum(v){
+  if(v==null)return '—';
+  return (+v).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
 }
 
 const company_=document.getElementById('company'),year_=document.getElementById('year'),

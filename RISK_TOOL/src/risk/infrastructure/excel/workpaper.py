@@ -25,6 +25,7 @@ def build_workpaper(res: RiskResult, path: str) -> str:
     ws["A4"] = "종합위험등급"; ws["B4"] = res.grade.grade if res.grade else "-"
     if res.materiality:
         ws["A5"] = "수행중요성(PM)"; ws["B5"] = res.materiality.pm
+        ws["B5"].number_format = "#,##0"  # 천단위 콤마
         ws["A6"] = "중요성 benchmark"; ws["B6"] = res.materiality.benchmark
     if res.error:
         ws["A8"] = "오류"; ws["B8"] = res.error
@@ -35,6 +36,10 @@ def build_workpaper(res: RiskResult, path: str) -> str:
     for y in res.years:
         ws2.append([y.year, y.revenue, y.operating_income, y.net_income,
                     y.total_assets, y.total_liabilities, y.total_equity, y.operating_cf])
+    # 천단위 콤마 — 숫자 재무컬럼(B~H), 연도(A)는 제외
+    for row in ws2.iter_rows(min_row=2, min_col=2, max_col=8):
+        for cell in row:
+            cell.number_format = "#,##0"
 
     # 위험평가매트릭스 (계정×주장은 신호 매핑 요약)
     ws3 = wb.create_sheet("위험평가매트릭스")

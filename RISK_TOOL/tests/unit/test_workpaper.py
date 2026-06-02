@@ -18,6 +18,36 @@ def test_workpaper_sheets(tmp_path):
     assert "위험평가매트릭스" in wb.sheetnames
 
 
+def test_financial_cells_have_comma_format(tmp_path):
+    res = RiskResult("콤마", [FinancialYear(2025, revenue=1128265886250,
+                                          operating_income=23450000)],
+                     Materiality(5000000, 3.75, "revenue"),
+                     signals=[], grade=RiskGrade("낮음", 0, 0))
+    p = tmp_path / "fmt.xlsx"
+    build_workpaper(res, str(p))
+    wb = openpyxl.load_workbook(p)
+    ws = wb["재무요약"]
+    assert ws.cell(row=2, column=2).number_format == "#,##0"  # 매출
+    assert ws.cell(row=2, column=8).number_format == "#,##0"  # 영업CF
+    # PM 셀(표지 B5)
+    assert wb["표지"]["B5"].number_format == "#,##0"
+
+
+def test_structured_events_rows_at_top(tmp_path):
+    res = RiskResult("이벤트", [FinancialYear(2025, revenue=1000)],
+                     Materiality(5, 3.75, "revenue"),
+                     signals=[], grade=RiskGrade("낮음", 0, 0),
+                     events=[{"type": "소송", "summary": "하도급 소송",
+                              "impact": "우발부채", "date": "2025-03",
+                              "source": "http://x"}])
+    p = tmp_path / "ev.xlsx"
+    build_workpaper(res, str(p))
+    wb = openpyxl.load_workbook(p)
+    ws = wb["외부리스크"]
+    assert ws.cell(row=1, column=1).value == "유형"
+    assert ws.cell(row=2, column=1).value == "소송"
+
+
 def test_na_signal_gets_gray_fill(tmp_path):
     # na 신호(데이터 없음) → 빌드 성공 + 매트릭스 신호셀 회색(D9D9D9)
     na_sig = Signal("analytical", "revenue_change", "매출 증감률", "na",
