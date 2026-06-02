@@ -1,73 +1,222 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>감사전 리스크 확인 툴</title>
+<title>감사전 리스크 확인 툴 · Pre-Audit Risk</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
-:root{--bg:#0f1115;--card:#1a1d24;--text:#e7e9ee;--text2:#9aa0ab}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,'Malgun Gothic',sans-serif}
-header{padding:1rem 1rem 1rem 7.25rem;border-bottom:1px solid #2a2e38}
-main{max-width:1100px;margin:0 auto;padding:1.5rem}
-.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:end}
-input,button{padding:.55rem .8rem;border-radius:8px;border:1px solid #353a45;background:var(--card);color:var(--text)}
-button{cursor:pointer;background:#3b82f6;border-color:#3b82f6}
-.grade{display:inline-block;padding:.4rem 1rem;border-radius:999px;font-weight:700}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem;margin-top:1rem}
-.card{background:var(--card);border:1px solid #2a2e38;border-radius:12px;padding:1rem}
-.sig{display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid #23262f;font-size:.9rem}
-.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:.4rem}
-footer.legal{padding:1rem;color:var(--text2);font-size:.7rem;border-top:1px solid #2a2e38;margin-top:2rem}
-</style></head><body>
-<header><h1 style="margin:0;font-size:1.1rem">감사전 리스크 확인 툴 · Pre-Audit Risk</h1></header>
-<main>
-  <div class="row">
-    <div><label>회사명<br><input id="company" placeholder="예: 삼성전자"></label></div>
-    <div><label>기준연도<br><input id="year" type="number" value="2025"></label></div>
-    <button onclick="run()">리스크 분석</button>
-    <button onclick="exp()" style="background:#10b981;border-color:#10b981">조서 내보내기</button>
+:root{
+  --bg:#F9FAFB; --bg2:#FFFFFF; --bg3:#F2F4F6;
+  --border:#E5E8EB;
+  --accent:#3182F6; --accent2:#1B64DA;
+  --green:#00C073; --red:#F04452; --amber:#FF9F00; --purple:#7C3AED;
+  --text:#191F28; --text2:#4E5968; --text3:#8B95A1;
+  --sans:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+  --radius:10px; --shadow:0 1px 2px rgba(0,0,0,0.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;font-size:14px;display:flex;flex-direction:column;min-height:100%}
+
+/* WAT 표준 헤더 */
+header{background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:1rem 2rem 1rem 7.25rem;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;flex-wrap:nowrap;gap:1rem;min-height:76px;position:sticky;top:0;z-index:100}
+@media (max-width:768px){header{padding:0.7rem 1rem;min-height:0}}
+.hd-title{min-width:0}
+.hd-title h1{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-0.04em}
+.hd-title h1 .ac{color:var(--accent);font-weight:800}
+.hd-title p{font-size:0.72rem;color:var(--text3);margin-top:0.2rem;font-weight:400;letter-spacing:-0.01em}
+
+main{flex:1;max-width:1120px;width:100%;margin:0 auto;padding:1.5rem 2rem}
+@media (max-width:768px){main{padding:1rem}}
+
+/* 입력 패널 */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:1.1rem 1.25rem;display:flex;gap:.9rem;align-items:flex-end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-size:.72rem;color:var(--text3);font-weight:600;letter-spacing:-0.01em}
+.field input{padding:.55rem .75rem;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg2);color:var(--text);font-family:var(--sans);font-size:.9rem;min-width:200px}
+.field input:focus{outline:none;border-color:var(--accent)}
+.field.year input{min-width:110px}
+.btn{padding:.6rem 1.1rem;border-radius:8px;border:1px solid var(--accent);background:var(--accent);
+  color:#fff;font-family:var(--sans);font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn.ghost{background:var(--bg2);color:var(--text2);border-color:var(--border)}
+.btn.ghost:hover{background:var(--bg3);border-color:var(--text3)}
+
+.status{margin:1rem 0 .2rem;color:var(--text3);font-size:.85rem}
+
+/* 종합등급 */
+.grade-bar{display:flex;align-items:center;gap:.7rem;margin:1.1rem 0 .4rem;flex-wrap:wrap}
+.grade{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;border-radius:999px;
+  font-weight:800;font-size:1rem;letter-spacing:-0.02em}
+.grade.높음{background:#FEECEC;color:var(--red)}
+.grade.보통{background:#FFF4E0;color:#B26A00}
+.grade.낮음{background:#E6F9F0;color:#00875A}
+.grade-meta{color:var(--text3);font-size:.82rem}
+
+/* 4축 카드 */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.9rem;margin-top:.8rem}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:1rem 1.1rem}
+.card h3{font-size:.82rem;font-weight:700;color:var(--text2);margin-bottom:.5rem;
+  display:flex;align-items:center;gap:.4rem;letter-spacing:-0.02em}
+.card h3 .badge{margin-left:auto;font-size:.66rem;font-weight:700;padding:.1rem .45rem;border-radius:6px}
+.sig{display:flex;justify-content:space-between;align-items:center;gap:.5rem;
+  padding:.4rem 0;border-bottom:1px solid var(--bg3);font-size:.85rem}
+.sig:last-child{border-bottom:none}
+.sig .lab{display:flex;align-items:center;gap:.45rem;color:var(--text)}
+.sig .val{color:var(--text2);font-variant-numeric:tabular-nums;font-weight:600;font-size:.82rem}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.na-hint{color:var(--text3);font-size:.7rem;font-weight:500}
+.cmt{font-size:.76rem;color:var(--text3);line-height:1.5;margin:.1rem 0 .4rem 1rem}
+
+/* 외부 리스크 / 공시 */
+.section-h{font-size:.9rem;font-weight:700;color:var(--text);margin:1.4rem 0 .5rem;letter-spacing:-0.02em}
+.ext{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden}
+.ext .row{display:flex;justify-content:space-between;align-items:center;gap:.6rem;
+  padding:.55rem .9rem;border-bottom:1px solid var(--bg3);font-size:.83rem}
+.ext .row:last-child{border-bottom:none}
+.ext a{color:var(--accent);text-decoration:none}
+.ext a:hover{text-decoration:underline}
+.ext .kw{display:inline-block;font-size:.68rem;font-weight:700;color:var(--purple);
+  background:#F3EEFF;padding:.05rem .4rem;border-radius:5px;margin-right:.4rem}
+.ext .date{color:var(--text3);font-size:.76rem;white-space:nowrap}
+.muted{color:var(--text3);padding:.6rem .9rem;font-size:.82rem}
+
+.alert{background:#FFF4E0;border:1px solid #FFE0A3;color:#8A5A00;border-radius:var(--radius);
+  padding:.9rem 1.1rem;font-size:.86rem;margin-top:1rem}
+
+/* 푸터 */
+footer.legal{border-top:1px solid var(--border);background:var(--bg2);
+  padding:.7rem 2rem .7rem 7.25rem;display:flex;justify-content:space-between;align-items:center;
+  font-size:.68rem;color:var(--text3);line-height:1.4;flex-wrap:wrap;gap:12px;flex-shrink:0}
+footer.legal b{color:var(--text2);font-weight:600}
+footer.legal .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
+@media (max-width:768px){footer.legal{padding:.6rem 1rem;flex-direction:column;gap:.3rem;text-align:center}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title">
+    <h1><span class="ac">감사전</span> 리스크 확인 <span class="ac">Tool</span></h1>
+    <p>DART 자동 위험 스크리닝 · ISA 315 / 520 / 240 / 570</p>
   </div>
-  <div id="status" style="margin-top:1rem;color:var(--text2)"></div>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="field">
+      <label for="company">회사명</label>
+      <input id="company" placeholder="예: 삼성전자">
+    </div>
+    <div class="field year">
+      <label for="year">기준연도</label>
+      <input id="year" type="number" value="2024">
+    </div>
+    <button class="btn" onclick="run()">리스크 분석</button>
+    <button class="btn ghost" onclick="exp()">조서 내보내기</button>
+  </div>
+  <div id="status" class="status"></div>
   <div id="result"></div>
 </main>
+
 <footer class="legal">
-  <div><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</div>
-  <div>© 2026 Woongcpa</div>
+  <span><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</span>
+  <span class="right">© 2026 Woongcpa</span>
 </footer>
+
 <script>
-const C={red:'#FFC7CE',yellow:'#FFEB9C',green:'#C6EFCE',na:'#D9D9D9'};
-const AX={analytical:'분석적검토',fraud:'부정위험',going_concern:'계속기업'};
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DOT={red:'#F04452',yellow:'#FF9F00',green:'#00C073',na:'#8B95A1'};
+const AX={analytical:'분석적검토 (ISA 520)',fraud:'부정위험 (ISA 240)',going_concern:'계속기업 (ISA 570)'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
 async function run(){
-  const company=company_.value, year=+year_.value;
+  const company=company_.value.trim(), year=+year_.value;
+  if(!company){status_.textContent='회사명을 입력하세요.';return;}
   status_.textContent='DART 조회·분석 중…';
-  const r=await fetch('/api/assess',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({company,end_year:year})});
-  const d=await r.json(); status_.textContent='';
-  if(d.error){result_.innerHTML='<div class="card">⚠ '+d.error+'</div>';return;}
-  const gc={높음:C.red,보통:C.yellow,낮음:C.green}[d.grade.grade];
-  let html='<p>종합위험등급: <span class="grade" style="background:'+gc+';color:#111">'+d.grade.grade
-    +'</span> (적 '+d.grade.red+' · 황 '+d.grade.yellow+')</p><div class="cards">';
+  result_.innerHTML='';
+  let d;
+  try{
+    const r=await fetch('/api/assess',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({company,end_year:year})});
+    d=await r.json();
+  }catch(e){status_.textContent='';result_.innerHTML='<div class="alert">서버 응답 오류: '+esc(e.message)+'</div>';return;}
+  status_.textContent='';
+  if(d.error){result_.innerHTML='<div class="alert">⚠ '+esc(d.error)+'</div>';return;}
+
+  let html='<div class="grade-bar"><span class="grade '+esc(d.grade.grade)+'">'+esc(d.grade.grade)
+    +'</span><span class="grade-meta">적신호 '+d.grade.red+' · 황신호 '+d.grade.yellow
+    +(d.materiality?' · 수행중요성(PM) '+fmtKRW(d.materiality.pm):'')+'</span></div>';
+
+  html+='<div class="cards">';
   for(const ax of Object.keys(AX)){
-    const sigs=d.signals.filter(s=>s.axis===ax);
-    html+='<div class="card"><b>'+AX[ax]+'</b>';
-    for(const s of sigs){const col=C[s.level]||C.na;
-      const hint=s.level==='na'?' <span style="color:var(--text2);font-size:.72rem">데이터없음</span>':'';
-      html+='<div class="sig"><span><span class="dot" style="background:'
-      +col+'"></span>'+s.label+hint+'</span><span>'+(s.value==null?'-':(+s.value).toFixed(1))+'</span></div>';
-      if(d.comments[s.code])html+='<div style="font-size:.78rem;color:var(--text2)">'+d.comments[s.code]+'</div>';}
+    const sigs=(d.signals||[]).filter(s=>s.axis===ax);
+    if(!sigs.length)continue;
+    const red=sigs.filter(s=>s.level==='red').length, yel=sigs.filter(s=>s.level==='yellow').length;
+    let badge='';
+    if(red)badge='<span class="badge" style="background:#FEECEC;color:#F04452">적 '+red+'</span>';
+    else if(yel)badge='<span class="badge" style="background:#FFF4E0;color:#B26A00">황 '+yel+'</span>';
+    else badge='<span class="badge" style="background:#E6F9F0;color:#00875A">정상</span>';
+    html+='<div class="card"><h3>'+AX[ax]+badge+'</h3>';
+    for(const s of sigs){
+      const col=DOT[s.level]||DOT.na;
+      const hint=s.level==='na'?' <span class="na-hint">데이터없음</span>':'';
+      html+='<div class="sig"><span class="lab"><span class="dot" style="background:'+col+'"></span>'
+        +esc(s.label)+hint+'</span><span class="val">'+(s.value==null?'—':(+s.value).toFixed(1))+'</span></div>';
+      if(d.comments&&d.comments[s.code])html+='<div class="cmt">'+esc(d.comments[s.code])+'</div>';
+    }
     html+='</div>';
   }
   html+='</div>';
-  if(d.news&&d.news.length){html+='<h3>외부 리스크</h3>';for(const n of d.news)
-    html+='<div class="sig"><a href="'+esc(n.url)+'" target="_blank" style="color:#7aa2f7">['+esc(n.keyword)+'] '+esc(n.title)+'</a></div>';}
-  if(d.disclosures&&d.disclosures.length){html+='<h3>공시 이벤트</h3>';for(const x of d.disclosures)
-    html+='<div class="sig"><span>'+esc(x.report_nm)+'</span><span style="color:var(--text2)">'+esc(x.rcept_dt)+'</span></div>';}
+
+  if(d.news&&d.news.length){
+    html+='<div class="section-h">외부 리스크 (뉴스)</div><div class="ext">';
+    for(const n of d.news)html+='<div class="row"><span><span class="kw">'+esc(n.keyword)+'</span>'
+      +'<a href="'+esc(n.url)+'" target="_blank" rel="noopener">'+esc(n.title)+'</a></span>'
+      +'<span class="date">'+esc(n.date)+'</span></div>';
+    html+='</div>';
+  }
+  if(d.disclosures&&d.disclosures.length){
+    html+='<div class="section-h">DART 공시 이벤트</div><div class="ext">';
+    for(const x of d.disclosures)html+='<div class="row"><span>'+esc(x.report_nm)+'</span>'
+      +'<span class="date">'+esc(x.rcept_dt)+'</span></div>';
+    html+='</div>';
+  }
+  if((!d.news||!d.news.length)&&(!d.disclosures||!d.disclosures.length)){
+    html+='<div class="section-h">외부 리스크</div><div class="ext"><div class="muted">특이사항 없음 (뉴스 API 미설정 시 뉴스 생략)</div></div>';
+  }
   result_.innerHTML=html;
 }
+
 async function exp(){
-  const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({company:company_.value,end_year:+year_.value})});
-  const b=await r.blob(),u=URL.createObjectURL(b),a=document.createElement('a');
-  a.href=u;a.download='risk_'+company_.value+'.xlsx';a.click();URL.revokeObjectURL(u);
+  const company=company_.value.trim();
+  if(!company){status_.textContent='회사명을 입력하세요.';return;}
+  status_.textContent='조서 생성 중…';
+  try{
+    const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({company,end_year:+year_.value})});
+    const b=await r.blob(),u=URL.createObjectURL(b),a=document.createElement('a');
+    a.href=u;a.download='risk_'+company+'_'+year_.value+'.xlsx';a.click();URL.revokeObjectURL(u);
+  }finally{status_.textContent='';}
 }
+
+function fmtKRW(v){
+  if(v==null)return '—';
+  if(v>=1e8)return (v/1e8).toFixed(1)+'억';
+  if(v>=1e4)return Math.round(v/1e4)+'만';
+  return Math.round(v).toLocaleString();
+}
+
 const company_=document.getElementById('company'),year_=document.getElementById('year'),
   status_=document.getElementById('status'),result_=document.getElementById('result');
-</script></body></html>
+company_.addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+</script>
+</body>
+</html>
