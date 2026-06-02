@@ -204,9 +204,13 @@ def _pick_ticker(tokens: list[str]) -> str | None:
             continue
         if t in {"주", "외", "본인", "건"}:
             continue
-        # 참조 관용어(외/건/상세/명세/참조)만으로 된 토큰 제외
+        # 수량 관용어(1,262,000주 · 1건 · 100좌) = 종목명 아님 → 제외.
+        if re.match(r"^[\d,]+\s*(주|건|좌|매)$", t):
+            continue
+        # 참조 관용어 제거. '주'는 빼지 않는다 — '코스맥스보통주' 절단 방지(수량 관용어는
+        # 위에서 이미 걸렀으므로 여기 남는 '주'는 종목명 일부).
         core = t
-        for w in ["외", "건", "상세", "명세", "참조", "주"]:
+        for w in ["외", "건", "상세", "명세", "참조"]:
             core = core.replace(w, "")
         if not _HANGUL_RUN.search(core):
             continue
@@ -572,6 +576,12 @@ def _parse_line(s: str, bc_no: str, bank: str) -> FinancialAsset | None:
             ccy = t
         elif _ACCT_TOKEN.match(t) and "," not in t and acct is None:
             acct = t
+        elif _DATE_8.match(t) and _parse_yyyymmdd(t) is not None:
+            # 줄 중간 유효 YYYYMMDD(비고 텍스트 뒤라 trailing strip 못 잡음) = 날짜이지
+            # 금액 아님. 증권 positional 매핑(margin_deposit 등)에 누출되는 것 방지.
+            # 무효(00000000·month00 등 8자리 금액)는 _parse_yyyymmdd None → 금액 유지.
+            if maturity is None:
+                maturity = _parse_yyyymmdd(t)
         elif _NUM_TOKEN.match(t) or t == "-":
             numeric_tokens.append(t)
         else:
