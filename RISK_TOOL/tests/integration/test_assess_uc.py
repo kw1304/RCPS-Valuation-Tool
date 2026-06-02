@@ -42,3 +42,33 @@ def test_assess_handles_corp_not_found():
     )
     res = uc.run("유령회사", end_year=2025)
     assert res.error and "회사" in res.error
+
+
+def _raise(*a, **k):
+    raise RuntimeError("DART_API_KEY 미설정")
+
+
+def test_assess_corp_resolver_raises_returns_graceful_error():
+    # DART 키 미설정 등 corp_resolver 예외 → 500 아닌 우아한 에러
+    uc = AssessRiskUseCase(
+        extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
+        corp_resolver=_raise,
+        news=type("N", (), {"research": lambda self, c, i="": []})(),
+        commenter=type("C", (), {"comment_signals": lambda self, c, s: {}})(),
+    )
+    res = uc.run("키없음", end_year=2025)
+    assert res.error and "DART" in res.error
+    assert res.grade is None
+
+
+def test_assess_degrades_when_news_and_comment_fail():
+    # 보조기능(뉴스·코멘트) 예외는 핵심 신호 결과를 막지 않음
+    uc = AssessRiskUseCase(
+        extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
+        corp_resolver=lambda name: {"corp_code": "0001", "corp_name": name, "stock_code": "0"},
+        news=type("N", (), {"research": lambda self, c, i="": (_ for _ in ()).throw(RuntimeError("net"))})(),
+        commenter=type("C", (), {"comment_signals": lambda self, c, s: (_ for _ in ()).throw(RuntimeError("llm"))})(),
+    )
+    res = uc.run("정상회사", end_year=2025)
+    assert res.grade is not None and len(res.signals) > 0
+    assert res.comments == {} and res.news == []

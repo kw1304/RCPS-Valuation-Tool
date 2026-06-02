@@ -26,11 +26,20 @@ class AssessRiskUseCase:
         self.commenter = commenter
 
     def run(self, company: str, end_year: int) -> RiskResult:
-        corp = self.corp_resolver(company)
+        # 외부 DART I/O — 키 미설정·네트워크 오류는 우아한 에러로 환원(500 금지)
+        try:
+            corp = self.corp_resolver(company)
+        except Exception as e:  # DartError 등
+            return RiskResult(company, [], None,
+                              error=f"DART 조회 실패: {e} — DART_API_KEY 확인 또는 수기입력.")
         if not corp:
             return RiskResult(company, [], None,
                               error="DART에서 회사를 찾지 못했습니다. 회사명 확인 또는 수기입력.")
-        years = self.extractor.fetch(corp["corp_code"], end_year)
+        try:
+            years = self.extractor.fetch(corp["corp_code"], end_year)
+        except Exception as e:
+            return RiskResult(company, [], None,
+                              error=f"DART 재무자료 조회 실패: {e} — 과거실적 수기입력 필요.")
         if not years:
             return RiskResult(company, [], None,
                               error="DART 재무자료 없음 — 과거실적 수기입력 필요.")
@@ -40,6 +49,13 @@ class AssessRiskUseCase:
             return RiskResult(company, years, None, error=str(e))
         signals = evaluate_axes(years, pm)
         grade = overall_grade(signals)
-        comments = self.commenter.comment_signals(company, signals)
-        news = self.news.research(company)
+        # 보조기능(AI 코멘트·뉴스)은 실패해도 핵심 신호 결과를 막지 않음(degrade)
+        try:
+            comments = self.commenter.comment_signals(company, signals)
+        except Exception:
+            comments = {}
+        try:
+            news = self.news.research(company)
+        except Exception:
+            news = []
         return RiskResult(company, years, pm, signals, grade, comments, news)
