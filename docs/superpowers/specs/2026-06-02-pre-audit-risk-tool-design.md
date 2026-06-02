@@ -143,6 +143,7 @@ WAT 셸. 회사명 입력 → 진행상태 → 결과: 종합등급 신호등 + 
 - 후속측정·attribution·분기비교 없음 (`feedback_no_subsequent`)
 - 분개특성 상세 테스트는 AUTO_JET 영역 — 여기선 재무비율 레벨만
 - 화면에 "5803" 등 baseline 식별자 노출 없음
+- 부분자본잠식 yellow tier는 자본금(납입자본) 필드가 FinancialYear에 없어 v1 미구현 — 완전자본잠식(자본≤0)만 적신호. 향후 자본금 추가 시 확장.
 
 ## 13. 재사용 자산
 - `rcps_valuation/inputs/dart_financials.py` — 상장+비상장 외감 5개년 (DartFinancials)

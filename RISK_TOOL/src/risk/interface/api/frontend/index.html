@@ -34,6 +34,7 @@ footer.legal{padding:1rem;color:var(--text2);font-size:.7rem;border-top:1px soli
 <script>
 const C={red:'#FFC7CE',yellow:'#FFEB9C',green:'#C6EFCE',na:'#D9D9D9'};
 const AX={analytical:'분석적검토',fraud:'부정위험',going_concern:'계속기업'};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function run(){
   const company=company_.value, year=+year_.value;
   status_.textContent='DART 조회·분석 중…';
@@ -56,7 +57,9 @@ async function run(){
   }
   html+='</div>';
   if(d.news&&d.news.length){html+='<h3>외부 리스크</h3>';for(const n of d.news)
-    html+='<div class="sig"><a href="'+n.url+'" target="_blank" style="color:#7aa2f7">['+n.keyword+'] '+n.title+'</a></div>';}
+    html+='<div class="sig"><a href="'+esc(n.url)+'" target="_blank" style="color:#7aa2f7">['+esc(n.keyword)+'] '+esc(n.title)+'</a></div>';}
+  if(d.disclosures&&d.disclosures.length){html+='<h3>공시 이벤트</h3>';for(const x of d.disclosures)
+    html+='<div class="sig"><span>'+esc(x.report_nm)+'</span><span style="color:var(--text2)">'+esc(x.rcept_dt)+'</span></div>';}
   result_.innerHTML=html;
 }
 async function exp(){
