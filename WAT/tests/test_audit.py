@@ -73,6 +73,20 @@ def test_prompt_grounded_search_priority():
     assert "WebSearch" in p
 
 
+def test_prompt_law_article_consistency_guard():
+    """iter1: fast 모드 법령 조문번호 환각·답변 내 불일치 방지 가드."""
+    p = audit.audit_system_prompt("fast")
+    assert "일관" in p          # 동일 개념 조문번호 일관성
+    assert "🔍" in p            # 검색 없이 단정 시 마커 동반
+
+
+def test_prompt_effective_date_guard():
+    """iter1: 기준서 개정 시행일(개시vs종료·연도) 혼동 방지 가드."""
+    p = audit.audit_system_prompt("fast")
+    assert "시행일" in p
+    assert "개시" in p and "종료" in p
+
+
 def test_prompt_domain_accuracy_guards():
     p = audit.audit_system_prompt("fast")
     assert "재편" in p or "R400" in p
