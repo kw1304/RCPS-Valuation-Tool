@@ -28,8 +28,10 @@ def _safe_stem(name: str) -> str:
 def _build_uc():
     client = DartClient(api_key=os.environ.get("DART_API_KEY", ""))
     extractor = RiskExtractor(client)
-    # WebSearch는 런타임 도구 → 서버에선 None search_fn(축4 degrade) 기본
-    news = NewsResearcher(search_fn=lambda q: [])
+    # 네이버 뉴스 검색 OpenAPI — NAVER 키 있으면 실뉴스, 없으면 no-op degrade
+    from risk.infrastructure.news.naver_search import NaverNewsSearch
+    _nv = NaverNewsSearch()
+    news = NewsResearcher(search_fn=_nv if _nv.enabled else (lambda q: []))
     try:
         import anthropic
         llm = Commenter(anthropic.Anthropic()) if os.environ.get("ANTHROPIC_API_KEY") else Commenter(None)
