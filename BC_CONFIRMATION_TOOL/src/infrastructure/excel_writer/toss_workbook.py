@@ -428,15 +428,16 @@ def build_ac5_collateral(wb, company, fiscal_date, records):
     rows = [
         [r.get("bc_no",""), r.get("bank",""), r.get("collateral_type",""),
          r.get("creditor",""), r.get("issuer",""),
-         float(r.get("book_amount",0)), float(r.get("appraised_amount") or 0), r.get("priority","")]
+         float(r.get("book_amount",0)), float(r.get("appraised_amount") or 0),
+         float(r.get("senior_lien") or 0), r.get("priority","")]
         for r in records
     ]
     return _build_record_sheet(wb, "AC5. 담보제공자산", "AC5",
         company, fiscal_date,
         "AC5. 금융조회서 요약 — 담보제공자산",
         "회사의 담보제공자산 주석의 적정성 검토",
-        ["조서번호", "금융기관", "담보종류", "담보권자", "소유자", "장부금액", "감정금액", "설정순위"],
-        [10, 16, 24, 18, 18, 16, 16, 10],
+        ["조서번호", "금융기관", "담보종류", "담보권자", "소유자", "장부금액", "감정금액", "선순위설정금액", "설정순위"],
+        [10, 16, 24, 18, 18, 16, 16, 16, 10],
         rows,
         "회사의 담보제공자산 주석은 적정하게 공시됨.",
     )

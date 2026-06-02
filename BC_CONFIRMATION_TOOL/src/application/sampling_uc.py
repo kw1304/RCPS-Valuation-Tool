@@ -20,7 +20,9 @@ def run_sampling(session: Session, project_id: int, gl_path: Path) -> list[Sampl
 
     rows = list(GLLoader(gl_path).iter_rows())
     parties = Sampler(clf, norm).sample(rows)
-    parties.sort(key=lambda p: (-p.bs_amount + -abs(p.pl_amount)))  # 큰 거래 우선 BC-1
+    # 거래 규모(절대값) 큰 순 BC-1. 과거 `-bs_amount`는 음수잔액(당좌차월·차감)을 부호
+    # 때문에 후순위로 밀었다 → 절대값으로 통일.
+    parties.sort(key=lambda p: -(abs(p.bs_amount) + abs(p.pl_amount)))
     for sp in parties:
         c = upsert_counterparty(
             session, project_id,
