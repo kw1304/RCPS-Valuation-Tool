@@ -68,6 +68,19 @@ def test_debt_ratio_yellow():
     assert dr.level == "yellow"
 
 
+def test_debt_ratio_na_when_capital_impaired():
+    # 완전자본잠식(자본<=0) → 부채/자본 분모 비정상 → na (green 오인 금지)
+    prev = _mk(2024)
+    curr = _mk(2025, total_liabilities=300, total_equity=-50)
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    dr = next(s for s in sigs if s.code == "debt_ratio")
+    assert dr.level == "na"
+    assert dr.value is None
+    # 자본잠식 신호 자체는 적신호로 별도 표시
+    ci = next(s for s in sigs if s.code == "capital_impairment")
+    assert ci.level == "red"
+
+
 # ── FIX 1: 판관비율(SG&A ratio) 신호 존재 ──
 
 def test_sga_ratio_signal_present():

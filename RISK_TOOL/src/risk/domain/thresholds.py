@@ -196,6 +196,10 @@ def _gc_debt_ratio(curr) -> Signal:
     if curr.total_liabilities is None or curr.total_equity is None:
         return Signal("going_concern", "debt_ratio", "부채비율", "na", None, th, note=_NA_NOTE)
     dr = ind.debt_ratio(curr.total_liabilities, curr.total_equity)
+    # dr None ⇒ 자본 0/음수(잠식) 등 분모 비정상 → green 오인 방지, na로 보류
+    # (자본잠식 적신호는 capital_impairment가 별도 표시)
+    if dr is None:
+        return Signal("going_concern", "debt_ratio", "부채비율", "na", None, th, note=_NA_NOTE)
     level = _band_low_high(dr, yellow=TH_DEBT_RATIO[0], red=TH_DEBT_RATIO[1])
     return Signal("going_concern", "debt_ratio", "부채비율", level, dr, th)
 
