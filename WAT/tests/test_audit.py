@@ -95,6 +95,14 @@ def test_prompt_sampling_risk_pairing_guard():
     assert "KSA 530" in p
 
 
+def test_prompt_iesba_part_structure_guard():
+    """iter3: IESBA Code Part 귀속 혼동(윤리조항을 독립성 Part 4A로) 방지."""
+    p = audit.audit_system_prompt("fast")
+    assert "Part 1" in p and "Part 3" in p and "Part 4A" in p
+    assert "전임감사인" in p
+    assert "독립성이 아닌 윤리" in p
+
+
 def test_prompt_domain_accuracy_guards():
     p = audit.audit_system_prompt("fast")
     assert "재편" in p or "R400" in p
