@@ -305,6 +305,10 @@ body.tool-mode footer.legal{display:none}
           <span>BC Tool · 금융기관조회서 자동화 (4150 조서)</span>
           <span class="tag ready">사용 가능</span>
         </a>
+        <a class="tool-item" href="#tool=risk-precheck" data-tool="risk-precheck">
+          <span>감사전 리스크 확인 툴 · DART 자동 위험 스크리닝</span>
+          <span class="tag ready">사용 가능</span>
+        </a>
       </div>
     </div>
 
@@ -377,6 +381,7 @@ const URL_JET  = IS_LOCAL ? 'http://127.0.0.1:5050/' : `https://${TS_HOST}:10000
 const URL_IRS  = '/irs/';
 const URL_CC   = IS_LOCAL ? 'http://127.0.0.1:8521/index.html' : `https://${TS_HOST}:8521/`;
 const URL_BC   = IS_LOCAL ? 'http://127.0.0.1:8766/' : `https://${TS_HOST}:8766/`;
+const URL_RISK = IS_LOCAL ? 'http://127.0.0.1:8533/' : `https://${TS_HOST}:8533/`;
 const TOOLS = {
   'rcps-dcf': {
     name: 'RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델',
@@ -402,6 +407,11 @@ const TOOLS = {
     name: "웅계사's BC Auto Tool · 금융기관조회서 자동화 (4150 조서)",
     category: 'Audit Support',
     url: URL_BC,
+  },
+  'risk-precheck': {
+    name: '감사전 리스크 확인 툴 · Pre-Audit Risk (DART 자동 위험 스크리닝)',
+    category: 'Audit Support',
+    url: URL_RISK,
   },
   'accounting-ai': {
     name: '회계기준 AI · K-IFRS 질의응답',
