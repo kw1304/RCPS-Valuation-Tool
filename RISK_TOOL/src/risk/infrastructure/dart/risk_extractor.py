@@ -43,6 +43,8 @@ _FIELD_IDS = {
                           "ifrs-full_TradeAndOtherCurrentReceivables",
                           "dart_ShortTermTradeReceivable"],
     "inventory": ["ifrs-full_Inventories"],
+    "trade_payables": ["ifrs-full_TradeAndOtherCurrentPayables",
+                       "dart_ShortTermTradePayable"],
 }
 
 # account_id → (field, rank). rank 작을수록 우선.

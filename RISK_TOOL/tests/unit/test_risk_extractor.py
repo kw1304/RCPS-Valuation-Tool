@@ -62,6 +62,16 @@ def test_account_id_priority_lower_rank_wins():
     assert y.trade_receivables == 500  # 우선 후보 채택, 순서 무관
 
 
+def test_trade_payables_account_variants():
+    # 매입채무: TradeAndOtherCurrentPayables·dart_ShortTermTradePayable 둘 다 매핑
+    for aid in ("ifrs-full_TradeAndOtherCurrentPayables",
+                "dart_ShortTermTradePayable"):
+        rows = [{"account_id": aid, "bsns_year": "2025",
+                 "thstrm_amount": "700", "frmtrm_amount": "600"}]
+        y = next(y for y in rows_to_years(rows) if y.year == 2025)
+        assert y.trade_payables == 700, aid
+
+
 def test_num_edge_cases():
     assert _num("-") is None
     assert _num("—") is None

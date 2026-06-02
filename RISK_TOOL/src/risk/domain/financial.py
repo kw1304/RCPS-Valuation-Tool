@@ -21,6 +21,7 @@ class FinancialYear:
     total_equity: float | None = None
     trade_receivables: float | None = None
     inventory: float | None = None
+    trade_payables: float | None = None
 
     @property
     def gross_profit(self) -> float | None:

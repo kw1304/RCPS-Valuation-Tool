@@ -36,6 +36,23 @@ def turnover(flow: float | None, balance: float | None) -> float | None:
     return safe_div(flow, balance)
 
 
+def net_margin(net_income: float | None, revenue: float | None) -> float | None:
+    """순이익률(%) = 당기순이익 / 매출."""
+    r = safe_div(net_income, revenue)
+    return r * 100.0 if r is not None else None
+
+
+def asset_turnover(revenue: float | None, total_assets: float | None) -> float | None:
+    """총자산회전율(회) = 매출 / 총자산."""
+    return safe_div(revenue, total_assets)
+
+
+def ocf_to_sales(operating_cf: float | None, revenue: float | None) -> float | None:
+    """영업현금흐름/매출(%) — 현금창출력."""
+    r = safe_div(operating_cf, revenue)
+    return r * 100.0 if r is not None else None
+
+
 def effective_tax_rate(tax_expense: float | None, pretax_income: float | None) -> float | None:
     """유효세율(%). 세전이익 양수일 때만."""
     if tax_expense is None or pretax_income is None or pretax_income <= 0:

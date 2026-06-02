@@ -201,6 +201,125 @@ def test_revenue_change_na_when_revenue_missing():
     assert rev.note == "데이터 없음 — 신호 보류"
 
 
+# ── 분석적검토 세분화: 순이익률·영업CF/매출·총자산회전율·매입채무회전율 ──
+
+_REV = 1_000_000_000  # 매출 10억 (PM게이트 통과용 충분한 규모)
+
+
+def test_net_margin_yellow_boundary():
+    # 순이익률 10% → 13% (Δ+3%p, 황 임계 ±2 초과 적 ±5 미만), 금액게이트 통과
+    prev = _mk(2024, revenue=_REV, net_income=100_000_000)   # 10%
+    curr = _mk(2025, revenue=_REV, net_income=130_000_000)   # 13%
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    nm = next(s for s in sigs if s.code == "net_margin")
+    assert nm.label == "순이익률"
+    assert nm.level == "yellow"
+
+
+def test_net_margin_red_boundary():
+    # 순이익률 10% → 16% (Δ+6%p, 적 ±5 초과)
+    prev = _mk(2024, revenue=_REV, net_income=100_000_000)   # 10%
+    curr = _mk(2025, revenue=_REV, net_income=160_000_000)   # 16%
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    nm = next(s for s in sigs if s.code == "net_margin")
+    assert nm.level == "red"
+
+
+def test_net_margin_na_when_net_income_missing():
+    prev = _mk(2024, revenue=_REV, net_income=100_000_000)
+    curr = _mk(2025, revenue=_REV, net_income=None)
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    nm = next(s for s in sigs if s.code == "net_margin")
+    assert nm.level == "na"
+    assert nm.note == "데이터 없음 — 신호 보류"
+
+
+def test_ocf_to_sales_yellow_boundary():
+    # 영업CF/매출 5% → 9% (Δ+4%p, 황 임계 ±3 초과 적 ±6 미만)
+    prev = _mk(2024, revenue=_REV, operating_cf=50_000_000)   # 5%
+    curr = _mk(2025, revenue=_REV, operating_cf=90_000_000)   # 9%
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    o = next(s for s in sigs if s.code == "ocf_to_sales")
+    assert o.label == "영업CF/매출"
+    assert o.level == "yellow"
+
+
+def test_ocf_to_sales_red_boundary():
+    # 영업CF/매출 5% → 12% (Δ+7%p, 적 ±6 초과)
+    prev = _mk(2024, revenue=_REV, operating_cf=50_000_000)   # 5%
+    curr = _mk(2025, revenue=_REV, operating_cf=120_000_000)  # 12%
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    o = next(s for s in sigs if s.code == "ocf_to_sales")
+    assert o.level == "red"
+
+
+def test_asset_turnover_red_with_gate():
+    # 총자산회전율 2.0 → 1.3 (-35%, 적 임계 30 초과), Δ자산 PM 초과 → red
+    prev = _mk(2024, revenue=_REV, total_assets=500_000_000)            # 2.0회
+    curr = _mk(2025, revenue=_REV, total_assets=int(_REV / 1.3))        # ≈1.3회
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    at = next(s for s in sigs if s.code == "asset_turnover")
+    assert at.label == "총자산회전율"
+    assert at.level == "red"
+
+
+def test_asset_turnover_observation_when_delta_below_pm():
+    # 회전율 급변이지만 Δ자산 PM 미만 → green + 관찰
+    prev = _mk(2024, revenue=20_000_000, total_assets=10_000_000)       # 2.0회
+    curr = _mk(2025, revenue=20_000_000, total_assets=15_384_615)       # ≈1.3회, Δ자산 약5.4백만 < PM 1천만
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    at = next(s for s in sigs if s.code == "asset_turnover")
+    assert at.level == "green"
+    assert "관찰" in at.note
+
+
+def test_asset_turnover_na_when_assets_missing():
+    prev = _mk(2024, revenue=_REV, total_assets=None)
+    curr = _mk(2025, revenue=_REV, total_assets=500_000_000)
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    at = next(s for s in sigs if s.code == "asset_turnover")
+    assert at.level == "na"
+    assert at.note == "데이터 없음 — 신호 보류"
+
+
+def test_payables_turnover_decline_red():
+    # 매입채무회전율 6 → 1.2 (-80%, 적 임계 -35 초과), Δ잔액 PM 초과 → red
+    prev = _mk(2024, cogs=600_000_000, trade_payables=100_000_000)  # 6회
+    curr = _mk(2025, cogs=600_000_000, trade_payables=500_000_000)  # 1.2회 (-80%)
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    pt = next(s for s in sigs if s.code == "payables_turnover")
+    assert pt.label == "매입채무회전율"
+    assert pt.level == "red"
+
+
+def test_payables_turnover_na_when_payables_missing():
+    prev = _mk(2024, cogs=600_000_000, trade_payables=None)
+    curr = _mk(2025, cogs=600_000_000, trade_payables=500_000_000)
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    pt = next(s for s in sigs if s.code == "payables_turnover")
+    assert pt.level == "na"
+    assert pt.note == "데이터 없음 — 신호 보류"
+
+
+def test_analytical_axis_has_ten_indicators():
+    # 전기 존재 + 전 데이터 충족 시 축1 신호 = 10개
+    common = dict(revenue=_REV, cogs=600_000_000, operating_income=300_000_000,
+                  net_income=100_000_000, operating_cf=80_000_000,
+                  total_assets=500_000_000, trade_receivables=100_000_000,
+                  inventory=120_000_000, trade_payables=90_000_000)
+    prev = _mk(2024, **common)
+    curr = _mk(2025, **common)
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))
+    analytical = [s for s in sigs if s.axis == "analytical"]
+    assert len(analytical) == 10
+    codes = {s.code for s in analytical}
+    assert codes == {
+        "revenue_change", "gross_margin", "operating_margin", "sga_ratio",
+        "ar_turnover", "inv_turnover", "net_margin", "ocf_to_sales",
+        "asset_turnover", "payables_turnover",
+    }
+
+
 def test_na_does_not_affect_grade():
     # na 신호는 등급 카운트에 영향 없음 (모두 결측 → green/na 혼재여도 red/yellow 0)
     from risk.domain.risk_grade import overall_grade

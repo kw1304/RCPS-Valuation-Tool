@@ -11,7 +11,10 @@ TH_REVENUE = (10, 30)        # 매출 증감률 ±%   (황, 적)
 TH_GROSS_MARGIN = (2, 5)     # 매출총이익률 ±%p
 TH_OPERATING_MARGIN = (2, 5) # 영업이익률 ±%p
 TH_SGA_RATIO = (2, 5)        # 판관비율 ±%p
+TH_NET_MARGIN = (2, 5)       # 순이익률 ±%p
+TH_OCF_TO_SALES = (3, 6)     # 영업CF/매출 ±%p (현금창출력)
 TH_TURNOVER = (20, 35)       # 회전율 하락률 -% (황, 적)
+TH_ASSET_TURNOVER = (15, 30) # 총자산회전율 변동률 ±% (효율성 급변)
 # 축2 부정
 TH_AR_VS_REV = (10, 25)      # 매출채권증가율−매출증가율 %p
 TH_INV_VS_REV = (15, 30)     # 재고증가율−매출증가율 %p
@@ -49,21 +52,39 @@ def evaluate_axes(years: list[FinancialYear], pm: Materiality) -> list[Signal]:
         out.append(_analytical_margin(prev, curr, pm, "gross_margin", "매출총이익률",
                                        ind.gross_margin(curr.revenue, curr.cogs),
                                        ind.gross_margin(prev.revenue, prev.cogs),
-                                       TH_GROSS_MARGIN))
+                                       yellow=TH_GROSS_MARGIN[0], red=TH_GROSS_MARGIN[1]))
         out.append(_analytical_margin(prev, curr, pm, "operating_margin", "영업이익률",
                                        ind.operating_margin(curr.operating_income, curr.revenue),
                                        ind.operating_margin(prev.operating_income, prev.revenue),
-                                       TH_OPERATING_MARGIN))
+                                       yellow=TH_OPERATING_MARGIN[0], red=TH_OPERATING_MARGIN[1]))
         out.append(_analytical_margin(prev, curr, pm, "sga_ratio", "판관비율",
                                        ind.sga_ratio(curr.sga, curr.revenue),
                                        ind.sga_ratio(prev.sga, prev.revenue),
-                                       TH_SGA_RATIO))
+                                       yellow=TH_SGA_RATIO[0], red=TH_SGA_RATIO[1]))
         out.append(_analytical_turnover(prev, curr, pm, "ar_turnover", "매출채권회전율",
                                         ind.turnover(curr.revenue, curr.trade_receivables),
-                                        ind.turnover(prev.revenue, prev.trade_receivables)))
+                                        ind.turnover(prev.revenue, prev.trade_receivables),
+                                        balance_attr="trade_receivables"))
         out.append(_analytical_turnover(prev, curr, pm, "inv_turnover", "재고회전율",
                                         ind.turnover(curr.cogs, curr.inventory),
-                                        ind.turnover(prev.cogs, prev.inventory)))
+                                        ind.turnover(prev.cogs, prev.inventory),
+                                        balance_attr="inventory"))
+        # 순이익률 변동 (±2%p황/±5%p적)
+        out.append(_analytical_margin(prev, curr, pm, "net_margin", "순이익률",
+                                      ind.net_margin(curr.net_income, curr.revenue),
+                                      ind.net_margin(prev.net_income, prev.revenue)))
+        # 영업현금흐름/매출 변동 (현금창출력, ±3%p황/±6%p적)
+        out.append(_analytical_margin(prev, curr, pm, "ocf_to_sales", "영업CF/매출",
+                                      ind.ocf_to_sales(curr.operating_cf, curr.revenue),
+                                      ind.ocf_to_sales(prev.operating_cf, prev.revenue),
+                                      yellow=3, red=6))
+        # 총자산회전율 변동 (효율성 급변, ±15%/±30%)
+        out.append(_analytical_asset_turnover(prev, curr, pm))
+        # 매입채무회전율 변동 (-20%/-35% 하락 = 대금지급 지연/조작 의심)
+        out.append(_analytical_turnover(prev, curr, pm, "payables_turnover", "매입채무회전율",
+                                        ind.turnover(curr.cogs, curr.trade_payables),
+                                        ind.turnover(prev.cogs, prev.trade_payables),
+                                        balance_attr="trade_payables"))
 
     # ── 축2 부정 ──
     out.append(_fraud_accrual(curr))
@@ -104,13 +125,13 @@ def _analytical_revenue(prev, curr, pm) -> Signal:
     return Signal("analytical", "revenue_change", "매출 증감률", band, chg, th)
 
 
-def _analytical_margin(prev, curr, pm, code, label, curr_v, prev_v, thresh) -> Signal:
-    th = f"±{thresh[0]}%p황/±{thresh[1]}%p적"
+def _analytical_margin(prev, curr, pm, code, label, curr_v, prev_v, yellow=2, red=5) -> Signal:
+    th = f"±{yellow}%p황/±{red}%p적"
     # 핵심입력(당기/전기 비율) 결측 → na
     if curr_v is None or prev_v is None:
         return Signal("analytical", code, label, "na", None, th, note=_NA_NOTE)
     diff = curr_v - prev_v  # %p
-    band = _band(diff, *thresh)
+    band = _band(diff, yellow, red)
     # 마진 변동의 금액환산 = diff%p × 매출 / 100
     delta_amt = None if curr.revenue is None else diff / 100.0 * curr.revenue
     if band != "green" and not _gate_pm(delta_amt, pm):
@@ -119,7 +140,8 @@ def _analytical_margin(prev, curr, pm, code, label, curr_v, prev_v, thresh) -> S
     return Signal("analytical", code, label, band, diff, th)
 
 
-def _analytical_turnover(prev, curr, pm, code, label, curr_v, prev_v) -> Signal:
+def _analytical_turnover(prev, curr, pm, code, label, curr_v, prev_v,
+                         balance_attr="trade_receivables") -> Signal:
     th = f"-{TH_TURNOVER[0]}%황/-{TH_TURNOVER[1]}%적"
     # 회전율 자체 계산 불가(잔액 0/음수/결측) → na
     if curr_v is None or prev_v is None:
@@ -128,14 +150,33 @@ def _analytical_turnover(prev, curr, pm, code, label, curr_v, prev_v) -> Signal:
     band = "green"
     if drop is not None and drop < 0:
         band = _band(drop, *TH_TURNOVER, two_sided=True)  # 하락폭
-    # 금액게이트: Δ잔액(전기대비 변동금액) > PM 일 때만 발화
-    curr_bal = curr.trade_receivables if code == "ar_turnover" else curr.inventory
-    prev_bal = prev.trade_receivables if code == "ar_turnover" else prev.inventory
+    # 금액게이트: Δ잔액(전기대비 변동금액) > PM 일 때만 발화. 관련 잔액은 balance_attr로 지정.
+    curr_bal = getattr(curr, balance_attr)
+    prev_bal = getattr(prev, balance_attr)
     delta_bal = None if (curr_bal is None or prev_bal is None) else curr_bal - prev_bal
     if band != "green" and not _gate_pm(delta_bal, pm):
         return Signal("analytical", code, label, "green", drop, th + " (PM게이트)",
                       note="관찰 — Δ잔액 PM 미달")
     return Signal("analytical", code, label, band, drop, th)
+
+
+def _analytical_asset_turnover(prev, curr, pm) -> Signal:
+    """총자산회전율 변동 (효율성 급변). 양방향 ±15%황/±30%적, PM게이트 Δ자산."""
+    code, label = "asset_turnover", "총자산회전율"
+    th = f"±{TH_ASSET_TURNOVER[0]}%황/±{TH_ASSET_TURNOVER[1]}%적"
+    at_c = ind.asset_turnover(curr.revenue, curr.total_assets)
+    at_p = ind.asset_turnover(prev.revenue, prev.total_assets)
+    if at_c is None or at_p is None:
+        return Signal("analytical", code, label, "na", None, th, note=_NA_NOTE)
+    chg = ind.pct_change(at_c, at_p)  # 회전율 변화율(%)
+    band = _band(chg, *TH_ASSET_TURNOVER, two_sided=True)
+    # 금액게이트: Δ총자산 > PM
+    delta_assets = (None if (curr.total_assets is None or prev.total_assets is None)
+                    else curr.total_assets - prev.total_assets)
+    if band != "green" and not _gate_pm(delta_assets, pm):
+        return Signal("analytical", code, label, "green", chg, th + " (PM게이트)",
+                      note="관찰 — Δ자산 PM 미달")
+    return Signal("analytical", code, label, band, chg, th)
 
 
 # ---- 축2 helpers ----
