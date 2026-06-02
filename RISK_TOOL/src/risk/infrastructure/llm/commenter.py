@@ -1,33 +1,83 @@
 from __future__ import annotations
-import os
+import json
+import re
 from risk.domain.thresholds import Signal
 
-_MODEL = "claude-opus-4-8"
 _SYS = ("당신은 K-IFRS·회계감사기준 전문가입니다. 룰베이스로 산출된 위험신호를 보고 "
         "왜 위험한지·후속 확인사항·관련 경영진주장(실재성/완전성/평가/권리의무)을 "
         "감사조서용으로 간결히 서술하세요. 신호 등급은 절대 바꾸지 마세요. "
         "한국 회계용어(장부가 등) 사용.")
 
+_EVENT_SYS = (
+    "당신은 K-IFRS·회계감사기준 전문가입니다. 아래 회사의 뉴스 제목·요약과 DART 공시명을 "
+    "보고, 감사대상이 될 만한 위험사건을 구조화하세요. 한국어로 작성합니다.\n"
+    "규칙:\n"
+    "- 동일사건은 하나로 병합. 회사와 무관한 기사·중복은 제외.\n"
+    "- 근거가 없으면 빈 배열 [] 만 출력.\n"
+    "- 각 사건은 다음 키를 가진 JSON 객체:\n"
+    '  {"type": 사건유형(소송/횡령·배임/실적악화/지배구조/규제·제재/자금조달/기타),'
+    ' "date": "YYYY-MM" 추정, "summary": "1줄 요약(한국어)",'
+    ' "impact": "재무제표 영향 추정(예: 우발부채·매출인식·계속기업)",'
+    ' "source": 출처URL 또는 공시명}\n'
+    "- 출력은 JSON 배열만. 그 외 설명·코드블록 표시 금지."
+)
+
 
 class Commenter:
-    def __init__(self, client=None):
-        self.client = client  # anthropic.Anthropic | None
+    def __init__(self, complete_fn=None):
+        """complete_fn(prompt:str)->str|None. None이면 모든 AI 기능은 빈 결과로 degrade."""
+        self.complete_fn = complete_fn
 
     def comment_signals(self, company: str, signals: list[Signal]) -> dict[str, str]:
-        """신호 code → 코멘트. client 없으면 빈 dict (degrade)."""
+        """신호 code → 코멘트. complete_fn 없거나 실패하면 빈 dict (degrade)."""
         flagged = [s for s in signals if s.level in ("yellow", "red")]
-        if not self.client or not flagged:
+        if not self.complete_fn or not flagged:
             return {}
         lines = [f"- [{s.level}] {s.label}: 값 {s.value} (기준 {s.threshold})" for s in flagged]
-        msg = self.client.messages.create(
-            model=_MODEL, max_tokens=1500, system=_SYS,
-            messages=[{"role": "user",
-                       "content": f"회사: {company}\n신호:\n" + "\n".join(lines) +
-                                  "\n각 신호별 한 줄 코멘트를 'code: 코멘트' 형식으로."}])
-        text = msg.content[0].text
-        out = {}
+        prompt = (_SYS + f"\n\n회사: {company}\n신호:\n" + "\n".join(lines) +
+                  "\n각 신호별 한 줄 코멘트를 'code: 코멘트' 형식으로.")
+        text = self.complete_fn(prompt)
+        if not text:
+            return {}
+        out: dict[str, str] = {}
         for s in flagged:
             for ln in text.splitlines():
                 if s.label in ln:
                     out[s.code] = ln.split(":", 1)[-1].strip()
         return out
+
+    def structure_events(self, company: str, news, disclosures) -> list[dict]:
+        """뉴스·공시를 구조화 위험사건 list[dict]로. 실패·미설정 시 [] (degrade)."""
+        news = news or []
+        disclosures = disclosures or []
+        if not self.complete_fn or (not news and not disclosures):
+            return []
+        news_lines = []
+        for n in news:
+            if isinstance(n, dict):
+                title, summary, url = n.get("title", ""), n.get("summary", ""), n.get("url", "")
+            else:
+                title = getattr(n, "title", "")
+                summary = getattr(n, "summary", "")
+                url = getattr(n, "url", "")
+            news_lines.append(f"- {title} | {summary} | {url}".strip())
+        disc_lines = [f"- {d.get('report_nm', '')} ({d.get('rcept_dt', '')})"
+                      for d in disclosures]
+        prompt = (_EVENT_SYS + f"\n\n회사: {company}\n\n[뉴스]\n" +
+                  ("\n".join(news_lines) or "(없음)") +
+                  "\n\n[DART 공시]\n" + ("\n".join(disc_lines) or "(없음)") +
+                  "\n\nJSON 배열만 출력:")
+        text = self.complete_fn(prompt)
+        if not text:
+            return []
+        m = re.search(r"\[.*\]", text, re.S)
+        if not m:
+            return []
+        try:
+            data = json.loads(m.group(0))
+        except Exception:
+            return []
+        if not isinstance(data, list):
+            return []
+        events = [d for d in data if isinstance(d, dict)]
+        return events[:12]

@@ -54,6 +54,14 @@ def build_workpaper(res: RiskResult, path: str) -> str:
 
     # 외부리스크
     ws5 = wb.create_sheet("외부리스크")
+    # AI 구조화 위험이벤트 (있으면 최상단)
+    events = getattr(res, "events", []) or []
+    if events:
+        ws5.append(["유형", "요약", "영향", "날짜", "출처"])
+        for e in events:
+            ws5.append([e.get("type", ""), e.get("summary", ""), e.get("impact", ""),
+                        e.get("date", ""), e.get("source", "")])
+        ws5.append(["", "", "", "", ""])  # 구분행
     ws5.append(["키워드", "제목", "날짜", "요약", "출처"])
     for h in res.news:
         ws5.append([getattr(h, "keyword", ""), getattr(h, "title", ""),

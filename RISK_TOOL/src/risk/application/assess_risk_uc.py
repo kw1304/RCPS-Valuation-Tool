@@ -16,6 +16,7 @@ class RiskResult:
     comments: dict[str, str] = field(default_factory=dict)
     news: list = field(default_factory=list)
     disclosures: list = field(default_factory=list)
+    events: list = field(default_factory=list)
     error: str = ""
 
 
@@ -74,4 +75,10 @@ class AssessRiskUseCase:
                                if any(k in (d.get("report_nm") or "") for k in _DISCLOSURE_KEYWORDS)]
             except Exception:
                 disclosures = []
-        return RiskResult(company, years, pm, signals, grade, comments, news, disclosures)
+        # 뉴스·공시 AI 구조화 (degrade []). 핵심 신호 결과를 막지 않음.
+        try:
+            events = self.commenter.structure_events(company, news, disclosures)
+        except Exception:
+            events = []
+        return RiskResult(company, years, pm, signals, grade, comments,
+                          news, disclosures, events)

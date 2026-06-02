@@ -89,6 +89,19 @@ main{flex:1;max-width:1120px;width:100%;margin:0 auto;padding:1.5rem 2rem}
 .ext .date{color:var(--text3);font-size:.76rem;white-space:nowrap}
 .muted{color:var(--text3);padding:.6rem .9rem;font-size:.82rem}
 
+/* AI 구조화 위험이벤트 */
+.events{display:flex;flex-direction:column;gap:.6rem}
+.ev{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:.8rem 1rem}
+.ev-top{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.3rem}
+.ev-badge{font-size:.7rem;font-weight:700;padding:.12rem .5rem;border-radius:6px;white-space:nowrap}
+.ev-date{color:var(--text3);font-size:.74rem;font-variant-numeric:tabular-nums}
+.ev-sum{font-size:.88rem;color:var(--text);font-weight:600;letter-spacing:-0.01em}
+.ev-imp{font-size:.76rem;color:var(--text3);margin-top:.2rem;line-height:1.5}
+.ev-src{font-size:.74rem;margin-top:.25rem}
+.ev-src a{color:var(--accent);text-decoration:none}
+.ev-src a:hover{text-decoration:underline}
+
 .alert{background:#FFF4E0;border:1px solid #FFE0A3;color:#8A5A00;border-radius:var(--radius);
   padding:.9rem 1.1rem;font-size:.86rem;margin-top:1rem}
 
@@ -136,6 +149,14 @@ footer.legal .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
 const DOT={red:'#F04452',yellow:'#FF9F00',green:'#00C073',na:'#8B95A1'};
 const AX={analytical:'분석적검토 (ISA 520)',fraud:'부정위험 (ISA 240)',going_concern:'계속기업 (ISA 570)'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// 사건유형별 배지 색 (배경/글자)
+const EVCOL={'소송':['#FEECEC','#F04452'],'횡령·배임':['#FEECEC','#C81E2E'],
+  '실적악화':['#FFF4E0','#B26A00'],'지배구조':['#F3EEFF','#7C3AED'],
+  '규제·제재':['#FFF0F6','#C2185B'],'자금조달':['#E6F0FF','#1B64DA'],
+  '기타':['#F2F4F6','#4E5968']};
+function evBadge(t){const c=EVCOL[t]||EVCOL['기타'];
+  return '<span class="ev-badge" style="background:'+c[0]+';color:'+c[1]+'">'+esc(t||'기타')+'</span>';}
+function isUrl(s){return /^https?:\/\//i.test(s||'');}
 
 async function run(){
   const company=company_.value.trim(), year=+year_.value;
@@ -176,8 +197,25 @@ async function run(){
   }
   html+='</div>';
 
+  if(d.events&&d.events.length){
+    html+='<div class="section-h">구조화 위험 이벤트 (AI)</div><div class="events">';
+    for(const e of d.events){
+      html+='<div class="ev"><div class="ev-top">'+evBadge(e.type)
+        +(e.date?'<span class="ev-date">'+esc(e.date)+'</span>':'')+'</div>'
+        +'<div class="ev-sum">'+esc(e.summary)+'</div>'
+        +(e.impact?'<div class="ev-imp">재무영향: '+esc(e.impact)+'</div>':'');
+      if(e.source){
+        html+=isUrl(e.source)
+          ?'<div class="ev-src"><a href="'+esc(e.source)+'" target="_blank" rel="noopener">출처</a></div>'
+          :'<div class="ev-src">출처: '+esc(e.source)+'</div>';
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+
   if(d.news&&d.news.length){
-    html+='<div class="section-h">외부 리스크 (뉴스)</div><div class="ext">';
+    html+='<div class="section-h">외부 리스크 (뉴스 원문)</div><div class="ext">';
     for(const n of d.news)html+='<div class="row"><span><span class="kw">'+esc(n.keyword)+'</span>'
       +'<a href="'+esc(n.url)+'" target="_blank" rel="noopener">'+esc(n.title)+'</a></span>'
       +'<span class="date">'+esc(n.date)+'</span></div>';

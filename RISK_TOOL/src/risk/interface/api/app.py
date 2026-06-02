@@ -32,11 +32,9 @@ def _build_uc():
     from risk.infrastructure.news.naver_search import NaverNewsSearch
     _nv = NaverNewsSearch()
     news = NewsResearcher(search_fn=_nv if _nv.enabled else (lambda q: []))
-    try:
-        import anthropic
-        llm = Commenter(anthropic.Anthropic()) if os.environ.get("ANTHROPIC_API_KEY") else Commenter(None)
-    except Exception:
-        llm = Commenter(None)
+    # AI는 anthropic SDK가 아니라 로그인된 claude CLI 서브프로세스로 구동 (이 머신엔 API 키 없음)
+    from risk.infrastructure.llm.claude_cli import claude_available, claude_complete
+    llm = Commenter(complete_fn=claude_complete if claude_available() else None)
     # 축4 DART 공시이벤트 — 감사대상기간+직전연도 커버 (~540일 윈도우)
     today = datetime.date.today()
     end_de = today.strftime("%Y%m%d")
@@ -69,6 +67,7 @@ def assess(req: AssessReq):
         "years": [asdict(y) for y in res.years],
         "news": [vars(h) for h in res.news],
         "disclosures": res.disclosures,
+        "events": res.events,
     })
 
 
