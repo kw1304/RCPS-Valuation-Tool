@@ -26,12 +26,14 @@ _DISCLOSURE_KEYWORDS = ["감자", "소송", "횡령", "배임", "채무보증", 
 
 
 class AssessRiskUseCase:
-    def __init__(self, extractor, corp_resolver, news, commenter, disclosure_fetcher=None):
+    def __init__(self, extractor, corp_resolver, news, commenter,
+                 disclosure_fetcher=None, financial_resolver=None):
         self.extractor = extractor
         self.corp_resolver = corp_resolver  # name -> {corp_code,...}|None
         self.news = news
         self.commenter = commenter
         self.disclosure_fetcher = disclosure_fetcher  # corp_code -> list[dict]|None
+        self.financial_resolver = financial_resolver  # corp_code -> bool (금융·보험업)
 
     def run(self, company: str, end_year: int,
             materiality_opts: dict | None = None) -> RiskResult:
@@ -56,7 +58,13 @@ class AssessRiskUseCase:
             pm = performance_materiality(years[-1], **(materiality_opts or {}))
         except ValueError as e:
             return RiskResult(company, years, None, error=str(e))
-        signals = evaluate_axes(years, pm)
+        is_financial = False
+        if self.financial_resolver:
+            try:
+                is_financial = bool(self.financial_resolver(corp["corp_code"]))
+            except Exception:
+                is_financial = False
+        signals = evaluate_axes(years, pm, is_financial=is_financial)
         grade = overall_grade(signals)
         # 보조기능(AI 코멘트·뉴스)은 실패해도 핵심 신호 결과를 막지 않음(degrade)
         try:

@@ -176,6 +176,26 @@ class DartClient:
         return [{"rcept_dt": it.get("rcept_dt"), "report_nm": it.get("report_nm"),
                  "rcept_no": it.get("rcept_no")} for it in (body.get("list") or [])]
 
+    def company_industry(self, corp_code: str) -> Optional[str]:
+        """company.json → induty_code(KSIC 표준산업분류). 오류 시 None."""
+        try:
+            resp = requests.get(f"{_BASE}/company.json",
+                                params={"crtfc_key": self.api_key, "corp_code": corp_code},
+                                timeout=self.timeout)
+        except requests.RequestException:
+            return None
+        if resp.status_code != 200:
+            return None
+        body = resp.json()
+        if body.get("status") != "000":
+            return None
+        return (body.get("induty_code") or "").strip() or None
+
+    def is_financial(self, corp_code: str) -> bool:
+        """금융·보험업(KSIC 대분류 K = 64·65·66) 여부. 조회 실패 시 False(일반기업 취급)."""
+        code = self.company_industry(corp_code)
+        return bool(code) and code[:2] in ("64", "65", "66")
+
     # ---------- 감사보고서 원문 (외감 비상장 fallback용) ----------
 
     def list_audit_reports(self, corp_code: str) -> list[tuple]:

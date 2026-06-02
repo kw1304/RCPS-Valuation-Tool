@@ -41,7 +41,8 @@ def _build_uc():
     bgn_de = (today - datetime.timedelta(days=540)).strftime("%Y%m%d")
     disclosure_fetcher = lambda cc: client.list_disclosures(cc, bgn_de, end_de)
     return AssessRiskUseCase(extractor, client.find_corp_code, news, llm,
-                             disclosure_fetcher=disclosure_fetcher)
+                             disclosure_fetcher=disclosure_fetcher,
+                             financial_resolver=client.is_financial)
 
 
 class AssessReq(BaseModel):

@@ -330,3 +330,25 @@ def test_na_does_not_affect_grade():
     assert grade.red == 0
     assert grade.yellow == 0
     assert grade.grade == "낮음"
+
+
+def test_financial_sector_suppresses_debt_and_current_ratio():
+    # 금융업: 부채비율·유동비율 → na(부적용), red 오탐 차단
+    from risk.domain.thresholds import evaluate_axes
+    prev = FinancialYear(2024, total_liabilities=900, total_equity=100)
+    curr = FinancialYear(2025, total_liabilities=1200, total_equity=100,  # 부채비율 1200%
+                         current_assets=50, current_liabilities=100)       # 유동비율 50%
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000), is_financial=True)
+    dr = next(s for s in sigs if s.code == "debt_ratio")
+    cr = next(s for s in sigs if s.code == "current_ratio")
+    assert dr.level == "na" and "금융" in dr.note
+    assert cr.level == "na"
+
+
+def test_general_sector_keeps_debt_ratio_signal():
+    from risk.domain.thresholds import evaluate_axes
+    prev = FinancialYear(2024, total_liabilities=900, total_equity=100)
+    curr = FinancialYear(2025, total_liabilities=1200, total_equity=100)
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000), is_financial=False)
+    dr = next(s for s in sigs if s.code == "debt_ratio")
+    assert dr.level == "red"  # 일반기업은 그대로 red

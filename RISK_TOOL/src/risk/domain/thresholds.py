@@ -38,8 +38,16 @@ class Signal:
     note: str = ""
 
 
-def evaluate_axes(years: list[FinancialYear], pm: Materiality) -> list[Signal]:
-    """최신연도 기준 축1~3 룰베이스 신호 산출. years는 연도 오름차순."""
+_FIN_NA_NOTE = "금융·보험업 — 부채비율·유동비율은 일반기업 기준 부적용(BIS·지급여력 등 별도 검토)"
+
+
+def evaluate_axes(years: list[FinancialYear], pm: Materiality,
+                  is_financial: bool = False) -> list[Signal]:
+    """최신연도 기준 축1~3 룰베이스 신호 산출. years는 연도 오름차순.
+
+    is_financial: 금융·보험업이면 부채비율·유동비율은 구조적으로 매우 높/낮아 일반기업
+    임계값이 무의미 → 해당 신호를 na(부적용)로 보류(오탐 차단).
+    """
     out: list[Signal] = []
     if not years:
         return out
@@ -99,6 +107,12 @@ def evaluate_axes(years: list[FinancialYear], pm: Materiality) -> list[Signal]:
     out.append(_gc_interest_coverage(years))
     out.append(_gc_current_ratio(curr))
     out.append(_gc_operating_cf(years))
+
+    # 금융·보험업: 부채비율·유동비율은 구조적으로 의미 달라 일반 임계값 부적용 → na
+    if is_financial:
+        out = [Signal(s.axis, s.code, s.label, "na", s.value, s.threshold, note=_FIN_NA_NOTE)
+               if s.code in ("debt_ratio", "current_ratio") else s
+               for s in out]
 
     return out
 
