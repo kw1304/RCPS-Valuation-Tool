@@ -60,6 +60,13 @@ def build_workpaper(res: RiskResult, path: str) -> str:
                     getattr(h, "date", ""), getattr(h, "summary", ""), getattr(h, "url", "")])
     if not res.news:
         ws5.append(["", "특이사항 없음", "", "", ""])
+    # 축4 DART 공시이벤트 (구 fixture 호환: getattr 가드)
+    disclosures = getattr(res, "disclosures", []) or []
+    if disclosures:
+        ws5.append(["", "", "", "", ""])  # 구분행
+        for d in disclosures:
+            ws5.append(["공시", d.get("report_nm", ""), d.get("rcept_dt", ""),
+                        "", d.get("rcept_no", "")])
 
     # 후속절차 — yellow/red만 (green·na 제외)
     ws6 = wb.create_sheet("후속감사절차")

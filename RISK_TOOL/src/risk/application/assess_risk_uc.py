@@ -15,15 +15,22 @@ class RiskResult:
     grade: RiskGrade | None = None
     comments: dict[str, str] = field(default_factory=dict)
     news: list = field(default_factory=list)
+    disclosures: list = field(default_factory=list)
     error: str = ""
 
 
+# 축4 DART 공시이벤트 — 리스크 관련 보고서명 키워드 (report_nm 부분일치)
+_DISCLOSURE_KEYWORDS = ["감자", "소송", "횡령", "배임", "채무보증", "부도",
+                        "영업양수도", "주요사항", "증자", "합병", "감사의견", "계속기업"]
+
+
 class AssessRiskUseCase:
-    def __init__(self, extractor, corp_resolver, news, commenter):
+    def __init__(self, extractor, corp_resolver, news, commenter, disclosure_fetcher=None):
         self.extractor = extractor
         self.corp_resolver = corp_resolver  # name -> {corp_code,...}|None
         self.news = news
         self.commenter = commenter
+        self.disclosure_fetcher = disclosure_fetcher  # corp_code -> list[dict]|None
 
     def run(self, company: str, end_year: int) -> RiskResult:
         # 외부 DART I/O — 키 미설정·네트워크 오류는 우아한 에러로 환원(500 금지)
@@ -58,4 +65,13 @@ class AssessRiskUseCase:
             news = self.news.research(company)
         except Exception:
             news = []
-        return RiskResult(company, years, pm, signals, grade, comments, news)
+        # 축4 DART 공시이벤트 (결정론적). 실패해도 핵심 신호 막지 않음(degrade)
+        disclosures: list = []
+        if self.disclosure_fetcher:
+            try:
+                raw = self.disclosure_fetcher(corp["corp_code"]) or []
+                disclosures = [d for d in raw
+                               if any(k in (d.get("report_nm") or "") for k in _DISCLOSURE_KEYWORDS)]
+            except Exception:
+                disclosures = []
+        return RiskResult(company, years, pm, signals, grade, comments, news, disclosures)

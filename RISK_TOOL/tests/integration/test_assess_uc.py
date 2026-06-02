@@ -72,3 +72,32 @@ def test_assess_degrades_when_news_and_comment_fail():
     res = uc.run("정상회사", end_year=2025)
     assert res.grade is not None and len(res.signals) > 0
     assert res.comments == {} and res.news == []
+
+
+def _uc_with_fetcher(fetcher):
+    return AssessRiskUseCase(
+        extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
+        corp_resolver=lambda name: {"corp_code": "0001", "corp_name": name, "stock_code": "0"},
+        news=type("N", (), {"research": lambda self, c, i="": []})(),
+        commenter=type("C", (), {"comment_signals": lambda self, c, s: {}})(),
+        disclosure_fetcher=fetcher,
+    )
+
+
+def test_assess_filters_disclosures_to_risk_relevant():
+    # 소송 등 리스크 보고서만 통과, 분기보고서는 제외
+    fetcher = lambda cc: [
+        {"rcept_dt": "20250601", "report_nm": "소송등의제기", "rcept_no": "X"},
+        {"rcept_dt": "20250101", "report_nm": "분기보고서", "rcept_no": "Y"},
+    ]
+    res = _uc_with_fetcher(fetcher).run("정상회사", end_year=2025)
+    nms = [d["report_nm"] for d in res.disclosures]
+    assert "소송등의제기" in nms
+    assert "분기보고서" not in nms
+
+
+def test_assess_degrades_when_disclosure_fetcher_raises():
+    fetcher = lambda cc: (_ for _ in ()).throw(RuntimeError("dart down"))
+    res = _uc_with_fetcher(fetcher).run("정상회사", end_year=2025)
+    assert res.disclosures == []
+    assert res.grade is not None  # 핵심 신호는 정상
