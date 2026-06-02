@@ -1,0 +1,70 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>감사전 리스크 확인 툴</title>
+<style>
+:root{--bg:#0f1115;--card:#1a1d24;--text:#e7e9ee;--text2:#9aa0ab}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,'Malgun Gothic',sans-serif}
+header{padding:1rem 1rem 1rem 7.25rem;border-bottom:1px solid #2a2e38}
+main{max-width:1100px;margin:0 auto;padding:1.5rem}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:end}
+input,button{padding:.55rem .8rem;border-radius:8px;border:1px solid #353a45;background:var(--card);color:var(--text)}
+button{cursor:pointer;background:#3b82f6;border-color:#3b82f6}
+.grade{display:inline-block;padding:.4rem 1rem;border-radius:999px;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem;margin-top:1rem}
+.card{background:var(--card);border:1px solid #2a2e38;border-radius:12px;padding:1rem}
+.sig{display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid #23262f;font-size:.9rem}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:.4rem}
+footer.legal{padding:1rem;color:var(--text2);font-size:.7rem;border-top:1px solid #2a2e38;margin-top:2rem}
+</style></head><body>
+<header><h1 style="margin:0;font-size:1.1rem">감사전 리스크 확인 툴 · Pre-Audit Risk</h1></header>
+<main>
+  <div class="row">
+    <div><label>회사명<br><input id="company" placeholder="예: 삼성전자"></label></div>
+    <div><label>기준연도<br><input id="year" type="number" value="2025"></label></div>
+    <button onclick="run()">리스크 분석</button>
+    <button onclick="exp()" style="background:#10b981;border-color:#10b981">조서 내보내기</button>
+  </div>
+  <div id="status" style="margin-top:1rem;color:var(--text2)"></div>
+  <div id="result"></div>
+</main>
+<footer class="legal">
+  <div><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</div>
+  <div>© 2026 Woongcpa</div>
+</footer>
+<script>
+const C={red:'#FFC7CE',yellow:'#FFEB9C',green:'#C6EFCE',na:'#D9D9D9'};
+const AX={analytical:'분석적검토',fraud:'부정위험',going_concern:'계속기업'};
+async function run(){
+  const company=company_.value, year=+year_.value;
+  status_.textContent='DART 조회·분석 중…';
+  const r=await fetch('/api/assess',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({company,end_year:year})});
+  const d=await r.json(); status_.textContent='';
+  if(d.error){result_.innerHTML='<div class="card">⚠ '+d.error+'</div>';return;}
+  const gc={높음:C.red,보통:C.yellow,낮음:C.green}[d.grade.grade];
+  let html='<p>종합위험등급: <span class="grade" style="background:'+gc+';color:#111">'+d.grade.grade
+    +'</span> (적 '+d.grade.red+' · 황 '+d.grade.yellow+')</p><div class="cards">';
+  for(const ax of Object.keys(AX)){
+    const sigs=d.signals.filter(s=>s.axis===ax);
+    html+='<div class="card"><b>'+AX[ax]+'</b>';
+    for(const s of sigs){const col=C[s.level]||C.na;
+      const hint=s.level==='na'?' <span style="color:var(--text2);font-size:.72rem">데이터없음</span>':'';
+      html+='<div class="sig"><span><span class="dot" style="background:'
+      +col+'"></span>'+s.label+hint+'</span><span>'+(s.value==null?'-':(+s.value).toFixed(1))+'</span></div>';
+      if(d.comments[s.code])html+='<div style="font-size:.78rem;color:var(--text2)">'+d.comments[s.code]+'</div>';}
+    html+='</div>';
+  }
+  html+='</div>';
+  if(d.news&&d.news.length){html+='<h3>외부 리스크</h3>';for(const n of d.news)
+    html+='<div class="sig"><a href="'+n.url+'" target="_blank" style="color:#7aa2f7">['+n.keyword+'] '+n.title+'</a></div>';}
+  result_.innerHTML=html;
+}
+async function exp(){
+  const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({company:company_.value,end_year:+year_.value})});
+  const b=await r.blob(),u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download='risk_'+company_.value+'.xlsx';a.click();URL.revokeObjectURL(u);
+}
+const company_=document.getElementById('company'),year_=document.getElementById('year'),
+  status_=document.getElementById('status'),result_=document.getElementById('result');
+</script></body></html>
