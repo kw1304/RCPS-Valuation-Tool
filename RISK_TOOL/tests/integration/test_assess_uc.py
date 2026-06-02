@@ -13,7 +13,7 @@ def test_assess_produces_grade_and_signals():
         extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
         corp_resolver=lambda name: {"corp_code": "0001", "corp_name": name, "stock_code": "0"},
         news=type("N", (), {"research": lambda self, c, i="": []})(),
-        commenter=type("C", (), {"comment_signals": lambda self, c, s: {}})(),
+        commenter=type("C", (), {"analyze": lambda self, co, sg, n, d: ({}, [])})(),
     )
     res = uc.run("테스트회사", end_year=2025)
     assert isinstance(res, RiskResult)
@@ -27,7 +27,7 @@ def test_assess_handles_no_financials():
         extractor=type("E", (), {"fetch": lambda self, c, y: []})(),
         corp_resolver=lambda name: {"corp_code": "0001", "corp_name": name, "stock_code": "0"},
         news=type("N", (), {"research": lambda self, c, i="": []})(),
-        commenter=type("C", (), {"comment_signals": lambda self, c, s: {}})(),
+        commenter=type("C", (), {"analyze": lambda self, co, sg, n, d: ({}, [])})(),
     )
     res = uc.run("없는회사", end_year=2025)
     assert res.error and "수기입력" in res.error
@@ -38,7 +38,7 @@ def test_assess_handles_corp_not_found():
         extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
         corp_resolver=lambda name: None,
         news=type("N", (), {"research": lambda self, c, i="": []})(),
-        commenter=type("C", (), {"comment_signals": lambda self, c, s: {}})(),
+        commenter=type("C", (), {"analyze": lambda self, co, sg, n, d: ({}, [])})(),
     )
     res = uc.run("유령회사", end_year=2025)
     assert res.error and "회사" in res.error
@@ -54,7 +54,7 @@ def test_assess_corp_resolver_raises_returns_graceful_error():
         extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
         corp_resolver=_raise,
         news=type("N", (), {"research": lambda self, c, i="": []})(),
-        commenter=type("C", (), {"comment_signals": lambda self, c, s: {}})(),
+        commenter=type("C", (), {"analyze": lambda self, co, sg, n, d: ({}, [])})(),
     )
     res = uc.run("키없음", end_year=2025)
     assert res.error and "DART" in res.error
@@ -67,7 +67,7 @@ def test_assess_degrades_when_news_and_comment_fail():
         extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
         corp_resolver=lambda name: {"corp_code": "0001", "corp_name": name, "stock_code": "0"},
         news=type("N", (), {"research": lambda self, c, i="": (_ for _ in ()).throw(RuntimeError("net"))})(),
-        commenter=type("C", (), {"comment_signals": lambda self, c, s: (_ for _ in ()).throw(RuntimeError("llm"))})(),
+        commenter=type("C", (), {"analyze": lambda self, co, sg, n, d: (_ for _ in ()).throw(RuntimeError("llm"))})(),
     )
     res = uc.run("정상회사", end_year=2025)
     assert res.grade is not None and len(res.signals) > 0
@@ -79,7 +79,7 @@ def _uc_with_fetcher(fetcher):
         extractor=type("E", (), {"fetch": lambda self, c, y: _years()})(),
         corp_resolver=lambda name: {"corp_code": "0001", "corp_name": name, "stock_code": "0"},
         news=type("N", (), {"research": lambda self, c, i="": []})(),
-        commenter=type("C", (), {"comment_signals": lambda self, c, s: {}})(),
+        commenter=type("C", (), {"analyze": lambda self, co, sg, n, d: ({}, [])})(),
         disclosure_fetcher=fetcher,
     )
 

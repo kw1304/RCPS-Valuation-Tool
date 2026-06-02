@@ -23,10 +23,74 @@ _EVENT_SYS = (
 )
 
 
+_COMBINED_SYS = (
+    "당신은 K-IFRS·회계감사기준 전문가입니다. 아래 (1)위험신호와 (2)뉴스·공시를 보고 "
+    "다음 JSON 객체 하나만 출력하세요(설명·코드블록 금지):\n"
+    '{"comments": {"<신호code>": "한 줄 코멘트(왜 위험·후속확인·관련 경영진주장)"},'
+    ' "events": [{"type": 사건유형(소송/횡령·배임/실적악화/지배구조/규제·제재/자금조달/기타),'
+    ' "date": "YYYY-MM", "summary": "1줄 요약", "impact": "재무제표 영향 추정",'
+    ' "source": 출처URL또는공시명}]}\n'
+    "규칙: 신호 등급은 바꾸지 말 것. 동일사건 병합·무관기사 제외. 근거 없으면 events는 []. "
+    "한국어·한국 회계용어 사용."
+)
+
+
 class Commenter:
     def __init__(self, complete_fn=None):
         """complete_fn(prompt:str)->str|None. None이면 모든 AI 기능은 빈 결과로 degrade."""
         self.complete_fn = complete_fn
+
+    @staticmethod
+    def _news_disc_lines(news, disclosures):
+        news_lines = []
+        for n in news or []:
+            if isinstance(n, dict):
+                title, summary, url = n.get("title", ""), n.get("summary", ""), n.get("url", "")
+            else:
+                title = getattr(n, "title", "")
+                summary = getattr(n, "summary", "")
+                url = getattr(n, "url", "")
+            news_lines.append(f"- {title} | {summary} | {url}".strip())
+        disc_lines = [f"- {d.get('report_nm', '')} ({d.get('rcept_dt', '')})"
+                      for d in (disclosures or [])]
+        return news_lines, disc_lines
+
+    def analyze(self, company, signals, news, disclosures):
+        """신호 코멘트 + 뉴스·공시 구조화를 claude CLI 1회 호출로 통합 → (comments, events).
+
+        claude CLI는 동시실행 불가(락 충돌)라 2개 작업을 병렬화할 수 없다. 대신 하나의
+        프롬프트로 합쳐 호출 1회로 처리 → 순차 2회 대비 대기시간 절반. 실패는 ({}, []).
+        """
+        flagged = [s for s in (signals or []) if s.level in ("yellow", "red")]
+        news = news or []
+        disclosures = disclosures or []
+        if not self.complete_fn or (not flagged and not news and not disclosures):
+            return {}, []
+        sig_lines = [f"- code={s.code} [{s.level}] {s.label}: 값 {s.value} (기준 {s.threshold})"
+                     for s in flagged]
+        news_lines, disc_lines = self._news_disc_lines(news, disclosures)
+        prompt = (_COMBINED_SYS + f"\n\n회사: {company}\n\n[위험신호]\n" +
+                  ("\n".join(sig_lines) or "(없음)") +
+                  "\n\n[뉴스]\n" + ("\n".join(news_lines) or "(없음)") +
+                  "\n\n[DART 공시]\n" + ("\n".join(disc_lines) or "(없음)") +
+                  "\n\nJSON 객체만 출력:")
+        text = self.complete_fn(prompt)
+        if not text:
+            return {}, []
+        m = re.search(r"\{.*\}", text, re.S)
+        if not m:
+            return {}, []
+        try:
+            data = json.loads(m.group(0))
+        except Exception:
+            return {}, []
+        if not isinstance(data, dict):
+            return {}, []
+        valid_codes = {s.code for s in flagged}
+        comments = {k: str(v) for k, v in (data.get("comments") or {}).items()
+                    if k in valid_codes and v}
+        events = [e for e in (data.get("events") or []) if isinstance(e, dict)][:12]
+        return comments, events
 
     def comment_signals(self, company: str, signals: list[Signal]) -> dict[str, str]:
         """신호 code → 코멘트. complete_fn 없거나 실패하면 빈 dict (degrade)."""

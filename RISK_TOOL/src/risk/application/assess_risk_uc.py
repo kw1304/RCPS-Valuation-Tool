@@ -68,16 +68,12 @@ class AssessRiskUseCase:
                 is_financial = False
         signals = evaluate_axes(years, pm, is_financial=is_financial)
         grade = overall_grade(signals)
-        # 보조기능(AI 코멘트·뉴스)은 실패해도 핵심 신호 결과를 막지 않음(degrade)
-        try:
-            comments = self.commenter.comment_signals(company, signals)
-        except Exception:
-            comments = {}
+
+        # 뉴스(network) + DART 공시이벤트(network). 실패해도 핵심 신호 막지 않음(degrade)
         try:
             news = self.news.research(company)
         except Exception:
             news = []
-        # 축4 DART 공시이벤트 (결정론적). 실패해도 핵심 신호 막지 않음(degrade)
         disclosures: list = []
         if self.disclosure_fetcher:
             try:
@@ -86,11 +82,14 @@ class AssessRiskUseCase:
                                if any(k in (d.get("report_nm") or "") for k in _DISCLOSURE_KEYWORDS)]
             except Exception:
                 disclosures = []
-        # 뉴스·공시 AI 구조화 (degrade []). 핵심 신호 결과를 막지 않음.
+
+        # AI 보조(신호 코멘트 + 뉴스·공시 구조화)는 claude CLI 1회 호출로 통합 처리.
+        # claude CLI는 동시 실행 불가(락 충돌)라 병렬화 대신 단일 프롬프트로 합쳐 대기시간 절감.
         try:
-            events = self.commenter.structure_events(company, news, disclosures)
+            comments, events = self.commenter.analyze(company, signals, news, disclosures)
         except Exception:
-            events = []
+            comments, events = {}, []
+
         warnings = check_quality(years)
         return RiskResult(company, years, pm, signals, grade, comments,
                           news, disclosures, events, warnings=warnings)

@@ -84,3 +84,31 @@ def test_structure_events_caps_to_12():
     c = Commenter(complete_fn=lambda p: arr)
     events = c.structure_events("회사", [_news("x")], [])
     assert len(events) == 12
+
+
+def test_analyze_combined_parses_comments_and_events():
+    from risk.domain.thresholds import Signal
+    from risk.infrastructure.llm.commenter import Commenter
+    payload = ('말머리설명 {"comments": {"debt_ratio": "부채과다 — 차입약정 검토"},'
+               ' "events": [{"type":"소송","date":"2025-06","summary":"소송 제기",'
+               '"impact":"우발부채","source":"http://x"}]} 꼬리')
+    c = Commenter(complete_fn=lambda p: payload)
+    sigs = [Signal("going_concern", "debt_ratio", "부채비율", "red", 400, "t")]
+    comments, events = c.analyze("X", sigs, [{"title": "소송"}], [])
+    assert comments == {"debt_ratio": "부채과다 — 차입약정 검토"}
+    assert len(events) == 1 and events[0]["type"] == "소송"
+
+
+def test_analyze_degrades_no_fn():
+    from risk.domain.thresholds import Signal
+    from risk.infrastructure.llm.commenter import Commenter
+    c = Commenter(complete_fn=None)
+    assert c.analyze("X", [Signal("a", "c", "l", "red", 1, "t")], [], []) == ({}, [])
+
+
+def test_analyze_garbage_returns_empty():
+    from risk.domain.thresholds import Signal
+    from risk.infrastructure.llm.commenter import Commenter
+    c = Commenter(complete_fn=lambda p: "응답인데 JSON 없음")
+    out = c.analyze("X", [Signal("a", "c", "l", "red", 1, "t")], [{"title": "x"}], [])
+    assert out == ({}, [])
