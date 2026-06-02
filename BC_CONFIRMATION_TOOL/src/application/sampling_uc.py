@@ -4,7 +4,7 @@ from src.domain.financial_account import FinancialAccountClassifier
 from src.domain.party_normalize import PartyNormalizer
 from src.domain.sampling import Sampler, SampledParty
 from src.infrastructure.gl_loader import GLLoader
-from src.infrastructure.db.repository import upsert_counterparty
+from src.infrastructure.db.repository import upsert_counterparty, renumber_counterparties_alphabetical
 from src.infrastructure.db.models import Counterparty, ExtractedRecord
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,4 +35,6 @@ def run_sampling(session: Session, project_id: int, gl_path: Path) -> list[Sampl
         c.gl_sampled = True                  # G/L sampling 출처 flag
         session.add(c)
     session.commit()
+    # BC 번호: 가나다순 BC-1..N (출처 코드 없이 깔끔히)
+    renumber_counterparties_alphabetical(session, project_id)
     return parties

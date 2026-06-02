@@ -91,6 +91,28 @@ def create_project(session: Session, name: str, fiscal_date: str) -> Project:
     return p
 
 
+def renumber_counterparties_alphabetical(session: Session, project_id: int) -> None:
+    """모든 조회대상 금융기관을 가나다순으로 BC-1..N 재부여.
+
+    BC-GL-N·BC-CS-N 같은 출처 코드를 쓰지 않고 깔끔히 BC-1 부터 가나다(이름·지점 순).
+    회신 매칭은 BC-N 문자열이 아니라 (정규화명, 지점)·counterparty_id 로 하므로 안전."""
+    cps = list(session.exec(
+        select(Counterparty).where(Counterparty.project_id == project_id)
+    ))
+
+    def _key(c):
+        name = c.canonical_name or ""
+        # 한글로 시작하면 가나다 먼저, 영문/기타(KEB·KB 등)는 그 뒤로.
+        is_korean = bool(name) and "가" <= name[0] <= "힣"
+        return (0 if is_korean else 1, name, c.branch or "")
+
+    ordered = sorted(cps, key=_key)
+    for i, c in enumerate(ordered, 1):
+        c.bc_no = f"BC-{i}"
+        session.add(c)
+    session.commit()
+
+
 def list_counterparties(session: Session, project_id: int) -> list[Counterparty]:
     return session.exec(
         select(Counterparty).where(Counterparty.project_id == project_id).order_by(Counterparty.bc_no)

@@ -120,9 +120,15 @@ def _write_data_row(ws, row: int, values: list, alt: bool = False):
             c.value = v
         c.font = _font(size=10)
         c.fill = _fill(bg)
-        c.alignment = _align(h="left", v="center", wrap=True)
+        is_num = isinstance(v, (int, float)) and not isinstance(v, bool)
+        if is_num:
+            # 금액 천단위 콤마 + 우측정렬(잘림 방지 위해 wrap 끔 — 숫자는 줄바꿈 불요).
+            c.number_format = "#,##0"
+            c.alignment = _align(h="right", v="center")
+        else:
+            c.alignment = _align(h="left", v="center", wrap=True)
         c.border = BORDER_ALL
-    ws.row_dimensions[row].height = 22
+    # 행 높이 고정 제거 — wrap 된 텍스트가 잘리지 않도록 Excel 자동 높이에 맡김.
 
 
 def _write_status_cell(ws, row: int, col: int, status: str):
@@ -288,11 +294,37 @@ def _write_total_row(ws, row: int, records: list, data_start_row: int, headers: 
         elif i in sum_cols and row > data_start_row:
             col = get_column_letter(i + 1)
             c.value = f"=SUM({col}{data_start_row}:{col}{row - 1})"
+            c.number_format = "#,##0"   # 합계 천단위 콤마
         c.font = _font(size=10, bold=True, color=COOL_GRAY_900)
         c.fill = _fill(COOL_GRAY_100)
         c.alignment = _align(h="left" if i == 0 else "right", v="center")
         c.border = BORDER_ALL
     ws.row_dimensions[row].height = 24
+
+
+def _disp_len(v) -> float:
+    """셀 표시 길이 추정(한글·전각은 1.8배 가중). 수식 셀은 넉넉히 14."""
+    if v is None:
+        return 0.0
+    if isinstance(v, str) and v.startswith("="):
+        return 14.0
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        s = f"{v:,.0f}"
+    else:
+        s = str(v)
+    return sum(1.8 if ord(ch) > 0x1100 else 1.0 for ch in s)
+
+
+def _autofit_table(ws, header_row: int, last_row: int, n_cols: int,
+                   min_w: float = 8.0, max_w: float = 46.0):
+    """테이블 영역(헤더~합계행)만 보고 열폭을 내용에 맞춤 — 잘림 방지.
+
+    제목·결론 등 병합 텍스트 행은 제외(테이블 행만 스캔)해 표가 왜곡되지 않게 한다."""
+    for ci in range(1, n_cols + 1):
+        w = 0.0
+        for r in range(header_row, last_row + 1):
+            w = max(w, _disp_len(ws.cell(row=r, column=ci).value))
+        ws.column_dimensions[get_column_letter(ci)].width = min(max(w + 2.0, min_w), max_w)
 
 
 def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
@@ -308,6 +340,7 @@ def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
         f"1) 금융조회서상 회사의 {ref_code.replace('AC','').strip('.')}건 거래내역을 요약 정리함",
         "2) 회사 장부와 대사하여 차이 여부 확인",
     ])
+    hdr_row = r
     _write_table_header(ws, r, headers, col_widths)
     r += 1
     data_start = r
@@ -317,6 +350,7 @@ def _build_record_sheet(wb: Workbook, sheet_name: str, ref_code: str,
     if records:
         _write_total_row(ws, r, records, data_start, headers)
         r += 1
+    _autofit_table(ws, hdr_row, r - 1, len(headers))
     _write_conclusion(ws, r, conclusion)
     return ws
 

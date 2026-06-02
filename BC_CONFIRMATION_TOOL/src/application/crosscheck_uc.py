@@ -6,6 +6,7 @@ from src.infrastructure.cs_loader import ControlSheetLoader
 from src.infrastructure.union_monthly import parse_collateral_or_guarantee, parse_union_monthly
 from src.infrastructure.address_validator import AddressValidator
 from src.infrastructure.db.models import FileAsset, Counterparty
+from src.infrastructure.db.repository import renumber_counterparties_alphabetical
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -164,6 +165,8 @@ def run_crosscheck(session: Session, project_id: int) -> dict:
                 c.address_valid = r.get("status")
                 break
     session.commit()
+    # 최종 BC 번호: 가나다순 BC-1..N (BC-GL-N·BC-CS-N 출처 코드 대신 깔끔히 통일)
+    renumber_counterparties_alphabetical(session, project_id)
     return {
         "bidirectional": bidir, "prior": prior,
         "union": union, "collateral": coll, "guarantee": guar,
