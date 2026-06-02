@@ -671,11 +671,35 @@ class ExcelReporter(_ReporterExt):
             if mc == 0:
                 return f"TB 일치 ({ac:,}계정 검증)"
             return f"불일치 {mc}계정 적출 (총 {ac:,}계정)"
+        elif code == "B03":
+            new_accounts = result.extra.get("new_accounts", [])
+            used_count = result.extra.get("new_accounts_used_count", 0)
+            uniq = result.extra.get("unique_entry_count", 0)
+            return (
+                f"신규계정 {len(new_accounts):,}종 (사용 {used_count:,}종) "
+                f"/ 분개 {result.finding_count:,}건 / 전표 {uniq:,}개"
+            )
+        elif code == "B04":
+            seldom_count = result.extra.get("seldom_account_count", 0)
+            uniq = result.extra.get("unique_entry_count", 0)
+            return (
+                f"희소계정 {seldom_count:,}종 / 분개 {result.finding_count:,}건 "
+                f"/ 전표 {uniq:,}개"
+            )
         elif code == "B05":
             nr = result.extra.get("not_registered_count", 0)
             pr = result.extra.get("post_retirement_count", 0)
             sc = result.extra.get("system_account_count", 0)
-            return f"미등록 {nr:,} / 퇴직후 {pr:,} / 시스템 {sc:,}건"
+            aff = result.extra.get("affiliate_count", 0)
+            return (
+                f"미등록 {nr:,} / 퇴직후 {pr:,} / 시스템 {sc:,} / 그룹사 {aff:,}건"
+            )
+        elif code == "B07":
+            late = result.extra.get("late_count", 0)
+            back = result.extra.get("backdated_only_count", 0)
+            return f"지연 {late:,}건 / 역행 {back:,}건"
+        elif code == "B08":
+            return f"분석표 {result.finding_count:,}행 (전표유형×계정×차대 집계)"
         elif code == "B06":
             if result and result.extra.get("has_approver_data"):
                 fc = result.finding_count
