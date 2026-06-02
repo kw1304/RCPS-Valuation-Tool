@@ -39,6 +39,29 @@ def test_rows_to_years_sorted_ascending():
     assert [y.year for y in years] == [2024, 2025]
 
 
+def test_trade_receivables_account_variants():
+    # 회사별 변형: CurrentTradeReceivables(삼성)·TradeAndOther… 둘 다 매출채권으로 매핑
+    for aid in ("ifrs-full_CurrentTradeReceivables",
+                "ifrs-full_TradeAndOtherCurrentReceivables",
+                "dart_ShortTermTradeReceivable"):
+        rows = [{"account_id": aid, "bsns_year": "2025",
+                 "thstrm_amount": "500", "frmtrm_amount": "400"}]
+        y = next(y for y in rows_to_years(rows) if y.year == 2025)
+        assert y.trade_receivables == 500, aid
+
+
+def test_account_id_priority_lower_rank_wins():
+    # 같은 필드에 두 후보 → rank 낮은(우선) CurrentTradeReceivables가 이김
+    rows = [
+        {"account_id": "ifrs-full_TradeAndOtherCurrentReceivables", "bsns_year": "2025",
+         "thstrm_amount": "999", "frmtrm_amount": "0"},
+        {"account_id": "ifrs-full_CurrentTradeReceivables", "bsns_year": "2025",
+         "thstrm_amount": "500", "frmtrm_amount": "0"},
+    ]
+    y = next(y for y in rows_to_years(rows) if y.year == 2025)
+    assert y.trade_receivables == 500  # 우선 후보 채택, 순서 무관
+
+
 def test_num_edge_cases():
     assert _num("-") is None
     assert _num("—") is None

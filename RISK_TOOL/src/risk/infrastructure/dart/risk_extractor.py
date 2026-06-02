@@ -18,23 +18,38 @@ from risk.domain.financial import FinancialYear
 
 log = logging.getLogger("risk.dart.extractor")
 
-# sj_div 무관, 표준 account_id → FinancialYear 필드
-_ACCOUNT_MAP = {
-    "ifrs-full_Revenue": "revenue",
-    "ifrs-full_CostOfSales": "cogs",
-    "dart_OperatingIncomeLoss": "operating_income",
-    "ifrs-full_ProfitLoss": "net_income",
-    "ifrs-full_ProfitLossBeforeTax": "pretax_income",
-    "ifrs-full_IncomeTaxExpenseContinuingOperations": "tax_expense",
-    "ifrs-full_FinanceCosts": "finance_costs",
-    "ifrs-full_CashFlowsFromUsedInOperatingActivities": "operating_cf",
-    "ifrs-full_Assets": "total_assets",
-    "ifrs-full_CurrentAssets": "current_assets",
-    "ifrs-full_Liabilities": "total_liabilities",
-    "ifrs-full_CurrentLiabilities": "current_liabilities",
-    "ifrs-full_Equity": "total_equity",
-    "ifrs-full_TradeAndOtherCurrentReceivables": "trade_receivables",
-    "ifrs-full_Inventories": "inventory",
+# FinancialYear 필드 → account_id 후보(우선순위). 회사별 태그 변형에 강건.
+# 같은 필드에 여러 id가 잡히면 앞선(낮은 rank) id가 이김 — 라이브 검증서 변형 보강.
+_FIELD_IDS = {
+    "revenue": ["ifrs-full_Revenue"],
+    "cogs": ["ifrs-full_CostOfSales"],
+    "operating_income": ["dart_OperatingIncomeLoss",
+                         "ifrs-full_ProfitLossFromOperatingActivities"],
+    "net_income": ["ifrs-full_ProfitLoss"],
+    "pretax_income": ["ifrs-full_ProfitLossBeforeTax"],
+    "tax_expense": ["ifrs-full_IncomeTaxExpenseContinuingOperations",
+                    "ifrs-full_IncomeTaxExpenseBenefit"],
+    "finance_costs": ["ifrs-full_FinanceCosts"],
+    "operating_cf": ["ifrs-full_CashFlowsFromUsedInOperatingActivities"],
+    "total_assets": ["ifrs-full_Assets"],
+    "current_assets": ["ifrs-full_CurrentAssets"],
+    "total_liabilities": ["ifrs-full_Liabilities"],
+    "current_liabilities": ["ifrs-full_CurrentLiabilities"],
+    # 연결: ifrs-full_Equity(지배+비지배 총자본) 우선, 없으면 지배지분
+    "total_equity": ["ifrs-full_Equity",
+                     "ifrs-full_EquityAttributableToOwnersOfParent"],
+    # 매출채권: 회사별로 CurrentTradeReceivables(삼성 등) 또는 TradeAndOther… 사용
+    "trade_receivables": ["ifrs-full_CurrentTradeReceivables",
+                          "ifrs-full_TradeAndOtherCurrentReceivables",
+                          "dart_ShortTermTradeReceivable"],
+    "inventory": ["ifrs-full_Inventories"],
+}
+
+# account_id → (field, rank). rank 작을수록 우선.
+_ACCOUNT_MAP: dict[str, tuple[str, int]] = {
+    aid: (field, rank)
+    for field, ids in _FIELD_IDS.items()
+    for rank, aid in enumerate(ids)
 }
 
 
@@ -50,21 +65,32 @@ def _num(s):
 
 
 def rows_to_years(rows: list[dict]) -> list[FinancialYear]:
-    """fnlttSinglAcntAll rows → FinancialYear 리스트(당기·전기). bsns_year 기준 오름차순."""
+    """fnlttSinglAcntAll rows → FinancialYear 리스트(당기·전기). bsns_year 기준 오름차순.
+
+    한 필드에 여러 account_id 후보가 잡히면 rank 낮은(우선) id가 이긴다.
+    """
     acc: dict[int, dict] = {}
+    ranks: dict[tuple[int, str], int] = {}  # (year, field) → 채택된 id의 rank
+
+    def _set(year, field, val, rank):
+        if val is None:
+            return
+        key = (year, field)
+        if key in ranks and ranks[key] <= rank:
+            return  # 이미 더 우선한 id로 채워짐
+        acc.setdefault(year, {})[field] = val
+        ranks[key] = rank
+
     for r in rows:
-        field = _ACCOUNT_MAP.get((r.get("account_id") or "").strip())
-        if not field:
+        hit = _ACCOUNT_MAP.get((r.get("account_id") or "").strip())
+        if not hit:
             continue
+        field, rank = hit
         by = int(re.sub(r"\D", "", str(r.get("bsns_year") or "0")) or 0)
         if not by:
             continue
-        cur = _num(r.get("thstrm_amount"))
-        prv = _num(r.get("frmtrm_amount"))
-        if cur is not None:
-            acc.setdefault(by, {})[field] = cur
-        if prv is not None:
-            acc.setdefault(by - 1, {})[field] = prv
+        _set(by, field, _num(r.get("thstrm_amount")), rank)
+        _set(by - 1, field, _num(r.get("frmtrm_amount")), rank)
     return [FinancialYear(year=y, **fields) for y, fields in sorted(acc.items())]
 
 
