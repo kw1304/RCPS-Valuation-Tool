@@ -288,6 +288,7 @@ _TRANSIENT_MARKERS = (
     "rate limit", "timeout", "503", "502", "500", "529",
 )
 _RETRY_BACKOFF = (1.5, 3.0, 6.0)
+_HEAD_GUARD = 60
 
 
 def _is_transient_error(text):
@@ -373,6 +374,8 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
             live = False
             last_full = ""
             buffered = []
+            pending = []
+            head = ""
             need_retry = False
             for line in runner(cmd):
                 ev = parse_stream_line(line)
@@ -387,28 +390,45 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
                     last_full = ev["text"]
                     continue
                 if etype == "token":
-                    if not live:
+                    if live:
+                        streamed_any = True
+                        yield ev
+                        continue
+                    pending.append(ev)
+                    head += ev.get("text", "")
+                    if _is_transient_error(head):
+                        need_retry = True
+                        break
+                    if len(head) >= _HEAD_GUARD:
                         live = True
                         for b in buffered:
                             yield b
                         buffered = []
-                    streamed_any = True
-                    yield ev
+                        for p in pending:
+                            streamed_any = True
+                            yield p
+                        pending = []
                     continue
                 if etype == "done":
                     text = (ev.get("text") or "").strip()
-                    if not live and (ev.get("is_error") or _is_transient_error(text)):
-                        need_retry = True
-                        break
                     if not live:
-                        body = text or last_full
-                        if body:
-                            yield {"type": "token", "text": body}
-                            yield {"type": "done", "sessionId": final_session, "text": body}
-                            streamed_any = True
-                            live = True
-                        else:
+                        full = head.strip() or text or last_full
+                        if ev.get("is_error") or _is_transient_error(full) or not full:
                             need_retry = True
+                            break
+                        for b in buffered:
+                            yield b
+                        buffered = []
+                        if pending:
+                            for p in pending:
+                                streamed_any = True
+                                yield p
+                            pending = []
+                        else:
+                            yield {"type": "token", "text": full}
+                            streamed_any = True
+                        yield {"type": "done", "sessionId": final_session, "text": full}
+                        live = True
                         break
                     yield ev
                     break

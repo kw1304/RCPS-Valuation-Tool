@@ -289,6 +289,7 @@ _TRANSIENT_MARKERS = (
     "rate limit", "timeout", "503", "502", "500", "529",
 )
 _RETRY_BACKOFF = (1.5, 3.0, 6.0)     # 시도 간 대기(초). 최대 len+1회 시도.
+_HEAD_GUARD = 60                     # 선두 N자까지 보류해 에러텍스트 검사 후 라이브 전환.
 
 
 def _is_transient_error(text):
@@ -381,10 +382,12 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
             workdir = tempfile.mkdtemp(prefix="wat_acct_")
             try:
                 cmd = build_command(question, session_id, workdir, framework, mode)
-                streamed_any = False   # 실제 토큰을 하나라도 흘렸는가
-                live = False           # 첫 토큰 이후(버퍼 flush 완료)
+                streamed_any = False   # 실제 토큰을 흘렸는가
+                live = False           # 본문 확정 → 라이브 스트리밍 중
                 last_full = ""         # assistant 본문(델타 미발생 시 fallback)
-                buffered = []          # 첫 토큰 전 비-토큰 이벤트(재시도 시 폐기 위해 보류)
+                buffered = []          # 라이브 전 비-토큰 이벤트(재시도 시 폐기)
+                pending = []           # 라이브 전 토큰 이벤트(head-guard로 보류)
+                head = ""              # 선두 토큰 텍스트(에러 패턴 검사용)
                 need_retry = False
                 for line in runner(cmd):
                     ev = parse_stream_line(line)
@@ -399,30 +402,48 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
                         last_full = ev["text"]  # fallback만
                         continue
                     if etype == "token":
-                        if not live:           # 첫 토큰 → 버퍼 flush 후 라이브 전환
+                        if live:
+                            streamed_any = True
+                            yield ev
+                            continue
+                        # head-guard: 선두 토큰을 잠깐 보류 → 에러텍스트면 노출 없이 재시도
+                        pending.append(ev)
+                        head += ev.get("text", "")
+                        if _is_transient_error(head):
+                            need_retry = True
+                            break
+                        if len(head) >= _HEAD_GUARD:   # 실제 본문 확정 → flush·라이브
                             live = True
                             for b in buffered:
                                 yield b
                             buffered = []
-                        streamed_any = True
-                        yield ev
+                            for p in pending:
+                                streamed_any = True
+                                yield p
+                            pending = []
                         continue
                     if etype == "done":
                         text = (ev.get("text") or "").strip()
-                        # 토큰 전에 떨어진 일시 오류 → 재시도
-                        if not live and (ev.get("is_error") or _is_transient_error(text)):
-                            need_retry = True
-                            break
-                        # 델타 없이 본문만 온 경우(간헐적 빈 토큰) → 보강
                         if not live:
-                            body = text or last_full
-                            if body:
-                                yield {"type": "token", "text": body}
-                                yield {"type": "done", "sessionId": final_session, "text": body}
-                                streamed_any = True
-                                live = True
-                            else:
+                            full = head.strip() or text or last_full
+                            # 에러(플래그/텍스트)거나 빈 응답 → 노출 없이 재시도
+                            if ev.get("is_error") or _is_transient_error(full) or not full:
                                 need_retry = True
+                                break
+                            # 정상 짧은 응답 → 보류분 flush(없으면 본문으로 보강)
+                            for b in buffered:
+                                yield b
+                            buffered = []
+                            if pending:
+                                for p in pending:
+                                    streamed_any = True
+                                    yield p
+                                pending = []
+                            else:
+                                yield {"type": "token", "text": full}
+                                streamed_any = True
+                            yield {"type": "done", "sessionId": final_session, "text": full}
+                            live = True
                             break
                         yield ev
                         break
