@@ -323,6 +323,11 @@ class B05UnusualUser(Rule):
                 detail_type="",
             ))
 
+        # ISA 240 §32(c) 적출 대상: HR 미등록 + 퇴직 후 입력.
+        # 시스템·그룹사·외부계약직은 분류만 하고 적출(finding)에는 포함하지 않는다.
+        # — 정답조서 표준: 시스템 분개는 자동 분개로 분류, 그룹사 사번은 별도 관리,
+        #   외부 계약직은 계약상 권한 부여된 사용자로 ISA 240 적출 대상 외.
+        _AUDIT_TARGET_REASONS = {_REASON_NOT_REGISTERED, _REASON_POST_RETIREMENT}
         findings = [
             Finding(
                 entry_no=f.entry_no,
@@ -335,6 +340,7 @@ class B05UnusualUser(Rule):
                 entry_date=f.entry_date,
             )
             for f in unusual
+            if f.reason in _AUDIT_TARGET_REASONS
         ]
 
         result = self._make_result(started, len(all_entries), findings, {})

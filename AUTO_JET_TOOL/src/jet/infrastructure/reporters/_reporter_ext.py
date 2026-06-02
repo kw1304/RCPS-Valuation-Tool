@@ -382,6 +382,12 @@ class _ReporterExt:
         # ── 분류별 unique 사용자 요약 표 ─────────────────────────────────
         row = self._write_b05_unique_user_table(ws, fmt, findings_data, row + 1)
 
+        # ── HR 미등록 사용자 prefix 통계 (그룹사 패턴 식별 보조) ──────────
+        # 미등록 사용자가 다수일 때 prefix 분포를 보여줘 사용자가 그룹사 패턴 추정
+        not_reg_findings = [f for f in findings_data if f.reason == "HR 미등록"]
+        if len(not_reg_findings) >= 10:
+            row = self._write_b05_prefix_stats(ws, fmt, not_reg_findings, row + 1)
+
         self._write_exec_meta(ws, fmt, result, row + 1)
         self._apply_print_setup(
             ws, spec, "B05. Unusual User",
@@ -511,6 +517,56 @@ class _ReporterExt:
                     fmt["warn_badge"],
                 )
                 start_row += 1
+
+        return start_row
+
+    def _write_b05_prefix_stats(self, ws, fmt, not_reg_findings, start_row) -> int:
+        """HR 미등록 사용자 사번 prefix 통계 — 그룹사 패턴 추정 보조.
+
+        미등록 사용자가 다수일 때(>=10건), 사번 앞 2-3자리 prefix 빈도를 보여줘
+        사용자가 "특정 prefix가 그룹사 계열사인지" 판단할 수 있도록 한다.
+        그룹사 패턴 확인 시 affiliate_user_patterns YAML에 추가하여 재분류 가능.
+        """
+        from collections import Counter
+
+        ws.set_row(start_row, ROW_HEIGHT_HEADER)
+        ws.merge_range(
+            start_row, 0, start_row, 9,
+            "HR 미등록 사번 prefix 분포 — 그룹사 패턴 추정 보조 "
+            "(특정 prefix가 그룹사면 affiliate_user_patterns YAML에 추가)",
+            fmt["section_header"],
+        )
+        start_row += 1
+
+        # 사번 앞 3자리 prefix 빈도 (unique 사용자 기준)
+        unique_users = {f.user_id for f in not_reg_findings if f.user_id}
+        prefix_counter: Counter[str] = Counter()
+        for uid in unique_users:
+            uid_s = str(uid)
+            if len(uid_s) >= 3:
+                prefix_counter[uid_s[:3]] += 1
+
+        if not prefix_counter:
+            return start_row
+
+        # 헤더
+        headers = ["사번 prefix (앞 3자리)", "unique 사용자 수", "권장 조치", "", "", "", "", "", "", ""]
+        ws.set_row(start_row, ROW_HEIGHT_HEADER)
+        for ci, h in enumerate(headers[:3]):
+            ws.write(start_row, ci, h, fmt["table_header"])
+        start_row += 1
+
+        # top 10 prefix
+        for prefix, cnt in prefix_counter.most_common(10):
+            advice = (
+                f"그룹사 패턴 의심 — params.affiliate_user_patterns에 \"^{prefix}\" 추가 검토"
+                if cnt >= 5 else "소수 미등록 — 개별 확인"
+            )
+            ws.set_row(start_row, ROW_HEIGHT_BODY)
+            ws.write(start_row, 0, prefix, fmt["table_cell"])
+            ws.write(start_row, 1, cnt, fmt["table_cell_num"])
+            ws.merge_range(start_row, 2, start_row, 9, advice, fmt["table_cell"])
+            start_row += 1
 
         return start_row
 
