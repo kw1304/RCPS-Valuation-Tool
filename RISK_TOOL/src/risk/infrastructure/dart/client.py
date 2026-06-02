@@ -105,9 +105,16 @@ class DartClient:
         self._corp_map = out
         return out
 
-    # 한글 통칭 → DART 등록 정식명(영문 등록 상장사). 한↔영 불일치 보정. 확장 가능.
+    # 통칭·약칭 → DART 등록 정식명. 한↔영 불일치·약어 오매칭 보정. 확장 가능.
     _NAME_ALIASES = {
         "네이버": "NAVER",
+        "현대차": "현대자동차",       # 부분매칭 시 현대차증권으로 오매칭 방지
+        "기아차": "기아",
+        "포스코": "POSCO홀딩스",
+        "포스코홀딩스": "POSCO홀딩스",
+        "엘지화학": "LG화학",
+        "엘지전자": "LG전자",
+        "에스케이하이닉스": "SK하이닉스",
     }
 
     def find_corp_code(self, name: str) -> Optional[dict]:
