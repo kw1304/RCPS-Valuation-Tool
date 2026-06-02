@@ -64,8 +64,10 @@ def test_account_id_priority_lower_rank_wins():
 
 def test_trade_payables_account_variants():
     # 매입채무: TradeAndOtherCurrentPayables·dart_ShortTermTradePayable 둘 다 매핑
-    for aid in ("ifrs-full_TradeAndOtherCurrentPayables",
-                "dart_ShortTermTradePayable"):
+    for aid in ("ifrs-full_TradeAndOtherCurrentPayablesToTradeSuppliers",
+                "ifrs-full_TradeAndOtherCurrentPayables",
+                "dart_ShortTermTradePayable",
+                "dart_TradePayable"):
         rows = [{"account_id": aid, "bsns_year": "2025",
                  "thstrm_amount": "700", "frmtrm_amount": "600"}]
         y = next(y for y in rows_to_years(rows) if y.year == 2025)

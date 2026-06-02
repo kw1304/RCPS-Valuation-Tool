@@ -43,8 +43,11 @@ _FIELD_IDS = {
                           "ifrs-full_TradeAndOtherCurrentReceivables",
                           "dart_ShortTermTradeReceivable"],
     "inventory": ["ifrs-full_Inventories"],
-    "trade_payables": ["ifrs-full_TradeAndOtherCurrentPayables",
-                       "dart_ShortTermTradePayable"],
+    # 매입채무: 삼성 등은 …PayablesToTradeSuppliers, 일부는 TradeAndOther… 또는 dart 태그
+    "trade_payables": ["ifrs-full_TradeAndOtherCurrentPayablesToTradeSuppliers",
+                       "ifrs-full_TradeAndOtherCurrentPayables",
+                       "dart_ShortTermTradePayable",
+                       "dart_TradePayable"],
 }
 
 # account_id → (field, rank). rank 작을수록 우선.
