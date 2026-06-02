@@ -49,7 +49,13 @@ main{flex:1;max-width:1120px;width:100%;margin:0 auto;padding:1.5rem 2rem}
 .btn.ghost{background:var(--bg2);color:var(--text2);border-color:var(--border)}
 .btn.ghost:hover{background:var(--bg3);border-color:var(--text3)}
 
-.status{margin:1rem 0 .2rem;color:var(--text3);font-size:.85rem}
+.status{margin:1rem 0 .2rem;color:var(--text2);font-size:.85rem;display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+.status:empty{display:none}
+.status b{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:700}
+.status .wait-hint{color:var(--text3);font-weight:400}
+.spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;display:inline-block;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* 종합등급 */
 .grade-bar{display:flex;align-items:center;gap:.7rem;margin:1.1rem 0 .4rem;flex-wrap:wrap}
@@ -194,18 +200,30 @@ function matPayload(){
           pm_ratio_pct:+document.getElementById('pmRatio').value};
 }
 
+let _timer=null;
+function startWait(){
+  const t0=Date.now();
+  const render=()=>{
+    const s=Math.floor((Date.now()-t0)/1000);
+    status_.innerHTML='<span class="spin"></span>DART 조회·재무분석·AI 위험요약 중… '
+      +'<b>'+s+'초</b> <span class="wait-hint">— AI 구조화에 30~60초 걸릴 수 있습니다. 잠시만요.</span>';
+  };
+  render(); _timer=setInterval(render,1000);
+}
+function stopWait(){ if(_timer){clearInterval(_timer);_timer=null;} status_.innerHTML=''; }
+
 async function run(){
   const company=company_.value.trim(), year=+year_.value;
   if(!company){status_.textContent='회사명을 입력하세요.';return;}
-  status_.textContent='DART 조회·분석 중…';
   result_.innerHTML='';
+  startWait();
   let d;
   try{
     const r=await fetch('/api/assess',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({company,end_year:year,...matPayload()})});
     d=await r.json();
-  }catch(e){status_.textContent='';result_.innerHTML='<div class="alert">서버 응답 오류: '+esc(e.message)+'</div>';return;}
-  status_.textContent='';
+  }catch(e){stopWait();result_.innerHTML='<div class="alert">서버 응답 오류: '+esc(e.message)+'</div>';return;}
+  stopWait();
   if(d.error){result_.innerHTML='<div class="alert">⚠ '+esc(d.error)+'</div>';return;}
 
   let html='<div class="grade-bar"><span class="grade '+esc(d.grade.grade)+'">'+esc(d.grade.grade)
@@ -274,13 +292,13 @@ async function run(){
 async function exp(){
   const company=company_.value.trim();
   if(!company){status_.textContent='회사명을 입력하세요.';return;}
-  status_.textContent='조서 생성 중…';
+  startWait();
   try{
     const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({company,end_year:+year_.value,...matPayload()})});
     const b=await r.blob(),u=URL.createObjectURL(b),a=document.createElement('a');
     a.href=u;a.download='risk_'+company+'_'+year_.value+'.xlsx';a.click();URL.revokeObjectURL(u);
-  }finally{status_.textContent='';}
+  }finally{stopWait();}
 }
 
 function fmtKRW(v){
