@@ -110,8 +110,11 @@ li.err{color:var(--danger)}
 footer.legal{
   background:var(--bg2);border-top:1px solid var(--border);
   padding:.7rem 2rem .7rem 7.25rem;
-  display:flex;justify-content:space-between;
+  display:flex;justify-content:space-between;align-items:center;
   font-size:.68rem;color:var(--text3);
   flex-wrap:wrap;gap:12px;flex-shrink:0;line-height:1.4;
+  position:sticky;bottom:0;z-index:90;
 }
+footer.legal b{color:var(--text2);font-weight:600}
+footer.legal .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
 @media (max-width:768px){ footer.legal{padding:.6rem 1rem;flex-direction:column;gap:.3rem;text-align:center} }
