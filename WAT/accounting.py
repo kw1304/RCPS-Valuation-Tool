@@ -364,6 +364,7 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
         cmd = build_command(question, session_id, workdir, framework, mode)
         streamed_any = False   # 토큰(델타)이 하나라도 나왔는가
         last_full = ""         # 마지막 assistant 본문(델타 미발생 시 fallback)
+        got_answer = False     # 의미있는 답변 콘텐츠를 하나라도 내보냈는가
         for line in runner(cmd):
             ev = parse_stream_line(line)
             if ev is None:
@@ -378,14 +379,22 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
                 continue
             if etype == "token":
                 streamed_any = True
+                got_answer = True
             if etype == "done":
                 # 델타도 안 오고 result.text도 비면(간헐적 빈 답변) → assistant 본문으로 보강
                 if not streamed_any and not (ev.get("text") or "").strip() and last_full:
-                    ev = {**ev, "text": last_full, "type": "token"}
-                    yield ev
+                    yield {"type": "token", "text": last_full}
                     yield {"type": "done", "sessionId": final_session, "text": last_full}
+                    got_answer = True
                     continue
+                if (ev.get("text") or "").strip():
+                    got_answer = True
             yield ev
+        # claude가 일시적으로 아무 답도 못 준 경우(프로세스 즉시 종료 등) → 침묵 빈답변
+        # 대신 사용자에게 명시적 에러를 알린다(재시도 유도).
+        if not got_answer:
+            yield {"type": "error",
+                   "message": "응답을 받지 못했습니다(일시 오류). 잠시 후 다시 시도해 주세요."}
     finally:
         _SEM.release()
         if workdir:

@@ -425,3 +425,28 @@ def test_ask_stream_normal_delta_not_duplicated_by_assistant(tmp_db):
     tokens = [e for e in evs if e["type"] == "token"]
     assert len(tokens) == 1  # assistant_text가 추가 토큰으로 새지 않음
     assert tokens[0]["text"] == "답변"
+
+
+def test_ask_stream_no_output_yields_error(tmp_db):
+    # claude가 아무 의미있는 출력도 안 준 경우(즉시 종료 등) → 명시적 에러 emit
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    # 노이즈만(토큰·done·assistant 본문 없음)
+    lines = [
+        json.dumps({"type": "system", "subtype": "init", "session_id": "s1"}),
+        json.dumps({"type": "rate_limit_event"}),
+    ]
+    evs = list(accounting.ask_stream(tmp_db, cid, "질문", runner=_fake_runner(lines)))
+    assert any(e["type"] == "error" for e in evs)
+
+
+def test_ask_stream_done_with_text_no_error(tmp_db):
+    # 정상 done(텍스트 有)이면 에러 emit 안 함
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    lines = [
+        json.dumps({"type": "result", "subtype": "success",
+                    "result": "정상 답변", "session_id": "s1"}),
+    ]
+    evs = list(accounting.ask_stream(tmp_db, cid, "질문", runner=_fake_runner(lines)))
+    assert not any(e["type"] == "error" for e in evs)
