@@ -125,6 +125,11 @@ class B05UnusualUser(Rule):
             re.compile(p) for p in _DEFAULT_EXTERNAL_USER_PATTERNS
         ]
         self._affiliate_patterns: list[re.Pattern] = []
+        # 퇴직 후 cutoff — 퇴직 후 N일 이내 입력은 정상 정산·결산 작업으로 간주.
+        # default 0 = cutoff 미적용(모든 퇴직 후 입력 적출).
+        # 실데이터 환경에서는 회사 정책에 맞춰 30·60·90일 권장 (한국 4대보험·
+        # 퇴직금 정산 마감 기간).
+        self._post_retirement_cutoff_days: int = 0
 
     def configure(self, params: dict) -> None:
         """파라미터 초기화.
@@ -164,6 +169,13 @@ class B05UnusualUser(Rule):
                     f"B05 affiliate_user_patterns는 list여야 합니다: {aff_pats}"
                 )
             self._affiliate_patterns = [re.compile(str(p)) for p in aff_pats]
+
+        cutoff = params.get("post_retirement_cutoff_days", 0)
+        if not isinstance(cutoff, int) or cutoff < 0:
+            raise RuleConfigurationError(
+                f"B05 post_retirement_cutoff_days는 0 이상의 정수여야 합니다: {cutoff}"
+            )
+        self._post_retirement_cutoff_days = cutoff
 
     def _is_system_user(self, uid: str) -> bool:
         """시스템·인터페이스 ID 여부를 정규식으로 판정한다."""
@@ -274,6 +286,9 @@ class B05UnusualUser(Rule):
                     )
                     if posting > retire_date:
                         days_after = (posting - retire_date).days
+                        # 퇴직 후 cutoff — 정상 정산·결산 작업 제외
+                        if days_after <= self._post_retirement_cutoff_days:
+                            continue
                         name = hr.get_name_by_id(uid) or ""
                         unusual.append(UnusualUserFinding(
                             entry_no=e.entry_no,
