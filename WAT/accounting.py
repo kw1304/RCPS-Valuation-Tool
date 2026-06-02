@@ -249,7 +249,16 @@ def parse_stream_line(line):
             if isinstance(block, dict) and block.get("type") == "tool_use":
                 name = block.get("name", "tool")
                 return {"type": "tool", "label": f"{name} 실행 중…"}
-        # 본문 텍스트는 stream_event 델타로 이미 전달됨(중복 방지) → 무시
+        # 본문 텍스트: 평소엔 stream_event 델타로 전달되므로 라이브로 내보내지 않되,
+        # 델타가 안 와서 토큰이 비는 경우(간헐적 빈 답변 버그)의 fallback용으로 surface.
+        texts = [
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        joined = "".join(texts).strip()
+        if joined:
+            return {"type": "assistant_text", "text": joined}
         return None
 
     if t == "result":
@@ -353,14 +362,29 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
         # acquire와 try 사이에서 예외 나도 세마포어 누수 없도록 try 안에서 생성
         workdir = tempfile.mkdtemp(prefix="wat_acct_")
         cmd = build_command(question, session_id, workdir, framework, mode)
+        streamed_any = False   # 토큰(델타)이 하나라도 나왔는가
+        last_full = ""         # 마지막 assistant 본문(델타 미발생 시 fallback)
         for line in runner(cmd):
             ev = parse_stream_line(line)
             if ev is None:
                 continue
-            if ev["type"] in ("session", "done") and ev.get("sessionId"):
+            etype = ev["type"]
+            if etype in ("session", "done") and ev.get("sessionId"):
                 final_session = ev["sessionId"]
-            if ev["type"] == "session":
+            if etype == "session":
                 continue  # 내부용, 프론트로는 안 보냄
+            if etype == "assistant_text":
+                last_full = ev["text"]  # 라이브로 안 보냄(델타와 중복 방지), fallback만
+                continue
+            if etype == "token":
+                streamed_any = True
+            if etype == "done":
+                # 델타도 안 오고 result.text도 비면(간헐적 빈 답변) → assistant 본문으로 보강
+                if not streamed_any and not (ev.get("text") or "").strip() and last_full:
+                    ev = {**ev, "text": last_full, "type": "token"}
+                    yield ev
+                    yield {"type": "done", "sessionId": final_session, "text": last_full}
+                    continue
             yield ev
     finally:
         _SEM.release()

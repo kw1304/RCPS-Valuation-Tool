@@ -94,14 +94,16 @@ def test_build_command_adddir():
 import json
 
 
-def test_parse_assistant_text_ignored_uses_deltas():
-    # 본문은 stream_event 델타로 전달되므로 assistant 텍스트는 무시(중복 방지)
+def test_parse_assistant_text_surfaced_not_token():
+    # 본문은 stream_event 델타로 라이브 전달되고, assistant 텍스트는 'assistant_text'로
+    # 표면화(token 아님 → 라이브 중복 없음, 델타 미발생 시 fallback용)
     line = json.dumps({
         "type": "assistant",
         "message": {"content": [{"type": "text", "text": "리스는 K-IFRS 1116"}]},
         "session_id": "s1",
     })
-    assert accounting.parse_stream_line(line) is None
+    assert accounting.parse_stream_line(line) == {
+        "type": "assistant_text", "text": "리스는 K-IFRS 1116"}
 
 
 def test_parse_text_delta_token():
@@ -380,3 +382,46 @@ def test_ask_stream_passes_mode(tmp_db):
                                mode="grounded", runner=runner))
     sp = captured["cmd"][captured["cmd"].index("--system-prompt") + 1]
     assert "정밀검색" in sp
+
+
+def test_parse_assistant_text_surfaced_for_fallback():
+    # assistant 본문 텍스트는 'assistant_text'로 표면화(라이브 token 아님)
+    line = json.dumps({"type": "assistant",
+                       "message": {"content": [{"type": "text", "text": "본문"}]}})
+    assert accounting.parse_stream_line(line) == {"type": "assistant_text", "text": "본문"}
+
+
+def test_ask_stream_empty_result_falls_back_to_assistant_text(tmp_db):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    # 델타 미발생 + result.text 빈 경우 → assistant 본문으로 보강
+    lines = [
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "최종 답변 본문"}]}}),
+        json.dumps({"type": "result", "subtype": "success",
+                    "result": "", "session_id": "s1"}),
+    ]
+    evs = list(accounting.ask_stream(tmp_db, cid, "질문", runner=_fake_runner(lines)))
+    texts = [e.get("text") for e in evs if e["type"] in ("token", "done")]
+    assert "최종 답변 본문" in texts
+    # done 이벤트가 빈 답변이 아니어야
+    done = [e for e in evs if e["type"] == "done"][-1]
+    assert done["text"] == "최종 답변 본문"
+
+
+def test_ask_stream_normal_delta_not_duplicated_by_assistant(tmp_db):
+    accounting.init_db(tmp_db)
+    cid = "550e8400-e29b-41d4-a716-446655440000"
+    # 델타로 토큰이 정상 스트리밍되면 assistant_text는 무시(중복 방지)
+    lines = [
+        json.dumps({"type": "stream_event", "event": {
+            "type": "content_block_delta", "delta": {"type": "text_delta", "text": "답변"}}}),
+        json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "답변"}]}}),
+        json.dumps({"type": "result", "subtype": "success",
+                    "result": "답변", "session_id": "s1"}),
+    ]
+    evs = list(accounting.ask_stream(tmp_db, cid, "질문", runner=_fake_runner(lines)))
+    tokens = [e for e in evs if e["type"] == "token"]
+    assert len(tokens) == 1  # assistant_text가 추가 토큰으로 새지 않음
+    assert tokens[0]["text"] == "답변"
