@@ -206,7 +206,7 @@ function startWait(){
   const render=()=>{
     const s=Math.floor((Date.now()-t0)/1000);
     status_.innerHTML='<span class="spin"></span>DART 조회·재무분석·AI 위험요약 중… '
-      +'<b>'+s+'초</b> <span class="wait-hint">— AI 구조화에 30~60초 걸릴 수 있습니다. 잠시만요.</span>';
+      +'<b>'+s+'초</b> <span class="wait-hint">— AI 위험요약에 약 30초 걸립니다. 잠시만요.</span>';
   };
   render(); _timer=setInterval(render,1000);
 }
