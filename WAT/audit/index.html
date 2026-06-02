@@ -74,7 +74,7 @@ form button{font-family:inherit;font-weight:700;color:#fff;background:var(--acce
   border:0;border-radius:12px;padding:.7rem 1.3rem;cursor:pointer}
 form button:disabled{background:var(--text3);cursor:not-allowed}
 footer{padding:.7rem 2rem .7rem 7.25rem;background:var(--bg2);border-top:1px solid var(--border);
-  font-size:.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;
+  font-size:.68rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;
   gap:12px;flex-wrap:wrap;line-height:1.4;flex-shrink:0}
 footer b{color:var(--text2);font-weight:600}
 footer .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
@@ -104,7 +104,7 @@ footer .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
   <textarea id="q" rows="1" placeholder="감사기준·윤리·법령 질문을 입력하세요 (Shift+Enter 줄바꿈)"></textarea>
   <button id="send" type="submit">질문</button>
 </form>
-<footer><span><b>Disclaimer.</b> 본 도구는 감사·윤리 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다. · 조문번호는 원문 확인 권고</span><span class="right">© 2026 Woongcpa</span></footer>
+<footer><span><b>Disclaimer.</b> 본 도구는 회계감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다.</span><span class="right">© 2026 Woongcpa</span></footer>
 <script>
 const API = "/api/audit/ask";
 const LS = { conv: "audit_conv_id", fw: "audit_framework", mode: "audit_mode" };

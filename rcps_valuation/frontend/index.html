@@ -94,7 +94,7 @@ input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:po
 .ref-dep-off{opacity:.4;pointer-events:none}
 .ref-dep-off input,.ref-dep-off label{cursor:not-allowed}
 .dep-hint{font-size:0.66rem;color:var(--text3);font-weight:400;margin-left:2px}
-footer.legal{padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:0.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;line-height:1.4}
+footer.legal{padding:.7rem 2rem .7rem 7.25rem;background:var(--bg2);border-top:1px solid var(--border);font-size:.68rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;line-height:1.4}
 footer.legal b{color:var(--text2);font-weight:600}
 footer.legal .right{text-align:right;flex:1;min-width:240px}
 .global-bar{padding:0.45rem 1.5rem;background:linear-gradient(90deg,#EFF6FF 0%,var(--bg2) 60%);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:.78rem;flex-shrink:0;flex-wrap:wrap}
@@ -327,6 +327,34 @@ details.note-fold .note{margin-top:4px}
 .dcf-proj td input[type=text]:focus{background:#FFFBEB;border-radius:4px}
 .calc-cell{font-variant-numeric:tabular-nums}
 .calc-cell.neg{color:var(--red)}
+/* 예측가정 적합성 검토 */
+.dcf-hist-card{padding:1.2rem 1.5rem;background:var(--bg2);border-radius:14px;border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.06)}
+.dcf-hist-head{font-size:0.75rem;font-weight:700;color:var(--text2);letter-spacing:-0.02em;margin-bottom:0.95rem;display:flex;align-items:center;gap:0.5rem}
+.dcf-hist-head::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px;display:block;flex-shrink:0}
+.dcf-hist-head .dcf-hist-subtext{font-weight:400;color:var(--text3);font-size:.72rem}
+.dcf-hist-input{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.dcf-hist-input input{height:34px;padding:0 0.75rem;background:var(--bg3);border:1.5px solid transparent;border-radius:9px;font-size:0.8rem;font-weight:500;font-family:var(--sans);color:var(--text);outline:none;transition:border-color 0.15s,background 0.15s,box-shadow 0.15s}
+.dcf-hist-input input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(49,130,246,.1)}
+.dcf-hist-input select{height:34px;padding:0 2.2rem 0 0.75rem;background:var(--bg3) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B95A1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 0.75rem center;border:1.5px solid transparent;border-radius:9px;font-size:0.8rem;font-weight:500;font-family:var(--sans);color:var(--text);outline:none;cursor:pointer;-webkit-appearance:none;transition:border-color 0.15s,background 0.15s,box-shadow 0.15s}
+.dcf-hist-input select:focus{border-color:var(--accent);background-color:#fff;box-shadow:0 0 0 3px rgba(49,130,246,.1)}
+.dcf-hist-note{font-size:.7rem;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin-bottom:8px;line-height:1.5}
+.dcf-hist-note.warning{background:#FEF9EC;border-color:var(--amber)}
+.dcf-hist-table-wrap{overflow-x:auto;margin-bottom:10px}
+.dcf-assump-result{margin-top:6px}
+.assump-item{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--bg3)}
+.assump-item.flag{border-color:#FCA5A5;background:#FEF2F2}
+.assump-item.ok{border-color:#A7F3D0;background:#F0FDF4}
+.assump-item .ai-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.assump-item .ai-metric{font-weight:700;font-size:.82rem}
+.assump-item .ai-tag{font-size:.64rem;font-weight:700;padding:2px 8px;border-radius:999px}
+.assump-item .ai-tag.flag{background:#FEE2E2;color:#991B1B}
+.assump-item .ai-tag.ok{background:#D1FAE5;color:#065F46}
+.assump-item .ai-tag.na{background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+.assump-item .ai-band{font-size:.72rem;color:var(--text2);font-variant-numeric:tabular-nums;margin-left:auto}
+.assump-item .ai-comment{font-size:.73rem;color:var(--text2);line-height:1.5}
+.assump-summary{font-size:.78rem;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:10px}
+.assump-summary.has-flag{background:#FEF9EC;color:var(--amber);border:1px solid rgba(255,159,0,.3)}
+.assump-summary.clean{background:#F0FDF4;color:#065F46;border:1px solid #A7F3D0}
 
 .dcf-sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:10px}
 .dcf-scard{border-radius:12px;padding:0.95rem 1.05rem;background:var(--bg3)}
@@ -910,6 +938,31 @@ details.note-fold .note{margin-top:4px}
 
   <div class="dcf-table-wrap">
     <table class="dcf-proj" id="dcf-proj-table"></table>
+  </div>
+
+  <!-- ── 과거실적 기반 예측가정 검토 (DART 자동조회) ── -->
+  <div class="dcf-hist-card" id="dcf-hist-card">
+    <div class="dcf-hist-head">
+      예측가정 적합성 검토 <span class="dcf-hist-subtext">— 과거 실적을 앵커로 매출성장률·마진 등 가정 점검</span>
+    </div>
+    <div class="dcf-hist-input">
+      <input type="text" id="dcf-hist-company" placeholder="대상회사명 (예: 삼성전자) — DART 자동조회"
+             style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')dcfFetchDart()">
+      <input type="number" id="dcf-hist-endyear" placeholder="기준연도" title="조회 종료연도(미입력 시 전년도)"
+             style="width:96px">
+      <select id="dcf-hist-fsdiv" title="별도감사보고서: 그 법인 단독(RCPS 기본). 연결감사보고서: 종속회사 포함">
+        <option value="OFS">별도감사보고서</option>
+        <option value="CFS">연결감사보고서</option>
+      </select>
+      <button class="btn-sm add" onclick="dcfFetchDart()" id="dcf-dart-btn">DART 조회</button>
+      <button class="btn-sm dl" onclick="dcfHistAddRow()" title="수기로 과거실적 행 추가">+ 수기입력</button>
+      <button class="btn-sm pull" onclick="dcfRunAssumptionCheck()" id="dcf-check-btn">가정 검토 실행</button>
+    </div>
+    <div id="dcf-hist-note" class="dcf-hist-note" style="display:none"></div>
+    <div class="dcf-hist-table-wrap" id="dcf-hist-table-wrap" style="display:none">
+      <table class="dcf-proj" id="dcf-hist-table"></table>
+    </div>
+    <div id="dcf-assump-result" class="dcf-assump-result" style="display:none"></div>
   </div>
 
   <div id="dcf-result-wrap" style="display:none">
@@ -3057,6 +3110,118 @@ function dcfTvMethodChange(){
     }
   }
   dcfCalc();
+}
+
+// ── 과거실적(actual) 기반 예측가정 검토 ────────────────────────
+let dcfHist=[];  // [{year,revenue,ebit,da,capex,dnwc,tax}] 오래된→최근
+function _hn(v){return Math.round(v||0).toLocaleString('ko-KR');}
+async function dcfFetchDart(forceDiv){
+  const name=(document.getElementById('dcf-hist-company')?.value||'').trim();
+  if(!name){_toast('대상회사명을 입력하세요',true);return;}
+  const ey=parseInt(document.getElementById('dcf-hist-endyear')?.value)||0;
+  const fsdiv=forceDiv||document.getElementById('dcf-hist-fsdiv')?.value||'OFS';
+  if(forceDiv){const sel=document.getElementById('dcf-hist-fsdiv');if(sel)sel.value=forceDiv;}
+  const btn=document.getElementById('dcf-dart-btn');
+  const old=btn.textContent;btn.textContent='조회중…';btn.disabled=true;
+  try{
+    const r=await fetch('/api/dcf/dart_financials',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({company_name:name,end_year:ey||undefined,fs_div:fsdiv})});
+    const j=await r.json();
+    const note=document.getElementById('dcf-hist-note');
+    if(j.status!=='ok'){_toast(j.message||'DART 조회 실패',true);
+      note.className='dcf-hist-note warning';note.style.display='block';note.innerHTML='⚠ '+(j.message||'조회 실패');
+      return;}
+    dcfHist=(j.years||[]).map(y=>({year:y.year,revenue:y.revenue,ebit:y.ebit,da:y.da,capex:y.capex,dnwc:y.dnwc,tax:y.tax}));
+    const corpNm=(j.corp&&(j.corp.corp_name||j.corp.corp_code))||name;
+    const isHoldingWarn=j.holding_warning&&j.fs_div==='OFS';
+    note.className='dcf-hist-note'+(isHoldingWarn?' warning':'');
+    note.style.display='block';
+    let html=`✓ <b>${corpNm}</b> · <b>${j.fs_div==='CFS'?'연결감사보고서':'별도감사보고서'}</b> ${dcfHist.length}개년 조회완료. `
+      +(j.notes||[]).join('<br>');
+    // 지주성격 경고 시 연결 재조회 버튼
+    if(isHoldingWarn){
+      html+=`<br><button class="btn-sm pull" style="margin-top:6px" onclick="dcfFetchDart('CFS')">→ 연결감사보고서로 재조회</button>`;
+    } else if(j.alt_available){
+      const alt=j.fs_div==='OFS'?'CFS':'OFS';
+      html+=`<br><span style="font-size:.66rem;color:var(--text3);cursor:pointer;text-decoration:underline" onclick="dcfFetchDart('${alt}')">${alt==='CFS'?'연결감사보고서':'별도감사보고서'} 기준으로 보기</span>`;
+    }
+    note.innerHTML=html;
+    dcfRenderHist();
+    dcfRunAssumptionCheck();
+  }catch(e){_toast('DART 조회 오류: '+e.message,true);}
+  finally{btn.textContent=old;btn.disabled=false;}
+}
+function dcfHistAddRow(){
+  const last=dcfHist[dcfHist.length-1];
+  const y=last?last.year+1:(new Date().getFullYear()-dcfHist.length);
+  dcfHist.push({year:y,revenue:last?last.revenue:0,ebit:last?last.ebit:0,da:0,capex:0,dnwc:0,tax:25});
+  dcfRenderHist();
+}
+function dcfHistDel(i){dcfHist.splice(i,1);dcfRenderHist();}
+function dcfRenderHist(){
+  const wrap=document.getElementById('dcf-hist-table-wrap');
+  if(!dcfHist.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  const rows=[
+    {k:'year',label:'연도',fmt:'int'},
+    {k:'revenue',label:'매출액',fmt:'won'},
+    {k:'ebit',label:'영업이익(EBIT)',fmt:'won'},
+    {k:'da',label:'감가상각비(D&A)',fmt:'won'},
+    {k:'capex',label:'CapEx',fmt:'won'},
+    {k:'dnwc',label:'ΔWC',fmt:'won'},
+    {k:'tax',label:'유효세율(%)',fmt:'pct'},
+  ];
+  let html=`<thead><tr><th class="lc">항목</th>${dcfHist.map((y,i)=>`<th>${y.year||(i+1)}<br><span style="font-weight:400;font-size:.6rem;color:var(--text3);cursor:pointer" onclick="dcfHistDel(${i})">✕삭제</span></th>`).join('')}</tr></thead><tbody>`;
+  rows.forEach(row=>{
+    html+=`<tr class="inp-row"><td class="lc">${row.label}</td>`;
+    dcfHist.forEach((y,i)=>{
+      const v=y[row.k]||0;
+      html+=`<td><input type="text" value="${row.fmt==='won'?_hn(v):v}" data-yr="${i}" data-field="${row.k}" oninput="dcfHistEdit(this)"></td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody>`;
+  document.getElementById('dcf-hist-table').innerHTML=html;
+}
+function dcfHistEdit(el){
+  const i=parseInt(el.dataset.yr),f=el.dataset.field;
+  dcfHist[i][f]=parseFloat((el.value||'').replace(/[^0-9.\-]/g,''))||0;
+}
+async function dcfRunAssumptionCheck(){
+  if(dcfHist.length<2){_toast('과거실적 2개년 이상 필요 — DART 조회 또는 수기입력',true);return;}
+  const wacc=(parseFloat(document.getElementById('a_wacc')?.value)||12)/100;
+  const g=(parseFloat(document.getElementById('a_g')?.value)||2)/100;
+  const years=(dcfYears||[]).map(y=>({revenue:y.revenue,ebit:y.ebit,tax:y.tax,da:y.da,capex:y.capex,dnwc:y.dnwc}));
+  const historical=dcfHist.map(y=>({revenue:y.revenue,ebit:y.ebit,tax:y.tax,da:y.da,capex:y.capex,dnwc:y.dnwc}));
+  try{
+    const r=await fetch('/api/dcf',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({years,historical,wacc,terminal_growth:g,total_shares:1})});
+    const j=await r.json();
+    if(j.status!=='ok'){_toast(j.message||'검토 실패',true);return;}
+    dcfRenderAssumption(j.result.historical_check);
+  }catch(e){_toast('가정검토 오류: '+e.message,true);}
+}
+function dcfRenderAssumption(chk){
+  const box=document.getElementById('dcf-assump-result');
+  if(!chk||!chk.applicable){box.style.display='none';return;}
+  box.style.display='block';
+  const flagged=chk.summary.flagged_count;
+  let html=`<div class="assump-summary ${flagged?'has-flag':'clean'}">`
+    +(flagged?`⚠ ${flagged}개 가정이 과거 실적 범위를 벗어남 — 추가 정당화 필요: <b>${chk.summary.flagged_metrics.join(', ')}</b>`
+            :`✓ 모든 가정이 과거 실적 범위 내 — 합리적`)
+    +`<br><span style="font-weight:400;font-size:.68rem">${chk.summary.note}</span></div>`;
+  chk.checks.forEach(c=>{
+    const wb=c.within_band;
+    const cls=wb===false?'flag':(wb===true?'ok':'');
+    const tag=wb===false?'<span class="ai-tag flag">범위초과</span>':(wb===true?'<span class="ai-tag ok">범위내</span>':'<span class="ai-tag na">참고</span>');
+    let band='';
+    const h=c.historical||{};
+    if(h.min_pct!=null&&h.max_pct!=null)band=`과거 [${h.min_pct}%, ${h.max_pct}%]`;
+    if(h.cagr_pct!=null)band+=` · CAGR ${h.cagr_pct}%`;
+    if(c.metric==='영구성장률(g)'&&h.revenue_cagr_pct!=null)band=`역사 CAGR ${h.revenue_cagr_pct}%`;
+    html+=`<div class="assump-item ${cls}"><div class="ai-top"><span class="ai-metric">${c.metric}</span>${tag}<span class="ai-band">${band}</span></div><div class="ai-comment">${c.comment}</div></div>`;
+  });
+  box.innerHTML=html;
 }
 
 function dcfCalc(){
