@@ -108,7 +108,7 @@ def renumber_counterparties_alphabetical(session: Session, project_id: int) -> N
 
     ordered = sorted(cps, key=_key)
     for i, c in enumerate(ordered, 1):
-        c.bc_no = f"BC-{i}"
+        c.bc_no = f"BC-{i:02d}"   # 한자리수 제로패딩 (BC-01·BC-02 … 정렬·표기 정합)
         session.add(c)
     session.commit()
 
