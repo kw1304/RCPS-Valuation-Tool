@@ -111,6 +111,14 @@ def test_prompt_workpaper_retention_guard():
     assert "5년" in p  # 구법·ISA 최소치와 혼동 금지 명시
 
 
+def test_prompt_fee_dependency_pie_guard():
+    """iter5: 보수 의존도 15% 임계는 PIE(상장)에만 — 비상장 오적용 방지."""
+    p = audit.audit_system_prompt("fast")
+    assert "15%" in p
+    assert "공공이익기업" in p or "PIE" in p
+    assert "비상장" in p
+
+
 def test_prompt_domain_accuracy_guards():
     p = audit.audit_system_prompt("fast")
     assert "재편" in p or "R400" in p
