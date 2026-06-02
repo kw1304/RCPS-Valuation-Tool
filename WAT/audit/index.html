@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>감사·윤리기준 AI · WAT</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+:root{
+  --bg:#F9FAFB;--bg2:#FFFFFF;--bg3:#F2F4F6;--border:#E5E8EB;
+  --accent:#3182F6;--accent2:#1B64DA;--text:#191F28;--text2:#4E5968;--text3:#8B95A1;
+  --sans:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);
+  font-size:14px;display:flex;flex-direction:column;height:100vh}
+header{padding:.9rem 1.4rem;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;flex-direction:column;gap:.6rem}
+.htop{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.seg-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.fw-seg{display:inline-flex;gap:.25rem;background:var(--bg3);border:1px solid var(--border);
+  border-radius:100px;padding:.2rem;align-self:flex-start}
+.fw-seg button{font-family:inherit;font-size:.7rem;font-weight:700;color:var(--text2);
+  background:transparent;border:0;border-radius:100px;padding:.32rem .8rem;cursor:pointer;white-space:nowrap}
+.fw-seg button.on{background:var(--accent);color:#fff}
+header h1{font-size:1rem;font-weight:800;letter-spacing:-0.02em}
+header h1 span{color:var(--accent)}
+header button{font-family:inherit;font-size:.74rem;font-weight:600;color:var(--text2);
+  background:var(--bg3);border:1px solid var(--border);border-radius:100px;
+  padding:.4rem .9rem;cursor:pointer}
+header button:hover{color:var(--accent);border-color:#BFDBFE;background:#EFF6FF}
+#stream{flex:1;overflow-y:auto;padding:1.4rem;display:flex;flex-direction:column;gap:1rem}
+.msg{max-width:780px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:.4rem}
+.msg .who{font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.msg.user .bubble{background:var(--accent);color:#fff;align-self:flex-end;border-radius:14px 14px 4px 14px}
+.msg.ai .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:14px 14px 14px 4px}
+.bubble{padding:.85rem 1.1rem;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.bubble a{color:var(--accent)}
+/* 마크다운 렌더(done 시 .md 부여) — pre-wrap 해제하고 블록요소 정상 표시 */
+.bubble.md{white-space:normal}
+.bubble.md h1,.bubble.md h2,.bubble.md h3{line-height:1.3;margin:.7rem 0 .4rem;font-weight:800;letter-spacing:-0.01em}
+.bubble.md h1{font-size:1.15rem}.bubble.md h2{font-size:1.02rem}.bubble.md h3{font-size:.92rem}
+.bubble.md p{margin:.4rem 0}
+.bubble.md ul,.bubble.md ol{margin:.4rem 0;padding-left:1.3rem}
+.bubble.md li{margin:.15rem 0}
+.bubble.md strong{font-weight:800}
+.bubble.md hr{border:0;border-top:1px solid var(--border);margin:.7rem 0}
+.bubble.md blockquote{margin:.5rem 0;padding:.3rem .8rem;border-left:3px solid var(--accent);
+  background:var(--bg3);border-radius:0 8px 8px 0;color:var(--text2)}
+.bubble.md code{background:var(--bg3);border:1px solid var(--border);border-radius:5px;
+  padding:.05rem .3rem;font-size:.88em;font-family:ui-monospace,Consolas,monospace}
+.bubble.md pre{background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:.7rem .9rem;overflow-x:auto;margin:.5rem 0}
+.bubble.md pre code{background:none;border:0;padding:0;font-size:.82rem;line-height:1.5}
+.bubble.md table{border-collapse:collapse;width:100%;margin:.5rem 0;font-size:.86rem;display:block;overflow-x:auto}
+.bubble.md th,.bubble.md td{border:1px solid var(--border);padding:.35rem .55rem;text-align:left;vertical-align:top}
+.bubble.md th{background:var(--bg3);font-weight:700}
+.bubble.md tr:nth-child(even) td{background:#FBFCFD}
+.note{max-width:780px;width:100%;margin:.1rem auto 0;font-size:.68rem;color:#B45309;
+  font-weight:600;line-height:1.4}
+.chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:600;
+  color:var(--accent);background:#EFF6FF;border:1px solid #BFDBFE;border-radius:100px;
+  padding:.3rem .7rem;align-self:flex-start}
+form{padding:1rem 1.4rem;background:var(--bg2);border-top:1px solid var(--border);
+  display:flex;gap:.7rem;align-items:flex-end}
+textarea{flex:1;font-family:inherit;font-size:.9rem;line-height:1.5;resize:none;
+  border:1.5px solid var(--border);border-radius:12px;padding:.7rem .9rem;max-height:140px}
+textarea:focus{outline:none;border-color:var(--accent)}
+form button{font-family:inherit;font-weight:700;color:#fff;background:var(--accent);
+  border:0;border-radius:12px;padding:.7rem 1.3rem;cursor:pointer}
+form button:disabled{background:var(--text3);cursor:not-allowed}
+footer{padding:.7rem 2rem .7rem 7.25rem;background:var(--bg2);border-top:1px solid var(--border);
+  font-size:.66rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;
+  gap:12px;flex-wrap:wrap;line-height:1.4;flex-shrink:0}
+footer b{color:var(--text2);font-weight:600}
+footer .right{color:var(--text3);font-weight:500;letter-spacing:.01em}
+@media (max-width:768px){footer{padding:.6rem 1rem;flex-direction:column;gap:.3rem;text-align:center}}
+</style>
+</head>
+<body>
+<header>
+  <div class="htop">
+    <h1>감사·윤리기준 <span>AI</span> · 감사기준 · 윤리 · 공회법/외감법</h1>
+    <button id="newChat" type="button">+ 새 대화</button>
+  </div>
+  <div class="seg-row">
+    <div class="fw-seg" id="fwSeg" role="group" aria-label="적용 영역 선택">
+      <button type="button" data-fw="auto">자동 판단</button>
+      <button type="button" data-fw="audit">감사기준</button>
+      <button type="button" data-fw="ethics_law">윤리·법령</button>
+    </div>
+    <div class="fw-seg" id="modeSeg" role="group" aria-label="응답 모드 선택">
+      <button type="button" data-mode="fast" title="지식 기반 즉답 (~수초)">⚡ 빠른답변</button>
+      <button type="button" data-mode="grounded" title="웹 검색·질의회신 출처 링크 (~수십초)">🔍 정밀검색</button>
+    </div>
+  </div>
+</header>
+<div id="stream"></div>
+<form id="askForm">
+  <textarea id="q" rows="1" placeholder="감사기준·윤리·법령 질문을 입력하세요 (Shift+Enter 줄바꿈)"></textarea>
+  <button id="send" type="submit">질문</button>
+</form>
+<footer><span><b>Disclaimer.</b> 본 도구는 감사 실무 보조용 참고자료이며, 최종 판단과 책임은 사용자에게 있습니다. · 조문번호는 원문 확인 권고</span><span class="right">© 2026 Woongcpa</span></footer>
+<script>
+const API = "/api/audit/ask";
+const LS = { conv: "audit_conv_id", fw: "audit_framework", mode: "audit_mode" };
+
+function uuid() {
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+}
+
+let convId = localStorage.getItem(LS.conv);
+if (!convId) { convId = uuid(); localStorage.setItem(LS.conv, convId); }
+
+let framework = localStorage.getItem(LS.fw) || "auto";
+const fwSeg = document.getElementById("fwSeg");
+function paintFw() {
+  fwSeg.querySelectorAll("button").forEach(b =>
+    b.classList.toggle("on", b.dataset.fw === framework));
+}
+fwSeg.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  framework = b.dataset.fw;
+  localStorage.setItem(LS.fw, framework);
+  paintFw();
+});
+paintFw();
+
+let mode = localStorage.getItem(LS.mode) || "fast";
+const modeSeg = document.getElementById("modeSeg");
+function paintMode() {
+  modeSeg.querySelectorAll("button").forEach(b =>
+    b.classList.toggle("on", b.dataset.mode === mode));
+}
+modeSeg.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  mode = b.dataset.mode;
+  localStorage.setItem(LS.mode, mode);
+  paintMode();
+});
+paintMode();
+
+function renderMd(text) {
+  let html;
+  try { html = window.marked ? marked.parse(text, { gfm: true, breaks: true }) : null; }
+  catch (e) { html = null; }
+  if (html == null)
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  if (window.DOMPurify) html = DOMPurify.sanitize(html);
+  return html;
+}
+
+const streamEl = document.getElementById("stream");
+const form = document.getElementById("askForm");
+const qEl = document.getElementById("q");
+const sendBtn = document.getElementById("send");
+
+function addMsg(who, role) {
+  const el = document.createElement("div");
+  el.className = "msg " + role;
+  el.innerHTML = '<div class="who">' + who + '</div><div class="bubble"></div>';
+  streamEl.appendChild(el);
+  streamEl.scrollTop = streamEl.scrollHeight;
+  return el.querySelector(".bubble");
+}
+
+qEl.addEventListener("input", () => {
+  qEl.style.height = "auto";
+  qEl.style.height = Math.min(qEl.scrollHeight, 140) + "px";
+});
+qEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+});
+document.getElementById("newChat").addEventListener("click", () => {
+  convId = uuid();
+  localStorage.setItem(LS.conv, convId);
+  streamEl.innerHTML = "";
+});
+
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+  const q = qEl.value.trim();
+  if (!q) return;
+  addMsg("나", "user").textContent = q;
+  qEl.value = "";
+  qEl.style.height = "auto";
+  sendBtn.disabled = true;
+
+  const usedMode = mode;
+  const bubble = addMsg("AI", "ai");
+  let chip = document.createElement("div");
+  chip.className = "chip";
+  chip.textContent = "준비 중…";
+  bubble.parentNode.insertBefore(chip, bubble);
+
+  try {
+    const res = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId: convId, question: q, framework, mode }),
+    });
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "", acc = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop();
+      for (const part of parts) {
+        const dataLine = part.split("\n").find(l => l.startsWith("data: "));
+        if (!dataLine) continue;
+        const ev = JSON.parse(dataLine.slice(6));
+        if (ev.type === "tool") {
+          chip.textContent = ev.label;
+        } else if (ev.type === "token") {
+          chip.remove();
+          acc += ev.text;
+          bubble.textContent = acc;
+        } else if (ev.type === "done") {
+          chip.remove();
+          if (ev.text) acc = ev.text;
+          bubble.classList.add("md");
+          bubble.innerHTML = renderMd(acc);
+          bubble.querySelectorAll("a").forEach(a => {
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+          });
+          if (usedMode === "fast") {
+            const note = document.createElement("div");
+            note.className = "note";
+            note.textContent = "⚡ 빠른답변 — 조문·코드 번호는 정밀검색으로 확인 권고";
+            bubble.parentNode.appendChild(note);
+          }
+        } else if (ev.type === "error") {
+          chip.remove();
+          bubble.textContent = "⚠ " + ev.message;
+        }
+        streamEl.scrollTop = streamEl.scrollHeight;
+      }
+    }
+  } catch (err) {
+    chip.remove();
+    bubble.textContent = "⚠ 통신 오류: " + err.message;
+  } finally {
+    sendBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
