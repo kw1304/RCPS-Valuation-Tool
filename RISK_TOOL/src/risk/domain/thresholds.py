@@ -97,8 +97,8 @@ def evaluate_axes(years: list[FinancialYear], pm: Materiality,
     # ── 축2 부정 ──
     out.append(_fraud_accrual(curr))
     if prev is not None:
-        out.append(_fraud_ar_vs_rev(prev, curr))
-        out.append(_fraud_inv_vs_rev(prev, curr))
+        out.append(_fraud_ar_vs_rev(prev, curr, pm))
+        out.append(_fraud_inv_vs_rev(prev, curr, pm))
     out.append(_fraud_tax(curr))
 
     # ── 축3 계속기업 ──
@@ -205,26 +205,34 @@ def _fraud_accrual(curr) -> Signal:
     return Signal("fraud", "accrual_quality", "순이익 흑자 & 영업CF 음수", level, ocf, th)
 
 
-def _fraud_ar_vs_rev(prev, curr) -> Signal:
+def _fraud_ar_vs_rev(prev, curr, pm) -> Signal:
     th = f">{TH_AR_VS_REV[0]}%p황/>{TH_AR_VS_REV[1]}%p적"
     ar = ind.pct_change(curr.trade_receivables, prev.trade_receivables)
     rev = ind.pct_change(curr.revenue, prev.revenue)
     if ar is None or rev is None:
         return Signal("fraud", "ar_vs_revenue", "매출채권증가율−매출증가율", "na", None, th, note=_NA_NOTE)
     gap = ar - rev
-    return Signal("fraud", "ar_vs_revenue", "매출채권증가율−매출증가율",
-                  _band(gap, *TH_AR_VS_REV, two_sided=False), gap, th)
+    level = _band(gap, *TH_AR_VS_REV, two_sided=False)
+    # 잔액 중요성 게이트: 매출채권이 PM 미달이면 %갭이 커도 금액영향 미미 → 관찰
+    if level != "green" and not (curr.trade_receivables and curr.trade_receivables > pm.pm):
+        return Signal("fraud", "ar_vs_revenue", "매출채권증가율−매출증가율", "green", gap,
+                      th, note="관찰 — 매출채권 잔액 PM 미달")
+    return Signal("fraud", "ar_vs_revenue", "매출채권증가율−매출증가율", level, gap, th)
 
 
-def _fraud_inv_vs_rev(prev, curr) -> Signal:
+def _fraud_inv_vs_rev(prev, curr, pm) -> Signal:
     th = f">{TH_INV_VS_REV[0]}%p황/>{TH_INV_VS_REV[1]}%p적"
     inv = ind.pct_change(curr.inventory, prev.inventory)
     rev = ind.pct_change(curr.revenue, prev.revenue)
     if inv is None or rev is None:
         return Signal("fraud", "inv_vs_revenue", "재고증가율−매출증가율", "na", None, th, note=_NA_NOTE)
     gap = inv - rev
-    return Signal("fraud", "inv_vs_revenue", "재고증가율−매출증가율",
-                  _band(gap, *TH_INV_VS_REV, two_sided=False), gap, th)
+    level = _band(gap, *TH_INV_VS_REV, two_sided=False)
+    # 잔액 중요성 게이트: 재고가 PM 미달이면 %갭이 커도 금액영향 미미 → 관찰 (NAVER 등 재고 미미 오탐 차단)
+    if level != "green" and not (curr.inventory and curr.inventory > pm.pm):
+        return Signal("fraud", "inv_vs_revenue", "재고증가율−매출증가율", "green", gap,
+                      th, note="관찰 — 재고 잔액 PM 미달")
+    return Signal("fraud", "inv_vs_revenue", "재고증가율−매출증가율", level, gap, th)
 
 
 def _fraud_tax(curr) -> Signal:

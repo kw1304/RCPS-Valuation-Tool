@@ -352,3 +352,27 @@ def test_general_sector_keeps_debt_ratio_signal():
     sigs = evaluate_axes([prev, curr], _pm(10_000_000), is_financial=False)
     dr = next(s for s in sigs if s.code == "debt_ratio")
     assert dr.level == "red"  # 일반기업은 그대로 red
+
+
+def test_fraud_gap_immaterial_balance_gated():
+    # 재고 잔액이 PM 미달이면 재고 %급증해도 green(관찰) — NAVER 등 오탐 차단
+    from risk.domain.thresholds import evaluate_axes
+    prev = FinancialYear(2024, revenue=1_000_000_000, inventory=1_000,
+                         trade_receivables=1_000)
+    curr = FinancialYear(2025, revenue=1_050_000_000, inventory=10_000,  # 재고 +900%
+                         trade_receivables=10_000)
+    sigs = evaluate_axes([prev, curr], _pm(100_000_000))  # PM 1억 >> 재고 1만
+    inv = next(s for s in sigs if s.code == "inv_vs_revenue")
+    ar = next(s for s in sigs if s.code == "ar_vs_revenue")
+    assert inv.level == "green" and "PM 미달" in inv.note
+    assert ar.level == "green" and "PM 미달" in ar.note
+
+
+def test_fraud_gap_material_balance_fires():
+    # 재고가 PM 초과·급증 → red 유지
+    from risk.domain.thresholds import evaluate_axes
+    prev = FinancialYear(2024, revenue=1_000_000_000, inventory=200_000_000)
+    curr = FinancialYear(2025, revenue=1_050_000_000, inventory=400_000_000)  # 재고 +100%, 갭 큼
+    sigs = evaluate_axes([prev, curr], _pm(10_000_000))  # PM 1천만 < 재고 4억
+    inv = next(s for s in sigs if s.code == "inv_vs_revenue")
+    assert inv.level == "red"
