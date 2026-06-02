@@ -342,6 +342,8 @@ def _default_runner(cmd):
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         text=True, encoding="utf-8", bufsize=1,
+        # Windows: claude.exe 실행마다 콘솔창 깜빡이지 않게(무창). 재시도 시 다중 방지.
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     timer = threading.Timer(SUBPROC_TIMEOUT, proc.kill)
     timer.start()
