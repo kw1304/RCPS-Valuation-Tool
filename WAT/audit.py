@@ -259,6 +259,7 @@ def parse_stream_line(line):
             "type": "done",
             "sessionId": obj.get("session_id"),
             "text": obj.get("result", ""),
+            "is_error": bool(obj.get("is_error")),
         }
 
     if t == "system" and obj.get("subtype") == "init":
@@ -272,6 +273,20 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
+
+# 상류(Anthropic API) 일시 장애 — claude CLI가 result(is_error)로 돌려주는 텍스트.
+_TRANSIENT_MARKERS = (
+    "api error", "overloaded", "internal server error",
+    "rate limit", "timeout", "503", "502", "500", "529",
+)
+_RETRY_BACKOFF = (1.5, 3.0, 6.0)
+
+
+def _is_transient_error(text):
+    s = (text or "").lower()
+    return any(k in s for k in _TRANSIENT_MARKERS)
+
 
 _SEM = threading.Semaphore(3)
 SUBPROC_TIMEOUT = 150
@@ -342,31 +357,67 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
 
     workdir = None
     try:
-        workdir = tempfile.mkdtemp(prefix="wat_audit_")
-        cmd = build_command(question, session_id, workdir, framework, mode)
-        streamed_any = False
-        last_full = ""
-        for line in runner(cmd):
-            ev = parse_stream_line(line)
-            if ev is None:
-                continue
-            etype = ev["type"]
-            if etype in ("session", "done") and ev.get("sessionId"):
-                final_session = ev["sessionId"]
-            if etype == "session":
-                continue
-            if etype == "assistant_text":
-                last_full = ev["text"]
-                continue
-            if etype == "token":
-                streamed_any = True
-            if etype == "done":
-                if not streamed_any and not (ev.get("text") or "").strip() and last_full:
-                    ev = {**ev, "text": last_full, "type": "token"}
-                    yield ev
-                    yield {"type": "done", "sessionId": final_session, "text": last_full}
+        # 상류 API 일시 장애(529/500/overload)는 토큰 전에 result(is_error)로 떨어진다.
+        # 토큰 전 오류는 사용자에게 노출하지 않고 backoff 재시도. 토큰 흘린 뒤(live)면 그대로.
+        for _attempt in range(len(_RETRY_BACKOFF) + 1):
+            workdir = tempfile.mkdtemp(prefix="wat_audit_")
+            cmd = build_command(question, session_id, workdir, framework, mode)
+            streamed_any = False
+            live = False
+            last_full = ""
+            buffered = []
+            need_retry = False
+            for line in runner(cmd):
+                ev = parse_stream_line(line)
+                if ev is None:
                     continue
-            yield ev
+                etype = ev["type"]
+                if etype in ("session", "done") and ev.get("sessionId"):
+                    final_session = ev["sessionId"]
+                if etype == "session":
+                    continue
+                if etype == "assistant_text":
+                    last_full = ev["text"]
+                    continue
+                if etype == "token":
+                    if not live:
+                        live = True
+                        for b in buffered:
+                            yield b
+                        buffered = []
+                    streamed_any = True
+                    yield ev
+                    continue
+                if etype == "done":
+                    text = (ev.get("text") or "").strip()
+                    if not live and (ev.get("is_error") or _is_transient_error(text)):
+                        need_retry = True
+                        break
+                    if not live:
+                        body = text or last_full
+                        if body:
+                            yield {"type": "token", "text": body}
+                            yield {"type": "done", "sessionId": final_session, "text": body}
+                            streamed_any = True
+                            live = True
+                        else:
+                            need_retry = True
+                        break
+                    yield ev
+                    break
+                if live:
+                    yield ev
+                else:
+                    buffered.append(ev)
+
+            if streamed_any and not need_retry:
+                break  # 성공 (finally에서 세션 저장)
+            if _attempt < len(_RETRY_BACKOFF):
+                shutil.rmtree(workdir, ignore_errors=True)
+                time.sleep(_RETRY_BACKOFF[_attempt])
+                continue
+            yield {"type": "error",
+                   "message": "AI 서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해 주세요."}
     finally:
         _SEM.release()
         if workdir:

@@ -266,6 +266,7 @@ def parse_stream_line(line):
             "type": "done",
             "sessionId": obj.get("session_id"),
             "text": obj.get("result", ""),
+            "is_error": bool(obj.get("is_error")),
         }
 
     if t == "system" and obj.get("subtype") == "init":
@@ -279,6 +280,21 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
+
+# 상류(Anthropic API) 일시 장애 — claude CLI가 result(is_error)로 돌려주는 텍스트.
+# 토큰이 하나도 안 나온 상태에서 이 패턴이면 자동 재시도(backoff) 대상.
+_TRANSIENT_MARKERS = (
+    "api error", "overloaded", "internal server error",
+    "rate limit", "timeout", "503", "502", "500", "529",
+)
+_RETRY_BACKOFF = (1.5, 3.0, 6.0)     # 시도 간 대기(초). 최대 len+1회 시도.
+
+
+def _is_transient_error(text):
+    s = (text or "").lower()
+    return any(k in s for k in _TRANSIENT_MARKERS)
+
 
 _SEM = threading.Semaphore(3)        # 동시 claude 프로세스 최대 3
 # 정밀검색 다회 검색 시 90s로는 답변이 잘림(iter2 발견) → 150s로 상향.
@@ -357,44 +373,76 @@ def ask_stream(db_path, conv_id, question, framework="auto", mode="fast", runner
         yield {"type": "error", "message": "서버 혼잡 — 잠시 후 재시도"}
         return
 
-    workdir = None
     try:
-        # acquire와 try 사이에서 예외 나도 세마포어 누수 없도록 try 안에서 생성
-        workdir = tempfile.mkdtemp(prefix="wat_acct_")
-        cmd = build_command(question, session_id, workdir, framework, mode)
-        streamed_any = False   # 토큰(델타)이 하나라도 나왔는가
-        last_full = ""         # 마지막 assistant 본문(델타 미발생 시 fallback)
-        got_answer = False     # 의미있는 답변 콘텐츠를 하나라도 내보냈는가
-        for line in runner(cmd):
-            ev = parse_stream_line(line)
-            if ev is None:
-                continue
-            etype = ev["type"]
-            if etype in ("session", "done") and ev.get("sessionId"):
-                final_session = ev["sessionId"]
-            if etype == "session":
-                continue  # 내부용, 프론트로는 안 보냄
-            if etype == "assistant_text":
-                last_full = ev["text"]  # 라이브로 안 보냄(델타와 중복 방지), fallback만
-                continue
-            if etype == "token":
-                streamed_any = True
-                got_answer = True
-            if etype == "done":
-                # 델타도 안 오고 result.text도 비면(간헐적 빈 답변) → assistant 본문으로 보강
-                if not streamed_any and not (ev.get("text") or "").strip() and last_full:
-                    yield {"type": "token", "text": last_full}
-                    yield {"type": "done", "sessionId": final_session, "text": last_full}
-                    got_answer = True
+        # 상류 API 일시 장애(529/500/overload)는 토큰 전에 result(is_error)로 떨어진다.
+        # 토큰이 하나도 안 나온 시점의 오류는 사용자에게 노출하지 않고 backoff 재시도.
+        # 토큰을 하나라도 흘린 뒤면(live) 되돌릴 수 없으므로 그대로 둔다.
+        for _attempt in range(len(_RETRY_BACKOFF) + 1):
+            workdir = tempfile.mkdtemp(prefix="wat_acct_")
+            try:
+                cmd = build_command(question, session_id, workdir, framework, mode)
+                streamed_any = False   # 실제 토큰을 하나라도 흘렸는가
+                live = False           # 첫 토큰 이후(버퍼 flush 완료)
+                last_full = ""         # assistant 본문(델타 미발생 시 fallback)
+                buffered = []          # 첫 토큰 전 비-토큰 이벤트(재시도 시 폐기 위해 보류)
+                need_retry = False
+                for line in runner(cmd):
+                    ev = parse_stream_line(line)
+                    if ev is None:
+                        continue
+                    etype = ev["type"]
+                    if etype in ("session", "done") and ev.get("sessionId"):
+                        final_session = ev["sessionId"]
+                    if etype == "session":
+                        continue  # 내부용
+                    if etype == "assistant_text":
+                        last_full = ev["text"]  # fallback만
+                        continue
+                    if etype == "token":
+                        if not live:           # 첫 토큰 → 버퍼 flush 후 라이브 전환
+                            live = True
+                            for b in buffered:
+                                yield b
+                            buffered = []
+                        streamed_any = True
+                        yield ev
+                        continue
+                    if etype == "done":
+                        text = (ev.get("text") or "").strip()
+                        # 토큰 전에 떨어진 일시 오류 → 재시도
+                        if not live and (ev.get("is_error") or _is_transient_error(text)):
+                            need_retry = True
+                            break
+                        # 델타 없이 본문만 온 경우(간헐적 빈 토큰) → 보강
+                        if not live:
+                            body = text or last_full
+                            if body:
+                                yield {"type": "token", "text": body}
+                                yield {"type": "done", "sessionId": final_session, "text": body}
+                                streamed_any = True
+                                live = True
+                            else:
+                                need_retry = True
+                            break
+                        yield ev
+                        break
+                    # tool 등 기타: 라이브 전이면 버퍼(재시도 시 폐기)
+                    if live:
+                        yield ev
+                    else:
+                        buffered.append(ev)
+
+                if streamed_any and not need_retry:
+                    return  # 성공
+                if _attempt < len(_RETRY_BACKOFF):
+                    time.sleep(_RETRY_BACKOFF[_attempt])
                     continue
-                if (ev.get("text") or "").strip():
-                    got_answer = True
-            yield ev
-        # claude가 일시적으로 아무 답도 못 준 경우(프로세스 즉시 종료 등) → 침묵 빈답변
-        # 대신 사용자에게 명시적 에러를 알린다(재시도 유도).
-        if not got_answer:
-            yield {"type": "error",
-                   "message": "응답을 받지 못했습니다(일시 오류). 잠시 후 다시 시도해 주세요."}
+                # 모든 재시도 소진
+                yield {"type": "error",
+                       "message": "AI 서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해 주세요."}
+            finally:
+                if workdir:
+                    shutil.rmtree(workdir, ignore_errors=True)
     finally:
         _SEM.release()
         if workdir:
