@@ -149,6 +149,10 @@ def export_4150(session: Session, project_id: int) -> Path:
     }
 
     # === AC1~AC8 records ===
+    # AC 시트 BC번호를 회신본 파일명 번호가 아니라 가나다 통일 counterparty 번호로 표기.
+    _cp_bc_by_id = {c.id: c.bc_no for c in cps}
+    _cp_bc_by_name = {c.canonical_name: c.bc_no for c in cps}
+
     def _load_recs(ac_section):
         raw = session.exec(
             select(ExtractedRecord).where(
@@ -156,7 +160,15 @@ def export_4150(session: Session, project_id: int) -> Path:
                 ExtractedRecord.ac_section == ac_section,
             )
         ).all()
-        return [json.loads(r.payload_json) for r in raw]
+        out = []
+        for r in raw:
+            payload = json.loads(r.payload_json)
+            # 매칭된 counterparty 의 가나다 BC번호로 치환(없으면 은행명으로, 그래도 없으면 원본).
+            bc = _cp_bc_by_id.get(r.counterparty_id) or _cp_bc_by_name.get(payload.get("bank", ""))
+            if bc:
+                payload["bc_no"] = bc
+            out.append(payload)
+        return out
 
     wb = toss_workbook.build_workbook(
         company=project.name,
