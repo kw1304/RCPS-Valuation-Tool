@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os, io
+import os, io, re, datetime
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +18,13 @@ app = FastAPI(title="감사전 리스크 확인 툴")
 _FRONT = pathlib.Path(__file__).parent / "frontend"
 
 
+def _safe_stem(name: str) -> str:
+    """파일명 stem 살균 — path traversal/구분자 제거. 한글·영숫자·-만 보존."""
+    safe = re.sub(r"[^\w가-힣-]", "_", name or "")
+    safe = safe.strip("_")[:50]
+    return safe or "company"
+
+
 def _build_uc():
     client = DartClient(api_key=os.environ.get("DART_API_KEY", ""))
     extractor = RiskExtractor(client)
@@ -28,7 +35,13 @@ def _build_uc():
         llm = Commenter(anthropic.Anthropic()) if os.environ.get("ANTHROPIC_API_KEY") else Commenter(None)
     except Exception:
         llm = Commenter(None)
-    return AssessRiskUseCase(extractor, client.find_corp_code, news, llm)
+    # 축4 DART 공시이벤트 — 감사대상기간+직전연도 커버 (~540일 윈도우)
+    today = datetime.date.today()
+    end_de = today.strftime("%Y%m%d")
+    bgn_de = (today - datetime.timedelta(days=540)).strftime("%Y%m%d")
+    disclosure_fetcher = lambda cc: client.list_disclosures(cc, bgn_de, end_de)
+    return AssessRiskUseCase(extractor, client.find_corp_code, news, llm,
+                             disclosure_fetcher=disclosure_fetcher)
 
 
 class AssessReq(BaseModel):
@@ -53,6 +66,7 @@ def assess(req: AssessReq):
         "comments": res.comments,
         "years": [asdict(y) for y in res.years],
         "news": [vars(h) for h in res.news],
+        "disclosures": res.disclosures,
     })
 
 
@@ -60,9 +74,10 @@ def assess(req: AssessReq):
 def export(req: AssessReq):
     uc = _build_uc()
     res = uc.run(req.company, req.end_year)
-    tmp = pathlib.Path(tempfile.gettempdir()) / f"risk_{req.company}_{req.end_year}.xlsx"
+    safe = _safe_stem(req.company)
+    tmp = pathlib.Path(tempfile.gettempdir()) / f"risk_{safe}_{req.end_year}.xlsx"
     build_workpaper(res, str(tmp))
-    return FileResponse(str(tmp), filename=tmp.name,
+    return FileResponse(str(tmp), filename=f"risk_{safe}_{req.end_year}.xlsx",
                         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
