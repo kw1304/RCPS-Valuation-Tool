@@ -143,8 +143,11 @@ body::before{
 .cat-head p{font-size:.85rem;color:var(--text2);margin-top:.4rem;font-weight:500}
 
 .cat-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));
-  gap:1.2rem;max-width:1040px;width:100%;
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1.2rem;max-width:1140px;width:100%;align-items:stretch;
+}
+@media (max-width:880px){
+  .cat-grid{grid-template-columns:1fr;max-width:440px}
 }
 .cat-card{
   background:var(--bg2);border:1.5px solid var(--border);border-radius:20px;
@@ -274,7 +277,6 @@ body.tool-mode footer.legal{display:none}
     <div class="cat-card cat-valuation" data-cat="valuation">
       <div class="ico">V</div>
       <h3>평가 <span class="en">Valuation</span></h3>
-      <p class="desc">K-IFRS 1109 공정가치 평가 및 현금흐름 할인 모형. RCPS·CB 등 복합금융상품과 사업가치 평가를 지원합니다.</p>
       <div class="tool-list">
         <a class="tool-item" href="#tool=rcps-dcf" data-tool="rcps-dcf">
           <span>RCPS / DCF Valuation Tool · 상환전환우선주 / 현금흐름할인모델</span>
@@ -291,7 +293,6 @@ body.tool-mode footer.legal{display:none}
     <div class="cat-card cat-audit" data-cat="audit">
       <div class="ico">A</div>
       <h3>감사보조 <span class="en">Audit Support</span></h3>
-      <p class="desc">전표 테스트·통제검증·표본추출 등 감사 실무 자동화. 감사기준서 530 표본설계와 JET 룰 엔진을 제공합니다.</p>
       <div class="tool-list">
         <a class="tool-item" href="#tool=jet" data-tool="jet">
           <span>JET Tool · Journal Entry Test</span>
@@ -302,7 +303,7 @@ body.tool-mode footer.legal{display:none}
           <span class="tag ready">사용 가능</span>
         </a>
         <a class="tool-item" href="#tool=bc-confirmation" data-tool="bc-confirmation">
-          <span>BC Tool · 금융기관조회서 자동화 (4150 조서)</span>
+          <span>BC Tool · 금융기관조회서</span>
           <span class="tag ready">사용 가능</span>
         </a>
         <a class="tool-item" href="#tool=risk-precheck" data-tool="risk-precheck">
@@ -316,10 +317,13 @@ body.tool-mode footer.legal{display:none}
     <div class="cat-card cat-reference" data-cat="reference">
       <div class="ico">R</div>
       <h3>리서치 <span class="en">Reference</span></h3>
-      <p class="desc">회계기준 해석·적용 질의응답. K-IFRS·일반기업회계기준·회계감사기준을 웹 근거로 검색해 조문·출처와 함께 답합니다.</p>
       <div class="tool-list">
         <a class="tool-item" href="#tool=accounting-ai" data-tool="accounting-ai">
-          <span>회계기준 AI · K-IFRS 질의응답</span>
+          <span>회계기준 AI · 질의응답</span>
+          <span class="tag ready">사용 가능</span>
+        </a>
+        <a class="tool-item" href="#tool=audit-ai" data-tool="audit-ai">
+          <span>감사·윤리기준 AI · 질의응답</span>
           <span class="tag ready">사용 가능</span>
         </a>
       </div>
@@ -414,9 +418,14 @@ const TOOLS = {
     url: URL_RISK,
   },
   'accounting-ai': {
-    name: '회계기준 AI · K-IFRS 질의응답',
+    name: '회계기준 AI · 질의응답',
     category: 'Reference',
     url: '/accounting/',
+  },
+  'audit-ai': {
+    name: '감사·윤리기준 AI · 질의응답',
+    category: 'Reference',
+    url: '/audit/',
   },
 };
 
