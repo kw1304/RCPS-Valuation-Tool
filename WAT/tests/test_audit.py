@@ -103,6 +103,14 @@ def test_prompt_iesba_part_structure_guard():
     assert "독립성이 아닌 윤리" in p
 
 
+def test_prompt_workpaper_retention_guard():
+    """iter4: 감사조서 보존 8년(상장·비상장 동일, 5년 혼동 방지) 고정."""
+    p = audit.audit_system_prompt("fast")
+    assert "감사조서 보존" in p
+    assert "8년" in p and "제19조" in p
+    assert "5년" in p  # 구법·ISA 최소치와 혼동 금지 명시
+
+
 def test_prompt_domain_accuracy_guards():
     p = audit.audit_system_prompt("fast")
     assert "재편" in p or "R400" in p
