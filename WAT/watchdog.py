@@ -11,8 +11,26 @@
 import os
 import sys
 import time
+import socket
 import subprocess
 import urllib.request
+
+_SINGLETON_PORT = 8799   # 워치독 싱글톤 뮤텍스(loopback bind). 중복 실행 차단.
+
+
+def _acquire_singleton():
+    """loopback 포트 bind로 단일 인스턴스 보장. 실패(이미 점유)면 None."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", _SINGLETON_PORT))
+        s.listen(1)
+        return s   # 프로세스 생존 동안 보유(GC 방지 위해 반환)
+    except OSError:
+        try:
+            s.close()
+        except Exception:
+            pass
+        return None
 
 # pythonw 무콘솔 stdout 가드 (None이면 로그파일로)
 if sys.stdout is None or sys.stderr is None:
@@ -74,4 +92,8 @@ def main():
 
 
 if __name__ == "__main__":
+    _lock = _acquire_singleton()
+    if _lock is None:
+        print("[watchdog] 이미 실행 중 — 중복 인스턴스 종료", flush=True)
+        sys.exit(0)
     main()

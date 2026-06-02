@@ -266,7 +266,7 @@ def parse_stream_line(line):
             "type": "done",
             "sessionId": obj.get("session_id"),
             "text": obj.get("result", ""),
-            "is_error": bool(obj.get("is_error")),
+            "is_error": bool(obj.get("is_error")) or bool(obj.get("api_error_status")),
         }
 
     if t == "system" and obj.get("subtype") == "init":
