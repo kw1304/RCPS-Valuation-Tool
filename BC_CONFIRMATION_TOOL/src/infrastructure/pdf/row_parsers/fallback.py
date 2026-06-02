@@ -98,6 +98,9 @@ def _institution_default_ac(bank: str) -> str:
 
 # 부보금액 규모 합계행 판정 임계치(이 이상이면 합계 의심). 소액 placeholder 행은 무관.
 _SUBTOTAL_MIN = Decimal("1000000")
+# fallback 금액 하한 — 회신 금액(보증·부보·예금·차입)은 만원 미만이 없다. 연도(2024)·
+# 증권 index·계좌 단편 같은 소액 잡음이 행의 max 로 잡혀 가짜 금액이 되는 것 방지.
+_MIN_FALLBACK_AMOUNT = Decimal("10000")
 # 알파벳·한글 등 '글자'(amount 구분자가 아닌 의미 텍스트) 포함 여부.
 _HAS_LETTER = re.compile(r"[A-Za-z가-힣]")
 
@@ -132,6 +135,8 @@ def fallback_parse(text: str, bc_no: str, bank: str) -> list[dict]:
         for a in ocr_amts:
             if a not in amounts:
                 amounts.append(a)
+        # 연도(2024)·index 등 소액 잡음 배제(만원 미만). 행에 실금액이 없으면 record 미생성.
+        amounts = [a for a in amounts if a >= _MIN_FALLBACK_AMOUNT]
         if not amounts:
             continue
         # OCR 합계/소계 행 제거(이중계상 방지): 보험사 회신서 스캔은 정책행 뒤에
