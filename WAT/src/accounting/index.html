@@ -17,8 +17,9 @@
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);
   font-size:14px;display:flex;flex-direction:column;height:100vh}
-header{padding:.9rem 1.4rem;background:var(--bg2);border-bottom:1px solid var(--border);
+header{padding:.9rem 1.4rem .9rem 7.25rem;background:var(--bg2);border-bottom:1px solid var(--border);
   display:flex;flex-direction:column;gap:.6rem}
+@media (max-width:640px){header{padding-left:1.4rem}}
 .htop{display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .seg-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
 .fw-seg{display:inline-flex;gap:.25rem;background:var(--bg3);border:1px solid var(--border);

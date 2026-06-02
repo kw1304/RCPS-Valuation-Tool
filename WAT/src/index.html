@@ -189,6 +189,7 @@ body::before{
   letter-spacing:-0.015em;
 }
 .tool-item:hover{background:#EFF6FF;color:var(--accent);border-color:#BFDBFE}
+.tool-item .own{color:var(--accent);font-weight:700}
 .tool-item .tag{
   font-size:.62rem;font-weight:700;padding:.18rem .55rem;border-radius:100px;
   background:#fff;color:var(--text3);border:1px solid var(--border);letter-spacing:.02em;
@@ -307,7 +308,7 @@ body.tool-mode footer.legal{display:none}
           <span class="tag ready">사용 가능</span>
         </a>
         <a class="tool-item" href="#tool=risk-precheck" data-tool="risk-precheck">
-          <span>감사전 리스크 확인 툴 · DART 자동 위험 스크리닝</span>
+          <span><b class="own">웅계사's</b> Risk Tool</span>
           <span class="tag ready">사용 가능</span>
         </a>
       </div>
@@ -413,7 +414,7 @@ const TOOLS = {
     url: URL_BC,
   },
   'risk-precheck': {
-    name: '감사전 리스크 확인 툴 · Pre-Audit Risk (DART 자동 위험 스크리닝)',
+    name: "웅계사's Risk Tool",
     category: 'Audit Support',
     url: URL_RISK,
   },
