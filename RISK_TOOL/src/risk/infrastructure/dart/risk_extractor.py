@@ -118,8 +118,14 @@ def _cell_num(c: str):
 
 
 def _doc_unit_scale(text: str) -> float:
-    """재무제표 표기 단위 → 원 환산 배수. '천원'→1000, '백만원'→1e6, 기본 원=1."""
-    m = re.search(r"매출\s*액|영업\s*수익", text)
+    """재무제표 표기 단위 → 원 환산 배수. '천원'→1000, '백만원'→1e6, 기본 원=1.
+
+    단위 선언은 각 재무제표 표 머리에 '(단위: 원/천원/백만원)'으로 붙는다. 약식·적자
+    라벨(매출/영업손실)도 앵커로 잡아 실제 FS 영역의 단위를 읽는다(문서 앞 요약표의
+    엉뚱한 단위 오검출 방지).
+    """
+    m = re.search(r"재무상태표|자산\s*총계|매출\s*원가|영업\s*손실|영업\s*이익|"
+                  r"매출\s*액|영업\s*수익", text)
     pos = m.start() if m else 0
     region = text[max(0, pos - 4000): pos + 400]
     units = re.findall(r"단위\s*[:：]?\s*(백만원|천원|원)", region)
@@ -141,11 +147,17 @@ def _parse_table_rows(tbl: str):
 
 
 def _classify_statement(rows):
-    """행 시그니처로 재무제표 종류 판정. BS/IS/CF/None."""
+    """행 시그니처로 재무제표 종류 판정. BS/IS/CF/None.
+
+    적자기업·약식라벨 대응: '매출액'뿐 아니라 '매출'(매출원가가 있으면 IS), 영업'이익'뿐
+    아니라 영업'손실'도 인식.
+    """
     labs = " ".join(l for l, _ in rows)
     if "자산총계" in labs and "부채총계" in labs:
         return "BS"
-    if ("매출액" in labs or "영업수익" in labs) and "영업이익" in labs:
+    has_sales = "매출액" in labs or "영업수익" in labs or "매출원가" in labs
+    has_op = "영업이익" in labs or "영업손실" in labs
+    if has_sales and has_op:
         return "IS"
     if "영업활동" in labs and ("현금흐름" in labs or "영업활동으로" in labs):
         return "CF"
@@ -192,13 +204,15 @@ def _parse_fs_document(text: str, base_year: int) -> dict:
     bs_rows = found.get("BS")
     cf_rows = found.get("CF")
 
-    # 손익계산서
-    put("revenue", pick(is_rows, "매출액", "영업수익", "수익(매출액)"))
+    # 손익계산서 (적자기업: 영업손실·당기순손실, 약식라벨: 바로 '매출')
+    put("revenue", pick(is_rows, "매출액", "영업수익", "수익(매출액)", "매출",
+                        exclude=("원가", "총이익", "총손실", "채권", "구성", "증가", "할인")))
     put("cogs", pick(is_rows, "매출원가"))
-    put("operating_income", pick(is_rows, "영업이익", exclude=("률",)))
+    put("operating_income", pick(is_rows, "영업이익", "영업손실", exclude=("률", "이익률")))
     put("pretax_income", pick(is_rows, "법인세비용차감전", "법인세차감전순"))
     put("tax_expense", pick(is_rows, "법인세비용", exclude=("차감전",)))
-    put("net_income", pick(is_rows, "당기순이익", "당기순손익", exclude=("률", "주당")))
+    put("net_income", pick(is_rows, "당기순이익", "당기순손실", "당기순손익",
+                           exclude=("률", "주당")))
     put("finance_costs", pick(is_rows, "금융원가", "금융비용", exclude=("순",)))
 
     # 재무상태표

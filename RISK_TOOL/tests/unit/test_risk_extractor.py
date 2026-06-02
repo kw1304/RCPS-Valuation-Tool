@@ -84,3 +84,34 @@ def test_num_edge_cases():
     assert _num("-1,234") == -1234.0
     assert _num(" 1 234 ") == 1234.0
     assert _num("abc") is None
+
+
+def test_classify_statement_adverse_labels():
+    # 적자기업·약식라벨: '매출'(원가) + '영업손실' → IS로 인식
+    from risk.infrastructure.dart.risk_extractor import _classify_statement
+    rows = [("매출", []), ("매출원가", []), ("매출총이익", []),
+            ("판매비와관리비", []), ("영업손실", []), ("당기순손실", [])]
+    assert _classify_statement(rows) == "IS"
+    bs = [("자산총계", []), ("부채총계", []), ("자본총계", [])]
+    assert _classify_statement(bs) == "BS"
+
+
+def test_parse_fs_document_adverse_company():
+    # 영업손실·당기순손실·약식 '매출' 라벨 + 천원 단위 파싱
+    from risk.infrastructure.dart.risk_extractor import _parse_fs_document
+    html = """
+    <p>손익계산서 (단위: 천원)</p>
+    <TABLE>
+      <TR><TD>과목</TD><TD>당기</TD><TD>전기</TD></TR>
+      <TR><TD>매출</TD><TD>1,000,000</TD><TD>900,000</TD></TR>
+      <TR><TD>매출원가</TD><TD>700,000</TD><TD>600,000</TD></TR>
+      <TR><TD>매출총이익</TD><TD>300,000</TD><TD>300,000</TD></TR>
+      <TR><TD>영업손실</TD><TD>(50,000)</TD><TD>(30,000)</TD></TR>
+      <TR><TD>당기순손실</TD><TD>(80,000)</TD><TD>(40,000)</TD></TR>
+    </TABLE>"""
+    out = _parse_fs_document(html, 2024)
+    cur = out[2024]
+    assert cur["revenue"] == 1_000_000 * 1000      # 천원 → 원
+    assert cur["cogs"] == 700_000 * 1000
+    assert cur["operating_income"] == -50_000 * 1000   # 괄호=음수
+    assert cur["net_income"] == -80_000 * 1000
